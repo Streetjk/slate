@@ -135,7 +135,7 @@ export class HistoryTodayProvider implements DataProvider<
         text?: string;
         pages?: Array<{ title?: string; description?: string; extract?: string }>;
       }>;
-    }>(url, { timeoutMs: DEFAULT_PROVIDER_FETCH_TIMEOUT_MS, userAgent: null });
+    }>(url, { timeoutMs: DEFAULT_PROVIDER_FETCH_TIMEOUT_MS });
     const evs = json.events ?? [];
     return evs
       .filter(
