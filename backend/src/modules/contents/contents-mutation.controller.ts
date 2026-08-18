@@ -40,7 +40,9 @@ export class ContentsMutationController {
     @Param('groupId') groupId: string,
     @CurrentUser() user: WebUserContext,
     @Headers('content-type') ct: string,
-    @JsonBody(CreateDynamicContentDto) body: CreateDynamicContentDto | undefined,
+    // JsonBody handles JSON validation itself. Keep the reflected type as Object so the
+    // global ZodValidationPipe does not try to validate the undefined multipart branch.
+    @JsonBody(CreateDynamicContentDto) body: unknown,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply
   ): Promise<ContentMutationResponseT> {
@@ -52,7 +54,7 @@ export class ContentsMutationController {
     if (!body) {
       throw new ValidationError('仅支持 multipart/form-data 或 application/json');
     }
-    return this.dynamicContent.append(groupId, user.userId, body);
+    return this.dynamicContent.append(groupId, user.userId, body as CreateDynamicContentDto);
   }
 
   @Put('groups/:groupId/contents/order')
@@ -69,7 +71,7 @@ export class ContentsMutationController {
     @Param('contentId') contentId: string,
     @CurrentUser() user: WebUserContext,
     @Headers('content-type') ct: string,
-    @JsonBody(PatchContentUnionDto) body: PatchContentUnionDto | undefined,
+    @JsonBody(PatchContentUnionDto) body: unknown,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply
   ): Promise<ContentMutationResponseT> {
@@ -81,22 +83,23 @@ export class ContentsMutationController {
     if (!body) {
       throw new ValidationError('仅支持 multipart/form-data 或 application/json');
     }
-    if (body.config !== undefined) {
+    const patchBody = body as PatchContentUnionDto;
+    if (patchBody.config !== undefined) {
       return this.dynamicContent.patch(contentId, user.userId, {
-        config: body.config,
-        frame_name: body.frame_name,
+        config: patchBody.config,
+        frame_name: patchBody.frame_name,
       });
     }
-    if (body.frame_name === undefined) {
+    if (patchBody.frame_name === undefined) {
       throw new ValidationError('没有可更新的字段', { code: 'nothing_to_patch' });
     }
     const dynamicPatch = await this.dynamicContent.patchFrameNameIfDynamic(
       contentId,
       user.userId,
-      body.frame_name
+      patchBody.frame_name
     );
     if (dynamicPatch) return dynamicPatch;
-    return this.contents.patchFrameName(contentId, user.userId, body.frame_name);
+    return this.contents.patchFrameName(contentId, user.userId, patchBody.frame_name);
   }
 
   @Delete('contents/:contentId')
