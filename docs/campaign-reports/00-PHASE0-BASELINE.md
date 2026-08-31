@@ -9,7 +9,7 @@ Status: Conditionally complete; baseline is not ready for feature implementation
 Repository: https://github.com/Streetjk/slate  
 Branch: `integration/note4-custom`  
 Base SHA: `cf5b4ffb0b3db09cb44c058b425b77c4fa58d21e`  
-Head SHA: `cf5b4ffb0b3db09cb44c058b425b77c4fa58d21e` before this report commit  
+Head SHA: `3cdb4c70713a49c69f889021ad3dbe85c0fcfcef` before this closure amendment commit
 Upstream SHA: `cf5b4ffb0b3db09cb44c058b425b77c4fa58d21e`
 
 Remotes:
@@ -91,6 +91,88 @@ Commands executed from `/Users/ollama/slate`:
 - `idf.py -C firmware build` — NOT RUN; `IDF_PATH` was unset, `idf.py` was unavailable, and no `export.sh` was found.
 
 The firmware result is an environment/toolchain blocker, not a recorded firmware test failure.
+
+## Phase 0 Closure Evidence
+
+Closure attempt date: 2026-09-01
+
+### Gate A — Firmware Baseline
+
+The local workflow file was verified to contain `workflow_dispatch`, ESP-IDF `v5.5.2`, target `esp32s3`, `idf.py build`, `idf.py merge-bin`, and artifact upload. It was present on `integration/note4-custom` at commit `3cdb4c70713a49c69f889021ad3dbe85c0fcfcef`.
+
+The documented dispatch command was attempted first without an explicit repository target:
+
+```text
+gh workflow run firmware.yml --ref integration/note4-custom
+HTTP 403: Must have admin rights to Repository
+target resolved by gh: qiujun8023/slate
+```
+
+The command was then corrected to target the authenticated fork explicitly:
+
+```text
+gh workflow run -R Streetjk/slate firmware.yml --ref integration/note4-custom
+HTTP 404: workflow firmware.yml not found on the default branch
+```
+
+GitHub API evidence after the failed dispatch:
+
+```text
+GET repos/Streetjk/slate/actions/workflows
+{"total_count":0,"workflows":[]}
+
+GET repos/Streetjk/slate/branches/integration/note4-custom
+{"name":"integration/note4-custom","sha":"3cdb4c70713a49c69f889021ad3dbe85c0fcfcef"}
+
+GET repos/Streetjk/slate/contents/.github/workflows/firmware.yml?ref=integration/note4-custom
+firmware.yml present
+```
+
+```text
+WORKFLOW_RUN_ID: NONE — GitHub created no run
+WORKFLOW_REF: integration/note4-custom
+COMMIT_SHA: 3cdb4c70713a49c69f889021ad3dbe85c0fcfcef
+ESP_IDF_VERSION: v5.5.2 (workflow configuration)
+TARGET: esp32s3 (workflow configuration)
+BUILD_RESULT: NOT RUN
+ARTIFACT_RESULT: NOT RUN
+```
+
+Classification: repository Actions-registration/infrastructure blocker before runner execution. There are no workflow logs to collect and no evidence of an actual firmware compilation failure. Firmware was not modified and ESP-IDF was not installed locally.
+
+### Gate B — Native AGY/Codex Integration
+
+```text
+AGY_SKILL_NATIVE_LOAD: PASS
+AUTH_MODE: OAuth
+EXPECTED_RESPONSE: AGY_OAUTH_OK
+RESOLVED_MODEL: gemini-3.7-flash-low
+TRACKED_FILES_CHANGED: NO
+```
+
+A fresh `codex exec` process loaded the native `$agy:ask` skill and invoked the installed agy-staff plugin. The observed response was:
+
+```text
+AGY_OAUTH_OK
+Resolved model identifier: gemini-3.7-flash-low
+```
+
+The AGY companion telemetry identified `profile=restricted` and `model=gemini-3.7-flash-low`. No API key was supplied, extracted, or inspected. The fresh Codex process exited successfully with status 0.
+
+### Closure Safety Checks
+
+Before this amendment:
+
+```text
+git status --short: empty
+git diff --check: PASS
+git rev-parse HEAD: 3cdb4c70713a49c69f889021ad3dbe85c0fcfcef
+unexpected tracked changes: NONE
+credentials introduced: NONE
+feature implementation started: NO
+```
+
+Gate B is closed. Gate A remains unresolved because the user fork has no registered GitHub Actions workflows even though the workflow file exists on the target branch. Therefore the final Phase 0 verdict remains `NOT READY`.
 
 ## AGY Review
 
