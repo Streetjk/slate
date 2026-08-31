@@ -33,10 +33,10 @@ export function AudioDropzone({
     isPending: deleteAudioPending,
     getConfirmOptions: useCallback(
       () => ({
-        title: '删除这一帧的音频？',
-        description: '图保留，只移除音频文件。',
+        title: 'Delete this frame’s audio?',
+        description: 'The image will stay; only the audio file will be removed.',
         destructive: true,
-        confirmText: '删除音频',
+        confirmText: 'Delete audio',
       }),
       []
     ),
@@ -44,8 +44,8 @@ export function AudioDropzone({
       (contentId, callbacks) => deleteAudioMutate(contentId, callbacks),
       [deleteAudioMutate]
     ),
-    successToast: '音频已删除',
-    errorToast: '删除失败',
+    successToast: 'Audio deleted',
+    errorToast: 'Delete failed',
   });
 
   const dz = useDropzone({
@@ -61,7 +61,7 @@ export function AudioDropzone({
     hasExistingAudio && editingContentId != null ? (
       <DeleteAudioButton
         isPending={deleteAudioPending}
-        label={hideLabel ? '删除已有音频' : '删除'}
+        label={hideLabel ? 'Delete existing audio' : 'Delete'}
         onDelete={() => deleteAudioWithConfirm(editingContentId)}
       />
     ) : null;
@@ -71,7 +71,7 @@ export function AudioDropzone({
       {!hideLabel && (
         <div className="flex items-center justify-between mb-2">
           <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em]">
-            音频{hasExistingAudio ? ' · 已有' : ' · 选填'}
+            Audio{hasExistingAudio ? ' · Existing' : ' · Optional'}
           </p>
           {deleteAudio}
         </div>
@@ -97,10 +97,10 @@ export function AudioDropzone({
               <p className="font-sans text-[11px] text-stone">{formatBytes(audioFile.size)}</p>
             </>
           ) : hasExistingAudio ? (
-            <p className="font-sans text-[13px] text-stone">拖新文件可替换</p>
+            <p className="font-sans text-[13px] text-stone">Drop a new file to replace it</p>
           ) : (
             <p className="font-sans text-[13px] text-stone">
-              MP3 / WAV / OGG / FLAC / AAC，自动转码
+              MP3 / WAV / OGG / FLAC / AAC; transcoded automatically
             </p>
           )}
         </div>

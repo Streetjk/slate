@@ -42,7 +42,7 @@ export function ContentCardShell({
           </div>
         ) : error ? (
           <div className="absolute inset-0 flex items-center justify-center text-stone-light text-[12px]">
-            加载失败
+            Failed to load
           </div>
         ) : (
           (preview ?? null)
@@ -62,7 +62,7 @@ export function ContentCardShell({
             frameName ? 'text-ink' : 'text-stone-light italic'
           )}
         >
-          {frameName ?? '未命名'}
+          {frameName ?? 'Unnamed frame'}
         </p>
         {titleMeta}
       </div>

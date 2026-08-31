@@ -57,10 +57,11 @@ function DefaultErrorFallback({ error, reset }: { error: Error | null; reset: ()
       <div className="mx-auto max-w-lg border border-line bg-paper p-6">
         <div className="flex items-center gap-3">
           <AlertTriangle size={22} className="text-clay" />
-          <h1 className="font-serif text-[26px] font-bold leading-tight">页面加载失败</h1>
+          <h1 className="font-serif text-[26px] font-bold leading-tight">Page failed to load</h1>
         </div>
         <p className="mt-3 font-sans text-[13px] leading-relaxed text-stone">
-          当前页面遇到异常，可以先重试渲染；如果仍失败，再刷新应用状态。
+          This page encountered an error. Try rendering it again; if it still fails, refresh the
+          application.
         </p>
         {error?.message && (
           <p className="mt-3 font-mono text-[11px] leading-relaxed text-stone-light break-words">
@@ -68,9 +69,9 @@ function DefaultErrorFallback({ error, reset }: { error: Error | null; reset: ()
           </p>
         )}
         <div className="mt-6 flex gap-3">
-          <Button onClick={reset}>重试</Button>
+          <Button onClick={reset}>Retry</Button>
           <Button variant="outline" onClick={() => window.location.reload()}>
-            刷新页面
+            Refresh page
           </Button>
         </div>
       </div>

@@ -30,20 +30,20 @@ export function DeviceNameHeader({
       <div className="min-w-0">
         <p className="inline-flex items-center gap-2 text-[12px] text-stone">
           <span className={cn('dot', online ? 'dot-online' : 'dot-offline')} />
-          {online ? '在线' : '离线'}
+          {online ? 'Online' : 'Offline'}
           <span className="font-mono text-[11px] text-stone-light">{device.mac}</span>
         </p>
         <div className="mt-1.5">
           <InlineRename
             editing={editingName}
-            value={device.name ?? '未命名'}
+            value={device.name ?? 'Unnamed device'}
             draft={draftName}
             onDraftChange={onDraftNameChange}
             onStart={onStartEditing}
             onCommit={onCommit}
             onKeyDown={onKeyDown}
             pending={pending}
-            placeholder="未命名"
+            placeholder="Unnamed device"
             titleClassName="font-serif text-[24px] sm:text-[26px] font-bold leading-tight truncate"
             inputClassName="!text-[24px] sm:!text-[26px] !font-serif !font-bold leading-tight"
             buttonClassName="p-1.5 -m-1 text-stone"
@@ -57,7 +57,7 @@ export function DeviceNameHeader({
       </div>
       <Dialog.Close asChild>
         <button
-          aria-label="关闭"
+          aria-label="Close"
           className="p-2 -m-2 text-stone hover:text-ink hover:bg-cream flex-shrink-0 transition-colors"
         >
           <X size={20} />

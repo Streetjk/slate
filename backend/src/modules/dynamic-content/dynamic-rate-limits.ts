@@ -9,7 +9,7 @@ export const weatherCitySearchRateLimit: RateLimitGuardOptions = createRateLimit
   {
     key: (req) => `weather-city:${clientIp(req)}`,
     maxPerWindow: 30,
-    message: '城市搜索过于频繁，请稍后重试',
+    message: 'City search is too frequent; try again later',
   }
 );
 
@@ -18,6 +18,6 @@ export const ingestRateLimit: RateLimitGuardOptions = createRateLimit(
   {
     key: (req) => (req.params as { contentId?: string })?.contentId ?? '',
     maxPerWindow: INGEST_MAX_PER_WINDOW,
-    message: `每分钟最多 ${INGEST_MAX_PER_WINDOW} 次推送`,
+    message: `Maximum ${INGEST_MAX_PER_WINDOW} pushes per minute`,
   }
 );

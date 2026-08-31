@@ -26,8 +26,8 @@
         "size": 14,
         "font": "sans",
         "items": [
-          { "label": "湿度", "field": "data.humidity", "suffix": "%" },
-          { "label": "风速", "field": "data.windDisplay" }
+          { "label": "Humidity", "field": "data.humidity", "suffix": "%" },
+          { "label": "Wind", "field": "data.windDisplay" }
         ]
       },
       { "block": "separator", "style": "solid" },

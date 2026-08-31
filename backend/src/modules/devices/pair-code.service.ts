@@ -27,7 +27,9 @@ export class PairCodeService {
       const available = candidates.find((code) => !existingCodes.has(code));
       if (available) return available;
     }
-    throw new ConflictError('配对码生成冲突，请重试', { code: 'pair_code_generation_failed' });
+    throw new ConflictError('Pairing code generation conflict; try again', {
+      code: 'pair_code_generation_failed',
+    });
   }
 }
 
@@ -41,7 +43,9 @@ function generatePairCode(): string {
     }
   }
   if (code.length !== 6) {
-    throw new InternalError('配对码生成失败', { code: 'pair_code_entropy_unavailable' });
+    throw new InternalError('Pairing code generation failed', {
+      code: 'pair_code_entropy_unavailable',
+    });
   }
   return code;
 }

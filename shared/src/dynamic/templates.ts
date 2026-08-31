@@ -68,10 +68,18 @@ export const DashboardTemplate = z
     template.blocks.forEach((block, i) => {
       if (!('x' in block)) return;
       if (block.x + block.w > 400) {
-        ctx.addIssue({ code: 'custom', path: ['blocks', i], message: 'x + w 超出屏幕宽度 400' });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['blocks', i],
+          message: 'x + w exceeds the 400px screen width',
+        });
       }
       if (block.y + block.h > 300) {
-        ctx.addIssue({ code: 'custom', path: ['blocks', i], message: 'y + h 超出屏幕高度 300' });
+        ctx.addIssue({
+          code: 'custom',
+          path: ['blocks', i],
+          message: 'y + h exceeds the 300px screen height',
+        });
       }
     });
   });
@@ -83,7 +91,7 @@ export type DashboardSystemTemplateIdT = z.infer<typeof DashboardSystemTemplateI
 
 export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
   version: 1,
-  name: 'AI 使用统计',
+  name: 'AI usage statistics',
   blocks: [
     {
       type: 'metric',
@@ -91,7 +99,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 34,
       w: 84,
       h: 48,
-      label: '今日消费',
+      label: 'Today cost',
       value: '{today_cost_usd|usd2}',
     },
     {
@@ -100,7 +108,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 34,
       w: 84,
       h: 48,
-      label: '今日请求',
+      label: 'Today requests',
       value: '{today_request_count|int}',
     },
     {
@@ -109,7 +117,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 34,
       w: 84,
       h: 48,
-      label: '今日Token',
+      label: 'Today tokens',
       value: '{today_token_count|tokens}',
     },
     {
@@ -118,7 +126,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 34,
       w: 84,
       h: 48,
-      label: '今日缓存率',
+      label: 'Today cache hit rate',
       value: '{today_cache_hit_rate_percent|percent}',
     },
     {
@@ -127,7 +135,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 92,
       w: 84,
       h: 48,
-      label: '累计消费',
+      label: 'Total cost',
       value: '{total_cost_usd|usd2}',
     },
     {
@@ -136,7 +144,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 92,
       w: 84,
       h: 48,
-      label: '累计请求',
+      label: 'Total requests',
       value: '{total_request_count|int}',
     },
     {
@@ -145,7 +153,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 92,
       w: 84,
       h: 48,
-      label: '累计Token',
+      label: 'Total tokens',
       value: '{total_token_count|tokens}',
     },
     {
@@ -154,7 +162,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 92,
       w: 84,
       h: 48,
-      label: '总缓存率',
+      label: 'Total cache hit rate',
       value: '{total_cache_hit_rate_percent|percent}',
     },
     {
@@ -163,7 +171,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 150,
       w: 84,
       h: 48,
-      label: '平均响应',
+      label: 'Average response',
       value: '{average_latency_ms|duration}',
     },
     {
@@ -172,7 +180,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 150,
       w: 84,
       h: 48,
-      label: '今日均价',
+      label: 'Today average cost',
       value: '{today_cost_per_million_tokens_usd|usd_per_million}',
     },
     {
@@ -181,7 +189,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 150,
       w: 84,
       h: 48,
-      label: '累计均价',
+      label: 'Total average cost',
       value: '{total_cost_per_million_tokens_usd|usd_per_million}',
     },
     {
@@ -190,7 +198,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 150,
       w: 84,
       h: 48,
-      label: '更新时间',
+      label: 'Updated',
       value: '{last_updated_time_label}',
     },
     { type: 'line', x1: 20, y1: 218, x2: 380, y2: 218, style: 'dashed' },
@@ -200,7 +208,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 237,
       w: 120,
       h: 12,
-      value: '按平台拆分',
+      value: 'By platform',
       font_size: 12,
     },
     {
@@ -209,7 +217,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 237,
       w: 58,
       h: 12,
-      value: '今日',
+      value: 'Today',
       font_size: 12,
       align: 'right',
     },
@@ -219,7 +227,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 237,
       w: 58,
       h: 12,
-      value: '请求',
+      value: 'Requests',
       font_size: 12,
       align: 'right',
     },
@@ -229,7 +237,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
       y: 237,
       w: 70,
       h: 12,
-      value: 'Token',
+      value: 'Tokens',
       font_size: 12,
       align: 'right',
     },
@@ -316,7 +324,7 @@ export const DASHBOARD_AI_USAGE_STATS_TEMPLATE = DashboardTemplate.parse({
 
 export const DASHBOARD_CUSTOM_STARTER_TEMPLATE = DashboardTemplate.parse({
   version: 1,
-  name: '自定义模板',
+  name: 'Custom template',
   blocks: [
     {
       type: 'metric',
@@ -392,11 +400,11 @@ export const DASHBOARD_CUSTOM_STARTER_TEMPLATE = DashboardTemplate.parse({
 
 export const DASHBOARD_AI_QUOTA_MONITOR_TEMPLATE = DashboardTemplate.parse({
   version: 1,
-  name: 'AI 限额监控',
+  name: 'AI quota monitor',
   blocks: [
-    { type: 'metric', x: 20, y: 44, w: 110, h: 52, label: '服务', value: '{service_label}' },
-    { type: 'metric', x: 145, y: 44, w: 110, h: 52, label: '套餐', value: '{plan_label}' },
-    { type: 'metric', x: 270, y: 44, w: 110, h: 52, label: '状态', value: '{status_label}' },
+    { type: 'metric', x: 20, y: 44, w: 110, h: 52, label: 'Service', value: '{service_label}' },
+    { type: 'metric', x: 145, y: 44, w: 110, h: 52, label: 'Plan', value: '{plan_label}' },
+    { type: 'metric', x: 270, y: 44, w: 110, h: 52, label: 'Status', value: '{status_label}' },
     {
       type: 'progress',
       x: 20,
@@ -430,7 +438,7 @@ export const DASHBOARD_AI_QUOTA_MONITOR_TEMPLATE = DashboardTemplate.parse({
       y: 228,
       w: 110,
       h: 52,
-      label: '5小时重置',
+      label: '5-hour reset',
       value: '{primary_reset_at_label}',
     },
     {
@@ -439,25 +447,26 @@ export const DASHBOARD_AI_QUOTA_MONITOR_TEMPLATE = DashboardTemplate.parse({
       y: 228,
       w: 110,
       h: 52,
-      label: '周重置',
+      label: 'Weekly reset',
       value: '{secondary_reset_at_label}',
     },
-    { type: 'metric', x: 270, y: 228, w: 110, h: 52, label: '更新', value: '{updated_label}' },
+    { type: 'metric', x: 270, y: 228, w: 110, h: 52, label: 'Updated', value: '{updated_label}' },
   ],
 });
 
 export const DASHBOARD_SYSTEM_TEMPLATES = {
   ai_usage_stats: {
     id: 'ai_usage_stats',
-    label: 'AI 使用统计',
-    description: '展示今日/累计消费、请求、Token、缓存率、均价、响应时间和平台拆分。',
+    label: 'AI usage statistics',
+    description:
+      'Shows today and total cost, requests, tokens, cache hit rates, average cost, latency, and platform splits.',
     template: DASHBOARD_AI_USAGE_STATS_TEMPLATE,
   },
   ai_quota_monitor: {
     id: 'ai_quota_monitor',
-    label: 'AI 限额监控',
+    label: 'AI quota monitor',
     description:
-      '展示 Claude Code 或 Codex/OpenAI 单服务限额快照；只放使用率、状态、绝对重置时间和更新时间。',
+      'Shows a quota snapshot for one Claude Code or Codex/OpenAI service: usage, status, reset time, and update time.',
     template: DASHBOARD_AI_QUOTA_MONITOR_TEMPLATE,
   },
 } as const satisfies Record<

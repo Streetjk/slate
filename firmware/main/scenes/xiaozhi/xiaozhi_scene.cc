@@ -97,19 +97,19 @@ const char* EmotionIcon(const std::string& emotion, xiaozhi::XiaozhiState state)
 std::string StatusTitle(const xiaozhi::XiaozhiSnapshot& snap) {
     switch (snap.state) {
         case xiaozhi::XiaozhiState::kReadyIdle:
-            return snap.alert_active && !snap.status.empty() ? snap.status : "小智AI";
+            return snap.alert_active && !snap.status.empty() ? snap.status : "Voice AI";
         case xiaozhi::XiaozhiState::kListening:
-            return snap.status.empty() ? "聆听中" : snap.status;
+            return snap.status.empty() ? "Listening" : snap.status;
         case xiaozhi::XiaozhiState::kSpeaking:
-            return snap.status.empty() ? "回复中" : snap.status;
+            return snap.status.empty() ? "Speaking" : snap.status;
         case xiaozhi::XiaozhiState::kConnecting:
         case xiaozhi::XiaozhiState::kStopping:
         case xiaozhi::XiaozhiState::kCheckingConfig:
         case xiaozhi::XiaozhiState::kAwaitingActivation:
         case xiaozhi::XiaozhiState::kError:
-            return snap.status.empty() ? "小智AI" : snap.status;
+            return snap.status.empty() ? "Voice AI" : snap.status;
     }
-    return "小智AI";
+    return "Voice AI";
 }
 
 void StyleTransparent(lv_obj_t* obj) {
@@ -145,12 +145,12 @@ void XiaozhiScene::EnsureServiceStarted(SceneContext& ctx) {
     if (!service || !service->IsStarted()) {
         if (!root_ || !status_bar_ || !hint_label_)
             return;
-        status_bar_->SetCaption("小智异常");
+        status_bar_->SetCaption("Voice error");
         status_bar_->SetCaptionIcon(FONT_AWESOME_SAD);
         HideContentViews();
-        RenderSystemMessage("小智音频初始化失败\n\n请稍后重试或重启设备", false, "");
+        RenderSystemMessage("Voice audio failed to initialize\n\nTry again later or restart the device", false, "");
         lv_obj_clear_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(hint_label_, "双击确认 返回");
+        lv_label_set_text(hint_label_, "Double-tap ENTER to go back");
         return;
     }
     service->EnterMode();
@@ -204,7 +204,7 @@ void XiaozhiScene::CreateLayout() {
     root_ = CreateFullscreenRoot();
 
     status_bar_ = std::make_unique<StatusBar>(root_);
-    status_bar_->SetCaption("小智AI");
+    status_bar_->SetCaption("Voice AI");
 
     code_label_ = lv_label_create(root_);
     lv_obj_set_style_text_font(code_label_, &lv_font_montserrat_48, 0);
@@ -223,7 +223,7 @@ void XiaozhiScene::CreateLayout() {
     lv_obj_set_style_text_font(standby_body_label_, &Zfull_16, 0);
     lv_obj_set_style_text_color(standby_body_label_, lv_color_black(), 0);
     lv_obj_set_style_text_align(standby_body_label_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(standby_body_label_, "按确认开始聊天");
+    lv_label_set_text(standby_body_label_, "Press ENTER to start chatting");
     lv_obj_set_width(standby_body_label_, LV_HOR_RES - 48);
     lv_obj_align(standby_body_label_, LV_ALIGN_CENTER, 0, RootCenterYOffset(StandbyContentCenterY() + 26));
 
@@ -259,7 +259,7 @@ void XiaozhiScene::CreateLayout() {
     lv_obj_set_style_text_font(xiaozhi_empty_label_, &Zfull_16, 0);
     lv_obj_set_style_text_color(xiaozhi_empty_label_, lv_color_black(), 0);
     lv_obj_set_style_text_align(xiaozhi_empty_label_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(xiaozhi_empty_label_, "正在听，想聊点什么？");
+    lv_label_set_text(xiaozhi_empty_label_, "Listening. What would you like to discuss?");
     lv_obj_set_width(xiaozhi_empty_label_, LV_HOR_RES - 48);
     lv_obj_align(xiaozhi_empty_label_, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(xiaozhi_empty_label_, LV_OBJ_FLAG_HIDDEN);
@@ -356,17 +356,17 @@ void XiaozhiScene::RenderContent() {
     HideContentViews();
 
     if (snap.alert_active) {
-        const std::string title   = DisplayText(snap.alert_status.empty() ? "小智提醒" : snap.alert_status);
+        const std::string title   = DisplayText(snap.alert_status.empty() ? "Voice alert" : snap.alert_status);
         const std::string message = util::TrimForScreen(util::SanitizeForScreen(snap.alert_message), 72);
         RenderSystemMessage(title + (message.empty() ? "" : "\n\n" + message), false, "");
     } else {
         switch (snap.state) {
             case xiaozhi::XiaozhiState::kCheckingConfig:
-                RenderSystemMessage("正在获取小智配置...", false, "");
+                RenderSystemMessage("Loading voice configuration...", false, "");
                 break;
             case xiaozhi::XiaozhiState::kAwaitingActivation:
                 RenderSystemMessage(
-                    snap.activation_message.empty() ? "请在小智控制台输入激活码" : DisplayText(snap.activation_message),
+                    snap.activation_message.empty() ? "Enter the activation code in the voice console" : DisplayText(snap.activation_message),
                     true, snap.activation_code);
                 break;
             case xiaozhi::XiaozhiState::kReadyIdle:
@@ -374,17 +374,17 @@ void XiaozhiScene::RenderContent() {
                 lv_obj_clear_flag(standby_body_label_, LV_OBJ_FLAG_HIDDEN);
                 break;
             case xiaozhi::XiaozhiState::kConnecting:
-                RenderSystemMessage("正在连接小智服务器...", false, "");
+                RenderSystemMessage("Connecting to voice server...", false, "");
                 break;
             case xiaozhi::XiaozhiState::kStopping:
-                RenderSystemMessage("正在结束当前对话...", false, "");
+                RenderSystemMessage("Ending the current conversation...", false, "");
                 break;
             case xiaozhi::XiaozhiState::kListening:
             case xiaozhi::XiaozhiState::kSpeaking:
                 RenderXiaozhiMessages(snap);
                 break;
             case xiaozhi::XiaozhiState::kError:
-                RenderSystemMessage("小智暂不可用\n\n" + util::TrimForScreen(util::SanitizeForScreen(snap.error), 72),
+                RenderSystemMessage("Voice service unavailable\n\n" + util::TrimForScreen(util::SanitizeForScreen(snap.error), 72),
                                     false, "");
                 break;
         }
@@ -393,7 +393,7 @@ void XiaozhiScene::RenderContent() {
         lv_obj_add_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(hint_label_, "上/下 调音量   长按确认 设置   双击确认 返回");
+        lv_label_set_text(hint_label_, "UP/DOWN volume   Hold ENTER settings   Double-tap ENTER back");
     }
 }
 

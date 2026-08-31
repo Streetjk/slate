@@ -17,24 +17,24 @@ export function DeviceStatusGrid({
 
   return (
     <section>
-      <h3 className="font-sans text-[12px] uppercase tracking-wide text-stone mb-2">状态</h3>
+      <h3 className="font-sans text-[12px] uppercase tracking-wide text-stone mb-2">Status</h3>
       <div className="grid grid-cols-2 gap-3">
         <DeviceMetaCard
           icon={<BatteryLevelIcon level={battery} size={16} />}
-          label="电量"
+          label="Battery"
           value={online && battery != null ? `${battery}%` : '—'}
           warn={online && battery != null && battery < 20}
           stale={!online}
         />
         <DeviceMetaCard
           icon={<Wifi size={16} />}
-          label="信号"
+          label="Signal"
           value={online && device.rssi_dbm != null ? `${device.rssi_dbm} dBm` : '—'}
           hint={online ? rssiLabel(device.rssi_dbm) : undefined}
           stale={!online}
         />
-        <DeviceMetaCard label="固件" value={device.fw_version ?? '—'} mono />
-        <DeviceMetaCard label="心跳" value={lastSeenAgo} />
+        <DeviceMetaCard label="Firmware" value={device.fw_version ?? '—'} mono />
+        <DeviceMetaCard label="Heartbeat" value={lastSeenAgo} />
       </div>
     </section>
   );

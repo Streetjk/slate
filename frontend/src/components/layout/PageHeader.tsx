@@ -14,7 +14,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({
-  backLabel = '返回',
+  backLabel = 'Back',
   onBack,
   icon,
   title,

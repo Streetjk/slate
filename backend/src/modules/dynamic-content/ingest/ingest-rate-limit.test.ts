@@ -30,6 +30,7 @@ describe('ingestRateLimit', () => {
       throw new Error('expected throw');
     } catch (err) {
       expect(err).toBeInstanceOf(RateLimitedError);
+      expect((err as RateLimitedError).message).toBe('Maximum 30 pushes per minute');
       const detail = (err as RateLimitedError).detail as { retry_after_sec?: number };
       expect(typeof detail.retry_after_sec).toBe('number');
       expect(detail.retry_after_sec).toBeGreaterThan(0);
@@ -51,6 +52,7 @@ describe('ingestRateLimit', () => {
       expect(err).toBeInstanceOf(AppError);
       expect((err as AppError).code).toBe('payload_too_large');
       expect((err as AppError).httpStatus).toBe(413);
+      expect((err as AppError).message).toBe('Payload exceeds 64KB');
     }
   });
 
@@ -64,6 +66,7 @@ describe('ingestRateLimit', () => {
       expect(err).toBeInstanceOf(AppError);
       expect((err as AppError).code).toBe('payload_too_large');
       expect((err as AppError).httpStatus).toBe(413);
+      expect((err as AppError).message).toBe('Payload exceeds 64KB');
     }
   });
 

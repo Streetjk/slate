@@ -18,16 +18,16 @@ export function useDeleteContentWithConfirm({
     isPending,
     getConfirmOptions: useCallback(
       () => ({
-        title: `删除第 ${content.seq + 1} 项？`,
+        title: `Delete item ${content.seq + 1}?`,
         description: description ?? defaultDeleteDescription(content),
         destructive: true,
-        confirmText: '删除',
+        confirmText: 'Delete',
       }),
       [content, description]
     ),
     run: useCallback((contentId, callbacks) => mutate(contentId, callbacks), [mutate]),
-    successToast: '已删除',
-    errorToast: '删除失败',
+    successToast: 'Deleted',
+    errorToast: 'Delete failed',
   });
   const deleteWithConfirm = useCallback(() => {
     void confirmDelete(content.id);
@@ -41,10 +41,10 @@ function defaultDeleteDescription(
 ): string {
   if (content.kind === 'dynamic') {
     return content.frame_name
-      ? `「${content.frame_name}」动态内容会一并删除，不可逆。`
-      : '这项动态内容会删除，不可逆。';
+      ? `Dynamic content “${content.frame_name}” will also be permanently deleted.`
+      : 'This dynamic content will be permanently deleted.';
   }
   return content.frame_name
-    ? `「${content.frame_name}」连同图${content.audio_etag ? '与音频' : ''}一起删除，不可逆。`
-    : `这项内容的图${content.audio_etag ? '与音频' : ''}会删除，不可逆。`;
+    ? `“${content.frame_name}” and its image${content.audio_etag ? ' and audio' : ''} will be permanently deleted.`
+    : `This content's image${content.audio_etag ? ' and audio' : ''} will be permanently deleted.`;
 }

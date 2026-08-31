@@ -5,7 +5,7 @@ type Params = Record<string, string>;
 
 export function RequireRouteParams<const Keys extends readonly string[]>({
   names,
-  title = '页面不存在',
+  title = 'Page not found',
   hint,
   action,
   children,

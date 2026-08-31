@@ -113,9 +113,9 @@ void XiaozhiService::EnterMode() {
     }
     const XiaozhiPhase phase = xiaozhi_phase_.load(std::memory_order_relaxed);
     if (has_conversation_task || ConversationBlocksSleep(phase)) {
-        SetState(XiaozhiState::kStopping, "小智正在收尾...");
+        SetState(XiaozhiState::kStopping, "Voice service is stopping...");
     } else if (settings::HasProtocolConfig()) {
-        SetState(XiaozhiState::kReadyIdle, "小智待机");
+    SetState(XiaozhiState::kReadyIdle, "Voice ready");
     } else {
         StartConfigTask();
     }
@@ -155,7 +155,7 @@ void XiaozhiService::ToggleXiaozhi() {
         case XiaozhiState::kStopping:
             if (settings::HasProtocolConfig()) {
                 xiaozhi_phase_.store(XiaozhiPhase::kStartPending, std::memory_order_relaxed);
-                SetState(XiaozhiState::kStopping, "小智正在收尾...");
+                SetState(XiaozhiState::kStopping, "Voice service is stopping...");
             }
             break;
         case XiaozhiState::kCheckingConfig:
@@ -183,7 +183,7 @@ void XiaozhiService::StopConversation(bool send_goodbye) {
         if (phase == XiaozhiPhase::kIdle)
             xiaozhi_phase_.store(XiaozhiPhase::kStopping, std::memory_order_relaxed);
         if (CurrentState() != XiaozhiState::kError)
-            SetState(XiaozhiState::kStopping, "小智正在收尾...");
+            SetState(XiaozhiState::kStopping, "Voice service is stopping...");
     }
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
     if (protocol)
@@ -277,7 +277,7 @@ void XiaozhiService::StartConversationTask() {
         tasks_.conversation_task = nullptr;
         if (tasks_.conversation_done_notify)
             xSemaphoreGive(tasks_.conversation_done_notify);
-        SetError("小智对话任务启动失败");
+        SetError("Failed to start voice conversation task");
     } else {
         ESP_LOGD(kTag, "conversation task created task=%p", tasks_.conversation_task);
     }
@@ -291,7 +291,7 @@ void XiaozhiService::QueueConversationStartLocked() {
     ESP_LOGD(kTag, "queue conversation start");
     xiaozhi_phase_.store(XiaozhiPhase::kStartPending, std::memory_order_relaxed);
     if (in_mode_.load(std::memory_order_relaxed) && CurrentState() != XiaozhiState::kError)
-        SetState(XiaozhiState::kStopping, "小智正在收尾...");
+        SetState(XiaozhiState::kStopping, "Voice service is stopping...");
 }
 
 bool XiaozhiService::WaitForConversationStopped(int timeout_ms) {
@@ -329,7 +329,7 @@ void XiaozhiService::InterruptSpeaking() {
     }
     audio_->ResetDecoder();
     audio_->EnableVoiceProcessing(true);
-    SetState(XiaozhiState::kListening, "聆听中");
+    SetState(XiaozhiState::kListening, "Listening");
 }
 
 void XiaozhiService::EndAudioSession() {
@@ -368,7 +368,7 @@ void XiaozhiService::StartConfigTask() {
         tasks_.config_task = nullptr;
         if (tasks_.config_done_notify)
             xSemaphoreGive(tasks_.config_done_notify);
-        SetError("小智配置任务启动失败");
+        SetError("Failed to start voice configuration task");
     }
 }
 
@@ -408,7 +408,7 @@ void XiaozhiService::ConfigTaskEntry(void* arg) {
 void XiaozhiService::ConfigTask() {
     while (in_mode_.load(std::memory_order_relaxed) && !config_stop_requested_.load(std::memory_order_relaxed) &&
            !settings::HasProtocolConfig()) {
-        SetState(XiaozhiState::kCheckingConfig, "获取小智配置中...");
+        SetState(XiaozhiState::kCheckingConfig, "Loading voice configuration...");
         ActivationClient       client;
         ActivationConfigResult result = client.Fetch();
         if (config_stop_requested_.load(std::memory_order_relaxed) || !in_mode_.load(std::memory_order_relaxed))
@@ -419,7 +419,7 @@ void XiaozhiService::ConfigTask() {
         }
 
         if (result.has_protocol || settings::HasProtocolConfig()) {
-            SetState(XiaozhiState::kReadyIdle, "小智待机");
+            SetState(XiaozhiState::kReadyIdle, "Voice ready");
             return;
         }
         if (result.has_activation_challenge) {
@@ -432,11 +432,11 @@ void XiaozhiService::ConfigTask() {
         if (result.has_activation) {
             SetActivation(result.activation_message, result.activation_code);
         } else if (!result.ok) {
-            SetError(result.error.empty() ? "小智配置失败" : result.error);
+            SetError(result.error.empty() ? "Voice configuration failed" : result.error);
         } else if (result.has_activation_challenge) {
-            SetState(XiaozhiState::kCheckingConfig, "小智激活确认中...");
+            SetState(XiaozhiState::kCheckingConfig, "Confirming voice activation...");
         } else {
-            SetError("小智未返回协议配置");
+            SetError("Voice service returned no protocol configuration");
         }
 
         const int delay_steps = result.has_activation ? 30 : 100;
@@ -447,7 +447,7 @@ void XiaozhiService::ConfigTask() {
     }
     if (in_mode_.load(std::memory_order_relaxed) && !config_stop_requested_.load(std::memory_order_relaxed) &&
         settings::HasProtocolConfig())
-        SetState(XiaozhiState::kReadyIdle, "小智待机");
+        SetState(XiaozhiState::kReadyIdle, "Voice ready");
 }
 
 void XiaozhiService::StartControlTask() {
@@ -508,7 +508,7 @@ void XiaozhiService::MaybeStartPendingConversation() {
     }
     xiaozhi_phase_.store(XiaozhiPhase::kIdle, std::memory_order_relaxed);
     if (CurrentState() != XiaozhiState::kError)
-        SetState(XiaozhiState::kReadyIdle, "小智待机");
+        SetState(XiaozhiState::kReadyIdle, "Voice ready");
 }
 
 void XiaozhiService::ControlTaskEntry(void* arg) {
@@ -571,11 +571,11 @@ void XiaozhiService::ConversationTask() {
         return;
     }
 
-    SetState(XiaozhiState::kConnecting, "连接小智中...");
+    SetState(XiaozhiState::kConnecting, "Connecting to voice service...");
     auto protocol = CreatePreferredProtocol();
     if (!protocol) {
         SetStoppingIfMayRun(xiaozhi_phase_);
-        SetError("未获取小智协议配置");
+        SetError("Voice protocol configuration was not received");
         return;
     }
     protocol->SetOwnerToken(token);
@@ -600,13 +600,13 @@ void XiaozhiService::ConversationTask() {
         const bool cancelled = !ConversationMayRun(xiaozhi_phase_.load(std::memory_order_relaxed)) ||
                                !in_mode_.load(std::memory_order_relaxed);
         if (!opened && !cancelled && CurrentState() != XiaozhiState::kError)
-            SetError("小智连接失败");
+        SetError("Voice service connection failed");
         StopConversation(false);
         return;
     }
 
     if (!audio_->Begin()) {
-        SetError("音频初始化失败");
+        SetError("Audio initialization failed");
         StopConversation(true);
         return;
     }
@@ -619,7 +619,7 @@ void XiaozhiService::ConversationTask() {
     active_protocol->SendStartListening(ListeningMode::kAutoStop);
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
     audio_->EnableVoiceProcessing(true);
-    SetState(XiaozhiState::kListening, "聆听中");
+    SetState(XiaozhiState::kListening, "Listening");
 
     while (ConversationMayRun(xiaozhi_phase_.load(std::memory_order_relaxed)) &&
            in_mode_.load(std::memory_order_relaxed)) {
@@ -631,7 +631,7 @@ void XiaozhiService::ConversationTask() {
             active_protocol->SendStartListening(ListeningMode::kAutoStop);
             pending_listen_after_playback_.store(false, std::memory_order_relaxed);
             audio_->EnableVoiceProcessing(true);
-            SetState(XiaozhiState::kListening, "聆听中");
+            SetState(XiaozhiState::kListening, "Listening");
         }
 
         bool sent = false;
@@ -662,7 +662,7 @@ void XiaozhiService::ConversationTask() {
     if (close_channel)
         active_protocol->CloseAudioChannel(false);
     if (CurrentState() != XiaozhiState::kError)
-        SetState(XiaozhiState::kStopping, "小智正在收尾...");
+        SetState(XiaozhiState::kStopping, "Voice service is stopping...");
 }
 
 void XiaozhiService::ConfigureProtocolCallbacks(Protocol* protocol) {
@@ -688,7 +688,7 @@ void XiaozhiService::ConfigureProtocolCallbacks(Protocol* protocol) {
         audio_->EnableVoiceProcessing(false);
         audio_->ResetDecoder();
         if (CurrentState() != XiaozhiState::kError)
-            SetState(XiaozhiState::kStopping, "小智正在收尾...");
+            SetState(XiaozhiState::kStopping, "Voice service is stopping...");
     });
     protocol->OnNetworkError([this, token](const std::string& message) {
         ESP_LOGW(kTag, "network error token=%lu current=%lu message=%s", static_cast<unsigned long>(token),
@@ -699,7 +699,7 @@ void XiaozhiService::ConfigureProtocolCallbacks(Protocol* protocol) {
         pending_listen_after_playback_.store(false, std::memory_order_relaxed);
         audio_->EnableVoiceProcessing(false);
         audio_->ResetDecoder();
-        SetError(message.empty() ? "小智网络异常" : message);
+        SetError(message.empty() ? "Voice network error" : message);
     });
 }
 
@@ -715,7 +715,7 @@ void XiaozhiService::HandleIncomingJson(const cJSON* root) {
             pending_listen_after_playback_.store(false, std::memory_order_relaxed);
             audio_->EnableVoiceProcessing(false);
             audio_->ResetDecoder();
-            SetState(XiaozhiState::kSpeaking, "小智回复中");
+            SetState(XiaozhiState::kSpeaking, "Speaking");
             break;
         case IncomingMessageKind::kTtsStop:
             if (ConversationMayRun(xiaozhi_phase_.load(std::memory_order_relaxed))) {
@@ -735,7 +735,7 @@ void XiaozhiService::HandleIncomingJson(const cJSON* root) {
             break;
         }
         case IncomingMessageKind::kAlert:
-            SetAlert(message.status.empty() ? "小智提醒" : message.status, message.message,
+            SetAlert(message.status.empty() ? "Voice alert" : message.status, message.message,
                      message.emotion.empty() ? "neutral" : message.emotion);
             break;
         case IncomingMessageKind::kAlertMissingMessage:
@@ -774,7 +774,7 @@ void XiaozhiService::SetError(const std::string& error) {
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
         snapshot_.state        = XiaozhiState::kError;
-        snapshot_.status       = "小智异常";
+        snapshot_.status       = "Voice error";
         snapshot_.emotion      = "sad";
         snapshot_.error        = error;
         snapshot_.has_protocol = settings::HasProtocolConfig();
@@ -787,7 +787,7 @@ void XiaozhiService::SetActivation(const std::string& message, const std::string
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
         snapshot_.state              = XiaozhiState::kAwaitingActivation;
-        snapshot_.status             = "小智激活";
+        snapshot_.status             = "Voice activation";
         snapshot_.emotion            = "thinking";
         snapshot_.activation_message = message;
         snapshot_.activation_code    = code;

@@ -88,7 +88,7 @@ export function DynamicContentEditor({
   const onSubmit = useCallback(async () => {
     const parsed = form.submitConfig();
     if (!parsed.ok) {
-      toast.error('配置有误', parsed.error);
+      toast.error('Invalid configuration', parsed.error);
       return;
     }
     try {
@@ -103,10 +103,10 @@ export function DynamicContentEditor({
         frameName: form.frameName,
         configKey: form.configKey,
       });
-      toast.success('已保存');
+      toast.success('Saved');
       onDone();
     } catch (err) {
-      toast.error('保存失败', getApiErrorMessage(err));
+      toast.error('Save failed', getApiErrorMessage(err));
     }
   }, [content.id, form, onDone, setBaseline, toast, update]);
 
@@ -123,8 +123,8 @@ export function DynamicContentEditor({
       <PageHeader
         onBack={onDone}
         icon={<Sparkles size={24} />}
-        title="编辑动态内容"
-        subtitle="动态内容由服务端生成 400×300 1bpp 帧，设备端直接显示并叠加状态栏。"
+        title="Edit dynamic content"
+        subtitle="The server generates a 400×300 1bpp frame that the device displays with its status bar."
       />
 
       <div className="mt-6 fade-up fade-up-1">
@@ -161,14 +161,14 @@ export function DynamicContentEditor({
                 showAudio={showAudio}
                 contentId={content.id}
                 dashboardData={form.dashboardData}
-                dashboardDataLabel="当前数据 JSON"
+                dashboardDataLabel="Current data JSON"
               />
             ) : null
           }
           actions={
             <FormActions
               onCancel={onDone}
-              submitLabel="保存"
+              submitLabel="Save"
               disabled={!dirty}
               submitting={submitting}
             />

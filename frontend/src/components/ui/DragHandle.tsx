@@ -7,7 +7,7 @@ interface DragHandleProps {
   label?: string;
 }
 
-export function DragHandle({ attributes, listeners, label = '拖拽排序' }: DragHandleProps) {
+export function DragHandle({ attributes, listeners, label = 'Drag to reorder' }: DragHandleProps) {
   return (
     <button
       type="button"

@@ -75,7 +75,7 @@ export const CreateDynamicContentRequest = z
     ctx.addIssue({
       code: 'custom',
       path: ['initial_data'],
-      message: 'dashboard 初始数据不能为空',
+      message: 'Dashboard initial data cannot be empty',
     });
   });
 export type CreateDynamicContentRequestT = z.infer<typeof CreateDynamicContentRequest>;

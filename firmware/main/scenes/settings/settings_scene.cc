@@ -29,7 +29,7 @@ void SettingsScene::OnEnter(SceneContext& ctx) {
     root_ = CreateFullscreenRoot();
 
     status_bar_ = std::make_unique<StatusBar>(root_);
-    status_bar_->SetCaption("设置");
+    status_bar_->SetCaption("Settings");
 
     // 三段语义分组(MenuList 不显式画分隔,靠顺序传达):
     //   偏好    音量调节
@@ -37,10 +37,10 @@ void SettingsScene::OnEnter(SceneContext& ctx) {
     //   危险    重启设备 / 恢复出厂(永远末尾,避免误触)
     auto*                       stack = ctx.stack;
     std::vector<MenuList::Item> items = {
-        {"音量调节", [stack]() { stack->RequestPush(std::make_unique<VolumePage>()); }},
-        {"设备信息", [stack]() { stack->RequestPush(std::make_unique<DeviceInfoPage>()); }},
-        {"重启设备", [stack]() { stack->RequestPush(std::make_unique<RestartDevicePage>()); }},
-        {"恢复出厂", [stack]() { stack->RequestPush(std::make_unique<FactoryResetPage>()); }},
+        {"Volume", [stack]() { stack->RequestPush(std::make_unique<VolumePage>()); }},
+        {"Device info", [stack]() { stack->RequestPush(std::make_unique<DeviceInfoPage>()); }},
+        {"Restart device", [stack]() { stack->RequestPush(std::make_unique<RestartDevicePage>()); }},
+        {"Factory reset", [stack]() { stack->RequestPush(std::make_unique<FactoryResetPage>()); }},
     };
     menu_ = std::make_unique<MenuList>(root_, std::move(items), saved_cursor_);
 

@@ -24,17 +24,17 @@ export function TtsFields({
     <div className="space-y-3">
       <label className="block">
         <span className="block font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">
-          TTS 文案
+          TTS text
         </span>
         <textarea
           value={text}
           onChange={(e) => onTextChange(e.target.value.slice(0, 500))}
           className={cn(inputCls, 'min-h-28 resize-y font-sans text-[14px] leading-6')}
-          placeholder="输入这张图片要播放的语音文案"
+          placeholder="Enter the speech to play for this image"
         />
       </label>
       <div>
-        <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">音色</p>
+        <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">Voice</p>
         <Select
           value={voice}
           onValueChange={(value) => {
@@ -50,7 +50,7 @@ export function TtsFields({
         </Select>
       </div>
       {status === 'generating' || status === 'pending' ? (
-        <p className="font-sans text-[11px] text-stone">音频生成中</p>
+        <p className="font-sans text-[11px] text-stone">Generating audio</p>
       ) : status === 'failed' && error ? (
         <p className="font-sans text-[11px] text-clay truncate" title={error}>
           {error}

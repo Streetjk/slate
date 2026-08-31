@@ -37,7 +37,7 @@ export function deviceStatusBarText(row: ContentStatusBarSource): string {
     case 'weather_alert':
       return weatherAlertStatusBarText(row.dynamicConfig);
     case 'earthquake_report':
-      return '地震速报';
+      return 'Earthquake reports';
     case 'weather':
       return weatherStatusBarText(row.dynamicConfig);
     case 'dashboard':
@@ -57,15 +57,15 @@ export function defaultDynamicFrameName(
 ): string | null {
   switch (dynamicType) {
     case 'daily_calendar':
-      return '日历';
+      return 'Calendar';
     case 'month_calendar':
-      return '月历';
+      return 'Monthly calendar';
     case 'history_today':
-      return '历史上的今天';
+      return 'Today in history';
     case 'weather_alert':
       return weatherAlertStatusBarText(config);
     case 'earthquake_report':
-      return '地震速报';
+      return 'Earthquake reports';
     case 'weather':
       return weatherStatusBarText(config);
     case 'dashboard':
@@ -87,7 +87,7 @@ function dailyCalendarStatusBarText(
   const parts = datePartsInTz(renderedAt, timezoneFromConfig(config));
   const month = valueText(recordValue(data, 'month')) ?? String(parts.month);
   const day = valueText(recordValue(data, 'day')) ?? String(parts.day);
-  return `${Number(month)}月${Number(day)}日`;
+  return `${Number(month)}/${Number(day)}`;
 }
 
 function monthCalendarStatusBarText(
@@ -95,7 +95,7 @@ function monthCalendarStatusBarText(
   renderedAt: Date
 ): string {
   const parts = datePartsInTz(renderedAt, timezoneFromConfig(config));
-  return `${parts.year}年${parts.month}月`;
+  return `${parts.year}/${parts.month}`;
 }
 
 function historyTodayStatusBarText(
@@ -105,35 +105,35 @@ function historyTodayStatusBarText(
 ): string {
   const label =
     valueText(recordValue(data, 'dateLabel')) ?? cnMonthDay(renderedAt, timezoneFromConfig(config));
-  return `历史上的${label.replace(/\s+/g, '')}`;
+  return `History on ${label.replace(/\s+/g, '').replace(/^(\d+)月(\d+)日$/, '$1/$2')}`;
 }
 
 export function weatherStatusBarText(config: unknown): string {
-  const location = valueText(recordValue(config, 'location_label')) ?? '天气';
-  return location === '天气' ? '天气' : `${location}天气`;
+  const location = valueText(recordValue(config, 'location_label')) ?? 'Weather';
+  return location === 'Weather' ? 'Weather' : `${location} weather`;
 }
 
 export function weatherAlertStatusBarText(config: unknown): string {
   const province = normalizeWeatherAlertProvince(valueText(recordValue(config, 'province')) ?? '');
-  return `${province || '全国'}气象预警`;
+  return `${province || 'National'} weather alerts`;
 }
 
 export function dashboardStatusBarText(config: unknown): string {
   const parsed = DashboardConfig.safeParse(config);
-  if (!parsed.success) return '外部数据';
+  if (!parsed.success) return 'External data';
   if (parsed.data.template.kind === 'system') {
-    return DASHBOARD_SYSTEM_TEMPLATES[parsed.data.template.id]?.label ?? '外部数据';
+    return DASHBOARD_SYSTEM_TEMPLATES[parsed.data.template.id]?.label ?? 'External data';
   }
-  return parsed.data.template.template.name?.trim() || '自定义模板';
+  return parsed.data.template.template.name?.trim() || 'Custom template';
 }
 
 export function fontTestStatusBarText(config: unknown): string {
   const id = valueText(recordValue(config, 'font_id'));
-  return id ? (FONT_TEST_FONTS.find((font) => font.id === id)?.label ?? '字体测试') : '字体测试';
+  return id ? (FONT_TEST_FONTS.find((font) => font.id === id)?.label ?? 'Font test') : 'Font test';
 }
 
 export function hotListStatusBarText(config: unknown): string {
   const parsed = HotListConfig.safeParse(config);
-  if (!parsed.success) return '热榜';
-  return `${hotListSourceShortLabel(parsed.data.source)}热榜`;
+  if (!parsed.success) return 'Trending list';
+  return `${hotListSourceShortLabel(parsed.data.source)} trending`;
 }

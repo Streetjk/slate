@@ -25,12 +25,12 @@ export type DitherMode = (typeof DITHER_MODES)[number];
 
 /** UI 用的元数据 — label 按用途/风格命名,hint 露出算法原名方便回溯 */
 export const DITHER_INFO: Record<DitherMode, { label: string; hint: string }> = {
-  threshold: { label: '线稿 · 纯黑白', hint: '硬阈值;无中间灰' },
-  bayer4: { label: '网点 · 粗', hint: 'Bayer 4×4;复古海报感' },
-  bayer8: { label: '网点 · 细', hint: 'Bayer 8×8;点阵更细' },
-  floyd: { label: '照片 · 推荐', hint: 'Floyd-Steinberg;颗粒细腻' },
-  atkinson: { label: '照片 · 高对比', hint: 'Atkinson;亮的更亮' },
-  sierra: { label: '照片 · 柔和', hint: 'Sierra Lite;接近 FS 更轻' },
+  threshold: { label: 'Line art · pure black and white', hint: 'Hard threshold; no gray' },
+  bayer4: { label: 'Dithered · coarse', hint: 'Bayer 4×4; retro poster texture' },
+  bayer8: { label: 'Dithered · fine', hint: 'Bayer 8×8; finer dot pattern' },
+  floyd: { label: 'Photo · recommended', hint: 'Floyd-Steinberg; fine grain' },
+  atkinson: { label: 'Photo · high contrast', hint: 'Atkinson; brighter highlights' },
+  sierra: { label: 'Photo · soft', hint: 'Sierra Lite; lighter than FS' },
 };
 
 /** 新建内容时 UI 默认值 — 照片可用,线稿略锐但可读 */

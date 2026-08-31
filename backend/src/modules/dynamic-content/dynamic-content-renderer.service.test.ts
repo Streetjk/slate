@@ -58,7 +58,7 @@ describe('DynamicContentRendererService queueing', () => {
     const service = createService({ fetchData: () => Promise.resolve(['not', 'an', 'object']) });
 
     await expect(service.renderDynamicContent('content-1', { force: true })).rejects.toThrow(
-      '动态数据必须是 JSON 对象或 null'
+      'Dynamic data must be a JSON object or null'
     );
   });
 

@@ -11,7 +11,7 @@ export function Spinner({ label, className }: SpinnerProps) {
   return (
     <span
       role="status"
-      aria-label={label ?? '加载中'}
+      aria-label={label ?? 'Loading'}
       className={cn('inline-flex items-center gap-2.5', className)}
     >
       <span className="inline-flex items-center" aria-hidden="true">

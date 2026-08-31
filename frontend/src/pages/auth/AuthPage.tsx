@@ -27,45 +27,45 @@ function LoginAuthPage() {
     e.preventDefault();
     await authForm.run(
       () => login({ identifier, password }, redirectTo),
-      '登录失败，请检查账号和密码'
+      'Sign-in failed. Check your username and password.'
     );
   }
 
   return (
     <AuthFormLayout
-      title="登录"
-      subtitle="登录后管理墨笺与内容。"
-      submitLabel="进入"
+      title="Sign in"
+      subtitle="Sign in to manage Slate and your content."
+      submitLabel="Enter"
       loading={authForm.loading}
       error={authForm.error}
       onSubmit={onSubmit}
       footer={
         <p className="mt-7 text-center font-sans text-[13px] text-stone">
-          还没有账号？{' '}
+          No account yet?{' '}
           <Link to={appRoutes.register} className="text-ink border-b border-ink">
-            立即注册
+            Create one now
           </Link>
         </p>
       }
     >
       <Input
-        label="账号或邮箱"
+        label="Username or email"
         type="text"
         value={identifier}
         onChange={(e) => setIdentifier(e.target.value)}
         autoFocus
         required
         autoComplete="username"
-        placeholder="用户名或邮箱"
+        placeholder="Username or email"
       />
       <Input
-        label="密码"
+        label="Password"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
         autoComplete="current-password"
-        placeholder="请输入密码"
+        placeholder="Enter your password"
       />
     </AuthFormLayout>
   );
@@ -103,40 +103,40 @@ function RegisterAuthPage() {
 
     await authForm.run(
       () => register({ email: trimmedEmail, username, password }, redirectTo),
-      '注册失败，请稍后再试'
+      'Sign-up failed. Please try again later.'
     );
   }
 
   return (
     <AuthFormLayout
-      title="注册"
-      subtitle="创建账号，开始管理墨笺与内容。"
-      submitLabel="创建账号"
+      title="Create account"
+      subtitle="Create an account to manage Slate and your content."
+      submitLabel="Create account"
       loading={authForm.loading}
       error={authForm.error}
       onSubmit={onSubmit}
       footer={
         <p className="mt-7 text-center font-sans text-[13px] text-stone">
-          已有账号？{' '}
+          Already have an account?{' '}
           <Link to={appRoutes.login} className="text-ink border-b border-ink">
-            去登录
+            Sign in
           </Link>
         </p>
       }
     >
       <Input
-        label="用户名"
+        label="Username"
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         autoFocus
         required
         autoComplete="username"
-        placeholder="字母、数字、下划线，3-32 位"
+        placeholder="Letters, numbers, and underscores; 3–32 characters"
         error={fieldErrors.username}
       />
       <Input
-        label="邮箱"
+        label="Email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -146,25 +146,25 @@ function RegisterAuthPage() {
         error={fieldErrors.email}
       />
       <Input
-        label="密码"
+        label="Password"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
         minLength={8}
         autoComplete="new-password"
-        placeholder="请输入密码"
+        placeholder="Enter your password"
         error={fieldErrors.password}
       />
       <Input
-        label="确认密码"
+        label="Confirm password"
         type="password"
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
         required
         minLength={8}
         autoComplete="new-password"
-        placeholder="再次输入密码"
+        placeholder="Enter your password again"
         error={fieldErrors.confirm}
       />
     </AuthFormLayout>
@@ -185,16 +185,20 @@ function validateRegisterForm({
   confirm: string;
 }): { field: RegisterField; message: string } | null {
   if (!/^[a-zA-Z0-9_]{3,32}$/.test(username)) {
-    return { field: 'username', message: '用户名只能包含字母、数字、下划线，3-32 位' };
+    return {
+      field: 'username',
+      message:
+        'Username must contain only letters, numbers, or underscores and be 3–32 characters long',
+    };
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { field: 'email', message: '请输入有效的邮箱地址' };
+    return { field: 'email', message: 'Enter a valid email address' };
   }
   if (password.length < 8) {
-    return { field: 'password', message: '密码至少 8 位' };
+    return { field: 'password', message: 'Password must be at least 8 characters' };
   }
   if (password !== confirm) {
-    return { field: 'confirm', message: '两次输入的密码不一致' };
+    return { field: 'confirm', message: 'Passwords do not match' };
   }
   return null;
 }

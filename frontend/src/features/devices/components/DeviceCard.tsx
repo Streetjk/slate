@@ -64,11 +64,11 @@ export const DeviceCard = memo(function DeviceCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-serif text-[18px] font-bold leading-tight truncate tracking-tight">
-                {device.name ?? '未命名'}
+                {device.name ?? 'Unnamed device'}
               </h3>
               <span className="inline-flex items-center gap-1.5 text-[11px] text-stone flex-shrink-0">
                 <span className={cn('dot', online ? 'dot-online' : 'dot-offline')} />
-                {online ? '在线' : '离线'}
+                {online ? 'Online' : 'Offline'}
               </span>
             </div>
 
@@ -78,7 +78,7 @@ export const DeviceCard = memo(function DeviceCard({
 
             <p className="mt-2 truncate">
               <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-stone-light mr-1.5">
-                在播
+                Playing
               </span>
               <span
                 className={cn(
@@ -86,8 +86,8 @@ export const DeviceCard = memo(function DeviceCard({
                   groupName ? 'text-stone' : 'text-stone-light italic'
                 )}
               >
-                {groupName ?? '未选组'}
-                {groupName && playingContents != null && ` · ${playingContents} 项`}
+                {groupName ?? 'No group selected'}
+                {groupName && playingContents != null && ` · ${playingContents} items`}
               </span>
             </p>
 
@@ -104,7 +104,7 @@ export const DeviceCard = memo(function DeviceCard({
                     <Wifi size={14} />
                     <span>{rssiLabel(device.rssi_dbm)}</span>
                   </span>
-                  <span className="text-stone-light text-[11px] ml-auto">刚刚</span>
+                  <span className="text-stone-light text-[11px] ml-auto">Just now</span>
                 </>
               ) : (
                 <LastSeenLabel lastSeenAt={device.last_seen_at} />
@@ -123,8 +123,8 @@ export const DeviceCard = memo(function DeviceCard({
           type="button"
           onClick={onUnbind}
           disabled={unbindPending}
-          aria-label="解绑"
-          title="从账号解绑"
+          aria-label="Unbind"
+          title="Unbind from account"
           className="p-1.5 text-stone hover:text-clay hover:bg-cream transition-colors disabled:opacity-50"
         >
           <Trash2 size={14} />
@@ -136,5 +136,5 @@ export const DeviceCard = memo(function DeviceCard({
 
 function LastSeenLabel({ lastSeenAt }: { lastSeenAt: string | null }) {
   const lastSeenAgo = useTimeAgo(lastSeenAt);
-  return <span className="text-stone-light text-[11px]">上次心跳 {lastSeenAgo}</span>;
+  return <span className="text-stone-light text-[11px]">Last heartbeat {lastSeenAgo}</span>;
 }

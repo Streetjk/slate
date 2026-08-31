@@ -6,8 +6,8 @@ import { ContentEditorPageLayout } from '@/features/contents/components/ContentE
 export function ImageContentEditorPage() {
   return (
     <ContentEditorPageLayout
-      missingContentHint="请从内容列表进入图片内容编辑页。"
-      notFoundTitle="内容不存在或已删除"
+      missingContentHint="Open image content from the content list."
+      notFoundTitle="Content not found or deleted"
       findContent={(content) => content.kind === 'image'}
       renderEditor={({ gid, content, onDone }) => (
         <ImageContentEditor gid={gid} content={content} onDone={onDone} />

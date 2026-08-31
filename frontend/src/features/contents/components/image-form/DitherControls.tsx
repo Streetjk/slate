@@ -33,7 +33,7 @@ export function DitherControls({
       {hasImage && (
         <div>
           <div className="flex items-baseline justify-between mb-2 ml-0.5">
-            <p className="font-sans text-[13px] text-stone">缩放</p>
+            <p className="font-sans text-[13px] text-stone">Zoom</p>
             <div className="flex items-center gap-2">
               <p className="font-mono text-[12px] text-ink tabular-nums">{scale.toFixed(1)}×</p>
               <button
@@ -41,7 +41,7 @@ export function DitherControls({
                 onClick={onResetCrop}
                 className="font-sans text-[11px] text-stone border-b border-stone hover:border-ink hover:text-ink transition-colors"
               >
-                重置
+                Reset
               </button>
             </div>
           </div>
@@ -54,14 +54,14 @@ export function DitherControls({
             onChange={(e) => onScaleChange(Number(e.target.value))}
           />
           <p className="font-serif italic text-[11px] text-stone-light mt-1.5">
-            预览图可拖拽定位,滑块控制缩放。
+            Drag the preview to position it; use the slider to zoom.
           </p>
         </div>
       )}
 
       <div>
         <div className="flex items-baseline justify-between mb-2 ml-0.5">
-          <p className="font-sans text-[13px] text-stone">抖动算法</p>
+          <p className="font-sans text-[13px] text-stone">Dithering algorithm</p>
           <p className="font-mono text-[11px] text-stone-light">{DITHER_INFO[mode].hint}</p>
         </div>
         <div className="grid grid-cols-2">
@@ -84,14 +84,15 @@ export function DitherControls({
           ))}
         </div>
         <p className="font-serif text-[11px] text-stone-light mt-1.5">
-          线稿用「线稿 · 纯黑白」;照片用「照片 · 推荐」。
+          Use “Line art · pure black and white” for line drawings; use “Photo · recommended” for
+          photos.
         </p>
       </div>
 
       {mode === 'threshold' && (
         <div>
           <div className="flex items-baseline justify-between mb-2 ml-0.5">
-            <p className="font-sans text-[13px] text-stone">阈值</p>
+            <p className="font-sans text-[13px] text-stone">Threshold</p>
             <p className="font-mono text-[12px] text-ink tabular-nums">
               {threshold}
               <span className="text-stone-light">/255</span>
@@ -106,7 +107,9 @@ export function DitherControls({
             onChange={(e) => onThresholdChange(Number(e.target.value))}
           />
           <p className="font-serif italic text-[11px] text-stone-light mt-1.5">
-            {disabled ? '换图后可调整抖动参数。' : '简笔画 128;带细灰边的图试 180+。'}
+            {disabled
+              ? 'Choose an image to adjust dithering.'
+              : 'Try 128 for simple drawings; use 180+ for images with fine gray edges.'}
           </p>
         </div>
       )}

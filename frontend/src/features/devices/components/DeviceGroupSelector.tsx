@@ -17,11 +17,11 @@ export function DeviceGroupSelector({
     <section>
       <div className="flex items-center gap-2 mb-2 text-stone">
         <Radio size={14} />
-        <h3 className="font-sans text-[12px] uppercase tracking-wide">在播</h3>
+        <h3 className="font-sans text-[12px] uppercase tracking-wide">Playing</h3>
       </div>
       <GroupSelector groups={groups} value={value} onChange={onChange} disabled={disabled} />
       <p className="font-serif text-[12px] italic text-stone-light mt-2">
-        切换后会立即向设备入队同步动作。
+        Switching queues a sync action on the device immediately.
       </p>
     </section>
   );
@@ -44,13 +44,13 @@ function GroupSelector({
       value={value ?? '__none__'}
       onValueChange={onChange}
       disabled={disabled}
-      placeholder="未选组"
-      aria-label="切换在播组"
+      placeholder="No group selected"
+      aria-label="Switch playing group"
     >
-      {showNone && <SelectItem value="__none__">未选组</SelectItem>}
+      {showNone && <SelectItem value="__none__">No group selected</SelectItem>}
       {showNone && groups.length > 0 && <SelectSeparator />}
       {groups.map((group) => (
-        <SelectItem key={group.id} value={group.id} hint={`${group.content_count} 项`}>
+        <SelectItem key={group.id} value={group.id} hint={`${group.content_count} items`}>
           <span className="font-serif">{group.name}</span>
         </SelectItem>
       ))}

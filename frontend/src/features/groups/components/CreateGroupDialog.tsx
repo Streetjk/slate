@@ -35,34 +35,34 @@ export function CreateGroupDialog({
         <Dialog.Content className={dialogContentCls}>
           <DialogHeader
             icon={<FolderHeart size={24} />}
-            title="新建组"
-            description="创建一个新的内容组来管理帧序列。"
+            title="New group"
+            description="Create a content group to manage a sequence of frames."
             className="mb-6"
           />
 
           <div className="space-y-5">
             <Input
-              label="名称"
+              label="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && name.trim() && !isPending) onCreate(name.trim());
               }}
               autoFocus
-              placeholder="如：每日卡片"
+              placeholder="e.g. Daily cards"
             />
           </div>
 
           <div className="mt-7 flex items-center justify-end gap-3">
             <Dialog.Close asChild>
-              <Button variant="outline">取消</Button>
+              <Button variant="outline">Cancel</Button>
             </Dialog.Close>
             <Button
               onClick={() => name.trim() && onCreate(name.trim())}
               disabled={!name.trim() || isPending}
               iconRight={isPending ? undefined : <ArrowRight size={14} />}
             >
-              {isPending ? <Spinner /> : '创建'}
+              {isPending ? <Spinner /> : 'Create'}
             </Button>
           </div>
         </Dialog.Content>

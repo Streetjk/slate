@@ -64,7 +64,7 @@ export class DeviceManagementService {
       where: { id: deviceId, ownerUserId },
       data,
     });
-    if (updated.count !== 1) throw new NotFoundError('设备不存在');
+    if (updated.count !== 1) throw new NotFoundError('Device not found');
   }
 
   async claimByPairCode(code: string, ownerUserId: string): Promise<DeviceSummaryT> {
@@ -76,13 +76,13 @@ export class DeviceManagementService {
           select: DEVICE_CLAIM_SELECT,
         });
         if (!device) {
-          throw new NotFoundError('配对码无效', { code: 'pair_code_invalid' });
+          throw new NotFoundError('Invalid pairing code', { code: 'pair_code_invalid' });
         }
         if (device.ownerUserId) {
           if (device.ownerUserId === ownerUserId) {
             return { device, freshlyClaimed: false };
           }
-          throw new ForbiddenError('设备已被他人绑定', {
+          throw new ForbiddenError('Device is already bound to another account', {
             code: 'already_owned_by_other_user',
           });
         }
@@ -106,12 +106,15 @@ export class DeviceManagementService {
           // P2025: CAS 落空 —— 另一个事务已抢占。
           // P2002: 极小概率两并发事务生成同一新 pairCode。
           if (err.code === 'P2025' || prismaUniqueTargetIncludes(err, 'pair_code')) {
-            throw new ConflictError('配对码已被使用，请查看设备屏幕上的最新配对码', {
-              code: 'pair_code_already_claimed',
-            });
+            throw new ConflictError(
+              'Pairing code has been used; check the latest code on the device',
+              {
+                code: 'pair_code_already_claimed',
+              }
+            );
           }
           if (prismaUniqueTargetIncludes(err, 'owner_user_id', 'sort_order')) {
-            throw new ConflictError('设备排序冲突，请重试', {
+            throw new ConflictError('Device order conflict; try again', {
               code: 'device_sort_order_conflict',
             });
           }
@@ -138,7 +141,7 @@ export class DeviceManagementService {
         select: { ownerUserId: true },
       });
       if (!device || device.ownerUserId !== ownerUserId) {
-        throw new NotFoundError('设备不存在');
+        throw new NotFoundError('Device not found');
       }
       await lockUserRow(tx, ownerUserId);
       // 解绑同时轮换 pair_code，防截图泄漏的旧码被人立即抢 claim。
@@ -169,11 +172,12 @@ export class DeviceManagementService {
         owned.map((d) => d.id),
         order,
         {
-          duplicateMessage: '排序列表不能包含重复设备',
+          duplicateMessage: 'The order list cannot contain duplicate devices',
           duplicateCode: 'order_duplicate',
-          unknownMessage: '排序列表包含不属于当前用户的设备',
+          unknownMessage:
+            'The order list contains a device that does not belong to the current user',
           unknownCode: 'order_unknown_device',
-          missingMessage: '排序列表须包含所有设备',
+          missingMessage: 'The order list must include every device',
           missingCode: 'order_missing_device',
         }
       );
@@ -187,7 +191,7 @@ export class DeviceManagementService {
       select: DEVICE_SUMMARY_SELECT,
     });
     if (!d || d.ownerUserId !== ownerUserId) {
-      throw new NotFoundError('设备不存在');
+      throw new NotFoundError('Device not found');
     }
     return d;
   }

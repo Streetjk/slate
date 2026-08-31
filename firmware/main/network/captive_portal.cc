@@ -36,21 +36,21 @@ CaptivePortal* PortalFromRequest(httpd_req_t* req) {
 
 bool ValidServerUrl(const std::string& url, std::string& error) {
     if (url.empty()) {
-        error = "服务端 URL 不能为空";
+        error = "Server URL cannot be empty";
         return false;
     }
     if (url.size() > kMaxServerUrlLen) {
-        error = "服务端 URL 过长";
+        error = "Server URL is too long";
         return false;
     }
     for (unsigned char ch : url) {
         if (ch <= 0x20 || ch == 0x7F) {
-            error = "服务端 URL 含非法字符";
+        error = "Server URL contains invalid characters";
             return false;
         }
     }
     if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) {
-        error = "服务端 URL 需以 http:// 或 https:// 开头";
+        error = "Server URL must start with http:// or https://";
         return false;
     }
     return true;

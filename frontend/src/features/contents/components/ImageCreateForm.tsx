@@ -33,16 +33,16 @@ export function ImageCreateForm({ gid, header, onDone, onEditCreatedImage }: Ima
             body: { text: form.audio.trimmedTtsText, voice: form.audio.ttsVoice },
           });
         } catch (err) {
-          toast.error('内容已新建，TTS 生成失败', getApiErrorMessage(err));
+          toast.error('Content created, but TTS generation failed', getApiErrorMessage(err));
           if (onEditCreatedImage) onEditCreatedImage(created.id);
           else onDone();
           return;
         }
       }
-      toast.success('内容已新建');
+      toast.success('Content created');
       onDone();
     } catch (err) {
-      toast.error('创建失败', getApiErrorMessage(err));
+      toast.error('Create failed', getApiErrorMessage(err));
     }
   }
 
@@ -62,7 +62,7 @@ export function ImageCreateForm({ gid, header, onDone, onEditCreatedImage }: Ima
         actions={
           <FormActions
             onCancel={onDone}
-            submitLabel="创建"
+            submitLabel="Create"
             disabled={!form.canCreate}
             submitting={submitting}
           />

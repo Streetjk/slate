@@ -141,7 +141,7 @@ export class DeviceFirmwareService {
           err.code === 'P2002' &&
           prismaUniqueTargetIncludes(err, 'mac')
         ) {
-          throw new ConflictError('设备并发注册中，请重试', {
+          throw new ConflictError('Device registration is in progress; try again', {
             code: 'register_race',
             retry_after_sec: 1,
           });
@@ -196,7 +196,7 @@ export class DeviceFirmwareService {
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
-        throw new NotFoundError('设备不存在');
+        throw new NotFoundError('Device not found');
       }
       throw err;
     }
@@ -275,7 +275,7 @@ function generateSecret(): string {
 
 function throttleError(elapsedMs: number): ConflictError {
   const retryAfterSec = Math.max(Math.ceil((REGISTER_RESET_THROTTLE_MS - elapsedMs) / 1000), 1);
-  return new ConflictError('设备刚刚注册过，请稍后再重置', {
+  return new ConflictError('Device was registered recently; wait before resetting it', {
     code: 'register_throttled',
     retry_after_sec: retryAfterSec,
   });

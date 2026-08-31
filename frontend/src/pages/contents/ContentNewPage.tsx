@@ -11,7 +11,10 @@ export function ContentNewPage() {
   const navigate = useNavigate();
 
   return (
-    <RequireRouteParams names={['gid'] as const} hint="请从总览页进入具体内容组。">
+    <RequireRouteParams
+      names={['gid'] as const}
+      hint="Open a content group from the overview page."
+    >
       {({ gid }) => <ContentNewPageContent gid={gid} navigate={(path) => navigate(path)} />}
     </RequireRouteParams>
   );

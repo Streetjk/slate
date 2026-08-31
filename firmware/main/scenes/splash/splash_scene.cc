@@ -110,7 +110,7 @@ void SplashScene::CreateLayout() {
     lv_obj_set_style_text_font(hint_label_, &Zfull_16, 0);
     lv_obj_set_style_text_color(hint_label_, lv_color_black(), 0);
     lv_obj_set_style_text_align(hint_label_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(hint_label_, "长按确认 进入设置");
+    lv_label_set_text(hint_label_, "Hold ENTER for settings");
     lv_obj_align(hint_label_, LV_ALIGN_BOTTOM_MID, 0, -16);
 }
 
@@ -225,51 +225,51 @@ void SplashScene::RenderContent() {
 
     switch (state_) {
         case State::kInitializing:
-            std::snprintf(buf, sizeof(buf), "正在启动…");
+            std::snprintf(buf, sizeof(buf), "Starting…");
             break;
         case State::kProvisioning: {
             char ap_ssid[24];
             FormatApSsid(ap_ssid, sizeof(ap_ssid));
             std::snprintf(buf, sizeof(buf),
-                          "配网模式\n\n"
-                          "请连接 Wi-Fi：\n%s\n\n"
-                          "浏览器打开：\nhttp://192.168.4.1",
+                          "Setup mode\n\n"
+                          "Connect to Wi-Fi:\n%s\n\n"
+                          "Open in a browser:\nhttp://192.168.4.1",
                           ap_ssid);
             break;
         }
         case State::kWifiConnecting:
-            std::snprintf(buf, sizeof(buf), "连接 Wi-Fi 中\n%s", ssid_[0] ? ssid_ : "");
+            std::snprintf(buf, sizeof(buf), "Connecting to Wi-Fi\n%s", ssid_[0] ? ssid_ : "");
             break;
         case State::kWifiFailed:
-            std::snprintf(buf, sizeof(buf), "Wi-Fi 连接失败\n\n长按 确认 重新配网");
+            std::snprintf(buf, sizeof(buf), "Wi-Fi connection failed\n\nHold ENTER to set up again");
             break;
         case State::kSntp:
-            std::snprintf(buf, sizeof(buf), "对时中…");
+            std::snprintf(buf, sizeof(buf), "Syncing time…");
             break;
         case State::kRegistering:
-            std::snprintf(buf, sizeof(buf), "注册设备中…");
+            std::snprintf(buf, sizeof(buf), "Registering device…");
             break;
         case State::kServerUnreachable:
-            std::snprintf(buf, sizeof(buf), "服务器无响应,稍后重试…");
+            std::snprintf(buf, sizeof(buf), "Server unavailable; retrying…");
             break;
         case State::kAwaitingPair:
-            std::snprintf(buf, sizeof(buf), "在管理端【添加设备】中输入:");
+            std::snprintf(buf, sizeof(buf), "Enter this code under Add device:");
             show_code = true;
             break;
         case State::kAwaitingGroup:
             // 后端 claim 已自动绑「第一个内容组」、create 第一个内容组也会反向绑;
             // 走到这里 = owner 一个内容组都没有,直接告诉用户去创建。
-            std::snprintf(buf, sizeof(buf), "已绑定\n\n请在管理端创建内容组");
+            std::snprintf(buf, sizeof(buf), "Bound\n\nCreate a content group in Slate");
             break;
         case State::kNetError:
-            std::snprintf(buf, sizeof(buf), "网络异常,稍后自动重试…");
+            std::snprintf(buf, sizeof(buf), "Network error; retrying automatically…");
             break;
         case State::kSyncProgress:
             if (progress_name_[0]) {
-                std::snprintf(buf, sizeof(buf), "正在准备\n%s\n%u / %u", progress_name_, progress_cur_,
+                std::snprintf(buf, sizeof(buf), "Preparing\n%s\n%u / %u", progress_name_, progress_cur_,
                               progress_total_);
             } else {
-                std::snprintf(buf, sizeof(buf), "正在准备\n%u / %u", progress_cur_, progress_total_);
+                std::snprintf(buf, sizeof(buf), "Preparing\n%u / %u", progress_cur_, progress_total_);
             }
             break;
     }

@@ -11,18 +11,18 @@ import { ContentEditorPageLayout } from '@/features/contents/components/ContentE
 export function DynamicContentEditorPage() {
   return (
     <ContentEditorPageLayout
-      missingContentHint="请从内容列表进入动态内容编辑页。"
-      notFoundTitle="动态内容不存在或已删除"
+      missingContentHint="Open dynamic content from the content list."
+      notFoundTitle="Dynamic content not found or deleted"
       findContent={(content) => content.kind === 'dynamic'}
       renderEditor={({ gid, content, onDone }) => {
         if (!content.dynamic_type || !content.dynamic_config) {
           return (
             <EmptyState
-              title="动态内容配置缺失"
-              hint="这条动态内容的数据不完整，请返回内容列表后重试。"
+              title="Dynamic content configuration missing"
+              hint="This dynamic content is incomplete. Return to the content list and try again."
               action={
                 <Button variant="outline" size="sm" onClick={onDone}>
-                  返回
+                  Back
                 </Button>
               }
             />
