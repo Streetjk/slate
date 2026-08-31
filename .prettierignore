@@ -1,2 +1,10 @@
+node_modules
+dist
+build
+.cache
+bun.lock
+*.md
+firmware/
+backend/prisma/*.db
+backend/assets/fonts/bitmap-1bpp/*.json
 .agy-staff/
-backend/assets/fonts/bitmap-1bpp/
