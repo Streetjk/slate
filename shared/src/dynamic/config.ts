@@ -6,6 +6,7 @@ import {
   DashboardSystemTemplateId,
   DashboardTemplate,
 } from './templates.js';
+import { PricePeriod } from '../types/integrations.js';
 
 // 内置动态内容类型清单。每种对应一个服务端 compiler + 设备端基础 block 组合。
 export const DynamicType = z.enum([
@@ -15,6 +16,7 @@ export const DynamicType = z.enum([
   'history_today',
   'weather_alert',
   'earthquake_report',
+  'btc_price',
   'dashboard',
   'font_test',
   'hot_list',
@@ -159,6 +161,13 @@ export const EarthquakeReportConfig = z
   .merge(DynamicAudioOptions);
 export type EarthquakeReportConfigT = z.infer<typeof EarthquakeReportConfig>;
 
+export const BtcPriceConfig = z.object({
+  type: z.literal('btc_price'),
+  period: PricePeriod.default('daily'),
+  refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(600),
+});
+export type BtcPriceConfigT = z.infer<typeof BtcPriceConfig>;
+
 export const DashboardTemplateRef = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('system'),
@@ -200,6 +209,7 @@ export const DynamicConfig = z.discriminatedUnion('type', [
   HistoryTodayConfig,
   WeatherAlertConfig,
   EarthquakeReportConfig,
+  BtcPriceConfig,
   DashboardConfig,
   FontTestConfig,
   HotListConfig,

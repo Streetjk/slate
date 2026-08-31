@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CloudSun,
   Flame,
+  Bitcoin,
   Type as TypeIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -70,6 +71,14 @@ export const DYNAMIC_TYPE_META = {
     supportsAudio: true,
     Icon: Activity,
   },
+  btc_price: {
+    label: 'BTC/USD',
+    hint: 'Current price · daily / weekly / monthly chart',
+    description: 'Shows cached Bitcoin price history in US dollars.',
+    hasConfigurableParams: true,
+    supportsAudio: false,
+    Icon: Bitcoin,
+  },
   dashboard: {
     label: 'External data',
     hint: 'Template + JSON data push',
@@ -104,6 +113,7 @@ export const DYNAMIC_TYPE_ORDER = [
   'weather',
   'weather_alert',
   'earthquake_report',
+  'btc_price',
   'hot_list',
   'dashboard',
   'font_test',

@@ -91,6 +91,7 @@ const DYNAMIC_SCHEDULE_POLICIES: Record<string, DynamicSchedulePolicy> = {
   hot_list: 'refresh_interval',
   weather_alert: 'refresh_interval',
   earthquake_report: 'refresh_interval',
+  btc_price: 'refresh_interval',
   dashboard: 'refresh_interval',
   font_test: 'registry_ttl',
 };

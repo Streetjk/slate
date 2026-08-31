@@ -45,7 +45,8 @@ function maxReusableDynamicDataAgeMs(dynamicType: string, config: unknown): numb
 
 function timestampFromDynamicData(dynamicData: Prisma.JsonValue): number | null {
   if (!dynamicData || typeof dynamicData !== 'object' || Array.isArray(dynamicData)) return null;
-  const value = (dynamicData as Record<string, Prisma.JsonValue>).updatedAt;
+  const record = dynamicData as Record<string, Prisma.JsonValue>;
+  const value = record.updatedAt ?? record.fetchedAt;
   if (typeof value !== 'string') return null;
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? null : timestamp;
@@ -69,6 +70,7 @@ const DYNAMIC_DATA_REUSE_POLICIES: Record<string, DynamicDataReusePolicyConfig> 
   hot_list: { reuse: 'timestamp', reuseCapSec: 3_600 },
   weather_alert: { reuse: 'timestamp', reuseCapSec: 3_600 },
   earthquake_report: { reuse: 'timestamp', reuseCapSec: 3_600 },
+  btc_price: { reuse: 'timestamp', reuseCapSec: 86_400 },
   dashboard: { reuse: 'always', reuseCapSec: 1_800 },
   font_test: { reuse: 'always', reuseCapSec: 1_800 },
 };

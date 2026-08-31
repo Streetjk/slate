@@ -10,6 +10,7 @@ import { HistoryTodayConfigPanel } from './config/HistoryTodayConfig';
 import { HotListConfigPanel } from './config/HotListConfig';
 import { WeatherAlertConfigPanel } from './config/WeatherAlertConfig';
 import { WeatherConfigPanel } from './config/WeatherConfig';
+import { BtcPriceConfigPanel } from './config/BtcPriceConfig';
 
 export function DynamicContentFields({
   type,
@@ -108,6 +109,8 @@ function DynamicConfigFields({
       return <WeatherAlertConfigPanel config={config} onChange={onChange} />;
     case 'earthquake_report':
       return <DynamicRefreshSettings config={config} onChange={onChange} />;
+    case 'btc_price':
+      return <BtcPriceConfigPanel config={config} onChange={onChange} />;
     case 'dashboard':
       return (
         <DashboardConfigPanel
