@@ -2,10 +2,10 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `6c29e541eb65f38c12e4d146158668182e9705e`
+Last known good SHA: `c172ec9d0ac2d7a57cf708948f1092a61a5c8c2a`
 
 Current campaign: Campaign 1 — Foundation + English + BTC
-Current stage: Shared normalized contracts
+Current stage: English UI and BTC implementation lanes
 Current status: QUEUED
 
 Completed campaigns:
@@ -14,6 +14,9 @@ Completed campaigns:
   - TypeScript, backend, frontend baseline checks passed.
   - Firmware passed with exact local ESP-IDF `v5.5.2`, target `esp32s3`.
   - Native AGY skill and OAuth smoke test passed.
+- Campaign 1A — Shared normalized contracts: PASS
+  - Shared schemas and deterministic tests passed.
+  - AGY medium-effort final review passed with no findings.
 
 Blocked campaigns:
 
@@ -27,11 +30,11 @@ Deferred campaigns:
 
 Active feature branches:
 
-- None. Feature implementation has not started.
+- None yet; `feature/english-ui` and `feature/btc` are queued for creation by the controller.
 
-Last test status: PASS — baseline TypeScript/backend/frontend checks; firmware `idf.py build`; `idf.py merge-bin`; OTA artifact generation.
-Last AGY verdict: PASS — native `$agy:ask` OAuth smoke; architecture research complete with no tracked changes.
+Last test status: PASS — shared contract tests (5 tests, 21 expectations), workspace typecheck/lint, backend tests (200), frontend build, and root format check.
+Last AGY verdict: PASS — Campaign 1A final `gemini-3.7-flash-medium` review with no findings.
 
-Next automatic action: implement shared provider-independent contracts on the integration branch, run deterministic checks, invoke read-only AGY review, and create/push `01A-SHARED-CONTRACTS.md` only after the stage passes.
+Next automatic action: create isolated English UI and BTC lanes, implement within their ownership boundaries, run deterministic checks, invoke read-only AGY review, integrate only after PASS, and publish `01-FOUNDATION-ENGLISH-BTC.md`.
 
 Human action required: NO
