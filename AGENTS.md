@@ -1,5 +1,21 @@
 # Agent Guide
 
+## Streetjk NOTE4 campaign override
+
+When working in the `Streetjk/slate` fork on `integration/note4-custom` or a feature branch derived from it, **do not use the normal `master` development rule below as the campaign workflow**.
+
+Before starting or resuming campaign work:
+
+1. `git fetch origin` and verify the current branch/SHA.
+2. Read `docs/campaign-reports/CAMPAIGN-INSTRUCTIONS.md` in full.
+3. Read `docs/campaign-reports/CAMPAIGN-STATE.md` if it exists.
+4. Follow the newest committed campaign instructions and record their commit SHA in the next stage report/state update.
+5. Re-read the instruction file at major campaign/stage boundaries after refreshing the repository, because an external reviewer may update it through GitHub.
+
+The campaign instruction file defines the branch-specific Codex/AGY orchestration, authentication restrictions, safety gates, reporting rules and autonomous campaign sequence. Historical campaign reports are evidence; do not silently rewrite history to match newer instructions.
+
+---
+
 本文件给本地 AI 代理使用，说明 Slate 仓库内必须遵守的协作和发布规则。面向人的贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 基本规则
