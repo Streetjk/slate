@@ -24,6 +24,7 @@ import { DashboardIngestController } from './ingest/dashboard-ingest.controller'
 import { IngestPayloadSizeGuard } from './ingest/ingest-payload-size.guard';
 import { IngestPayloadSizePipe } from './ingest/ingest-payload-size.pipe';
 import { DynamicPreviewController } from './dynamic-preview.controller';
+import { BtcPriceProvider } from './providers/btc-price.provider';
 
 /**
  * 动态内容模板与渲染业务模块。
@@ -57,6 +58,7 @@ import { DynamicPreviewController } from './dynamic-preview.controller';
     EarthquakeReportProvider,
     DashboardProvider,
     FontTestProvider,
+    BtcPriceProvider,
     DynamicContentSchedulerService,
     IngestPayloadSizeGuard,
     IngestPayloadSizePipe,

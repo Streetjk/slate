@@ -17,4 +17,4 @@ export type AudioDynamicConfig = Extract<
 
 export type RefreshableDynamicConfig =
   | AudioDynamicConfig
-  | Extract<DynamicConfigT, { type: 'hot_list' | 'dashboard' }>;
+  | Extract<DynamicConfigT, { type: 'hot_list' | 'dashboard' | 'btc_price' }>;

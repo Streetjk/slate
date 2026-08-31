@@ -57,6 +57,12 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };
+    case 'btc_price':
+      return {
+        type: 'btc_price',
+        period: 'daily',
+        refresh_interval_sec: 600,
+      };
     case 'dashboard':
       return {
         type: 'dashboard',

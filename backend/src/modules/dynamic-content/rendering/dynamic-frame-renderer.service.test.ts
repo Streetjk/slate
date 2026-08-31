@@ -28,6 +28,23 @@ describe('DynamicFrameRendererService', () => {
   it('renders dynamic frames as nonblank 400x300 1bpp images', async () => {
     const contexts: DynamicRenderContext[] = [
       {
+        type: 'btc_price',
+        frameName: 'BTC/USD',
+        config: { type: 'btc_price', period: 'daily', refresh_interval_sec: 600 },
+        data: {
+          symbol: 'BTC/USD',
+          period: 'daily',
+          points: [
+            { timestamp: '2026-05-17T00:00:00.000Z', priceUsd: 69000 },
+            { timestamp: '2026-05-17T04:00:00.000Z', priceUsd: 70000 },
+          ],
+          fetchedAt: renderedAt.toISOString(),
+          currentPriceUsd: 70000,
+          changePercent: 1.45,
+        },
+        renderedAt,
+      },
+      {
         type: 'daily_calendar',
         frameName: '日历',
         config: { tz: 'Asia/Shanghai' },

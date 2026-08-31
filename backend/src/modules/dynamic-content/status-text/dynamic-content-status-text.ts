@@ -38,6 +38,8 @@ export function deviceStatusBarText(row: ContentStatusBarSource): string {
       return weatherAlertStatusBarText(row.dynamicConfig);
     case 'earthquake_report':
       return 'Earthquake reports';
+    case 'btc_price':
+      return 'BTC/USD';
     case 'weather':
       return weatherStatusBarText(row.dynamicConfig);
     case 'dashboard':
@@ -66,6 +68,8 @@ export function defaultDynamicFrameName(
       return weatherAlertStatusBarText(config);
     case 'earthquake_report':
       return 'Earthquake reports';
+    case 'btc_price':
+      return 'BTC/USD';
     case 'weather':
       return weatherStatusBarText(config);
     case 'dashboard':

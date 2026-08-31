@@ -25,6 +25,8 @@ export function defaultDynamicFrameName(type: DynamicTypeT, config: DynamicConfi
       return dynamicStatusTitle(config) ?? 'Weather alerts';
     case 'earthquake_report':
       return 'Earthquake reports';
+    case 'btc_price':
+      return 'BTC/USD';
     case 'dashboard':
       return config.type === 'dashboard' ? dashboardStatusTitle(config) : 'External data';
     case 'font_test':
@@ -100,6 +102,8 @@ export function dynamicStatusTitle(config: DynamicConfigT | null | undefined): s
       return `${normalizeWeatherAlertProvince(config.province) || 'National'} weather alerts`;
     case 'earthquake_report':
       return 'Earthquake reports';
+    case 'btc_price':
+      return 'BTC/USD';
     case 'dashboard':
       return dashboardStatusTitle(config);
     case 'font_test':
