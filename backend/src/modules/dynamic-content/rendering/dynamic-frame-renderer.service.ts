@@ -61,7 +61,7 @@ export class DynamicFrameRendererService {
         renderHotListFrame(c, fonts, ctx, this.drawKit);
         break;
       default:
-        this.renderFallback(c, fonts, `未知动态类型 ${ctx.type}`);
+        this.renderFallback(c, fonts, `Unknown dynamic type ${ctx.type}`);
         break;
     }
 

@@ -106,7 +106,7 @@ export class DynamicContentRendererService {
     dataOverride?: unknown
   ): Promise<Buffer> {
     const entry = this.registry.get(dynamicType);
-    if (!entry) throw new ValidationError(`未知动态类型: ${dynamicType}`);
+    if (!entry) throw new ValidationError(`Unknown dynamic type: ${dynamicType}`);
     const config = entry.provider.validateConfig(configOverride);
     const now = new Date();
     const data =
@@ -143,13 +143,13 @@ export class DynamicContentRendererService {
       },
     });
     if (!content || content.group.ownerUserId !== ownerUserId)
-      throw new NotFoundError('内容不存在');
+      throw new NotFoundError('Content not found');
     if (content.kind !== 'dynamic' || !content.dynamicType) {
-      throw new ValidationError('该内容不是动态类型');
+      throw new ValidationError('This content is not dynamic');
     }
 
     const entry = this.registry.get(content.dynamicType);
-    if (!entry) throw new ValidationError(`未知动态类型: ${content.dynamicType}`);
+    if (!entry) throw new ValidationError(`Unknown dynamic type: ${content.dynamicType}`);
     const config = entry.provider.validateConfig(configOverride);
     const now = new Date();
     let data: unknown;
@@ -191,12 +191,12 @@ export class DynamicContentRendererService {
       where: { id: contentId },
       select: DYNAMIC_RENDER_CONTENT_SELECT,
     });
-    if (!content) throw new NotFoundError('内容不存在');
+    if (!content) throw new NotFoundError('Content not found');
     if (content.kind !== 'dynamic' || !content.dynamicType) {
-      throw new ValidationError('该内容不是动态类型');
+      throw new ValidationError('This content is not dynamic');
     }
     const entry = this.registry.get(content.dynamicType);
-    if (!entry) throw new ValidationError(`未知动态类型: ${content.dynamicType}`);
+    if (!entry) throw new ValidationError(`Unknown dynamic type: ${content.dynamicType}`);
     const now = opts.now ?? new Date();
 
     let config: unknown;
@@ -204,8 +204,8 @@ export class DynamicContentRendererService {
       config = entry.provider.validateConfig(content.dynamicConfig);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await this.markError(content, `配置非法: ${message}`, now);
-      throw new ValidationError(`动态配置非法: ${message}`);
+      await this.markError(content, `Invalid configuration: ${message}`, now);
+      throw new ValidationError(`Dynamic configuration is invalid: ${message}`);
     }
 
     let data: unknown;
@@ -328,7 +328,7 @@ export class DynamicContentRendererService {
   ): Promise<Buffer> {
     const rendered = await this.renderer.render(input);
     if (rendered.byteLength !== FRAME_BYTES) {
-      throw new Error(`动态帧大小不匹配: ${rendered.byteLength}`);
+      throw new Error(`Dynamic frame size mismatch: ${rendered.byteLength}`);
     }
     return rendered;
   }
@@ -407,7 +407,7 @@ function contentEtagFromGroupEtags(
 function normalizeRenderData(data: unknown): Record<string, unknown> | null {
   if (data === null || data === undefined) return null;
   if (typeof data !== 'object' || Array.isArray(data)) {
-    throw new ValidationError('动态数据必须是 JSON 对象或 null', {
+    throw new ValidationError('Dynamic data must be a JSON object or null', {
       code: 'dynamic_data_invalid_shape',
     });
   }

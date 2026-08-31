@@ -38,7 +38,7 @@ export function InlineRename({
   saveIconSize?: number;
   renderTitle?: (value: string, className: string) => ReactNode;
 }) {
-  const label = editing ? '保存名称' : '改名';
+  const label = editing ? 'Save name' : 'Rename';
   return (
     <div className="flex items-center gap-2 min-w-0">
       {editing ? (
@@ -70,7 +70,7 @@ export function InlineRename({
         }}
         disabled={pending}
         aria-label={label}
-        title={editing ? '保存' : '改名'}
+        title={editing ? 'Save' : 'Rename'}
         className={cn(
           'text-stone-light hover:text-ink disabled:opacity-50 transition-colors hover:bg-cream flex-shrink-0',
           buttonClassName

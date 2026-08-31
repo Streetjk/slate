@@ -18,12 +18,12 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
       {/* 左侧：editorial 大字（lg+ 显示） */}
       <aside className="hidden lg:flex flex-col justify-between p-12 xl:p-16 border-r border-ink">
         <IconBlock size="xl" tone="brand" className="font-serif text-[28px] font-bold">
-          墨
+          S
         </IconBlock>
 
         <div className="fade-up">
           <p className="font-sans text-[11px] text-stone uppercase tracking-[0.24em]">
-            SLATE · 控制台
+            SLATE · CONSOLE
           </p>
           <div className="h-px bg-ink mt-3.5 mb-7" />
           <h1 className="font-serif text-[100px] xl:text-[132px] font-black leading-[0.92] text-ink">
@@ -45,13 +45,13 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
           {/* 移动端 logo */}
           <div className="lg:hidden mb-10 text-center">
             <IconBlock size="xl" tone="brand" className="font-serif text-[28px] font-bold">
-              墨
+              S
             </IconBlock>
             <h1 className="font-serif text-[36px] font-bold leading-none mt-3 tracking-tight">
               Slate
             </h1>
             <p className="font-sans text-[11px] text-stone mt-2 uppercase tracking-[0.2em]">
-              案头那块墨水屏
+              YOUR DESK E-PAPER DISPLAY
             </p>
           </div>
 

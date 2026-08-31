@@ -12,7 +12,7 @@ const char* const kCaptivePortalHtml = R"HTML(<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Slate · 配网</title>
+<title>Slate · Setup</title>
 <style>
 :root {
   --ink:   #14110d;
@@ -266,11 +266,11 @@ button.primary .arrow { font-family: ui-monospace, monospace; font-size: 16px; l
 <div class="wrap">
   <header class="masthead">
     <div class="kicker">
-      <span>第 〇 卷 · 配 网 portal</span>
+      <span>VOL. 0 · SETUP PORTAL</span>
       <span>{{AP_SSID}}</span>
     </div>
     <h1 class="brand">Slate<span class="brand-dot">.</span></h1>
-    <p class="tag">案头那一块墨水屏，先递上凭证。</p>
+    <p class="tag">Your desk e-paper display needs its credentials first.</p>
     <div class="rule"></div>
     <div class="rule-thick"></div>
   </header>
@@ -279,26 +279,26 @@ button.primary .arrow { font-family: ui-monospace, monospace; font-size: 16px; l
     <section>
       <header class="sechead">
         <span class="num serif">I.</span>
-        <h2>无线网络</h2>
+        <h2>Wi-Fi network</h2>
         <span class="eyebrow">wifi</span>
       </header>
       <ul id="nets" class="networks">
-        <li class="placeholder"><span class="ssid">扫描中</span><span class="meta"><span class="spin"></span></span></li>
+        <li class="placeholder"><span class="ssid">Scanning</span><span class="meta"><span class="spin"></span></span></li>
       </ul>
       <label>
         <span class="lbl">ssid</span>
-        <input id="ssid" name="ssid" type="text" required maxlength="32" placeholder="点上方列表自动填入，或手动输入">
+        <input id="ssid" name="ssid" type="text" required maxlength="32" placeholder="Select a network above or enter it manually">
       </label>
       <label>
         <span class="lbl">password</span>
-        <input id="password" name="password" type="password" maxlength="64" placeholder="开放网络留空即可">
+        <input id="password" name="password" type="password" maxlength="64" placeholder="Leave empty for an open network">
       </label>
     </section>
 
     <section>
       <header class="sechead">
         <span class="num serif">II.</span>
-        <h2>服务地址</h2>
+        <h2>Server address</h2>
         <span class="eyebrow">server</span>
       </header>
       <label>
@@ -307,11 +307,11 @@ button.primary .arrow { font-family: ui-monospace, monospace; font-size: 16px; l
                value="{{SERVER_URL}}"
                placeholder="https://slate.your-domain.com">
       </label>
-      <p class="hint">填运行 slate 后端的地址。本地调试用 http://&lt;LAN-IP&gt;:3001 即可。</p>
+      <p class="hint">Enter the address of the Slate backend. For local testing, use http://&lt;LAN-IP&gt;:3001.</p>
     </section>
 
     <button type="submit" class="primary" id="btn">
-      <span>配网并连接</span>
+      <span>Save and connect</span>
       <span class="arrow">⏎ →</span>
     </button>
   </form>
@@ -349,7 +349,7 @@ async function scan() {
     const ul = $('nets');
     ul.innerHTML = '';
     if (!list.length) {
-      ul.innerHTML = '<li class="placeholder"><span class="ssid">未扫到网络</span><span class="meta">—</span></li>';
+      ul.innerHTML = '<li class="placeholder"><span class="ssid">No networks found</span><span class="meta">—</span></li>';
       return;
     }
     for (const ap of list) {
@@ -383,7 +383,7 @@ async function scan() {
       ul.appendChild(li);
     }
   } catch (e) {
-    $('nets').innerHTML = '<li class="placeholder"><span class="ssid">扫描失败 · 重试中</span><span class="meta"><span class="spin"></span></span></li>';
+    $('nets').innerHTML = '<li class="placeholder"><span class="ssid">Scan failed · retrying</span><span class="meta"><span class="spin"></span></span></li>';
   } finally {
     scanning = false;
   }
@@ -399,25 +399,25 @@ function showSuccess(ssid) {
   box.className = 'success';
   const eyebrow = document.createElement('p');
   eyebrow.className = 'ok-eyebrow';
-  eyebrow.textContent = '✓ 配 网 成 功 · paired';
+  eyebrow.textContent = '✓ SETUP COMPLETE · PAIRED';
   const h3 = document.createElement('h3');
-  h3.textContent = '设备即将自启。';
+  h3.textContent = 'The device will restart shortly.';
   const p1 = document.createElement('p');
-  p1.textContent = '设备将连接到 ';
+  p1.textContent = 'The device will connect to ';
   const strong = document.createElement('strong');
   strong.textContent = ssid;
   p1.appendChild(strong);
-  p1.appendChild(document.createTextNode('，并在数秒内自动重启。'));
+  p1.appendChild(document.createTextNode(' and restart in a few seconds.'));
   const p2 = document.createElement('p');
-  p2.textContent = '设备屏幕也会同步显示「配网成功」与重启倒计时。';
+  p2.textContent = 'The device screen will also show setup completion and the restart countdown.';
   const p3 = document.createElement('p');
   p3.className = 'cd';
-  p3.textContent = '本页将在 ';
+  p3.textContent = 'This page will disconnect in ';
   const cdSpan = document.createElement('span');
   cdSpan.id = 'cd';
   cdSpan.textContent = '5';
   p3.appendChild(cdSpan);
-  p3.appendChild(document.createTextNode(' 秒后失联，可直接关闭。'));
+  p3.appendChild(document.createTextNode(' seconds; you can close it.'));
   box.appendChild(eyebrow);
   box.appendChild(h3);
   box.appendChild(p1);
@@ -440,10 +440,10 @@ $('f').addEventListener('submit', async (e) => {
     password: $('password').value,
     server_url: $('server_url').value.trim(),
   };
-  if (!body.ssid) { setStatus('SSID 不能空', 'err'); return; }
-  if (!body.server_url) { setStatus('服务端 URL 不能空', 'err'); return; }
+  if (!body.ssid) { setStatus('SSID cannot be empty', 'err'); return; }
+  if (!body.server_url) { setStatus('Server URL cannot be empty', 'err'); return; }
   $('btn').disabled = true;
-  setStatus('正在试连 ' + body.ssid + ' …（最多 10 秒）', 'info');
+  setStatus('Trying ' + body.ssid + ' … (up to 10 seconds)', 'info');
   try {
     const r = await fetch('/submit', {
       method: 'POST',
@@ -452,14 +452,14 @@ $('f').addEventListener('submit', async (e) => {
     });
     const data = await r.json();
     if (!r.ok || !data.success) {
-      setStatus((data.error || ('HTTP ' + r.status)) + ' · 请改密码后重试', 'err');
+      setStatus((data.error || ('HTTP ' + r.status)) + ' · Check the password and try again', 'err');
       $('btn').disabled = false;
       return;
     }
     clearInterval(scanTimer);
     showSuccess(body.ssid);
   } catch (err) {
-    setStatus('网络错误: ' + (err && err.message || '未知') + ' · 请重试', 'err');
+    setStatus('Network error: ' + (err && err.message || 'unknown') + ' · Try again', 'err');
     $('btn').disabled = false;
   }
 });

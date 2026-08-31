@@ -38,14 +38,16 @@ export function ImageDropzone({ isEdit, imageFile, onPick }: ImageDropzoneProps)
         <>
           <p className="font-serif text-[14px] text-ink truncate">{imageFile.name}</p>
           <p className="font-sans text-[11px] text-stone mt-0.5">
-            {formatBytes(imageFile.size)} · 点击换图
+            {formatBytes(imageFile.size)} · Click to replace image
           </p>
         </>
       ) : isEdit ? (
-        <p className="font-sans text-[13px] text-stone">拖一张图替换原图，不传则保留</p>
+        <p className="font-sans text-[13px] text-stone">
+          Drop an image to replace the current one, or leave empty to keep it
+        </p>
       ) : (
         <>
-          <p className="font-sans text-[13px] text-stone">拖图至此或点击选择</p>
+          <p className="font-sans text-[13px] text-stone">Drop an image here or click to choose</p>
           <p className="font-sans text-[11px] text-stone-light mt-0.5">
             PNG / JPG / WEBP / GIF / BMP
           </p>

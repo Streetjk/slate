@@ -59,15 +59,17 @@ export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorP
             body: { text: form.audio.trimmedTtsText, voice: form.audio.ttsVoice },
           });
         } catch (err) {
-          const title = form.hasContentPatch ? '内容已保存，TTS 生成失败' : 'TTS 生成失败';
-          toast.error(title, `${getApiErrorMessage(err)}。可调整 TTS 文案后重新保存。`);
+          const title = form.hasContentPatch
+            ? 'Content saved, but TTS generation failed'
+            : 'TTS generation failed';
+          toast.error(title, `${getApiErrorMessage(err)} Adjust the TTS text and save again.`);
           return;
         }
       }
-      toast.success('内容已保存');
+      toast.success('Content saved');
       onDone();
     } catch (err) {
-      toast.error('保存失败', getApiErrorMessage(err));
+      toast.error('Save failed', getApiErrorMessage(err));
     }
   }
 
@@ -81,8 +83,8 @@ export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorP
       <PageHeader
         onBack={onDone}
         icon={<ImageIcon size={24} />}
-        title={`编辑第 ${content.seq + 1} 项`}
-        subtitle="改顺序请在组内用拖拽。"
+        title={`Edit item ${content.seq + 1}`}
+        subtitle="Drag items within the group to change their order."
       />
 
       <div className="mt-6 fade-up fade-up-1">
@@ -108,7 +110,7 @@ export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorP
             actions={
               <FormActions
                 onCancel={onDone}
-                submitLabel="保存"
+                submitLabel="Save"
                 disabled={!canSubmit}
                 submitting={submitting}
               />

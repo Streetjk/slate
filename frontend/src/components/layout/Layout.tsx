@@ -17,14 +17,14 @@ export function Layout() {
           {/* logo */}
           <Link to={appRoutes.home} className="flex items-center gap-3 min-w-0">
             <IconBlock size="md" tone="brand" className="font-serif text-[18px] font-bold">
-              墨
+              S
             </IconBlock>
             <div className="min-w-0">
               <p className="font-serif text-[18px] font-bold leading-none text-ink tracking-tight truncate">
                 Slate
               </p>
               <p className="font-sans text-[10px] text-stone leading-none mt-1 tracking-[0.2em] uppercase truncate">
-                案头那块墨水屏
+                Your desk e-paper display
               </p>
             </div>
           </Link>
@@ -35,7 +35,7 @@ export function Layout() {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
-                    aria-label="账号菜单"
+                    aria-label="Account menu"
                     className="group inline-flex items-center gap-2 h-9 pl-1.5 pr-3 text-[13px] text-stone border border-ink hover:bg-cream-deep transition-colors"
                   >
                     <span className="w-6 h-6 bg-ink text-paper flex items-center justify-center font-sans text-[11px] font-semibold">
@@ -55,7 +55,7 @@ export function Layout() {
                   >
                     <div className="px-3 pt-2 pb-2.5 border-b border-line mb-1">
                       <p className="text-[10px] text-stone uppercase tracking-[0.16em] font-mono">
-                        已登录
+                        Signed in
                       </p>
                       <p className="text-[13px] text-ink truncate font-sans mt-0.5">{user.email}</p>
                     </div>
@@ -64,7 +64,7 @@ export function Layout() {
                       className="flex items-center gap-3 mx-1 px-3 py-2 text-[13px] text-clay cursor-pointer hover:bg-cream outline-none"
                     >
                       <LogOut size={14} />
-                      退出登录
+                      Sign out
                     </DropdownMenu.Item>
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>

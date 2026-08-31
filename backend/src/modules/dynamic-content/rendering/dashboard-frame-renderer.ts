@@ -28,7 +28,7 @@ export function renderDashboardFrame(
   const resolved = resolveDashboardRenderInput(ctx);
   if (!resolved) {
     const centerY = Math.round((CONTENT_SAFE_TOP + CONTENT_SAFE_BOTTOM) / 2);
-    draw.drawText(c, fonts.sans16, '等待外部数据', FRAME_WIDTH / 2, centerY - 20, {
+    draw.drawText(c, fonts.sans16, 'Awaiting external data', FRAME_WIDTH / 2, centerY - 20, {
       align: 'center',
       maxWidth: CONTENT_WIDTH,
     });

@@ -35,10 +35,10 @@ export const GroupsSection = memo(function GroupsSection({
     isPending: deletePending,
     getConfirmOptions: useCallback(
       (group) => ({
-        title: `删除「${group.name}」？`,
-        description: `这一组连同 ${group.content_count} 项内容的图片与音频会全部删除，不可逆。`,
+        title: `Delete “${group.name}”?`,
+        description: `This group and its ${group.content_count} content items, images, and audio will be permanently deleted.`,
         destructive: true,
-        confirmText: '删除整组',
+        confirmText: 'Delete group',
       }),
       []
     ),
@@ -46,8 +46,8 @@ export const GroupsSection = memo(function GroupsSection({
       (group, callbacks) => deleteGroupMutate(group.id, callbacks),
       [deleteGroupMutate]
     ),
-    successToast: '已删除',
-    errorToast: '删除失败',
+    successToast: 'Deleted',
+    errorToast: 'Delete failed',
   });
   const renderGroup = useCallback(
     (group: GroupSummaryT) => (
@@ -68,7 +68,7 @@ export const GroupsSection = memo(function GroupsSection({
           onSuccess: commit,
           onError: (err) => {
             rollback();
-            toast.error('排序保存失败', getApiErrorMessage(err));
+            toast.error('Failed to save order', getApiErrorMessage(err));
           },
         }
       )
@@ -76,18 +76,18 @@ export const GroupsSection = memo(function GroupsSection({
 
   return (
     <Section
-      title="内容"
+      title="Content"
       badge={<FolderHeart size={18} />}
-      subtitle="支持图片和音频，音频会随图片同步播放"
+      subtitle="Images and audio are supported; audio plays with each image on the device."
       action={
         <Button onClick={() => setCreateOpen(true)} iconLeft={<Plus size={16} />} size="sm">
-          新建组
+          New group
         </Button>
       }
     >
       {isPending ? (
         <div className="flex justify-center py-8">
-          <Spinner label="加载中" />
+          <Spinner label="Loading" />
         </div>
       ) : groups && groups.length > 0 ? (
         <SortableGrid
@@ -102,11 +102,11 @@ export const GroupsSection = memo(function GroupsSection({
       ) : (
         <EmptyState
           icon={<FolderHeart size={26} />}
-          title="尚无内容"
-          hint="新建组开始上传图片。设备会按顺序循环显示。"
+          title="No groups yet"
+          hint="Create a group to start uploading images. The device displays them in sequence."
           action={
             <Button onClick={() => setCreateOpen(true)} iconLeft={<Plus size={16} />}>
-              新建第一组
+              Create first group
             </Button>
           }
         />
@@ -118,10 +118,10 @@ export const GroupsSection = memo(function GroupsSection({
         onCreate={async (name) => {
           try {
             await create.mutateAsync({ name });
-            toast.success('已创建');
+            toast.success('Created');
             setCreateOpen(false);
           } catch (err) {
-            toast.error('创建失败', getApiErrorMessage(err));
+            toast.error('Create failed', getApiErrorMessage(err));
           }
         }}
         isPending={create.isPending}

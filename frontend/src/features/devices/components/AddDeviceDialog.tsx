@@ -42,19 +42,27 @@ export function AddDeviceDialog({ open, onOpenChange }: AddDeviceDialogProps) {
       // 后端 claim 时若 owner 已有相册会自动绑第一个，无相册则后续 create 会反向绑；
       // 这里只给出与实际后端行为一致的概要提示，不做额外引导（用户可在设备列表看进度）。
       toast.success(
-        '设备已绑定',
-        device.selected_group_id ? '设备屏将开始同步相册' : '请创建一个相册，设备屏会自动同步'
+        'Device bound',
+        device.selected_group_id
+          ? 'The device will start syncing its group'
+          : 'Create a group and the device will sync it automatically'
       );
       reset();
       onOpenChange(false);
     } catch (err) {
       const status = getApiErrorStatus(err);
       if (status === 404) {
-        toast.error('配对码无效', '请核对设备屏上的码，或在设备上长按 ENTER 工厂重置后重试。');
+        toast.error(
+          'Invalid pairing code',
+          'Check the code on the device, or hold ENTER on the device to factory-reset it and try again.'
+        );
       } else if (status === 403) {
-        toast.error('该设备已被其他账号绑定', '在设备上工厂重置后再试。');
+        toast.error(
+          'Device is bound to another account',
+          'Factory-reset the device and try again.'
+        );
       } else {
-        toast.error('绑定失败', getApiErrorMessage(err));
+        toast.error('Binding failed', getApiErrorMessage(err));
       }
     }
   }
@@ -72,14 +80,14 @@ export function AddDeviceDialog({ open, onOpenChange }: AddDeviceDialogProps) {
         <Dialog.Content className={dialogContentCls}>
           <DialogHeader
             icon={<KeyRound size={24} />}
-            title="添加设备"
-            description="在设备屏上查看 6 位配对码，输入此处即绑定。"
+            title="Add device"
+            description="Find the 6-character pairing code on the device and enter it here to bind the device."
             className="mb-6"
           />
 
           <form onSubmit={onSubmit} className="space-y-5">
             <Input
-              label="配对码"
+              label="Pairing code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="K7M9X2"
@@ -87,15 +95,15 @@ export function AddDeviceDialog({ open, onOpenChange }: AddDeviceDialogProps) {
               autoComplete="off"
               spellCheck={false}
               maxLength={8}
-              hint={code && !codeValid ? undefined : '6 位字母+数字，可带短横线'}
-              error={code && !codeValid ? '配对码格式不正确' : undefined}
+              hint={code && !codeValid ? undefined : '6 letters and numbers; hyphens are allowed'}
+              error={code && !codeValid ? 'Invalid pairing code format' : undefined}
               className="font-mono uppercase tracking-[0.2em] text-center"
             />
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Dialog.Close asChild>
                 <Button variant="outline" type="button">
-                  取消
+                  Cancel
                 </Button>
               </Dialog.Close>
               <Button
@@ -103,7 +111,7 @@ export function AddDeviceDialog({ open, onOpenChange }: AddDeviceDialogProps) {
                 disabled={!codeValid || claim.isPending}
                 iconRight={claim.isPending ? undefined : <ArrowRight size={14} />}
               >
-                {claim.isPending ? <Spinner /> : '绑定'}
+                {claim.isPending ? <Spinner /> : 'Bind'}
               </Button>
             </div>
           </form>

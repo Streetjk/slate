@@ -418,7 +418,7 @@ void App::StartPortal() {
         // device_id/device_secret 留空:配网完成 esp_restart 后 InitWifiAndSync 看到无 secret
         // → 走 register 流。设备命名留到 Web 端 PUT /devices/:id 完成绑定后再做。
         if (!cred::Save(c)) {
-            out_error = "凭据保存失败,请重试";
+            out_error = "Failed to save credentials; try again";
             ESP_LOGE(kTag, "credential save failed");
             return false;
         }

@@ -26,7 +26,7 @@ export function DashboardConfigPanel({
   onChange,
   dashboardData,
   onDashboardDataChange,
-  dataLabel = onDashboardDataChange ? '初始数据 JSON' : '当前数据 JSON',
+  dataLabel = onDashboardDataChange ? 'Initial data JSON' : 'Current data JSON',
   contentId,
 }: {
   config: Extract<DynamicConfigT, { type: 'dashboard' }>;
@@ -41,7 +41,7 @@ export function DashboardConfigPanel({
   const customTemplate = config.template.kind === 'custom' ? config.template.template : null;
   const activeDescription =
     config.template.kind === 'custom'
-      ? '编辑 JSON 模板；数据由新建初始数据或推送接口提供，模板保存在内容配置中。'
+      ? 'Edit the JSON template. Data comes from initial data or the push endpoint, while the template is stored in the content configuration.'
       : DASHBOARD_SYSTEM_TEMPLATES[config.template.id].description;
   const updateCustomTemplate = useCallback(
     (template: DashboardTemplateT) => {
@@ -71,7 +71,9 @@ export function DashboardConfigPanel({
   return (
     <div className="space-y-4">
       <div>
-        <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">模板</p>
+        <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">
+          Template
+        </p>
         <Select
           value={templateSelection}
           onValueChange={(value) => {
@@ -100,10 +102,10 @@ export function DashboardConfigPanel({
           }}
         >
           <SelectItem value={CUSTOM_DASHBOARD_TEMPLATE_VALUE} hint="JSON">
-            自定义模板
+            Custom template
           </SelectItem>
           {DASHBOARD_SYSTEM_TEMPLATE_OPTIONS.map((item) => (
-            <SelectItem key={item.id} value={item.id} hint="内置">
+            <SelectItem key={item.id} value={item.id} hint="Built in">
               {item.label}
             </SelectItem>
           ))}
@@ -115,7 +117,7 @@ export function DashboardConfigPanel({
 
       {templateSelection === CUSTOM_DASHBOARD_TEMPLATE_VALUE && (
         <JsonEditor
-          label="自定义模板 JSON"
+          label="Custom template JSON"
           value={templateDraft.text}
           error={templateDraft.error}
           minRows={8}

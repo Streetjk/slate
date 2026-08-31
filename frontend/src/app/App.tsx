@@ -72,7 +72,7 @@ export function App() {
 function RouteFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <Spinner label="加载中" />
+      <Spinner label="Loading" />
     </div>
   );
 }

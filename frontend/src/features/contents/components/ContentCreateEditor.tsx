@@ -54,8 +54,8 @@ export function ContentCreateEditor({ gid, onDone, onEditCreatedImage }: Content
       <PageHeader
         onBack={onDone}
         icon={<Plus size={24} />}
-        title="新建帧"
-        subtitle="选择类型后填写参数，创建后追加至列表末尾，可拖拽改序。"
+        title="New frame"
+        subtitle="Choose a type, fill in the details, then drag to reorder the new frame."
       />
 
       <div className="mt-6 fade-up fade-up-1">
@@ -63,7 +63,7 @@ export function ContentCreateEditor({ gid, onDone, onEditCreatedImage }: Content
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             <div className="order-2 min-w-0 lg:order-1">
               <p className="font-mono text-[10px] leading-5 text-stone uppercase tracking-[0.18em] ml-0.5 mb-2">
-                设备预览
+                Device preview
               </p>
               <DynamicFramePreview data={null} pending={false} hasConfig={false} />
             </div>

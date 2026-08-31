@@ -22,7 +22,7 @@ export function FormActions({
   submitting = false,
   disabled = false,
   className,
-  cancelLabel = '取消',
+  cancelLabel = 'Cancel',
   submitIcon = <ArrowUp size={16} />,
 }: FormActionsProps) {
   return (

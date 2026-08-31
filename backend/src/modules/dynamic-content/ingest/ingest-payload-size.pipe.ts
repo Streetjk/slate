@@ -11,7 +11,7 @@ export function assertIngestPayloadSize(body: unknown): void {
 }
 
 export function ingestPayloadTooLarge(): AppError {
-  return new IngestPayloadTooLargeError('请求体超过 64KB', { code: 'payload_too_large' });
+  return new IngestPayloadTooLargeError('Payload exceeds 64KB', { code: 'payload_too_large' });
 }
 
 @Injectable()

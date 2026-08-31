@@ -82,8 +82,8 @@ export async function renderWeatherFrame(
     maxWidth: 20,
   });
   const metrics = [
-    feelsLike && feelsLike !== '--' ? `体感 ${feelsLike}°` : '体感 --',
-    humidity === '--' ? '湿度 --' : `湿度 ${humidity}%`,
+    feelsLike && feelsLike !== '--' ? `Feels like ${feelsLike}°` : 'Feels like --',
+    humidity === '--' ? 'Humidity --' : `Humidity ${humidity}%`,
     wind,
   ];
   const metricX = 274;
@@ -103,7 +103,7 @@ export async function renderWeatherFrame(
     const record = forecastRecords[index]!;
     const x = CONTENT_LEFT + index * colW;
     if (index > 0) draw.drawVRule(c, x, forecastTop + 10, 110, 'dashed');
-    const label = pickText(record.label, ['今日', '明日', '后天'][index] ?? '');
+    const label = pickText(record.label, ['Today', 'Tomorrow', 'Day after'][index] ?? '');
     const text = pickText(record.text, forecastTextFromVal(record.val));
     const min = pickText(record.tempMin, '');
     const max = pickText(record.tempMax, '');
@@ -141,7 +141,7 @@ export function renderWeatherAlertFrame(
 
   if (items.length === 0) {
     const province = pickText(data.province, '');
-    const text = province ? `${weatherAlertSourceLabel(province)}暂无预警` : '暂无气象预警';
+    const text = weatherAlertEmptyStateText(province);
     draw.drawText(c, fonts.sans16, text, FRAME_WIDTH / 2, 146, {
       align: 'center',
       maxWidth: CONTENT_WIDTH,
@@ -187,6 +187,12 @@ export function renderWeatherAlertFrame(
       draw.drawRule(c, titleX, y + rowH - 1, CONTENT_RIGHT - titleX, 'dashed');
     }
   });
+}
+
+export function weatherAlertEmptyStateText(province: string): string {
+  return province
+    ? `${weatherAlertSourceLabel(province)}: No active alerts`
+    : 'No active weather alerts';
 }
 
 function drawWeatherIcon(c: BitmapCanvas, mask: BitmapMask | null, cx: number, cy: number): void {

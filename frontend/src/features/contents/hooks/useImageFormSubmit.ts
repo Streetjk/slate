@@ -21,7 +21,7 @@ export function useImageFormSubmit({
     if (imageFile) {
       const canvas = previewRef.current;
       if (!canvas) {
-        throw new Error('预览画布尚未就绪，请稍后重试。');
+        throw new Error('The preview canvas is not ready. Try again shortly.');
       }
       const blob = await exportCanvasBlob(canvas);
       fd.append('image', blob, 'cropped.png');

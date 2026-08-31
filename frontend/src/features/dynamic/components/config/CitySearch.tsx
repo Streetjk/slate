@@ -63,7 +63,7 @@ export function CitySearch({
 
   return (
     <SearchDropdown
-      label="城市"
+      label="City"
       value={query}
       onValueChange={(next) => {
         setQuery(next);
@@ -72,7 +72,7 @@ export function CitySearch({
       onFocus={() => {
         if (results.length > 0) setOpen(true);
       }}
-      placeholder="输入城市名或省份名，如：长沙、广东"
+      placeholder="Enter a city or province, e.g. Changsha or Guangdong"
       results={results}
       open={open}
       onOpenChange={setOpen}
@@ -86,7 +86,9 @@ export function CitySearch({
       renderItem={(result) => <CityResultItem result={result} />}
       noResult={
         noResult ? (
-          <p className="font-sans text-[11px] text-stone mt-1.5">未找到此城市，支持省份名搜索</p>
+          <p className="font-sans text-[11px] text-stone mt-1.5">
+            City not found. Province-name search is supported.
+          </p>
         ) : null
       }
     />

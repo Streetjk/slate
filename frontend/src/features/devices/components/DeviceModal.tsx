@@ -51,9 +51,9 @@ export function DeviceModal({ open, onOpenChange, device }: DeviceModalProps) {
   } = useInlineRename(device.name ?? '', async (name) => {
     try {
       await patch.mutateAsync({ name });
-      toast.success('已改名');
+      toast.success('Renamed');
     } catch (err) {
-      toast.error('改名失败', getApiErrorMessage(err));
+      toast.error('Rename failed', getApiErrorMessage(err));
       throw err;
     }
   });
@@ -68,8 +68,8 @@ export function DeviceModal({ open, onOpenChange, device }: DeviceModalProps) {
     patch.mutate(
       { selected_group_id: next },
       {
-        onSuccess: () => toast.success(next ? '已切换在播' : '已清空在播'),
-        onError: (err) => toast.error('切换失败', getApiErrorMessage(err)),
+        onSuccess: () => toast.success(next ? 'Playing group changed' : 'Playing group cleared'),
+        onError: (err) => toast.error('Switch failed', getApiErrorMessage(err)),
       }
     );
   }

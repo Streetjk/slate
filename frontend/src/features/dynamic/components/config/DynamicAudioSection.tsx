@@ -13,12 +13,12 @@ export function DynamicAudioSection({
   return (
     <div className="space-y-3">
       <Checkbox
-        label="生成音频"
+        label="Generate audio"
         checked={config.audio_enabled}
         onChange={(value) => onChange({ ...config, audio_enabled: value })}
       />
       <div>
-        <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">音色</p>
+        <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">Voice</p>
         <Select
           value={config.audio_voice}
           onValueChange={(value) => {

@@ -36,7 +36,7 @@ export function renderEarthquakeReportFrame(
         ellipsis: true,
       });
     }
-    draw.drawText(c, fonts.sans16, '暂无地震速报', FRAME_WIDTH / 2, 146, {
+    draw.drawText(c, fonts.sans16, 'No earthquake reports', FRAME_WIDTH / 2, 146, {
       align: 'center',
       maxWidth: CONTENT_WIDTH,
     });

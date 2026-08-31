@@ -85,20 +85,25 @@ export class DynamicContentService {
       },
     });
     if (!content || content.group.ownerUserId !== ownerUserId)
-      throw new NotFoundError('内容不存在');
+      throw new NotFoundError('Content not found');
     if (content.kind !== 'dynamic' || !content.dynamicType)
-      throw new ValidationError('该内容不是动态类型');
+      throw new ValidationError('This content is not dynamic');
     const config = DynamicConfig.parse(body.config);
     if (config.type !== content.dynamicType) {
       throw new ValidationError(
-        `dynamic_type 与 config.type 不一致: ${content.dynamicType} vs ${config.type}`
+        `dynamic_type does not match config.type: ${content.dynamicType} vs ${config.type}`
       );
     }
     if (config.type !== 'dashboard') {
-      throw new ValidationError('只有外部数据预览支持 data 参数');
+      throw new ValidationError(
+        'Only external-data content supports the data parameter for preview'
+      );
     }
     const frameName = body.frame_name === undefined ? content.frameName : body.frame_name;
-    const previewData = this.parseDashboardData(body.data, 'dashboard 预览数据不能为空');
+    const previewData = this.parseDashboardData(
+      body.data,
+      'Dashboard preview data cannot be empty'
+    );
     return this.renderer.renderPreviewDirect(config.type, config, frameName, previewData);
   }
 
@@ -111,16 +116,16 @@ export class DynamicContentService {
     const { config, frame_name } = raw;
     const dynamicType = config.type;
     const entry = this.registry.get(dynamicType);
-    if (!entry) throw new ValidationError(`未知动态类型: ${dynamicType}`);
+    if (!entry) throw new ValidationError(`Unknown dynamic type: ${dynamicType}`);
     const validatedConfig = DynamicConfig.parse(config);
     if (validatedConfig.type !== dynamicType) {
       throw new ValidationError(
-        `dynamic_type 与 config.type 不一致: ${dynamicType} vs ${validatedConfig.type}`
+        `dynamic_type does not match config.type: ${dynamicType} vs ${validatedConfig.type}`
       );
     }
     const initialDashboardData =
       validatedConfig.type === 'dashboard'
-        ? this.parseDashboardData(raw.initial_data, 'dashboard 初始数据不能为空')
+        ? this.parseDashboardData(raw.initial_data, 'Dashboard initial data cannot be empty')
         : undefined;
 
     const contentId = createId();
@@ -168,7 +173,7 @@ export class DynamicContentService {
     } catch (err) {
       if (created.didCreate) await this.rollbackCreation(contentId, gid, err);
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
-        throw new ConflictError('内容序号已存在');
+        throw new ConflictError('Content sequence number already exists');
       throw err;
     }
   }
@@ -179,7 +184,7 @@ export class DynamicContentService {
     body: { frame_name?: string | null; config?: unknown }
   ): Promise<ContentMutationResponseT> {
     if (body.frame_name === undefined && body.config === undefined) {
-      throw new ValidationError('没有可更新的字段', { code: 'nothing_to_patch' });
+      throw new ValidationError('No fields to update', { code: 'nothing_to_patch' });
     }
 
     return this.runMutation(contentId, async () => {
@@ -194,9 +199,9 @@ export class DynamicContentService {
           dynamicConfig: true,
         },
       });
-      if (!content) throw new NotFoundError('内容不存在');
+      if (!content) throw new NotFoundError('Content not found');
       if (content.kind !== 'dynamic' || !content.dynamicType)
-        throw new ValidationError('该内容不是动态类型');
+        throw new ValidationError('This content is not dynamic');
       await this.groups.assertOwned(content.groupId, ownerUserId);
 
       const data: Prisma.ContentUpdateInput = {};
@@ -206,7 +211,7 @@ export class DynamicContentService {
         const currentType = content.dynamicType;
         if (validated.type !== currentType) {
           throw new ValidationError(
-            `不能在已有动态内容上改 type（${currentType} → ${validated.type}），请删除后重建`
+            `Cannot change type on existing dynamic content (${currentType} → ${validated.type}); delete and recreate it`
           );
         }
         data.dynamicConfig = toPrismaInputJson(validated);
@@ -244,10 +249,10 @@ export class DynamicContentService {
         group: { select: { ownerUserId: true } },
       },
     });
-    if (!content) throw new NotFoundError('内容不存在');
-    if (content.group.ownerUserId !== ownerUserId) throw new NotFoundError('内容不存在');
+    if (!content) throw new NotFoundError('Content not found');
+    if (content.group.ownerUserId !== ownerUserId) throw new NotFoundError('Content not found');
     if (content.kind !== 'dynamic') return null;
-    if (!content.dynamicType) throw new ValidationError('该内容不是动态类型');
+    if (!content.dynamicType) throw new ValidationError('This content is not dynamic');
 
     const rendered = await this.runMutation(contentId, async () => {
       await this.prisma.content.update({ where: { id: contentId }, data: { frameName } });
@@ -276,7 +281,7 @@ export class DynamicContentService {
       },
     });
     if (!content || content.kind !== 'dynamic' || content.dynamicType !== 'dashboard') {
-      throw new NotFoundError('dashboard 内容不存在');
+      throw new NotFoundError('Dashboard content not found');
     }
     const rendered = await this.renderDynamicAndReadEtag(contentId, {
       force: true,
@@ -309,10 +314,10 @@ export class DynamicContentService {
         group: { select: { ownerUserId: true } },
       },
     });
-    if (!content) throw new NotFoundError('内容不存在');
+    if (!content) throw new NotFoundError('Content not found');
     if (content.kind !== 'dynamic' || !content.dynamicType)
-      throw new ValidationError('非动态内容不支持手动刷新');
-    if (content.group.ownerUserId !== ownerUserId) throw new NotFoundError('内容不存在');
+      throw new ValidationError('Static content does not support manual refresh');
+    if (content.group.ownerUserId !== ownerUserId) throw new NotFoundError('Content not found');
     const rendered = await this.renderDynamicAndReadEtag(contentId);
     return {
       ...toContentMutationResponse(
@@ -329,7 +334,7 @@ export class DynamicContentService {
 
   private parseDashboardPreviewData(dynamicType: string, rawData: unknown): unknown {
     if (dynamicType !== 'dashboard') return undefined;
-    return this.parseDashboardData(rawData, 'dashboard 预览数据不能为空');
+    return this.parseDashboardData(rawData, 'Dashboard preview data cannot be empty');
   }
 
   private parseDashboardData(rawData: unknown, message: string): Record<string, unknown> {
@@ -380,11 +385,14 @@ export class DynamicContentService {
         );
       });
     if (!rollbackOk) {
-      throw new InternalError('创建动态内容失败，且 DB 回滚未完成', {
-        code: 'dynamic_create_rollback_failed',
-        original_error: formatError(err),
-        rollback_error: rollbackError,
-      });
+      throw new InternalError(
+        'Failed to create dynamic content and database rollback did not complete',
+        {
+          code: 'dynamic_create_rollback_failed',
+          original_error: formatError(err),
+          rollback_error: rollbackError,
+        }
+      );
     }
     const cleaned = await Promise.allSettled([
       this.blob.delete(gid, contentId, 'image'),

@@ -7,11 +7,11 @@ import {
 import { SearchDropdown } from '@/components/ui/SearchDropdown';
 
 const WEATHER_ALERT_REGIONS: Array<{ label: string; value: string; hint?: string }> = [
-  { label: '全国', value: '', hint: '全部预警' },
+  { label: 'National', value: '', hint: 'All alerts' },
   ...WEATHER_ALERT_PROVINCES.map((province) => ({
     label: province,
     value: province,
-    hint: province.endsWith('市') ? '直辖市' : undefined,
+    hint: province.endsWith('市') ? 'Municipality' : undefined,
   })),
 ];
 
@@ -43,7 +43,7 @@ export function ProvinceSearch({
 
   return (
     <SearchDropdown
-      label="区域"
+      label="Region"
       value={query}
       onValueChange={(next) => {
         setQuery(next);
@@ -62,7 +62,7 @@ export function ProvinceSearch({
         setFocused(false);
         setDirty(false);
       }}
-      placeholder="全国或省级区域，如：广东省"
+      placeholder="National or provincial region, e.g. Guangdong"
       results={results}
       open={open}
       onOpenChange={setOpen}
@@ -85,7 +85,7 @@ export function ProvinceSearch({
 
 function regionLabel(value: string): string {
   const normalized = normalizeWeatherAlertProvince(value);
-  if (!normalized) return '全国';
+  if (!normalized) return 'National';
   return WEATHER_ALERT_REGIONS.find((region) => region.value === normalized)?.label ?? value;
 }
 
@@ -103,7 +103,7 @@ function isWeatherAlertRegionValue(value: string): boolean {
 
 function searchWeatherAlertRegions(query: string): typeof WEATHER_ALERT_REGIONS {
   const q = query.trim();
-  if (!q || q === '全国') return WEATHER_ALERT_REGIONS;
+  if (!q || q === 'National') return WEATHER_ALERT_REGIONS;
   const normalizedQuery = normalizeWeatherAlertProvince(q);
   return WEATHER_ALERT_REGIONS.filter((region) => {
     const normalized = region.label.replace(/省|市|自治区|特别行政区|壮族|回族|维吾尔/g, '');

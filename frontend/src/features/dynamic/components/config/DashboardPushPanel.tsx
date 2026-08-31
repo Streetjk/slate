@@ -41,7 +41,7 @@ export function DashboardPushPanel({
 
   return (
     <div className="space-y-3">
-      <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em]">数据推送 URL</p>
+      <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em]">Data push URL</p>
       <div className="flex gap-2 items-start">
         <code
           className={cn(
@@ -55,23 +55,25 @@ export function DashboardPushPanel({
           type="button"
           onClick={copy}
           className="px-2 py-1.5 text-stone hover:text-ink hover:bg-cream border border-ink flex-shrink-0"
-          title="复制"
+          title="Copy"
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}
         </button>
       </div>
       <details className="text-[11px]">
         <summary className="font-mono text-stone uppercase tracking-[0.12em] cursor-pointer">
-          示例 curl
+          curl example
         </summary>
         <pre className="mt-2 p-3 bg-cream border border-line text-[10px] leading-snug overflow-x-auto whitespace-pre-wrap">
           {exampleCurl}
         </pre>
       </details>
       <p className="font-sans text-[11px] text-stone italic leading-snug">
-        推送流程：① 复制 URL → ② 由你的系统/脚本 POST 数据 → ③ 设备下次唤醒时拉取并刷新屏幕。 URL
-        中的 contentId 即推送凭证（cuid 不可枚举），请勿公开分享，泄漏后只能删内容重建。
-        推送后不会立即亮屏，设备按预设周期或按键翻页时生效。
+        Push flow: ① copy the URL → ② POST data from your system or script → ③ the device fetches it
+        and refreshes the screen on its next wake. The contentId in the URL is the push credential
+        (the cuid is not enumerable); do not share it publicly. If it leaks, delete and recreate the
+        content. A push does not light the screen immediately; it takes effect on the device's
+        scheduled refresh or button navigation.
       </p>
     </div>
   );

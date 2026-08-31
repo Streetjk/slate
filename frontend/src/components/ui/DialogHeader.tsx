@@ -32,7 +32,7 @@ export function DialogHeader({ icon, title, description, onClose, className }: D
       </div>
       <Dialog.Close asChild>
         <button
-          aria-label="关闭"
+          aria-label="Close"
           onClick={onClose}
           className="p-1.5 -m-1.5 text-stone hover:text-ink hover:bg-cream flex-shrink-0 transition-colors"
         >

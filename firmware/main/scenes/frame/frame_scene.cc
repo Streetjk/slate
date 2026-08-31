@@ -23,7 +23,7 @@ constexpr char kTag[] = "frame";
 std::string ShortGroupName(const char* raw) {
     constexpr size_t kMaxChars = 8;
     if (!raw || raw[0] == '\0')
-        return "内容组";
+        return "Group";
     const std::string s(raw);
     const std::string prefix = util::Utf8PrefixChars(s, kMaxChars);
     if (prefix.size() >= s.size())
@@ -39,44 +39,44 @@ std::string FormatGroupSyncCaption(const UiEvent& e) {
     char buf[96];
     switch (e.u.group_sync.mode) {
         case GroupSyncStatusMode::kCycleTarget:
-            return "切到" + MarkedGroupName(e.u.group_sync.name);
+            return "Switching to " + MarkedGroupName(e.u.group_sync.name);
         case GroupSyncStatusMode::kCycleCacheHit:
-            return "已切到" + MarkedGroupName(e.u.group_sync.name);
+            return "Switched to " + MarkedGroupName(e.u.group_sync.name);
         case GroupSyncStatusMode::kCycleDownloading:
             if (e.u.group_sync.total > 0) {
-                std::snprintf(buf, sizeof(buf), "下载%s %u/%u", MarkedGroupName(e.u.group_sync.name).c_str(),
+                std::snprintf(buf, sizeof(buf), "Downloading %s %u/%u", MarkedGroupName(e.u.group_sync.name).c_str(),
                               e.u.group_sync.current, e.u.group_sync.total);
                 return buf;
             }
-            return "下载" + MarkedGroupName(e.u.group_sync.name);
+            return "Downloading " + MarkedGroupName(e.u.group_sync.name);
         case GroupSyncStatusMode::kCurrentGroupUpdating:
             if (e.u.group_sync.total > 0) {
-                std::snprintf(buf, sizeof(buf), "更新当前组 %u/%u", e.u.group_sync.current, e.u.group_sync.total);
+                std::snprintf(buf, sizeof(buf), "Updating current group %u/%u", e.u.group_sync.current, e.u.group_sync.total);
                 return buf;
             }
-            return "更新当前组";
+            return "Updating current group";
         case GroupSyncStatusMode::kInitialGroupDownloading:
             if (e.u.group_sync.total > 0) {
-                std::snprintf(buf, sizeof(buf), "下载%s %u/%u", MarkedGroupName(e.u.group_sync.name).c_str(),
+                std::snprintf(buf, sizeof(buf), "Downloading %s %u/%u", MarkedGroupName(e.u.group_sync.name).c_str(),
                               e.u.group_sync.current, e.u.group_sync.total);
                 return buf;
             }
-            return "下载内容组";
+            return "Downloading group";
         case GroupSyncStatusMode::kTargetGroupSaving:
             if (e.u.group_sync.total > 0) {
-                std::snprintf(buf, sizeof(buf), "应用%s %u/%u", MarkedGroupName(e.u.group_sync.name).c_str(),
+                std::snprintf(buf, sizeof(buf), "Applying %s %u/%u", MarkedGroupName(e.u.group_sync.name).c_str(),
                               e.u.group_sync.current, e.u.group_sync.total);
                 return buf;
             }
-            return "应用" + MarkedGroupName(e.u.group_sync.name);
+            return "Applying " + MarkedGroupName(e.u.group_sync.name);
         case GroupSyncStatusMode::kCurrentGroupSaving:
             if (e.u.group_sync.total > 0) {
-                std::snprintf(buf, sizeof(buf), "应用当前组 %u/%u", e.u.group_sync.current, e.u.group_sync.total);
+                std::snprintf(buf, sizeof(buf), "Applying current group %u/%u", e.u.group_sync.current, e.u.group_sync.total);
                 return buf;
             }
-            return "应用当前组";
+            return "Applying current group";
         case GroupSyncStatusMode::kCycleFailed:
-            return "切换失败，保留当前组";
+            return "Switch failed; keeping current group";
     }
     return "";
 }
@@ -113,7 +113,7 @@ void FrameScene::OnEnter(SceneContext& ctx) {
     lv_obj_set_style_text_line_space(empty_label_, 8, 0);
     lv_label_set_long_mode(empty_label_, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(empty_label_, LV_HOR_RES - 32);
-    lv_label_set_text(empty_label_, "内容组暂无内容\n\n请在管理端添加内容");
+    lv_label_set_text(empty_label_, "This group is empty\n\nAdd content in Slate");
     lv_obj_align(empty_label_, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(empty_label_, LV_OBJ_FLAG_HIDDEN);
 
@@ -278,7 +278,7 @@ void FrameScene::PrevFrame(SceneContext& ctx) {
 void FrameScene::CycleGroup(SceneContext& ctx, bool next) {
     ESP_LOGI(kTag, "cycle group direction=%s gid=%s idx=%d", next ? "next" : "prev", gid_.c_str(), idx_);
     SyncRenderIfChanged(
-        ctx, [this]() { return status_bar_ && status_bar_->SetCaption("切换内容组…"); },
+        ctx, [this]() { return status_bar_ && status_bar_->SetCaption("Switching group…"); },
         /*force_full*/ false);
     if (ctx.cycle_group)
         ctx.cycle_group(next);

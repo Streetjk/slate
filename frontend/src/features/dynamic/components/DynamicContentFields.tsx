@@ -39,24 +39,24 @@ export function DynamicContentFields({
   return (
     <>
       {type === 'dashboard' && (
-        <FormSection label="帧名称（选填，最多 64 字）">
+        <FormSection label="Frame name (optional, max 64 characters)">
           <Input
             type="text"
             maxLength={64}
             value={frameName}
             onChange={(event) => onFrameNameChange(event.target.value)}
-            placeholder="如：AI 使用统计"
+            placeholder="e.g. AI usage statistics"
           />
         </FormSection>
       )}
 
       {showParams && (
-        <FormSection label="类型参数">
+        <FormSection label="Type parameters">
           <ErrorBoundary
             resetKey={`${config.type}:${contentId ?? ''}`}
             fallback={
               <p className="font-sans text-[12px] leading-relaxed text-clay">
-                配置加载异常，请返回后重试。
+                Configuration failed to load. Go back and try again.
               </p>
             }
           >
@@ -73,7 +73,7 @@ export function DynamicContentFields({
       )}
 
       {showAudio && isAudioDynamicConfig(config) && (
-        <FormSection label="音频">
+        <FormSection label="Audio">
           <DynamicAudioSection config={config} onChange={onConfigChange} />
         </FormSection>
       )}

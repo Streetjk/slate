@@ -46,8 +46,8 @@ export function ContentTypePicker({
       <button
         type="button"
         onClick={onBack}
-        aria-label="返回类型卡片选择"
-        title="返回类型卡片选择"
+        aria-label="Back to content type selection"
+        title="Back to content type selection"
         className="h-10 w-10 shrink-0 border border-ink inline-flex items-center justify-center text-stone hover:bg-cream hover:text-ink transition-colors"
       >
         <ArrowLeft size={15} />

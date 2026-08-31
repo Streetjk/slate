@@ -9,7 +9,7 @@ export const deviceRegisterRateLimit: RateLimitGuardOptions = createRateLimit(
   {
     key: clientIp,
     maxPerWindow: 20,
-    message: '设备注册过于频繁，请稍后重试',
+    message: 'Device registration is too frequent; try again later',
   }
 );
 
@@ -23,6 +23,6 @@ export const deviceClaimRateLimit: RateLimitGuardOptions = createRateLimit(
       return `${clientIp(req)}:${userId ?? 'anonymous'}`;
     },
     maxPerWindow: 5,
-    message: '设备绑定尝试过于频繁，请稍后重试',
+    message: 'Too many device binding attempts; try again later',
   }
 );

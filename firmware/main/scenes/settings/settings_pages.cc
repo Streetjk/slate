@@ -37,14 +37,14 @@ constexpr int  kBarHeight         = 24;
 
 const char* ChargeText(const ChargeStatus::Snapshot& s) {
     if (s.no_battery)
-        return "无电池";
+        return "No battery";
     if (s.full)
-        return "已充满";
+        return "Full";
     if (s.charging)
-        return "充电中";
+        return "Charging";
     if (s.power_present)
-        return "已接电源";
-    return "电池供电";
+        return "External power";
+    return "Battery power";
 }
 
 std::vector<uint8_t> MakeTestTone() {
@@ -83,7 +83,7 @@ void ConfirmActionPage::OnEnter(SceneContext& ctx) {
     lv_label_set_text(warn, warning_.c_str());
     lv_obj_align(warn, LV_ALIGN_CENTER, 0, -8);
 
-    CreateBottomHint("按确认 返回   长按确认 执行");
+    CreateBottomHint("Press ENTER to go back   Hold ENTER to confirm");
     FinishSettingsScaffoldEnter(ctx);
 }
 
@@ -108,7 +108,7 @@ VolumePage::VolumePage() = default;
 VolumePage::~VolumePage() = default;
 
 void VolumePage::OnEnter(SceneContext& ctx) {
-    if (!EnterSettingsScaffold(ctx, "音量调节"))
+    if (!EnterSettingsScaffold(ctx, "Volume"))
         return;
 
     value_label_ = lv_label_create(RootObj());
@@ -137,7 +137,7 @@ void VolumePage::OnEnter(SceneContext& ctx) {
     lv_obj_set_style_pad_all(bar_fill_, 0, 0);
     lv_obj_clear_flag(bar_fill_, LV_OBJ_FLAG_SCROLLABLE);
 
-    hint_label_ = CreateBottomHint("上/下 调节   按确认 返回   长按确认 试听");
+    hint_label_ = CreateBottomHint("UP/DOWN adjust   ENTER back   Hold ENTER to test");
 
     level_ = vol::Get();
     RedrawValue();
@@ -249,7 +249,7 @@ void DeviceInfoPage::OnEnter(SceneContext& ctx) {
     root_ = CreateFullscreenRoot();
 
     status_bar_ = std::make_unique<StatusBar>(root_);
-    status_bar_->SetCaption("设备信息");
+    status_bar_->SetCaption("Device info");
 
     scroll_area_ = lv_obj_create(root_);
     lv_obj_set_size(scroll_area_, LV_HOR_RES, LV_VER_RES - theme::kStatusBarHeight);
@@ -429,17 +429,17 @@ bool DeviceInfoPage::Refresh(SceneContext& ctx) {
                   "SSID    %s\n"
                   "IP      %s\n"
                   "\n"
-                  "电量    %d%%   %d mV\n"
-                  "状态    %s\n"
+                  "Battery %d%%   %d mV\n"
+                  "Status  %s\n"
                   "\n"
-                  "DRAM    总量 %u KB，可用 %u KB（%u%%）\n"
-                  "PSRAM   总量 %u KB，可用 %u KB（%u%%）\n"
-                  "存储    总量 %u KB，可用 %u KB（%u%%）\n"
+                  "DRAM    total %u KB, free %u KB (%u%%)\n"
+                  "PSRAM   total %u KB, free %u KB (%u%%)\n"
+                  "Storage total %u KB, free %u KB (%u%%)\n"
                   "\n"
-                  "固件    %s\n"
-                  "MAC     %s\n"
-                  "服务器  %s",
-                  wifi_on ? "已连接" : "未连接", rssi, wifi_ssid_.empty() ? "-" : wifi_ssid_.c_str(),
+                  "Firmware %s\n"
+                  "MAC      %s\n"
+                  "Server   %s",
+                  wifi_on ? "Connected" : "Not connected", rssi, wifi_ssid_.empty() ? "-" : wifi_ssid_.c_str(),
                   ip.empty() ? "-" : ip.c_str(), battery_pct < 0 ? 0 : battery_pct, battery_mv, ChargeText(charge),
                   static_cast<unsigned>(dram_total_kb), static_cast<unsigned>(dram_free_kb),
                   static_cast<unsigned>(dram_free_pct), static_cast<unsigned>(psram_total_kb),
@@ -455,11 +455,11 @@ bool DeviceInfoPage::Refresh(SceneContext& ctx) {
 }
 
 RestartDevicePage::RestartDevicePage()
-    : ConfirmActionPage("restart_device", "重启设备",
-                        "确认要重启设备吗？\n\n"
-                        "Wi-Fi 配置和已下载\n"
-                        "的内容缓存都保留\n"
-                        "重启完成后自动恢复") {
+    : ConfirmActionPage("restart_device", "Restart device",
+                        "Restart the device?\n\n"
+                        "Wi-Fi settings and downloaded\n"
+                        "content cache will be kept\n"
+                        "and restored after restart") {
 }
 
 RestartDevicePage::~RestartDevicePage() = default;
@@ -470,12 +470,12 @@ void RestartDevicePage::Confirm(SceneContext&) {
 }
 
 FactoryResetPage::FactoryResetPage()
-    : ConfirmActionPage("factory_reset", "恢复出厂",
-                        "确认要恢复出厂吗？\n\n"
-                        "Wi-Fi 配置、设备绑定\n"
-                        "小智配置及内容缓存\n"
-                        "将全部清除\n"
-                        "重启后进入配网模式") {
+    : ConfirmActionPage("factory_reset", "Factory reset",
+                        "Factory-reset the device?\n\n"
+                        "Wi-Fi settings, device binding,\n"
+                        "voice configuration, and content cache\n"
+                        "will be cleared\n"
+                        "The device will restart in setup mode") {
 }
 
 FactoryResetPage::~FactoryResetPage() = default;

@@ -42,7 +42,12 @@ export type LoginResponseT = z.infer<typeof LoginResponse>;
 // 注册请求：在登录基础上增加 email 和 username
 export const RegisterRequest = z.object({
   email: z.email(),
-  username: z.string().regex(/^[a-zA-Z0-9_]{3,32}$/, '用户名只能包含字母、数字、下划线，3-32 位'),
+  username: z
+    .string()
+    .regex(
+      /^[a-zA-Z0-9_]{3,32}$/,
+      'Username must contain only letters, numbers, or underscores and be 3–32 characters long'
+    ),
   password: z.string().min(8),
 });
 export type RegisterRequestT = z.infer<typeof RegisterRequest>;

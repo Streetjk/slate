@@ -79,17 +79,18 @@ export function useDynamicContentForm({
   }, []);
 
   const submitConfig = useCallback(() => {
-    if (!type || !config) return { ok: false as const, error: 'config: 请选择动态类型' };
+    if (!type || !config)
+      return { ok: false as const, error: 'config: Select a dynamic content type' };
     const parsed = DynamicConfig.safeParse(config);
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       return {
         ok: false as const,
-        error: `${first?.path.join('.') || 'config'}: ${first?.message ?? '请检查'}`,
+        error: `${first?.path.join('.') || 'config'}: ${first?.message ?? 'Check the value'}`,
       };
     }
     if (parsed.data.type === 'dashboard' && !dashboardDataSatisfied) {
-      return { ok: false as const, error: 'dashboard 初始数据不能为空' };
+      return { ok: false as const, error: 'Dashboard initial data cannot be empty' };
     }
     const parsedType = parsed.data.type;
     return {

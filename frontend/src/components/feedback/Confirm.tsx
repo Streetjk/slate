@@ -98,14 +98,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
             <div className="mt-6 flex items-center justify-end gap-3">
               <Button variant="outline" onClick={() => close(false)}>
-                {active?.cancelText ?? '取消'}
+                {active?.cancelText ?? 'Cancel'}
               </Button>
               <Button
                 variant={active?.destructive ? 'danger' : 'primary'}
                 onClick={() => close(true)}
                 autoFocus
               >
-                {active?.confirmText ?? '确认'}
+                {active?.confirmText ?? 'Confirm'}
               </Button>
             </div>
           </Dialog.Content>

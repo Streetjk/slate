@@ -34,22 +34,22 @@ bool FillStaConfig(wifi_config_t& wc, const std::string& ssid, const std::string
     wc = {};
     if (ssid.empty()) {
         if (reason)
-            *reason = "SSID 不能为空";
+            *reason = "SSID cannot be empty";
         return false;
     }
     if (ssid.size() > sizeof(wc.sta.ssid)) {
         if (reason)
-            *reason = "SSID 过长";
+            *reason = "SSID is too long";
         return false;
     }
     if (password.size() >= sizeof(wc.sta.password)) {
         if (reason)
-            *reason = "Wi-Fi 密码过长";
+            *reason = "Wi-Fi password is too long";
         return false;
     }
     if (!password.empty() && password.size() < 8) {
         if (reason)
-            *reason = "Wi-Fi 密码至少 8 位；开放网络请留空";
+            *reason = "Wi-Fi passwords must be at least 8 characters; leave blank for an open network";
         return false;
     }
     std::memcpy(wc.sta.ssid, ssid.data(), ssid.size());
@@ -63,40 +63,40 @@ bool FillStaConfig(wifi_config_t& wc, const std::string& ssid, const std::string
 std::string DisconnectReasonZh(int reason) {
     switch (reason) {
         case 1:
-            return "未指定原因";
+            return "Unspecified reason";
         case 2:
-            return "auth 失败";
+            return "Authentication failed";
         case 3:
-            return "路由器主动断开(auth)";
+            return "Router disconnected (auth)";
         case 4:
-            return "associate 超时";
+            return "Association timed out";
         case 5:
-            return "AP 客户端过多";
+            return "Too many AP clients";
         case 6:
-            return "未认证";
+            return "Not authenticated";
         case 7:
-            return "未关联";
+            return "Not associated";
         case 8:
-            return "本机断开(assoc-leave,常见于配置切换)";
+            return "Local disconnect (assoc-leave; common during configuration changes)";
         case 14:
-            return "MIC 失败,密码错";
+            return "MIC failed; password may be incorrect";
         case 15:
-            return "4-way handshake 超时(密码错)";
+            return "4-way handshake timed out (wrong password)";
         case 200:
-            return "信号弱或路由器无 beacon";
+            return "Weak signal or router has no beacon";
         case 201:
-            return "未找到该 SSID";
+            return "SSID not found";
         case 202:
-            return "认证失败,密码错";
+            return "Authentication failed; password may be incorrect";
         case 203:
-            return "associate 失败";
+            return "Association failed";
         case 204:
-            return "握手超时";
+            return "Handshake timed out";
         case 205:
-            return "连接失败";
+            return "Connection failed";
         default: {
             char buf[48];
-            std::snprintf(buf, sizeof(buf), "连接失败 (reason=%d)", reason);
+            std::snprintf(buf, sizeof(buf), "Connection failed (reason=%d)", reason);
             return buf;
         }
     }
@@ -255,11 +255,11 @@ bool Wifi::Connect(const std::string& ssid, const std::string& password, int tim
 bool Wifi::TryConnect(const std::string& ssid, const std::string& password, int timeout_ms, std::string& out_reason) {
     Init();
     if (ssid.empty()) {
-        out_reason = "SSID 不能为空";
+        out_reason = "SSID cannot be empty";
         return false;
     }
     if (mode_.load(std::memory_order_acquire) != Mode::AccessPoint) {
-        out_reason = "TryConnect 必须在配网模式下调用";
+        out_reason = "TryConnect must be called in setup mode";
         ESP_LOGE(kTag, "try connect failed reason=not_ap_mode");
         return false;
     }
@@ -317,7 +317,7 @@ bool Wifi::TryConnect(const std::string& ssid, const std::string& password, int 
     if (last_reason != 0) {
         out_reason = DisconnectReasonZh(last_reason);
     } else {
-        out_reason = "连接超时,可能信号弱或路由器无响应";
+        out_reason = "Connection timed out; the signal may be weak or the router may not be responding";
     }
     esp_wifi_disconnect();
     ESP_LOGW(kTag, "try connect failed reason=%s", out_reason.c_str());

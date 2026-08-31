@@ -17,7 +17,7 @@ export function DynamicRefreshSettings({
   return (
     <div>
       <p className="font-mono text-[10px] text-stone uppercase tracking-[0.18em] mb-1.5">
-        刷新间隔
+        Refresh interval
       </p>
       <Select
         value={String(current)}
@@ -39,10 +39,10 @@ function refreshOptions(type?: string): Array<{
   hint: string;
 }> {
   return [
-    ...(type === 'dashboard' ? [{ value: 60, label: '1 分钟', hint: '高频' }] : []),
-    { value: 300, label: '5 分钟', hint: '更实时' },
-    { value: 600, label: '10 分钟', hint: '推荐' },
-    { value: 1800, label: '30 分钟', hint: '省电' },
-    { value: 3600, label: '1 小时', hint: '低频' },
+    ...(type === 'dashboard' ? [{ value: 60, label: '1 minute', hint: 'High frequency' }] : []),
+    { value: 300, label: '5 minutes', hint: 'More current' },
+    { value: 600, label: '10 minutes', hint: 'Recommended' },
+    { value: 1800, label: '30 minutes', hint: 'Power saving' },
+    { value: 3600, label: '1 hour', hint: 'Low frequency' },
   ];
 }

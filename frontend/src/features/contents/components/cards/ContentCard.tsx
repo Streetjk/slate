@@ -31,8 +31,8 @@ export const ContentCard = memo(function ContentCard({ gid, content, onEdit }: C
   const refreshContent = useMutationAction<string>({
     isPending: refresh.isPending,
     run: (contentId, callbacks) => refresh.mutate(contentId, callbacks),
-    successToast: '已刷新',
-    errorToast: '刷新失败',
+    successToast: 'Refreshed',
+    errorToast: 'Refresh failed',
   });
 
   return (
@@ -77,8 +77,8 @@ export const ContentCard = memo(function ContentCard({ gid, content, onEdit }: C
               <button
                 type="button"
                 onClick={() => refreshContent(content.id)}
-                aria-label="立即刷新"
-                title="立即刷新"
+                aria-label="Refresh now"
+                title="Refresh now"
                 disabled={refresh.isPending}
                 className="p-1.5 text-stone hover:text-ink hover:bg-cream transition-colors disabled:opacity-50"
               >

@@ -18,10 +18,11 @@ export function DeviceDangerZone({
         onClick={onUnbind}
         disabled={pending}
       >
-        {pending ? <Spinner /> : '从账号解绑'}
+        {pending ? <Spinner /> : 'Unbind from account'}
       </Button>
       <p className="font-serif text-[11px] italic text-stone-light mt-2">
-        解绑后设备脱离你的账号，素材保留；重新添加可恢复。
+        Unbinding removes the device from your account but keeps its content. Add it again to
+        restore access.
       </p>
     </section>
   );

@@ -48,7 +48,13 @@ export function AudioPlayPreview({ contentId, etag, className, label }: AudioPla
   if (!etag) return null;
 
   const loading = requested && audio.isFetching;
-  const title = audio.error ? '音频加载失败' : loading ? '加载中' : playing ? '停止' : '试听';
+  const title = audio.error
+    ? 'Audio failed to load'
+    : loading
+      ? 'Loading'
+      : playing
+        ? 'Stop'
+        : 'Preview';
 
   return (
     <button
@@ -71,11 +77,14 @@ export function AudioPlayPreview({ contentId, etag, className, label }: AudioPla
             .then((ctx) => {
               if (ctx) return;
               setPlayAfterLoad(false);
-              toast.error('音频播放失败', '当前环境不支持 WebAudio。');
+              toast.error(
+                'Audio playback failed',
+                'WebAudio is not supported in this environment.'
+              );
             })
             .catch((err) => {
               setPlayAfterLoad(false);
-              toast.error('音频播放失败', err instanceof Error ? err.message : undefined);
+              toast.error('Audio playback failed', err instanceof Error ? err.message : undefined);
             });
         }
       }}

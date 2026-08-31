@@ -21,7 +21,10 @@ export function ContentEditorPageLayout({
   renderEditor,
 }: ContentEditorPageLayoutProps) {
   return (
-    <RequireRouteParams names={['gid'] as const} hint="请从总览页进入具体内容组。">
+    <RequireRouteParams
+      names={['gid'] as const}
+      hint="Open a content group from the overview page."
+    >
       {({ gid }) => (
         <ContentEditorPageContent
           gid={gid}
@@ -51,32 +54,37 @@ function ContentEditorPageContent({
   }, [gid, navigate]);
 
   if (!contentId) {
-    return <EmptyState title="页面不存在" hint={missingContentHint} />;
+    return <EmptyState title="Page not found" hint={missingContentHint} />;
   }
 
   if (content.isPending) {
     return (
       <div className="pt-16 text-center">
-        <Spinner label="加载中" />
+        <Spinner label="Loading" />
       </div>
     );
   }
 
   if (content.isError) {
-    return <EmptyState title="加载失败" hint="请刷新重试。" />;
+    return <EmptyState title="Failed to load" hint="Refresh and try again." />;
   }
 
   const isExpectedContent = content.data ? findContent(content.data) : false;
 
   if (content.data && content.data.id !== contentId) {
-    return <EmptyState title="加载失败" hint="内容详情返回了不匹配的 ID，请刷新重试。" />;
+    return (
+      <EmptyState
+        title="Failed to load"
+        hint="Content details returned a mismatched ID. Refresh and try again."
+      />
+    );
   }
 
   if (!content.data || !isExpectedContent || content.data.group_id !== gid) {
     if (content.isFetching) {
       return (
         <div className="pt-16 text-center">
-          <Spinner label="加载中" />
+          <Spinner label="Loading" />
         </div>
       );
     }
