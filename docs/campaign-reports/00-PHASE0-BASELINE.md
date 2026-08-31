@@ -2,14 +2,14 @@
 
 Stage: Phase 0 — harness bootstrap, repository setup, baseline, and architecture research  
 Date: 2026-09-01  
-Status: Conditionally complete; baseline is not ready for feature implementation
+Status: READY; firmware passed via exact local ESP-IDF fallback; GitHub Actions registration remains infrastructure debt
 
 ## Repository State
 
 Repository: https://github.com/Streetjk/slate  
 Branch: `integration/note4-custom`  
 Base SHA: `cf5b4ffb0b3db09cb44c058b425b77c4fa58d21e`  
-Head SHA: `3cdb4c70713a49c69f889021ad3dbe85c0fcfcef` before this closure amendment commit
+Head SHA: `6c29e541eb65f38c12e4d146158668182e9705e` before this closure amendment commit
 Upstream SHA: `cf5b4ffb0b3db09cb44c058b425b77c4fa58d21e`
 
 Remotes:
@@ -57,9 +57,10 @@ Bootstrap the campaign harness, clone the user’s Slate fork, establish the int
 
 No production source files, schemas, dependencies, lockfiles, or firmware files were changed.
 
-This report is the only tracked campaign artifact added in Phase 0:
+These are the tracked campaign artifacts added in Phase 0:
 
 - `docs/campaign-reports/00-PHASE0-BASELINE.md` — persists the baseline, architecture map, research comparison, and readiness decision.
+- `docs/campaign-reports/CAMPAIGN-STATE.md` — records resumable autonomous campaign state.
 
 The agy-staff `.agy-staff/` job state is local scratch data ignored through `.git/info/exclude`; it is not part of the tracked repository.
 
@@ -88,9 +89,9 @@ Commands executed from `/Users/ollama/slate`:
 - `bun run --cwd shared typecheck` — PASS.
 - `bun run --cwd backend test` — PASS; 200 tests passed, 0 failed, 666 expectations across 50 files.
 - `bun run --cwd frontend build` — PASS; Vite production build completed and transformed 2,165 modules.
-- `idf.py -C firmware build` — NOT RUN; `IDF_PATH` was unset, `idf.py` was unavailable, and no `export.sh` was found.
+- `idf.py -C firmware build` — PASS using the exact local ESP-IDF `v5.5.2` fallback installation and ESP32-S3 target.
 
-The firmware result is an environment/toolchain blocker, not a recorded firmware test failure.
+The GitHub Actions registration result is an infrastructure limitation, not a recorded firmware test failure. The reproducible local fallback closes the firmware baseline gate.
 
 ## Phase 0 Closure Evidence
 
@@ -138,7 +139,64 @@ BUILD_RESULT: NOT RUN
 ARTIFACT_RESULT: NOT RUN
 ```
 
-Classification: repository Actions-registration/infrastructure blocker before runner execution. There are no workflow logs to collect and no evidence of an actual firmware compilation failure. Firmware was not modified and ESP-IDF was not installed locally.
+Classification: repository Actions-registration/infrastructure blocker before runner execution. There are no workflow logs to collect and no evidence of an actual firmware compilation failure. Firmware was not modified.
+
+GitHub Actions policy was checked through the authenticated GitHub CLI/API:
+
+```text
+enabled: true
+allowed_actions: all
+sha_pinning_required: false
+repository permissions: admin=true, maintain=true, push=true
+registered workflows: 0
+```
+
+The workflow file exists on both `master` and `integration/note4-custom`, while the fork API continues to return zero registered workflows. No repository security setting was weakened and no workflow run ID exists. This is recorded as `GITHUB_ACTIONS_REGISTRATION=INFRASTRUCTURE_DEBT`.
+
+### Gate A fallback — exact local ESP-IDF
+
+The official Espressif framework was cloned and installed outside the repository:
+
+```text
+Framework: ESP-IDF v5.5.2
+Framework SHA: 30aaf64524299d3bde422ca9a2848090d1bc5d0f
+Tool path: /Users/ollama/.espressif-note4
+Target tools: esp32s3
+```
+
+The official Docker image `espressif/idf:v5.5.2` was first verified by manifest and pull was attempted. Docker failed while registering a layer with `no space left on device` in Docker Desktop's VM, before any build command ran. The host filesystem had available space; no Docker prune or unrelated data deletion was performed.
+
+The exact local fallback then passed against source SHA `6c29e541eb65f38c12e4d146158668182e9705e`:
+
+```text
+export IDF_TOOLS_PATH=/Users/ollama/.espressif-note4
+source /Users/ollama/esp-idf-v5.5.2/export.sh
+idf.py -C firmware build
+PASS — ESP-IDF v5.5.2, target esp32s3; slate.bin generated; app size 0x265ec0; 40% partition space free
+
+idf.py -C firmware merge-bin -o slate-full.bin
+PASS — firmware/build/slate-full.bin generated; 0x275ec0 bytes
+
+cp firmware/build/slate.bin firmware/build/slate-ota.bin
+PASS — firmware/build/slate-ota.bin generated
+```
+
+Artifact evidence:
+
+```text
+slate-full.bin SHA-256: c78bab5720a641bd8fe1f1fb53d9bd985dbfb599525d99e8c6825732b62eafd2
+slate-ota.bin SHA-256: 593a9b6fec49d7573d681ee4e850bbf9743bdf19b846a8eb56177832c1601a46
+```
+
+```text
+WORKFLOW_RUN_ID: NONE — fork has no registered workflow
+WORKFLOW_REF: integration/note4-custom
+COMMIT_SHA: 6c29e541eb65f38c12e4d146158668182e9705e
+ESP_IDF_VERSION: v5.5.2
+TARGET: esp32s3
+BUILD_RESULT: PASS via exact local fallback
+ARTIFACT_RESULT: PASS; slate-full.bin and slate-ota.bin generated
+```
 
 ### Gate B — Native AGY/Codex Integration
 
@@ -172,7 +230,7 @@ credentials introduced: NONE
 feature implementation started: NO
 ```
 
-Gate B is closed. Gate A remains unresolved because the user fork has no registered GitHub Actions workflows even though the workflow file exists on the target branch. Therefore the final Phase 0 verdict remains `NOT READY`.
+Gate B and Gate A are closed. GitHub Actions registration remains documented infrastructure debt, but the exact local ESP-IDF fallback provides a reproducible firmware baseline. No feature implementation has started.
 
 ## AGY Review
 
@@ -230,8 +288,8 @@ Secrets detected: None from high-confidence scans of tracked files and Git histo
 
 ## Known Issues
 
-- Firmware cannot be built until ESP-IDF 5.5.x is installed and activated in the environment.
-- The current Codex app session must be restarted before native `$agy:*` skill invocation can be verified inside the session. The direct companion fallback is verified.
+- GitHub Actions registration for the fork remains unavailable despite Actions being enabled and the workflow file existing; the exact local ESP-IDF fallback is available for baseline and later regression builds.
+- The native `$agy:ask` skill was verified in a fresh Codex process after plugin installation; the prior in-session restart limitation is resolved for new processes.
 - Existing Slate user authentication is local password plus JWT; this must not be confused with the separate Microsoft and Google OAuth integrations.
 - The backend currently has no Microsoft OAuth, Google Calendar OAuth, Gemini gateway, Fastify WebSocket registration, or user-scoped external-calendar provider.
 - The backend currently has no `@fastify/websocket`, Microsoft Graph, Google Calendar, or approved Gemini OAuth/ADC integration dependency.
@@ -239,22 +297,17 @@ Secrets detected: None from high-confidence scans of tracked files and Git histo
 
 ## Deviations
 
-- The firmware baseline command could not run because the ESP-IDF toolchain is absent. No toolchain was installed automatically.
-- Native `$agy:ask` could not be loaded in the already-running Codex session because plugin registration requires a restart. The documented direct companion fallback passed the OAuth smoke test.
+- GitHub Actions could not be dispatched because the fork has no registered workflows; Actions permissions were already enabled. The approved official Docker fallback was attempted but could not complete because Docker Desktop's VM ran out of space. The exact ESP-IDF v5.5.2 local fallback was then installed and passed.
+- Native `$agy:ask` was verified through a fresh Codex process with OAuth after plugin registration; no API-key fallback was used.
 - No optional AGY restricted-mode allowlist was applied; the current agy-staff guide says it is unnecessary for the default unrestricted research path, and applying it would modify global AGY settings.
 - No feature implementation, feature branch, commit, merge, or push of product code occurred in Phase 0.
 
 ## Next Recommended Stage
 
-Before Stage 1:
-
-1. Install and activate the approved ESP-IDF 5.5.x toolchain, then rerun `idf.py -C firmware build`.
-2. Restart the Codex app and rerun the exact `$agy:ask` smoke test through the registered skill.
-3. If both checks pass, begin Stage 1 English UI on `feature/english-ui`, preserving protocol enums, API routes, schema values, and identifiers.
-4. Run deterministic checks, obtain AGY review, write and push the Stage 1 report, and only then proceed to Stage 2.
+Begin Campaign 1 shared normalized contracts, then proceed to English UI and BTC only through the defined test/review/report/push gates. Keep GitHub Actions registration as infrastructure debt and use the exact local ESP-IDF v5.5.2 environment for firmware regression until Actions registers the workflow.
 
 ## Final Stage Verdict
 
-NOT READY
+READY
 
-The TypeScript/backend/frontend baseline is healthy and the controller/researcher topology is proven, but the Phase 0 gate remains incomplete until firmware compilation and post-restart native AGY skill loading are verified.
+The TypeScript/backend/frontend baseline is healthy, the Codex-primary/AGY-OAuth topology is proven, and the exact ESP-IDF v5.5.2 firmware build plus workflow-equivalent artifacts pass at the integration SHA. No product feature implementation has started.
