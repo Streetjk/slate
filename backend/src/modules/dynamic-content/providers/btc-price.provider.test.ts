@@ -65,6 +65,34 @@ describe('BtcPriceProvider', () => {
     expect(first.changePercent).toBeCloseTo(1.332, 3);
     expect(requests).toHaveLength(2);
     expect(requests.some((url) => url.includes('granularity=3600'))).toBe(true);
+    expect(requests.some((url) => url.includes('start=') && url.includes('end='))).toBe(true);
+  });
+
+  it('caps the monthly series at the most recent 30 daily points', async () => {
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).includes('/spot')) {
+        return Response.json({ data: { amount: '70000' } });
+      }
+      return Response.json(
+        Array.from({ length: 35 }, (_, index) => [
+          1710000000 + index * 86400,
+          1,
+          2,
+          1,
+          69000 + index,
+        ])
+      );
+    }) as unknown as typeof fetch;
+    const provider = new BtcPriceProvider();
+    const config = provider.validateConfig({ type: 'btc_price', period: 'monthly' });
+
+    const result = await provider.fetchData(config, {
+      now: new Date('2026-05-18T00:00:00.000Z'),
+    });
+
+    expect(result.points).toHaveLength(30);
+    expect(result.points[0]!.priceUsd).toBe(69005);
+    expect(result.points.at(-1)!.priceUsd).toBe(69034);
   });
 
   it('uses a matching previous series when the public endpoint fails', async () => {

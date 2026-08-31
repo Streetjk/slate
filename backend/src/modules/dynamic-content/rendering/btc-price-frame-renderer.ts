@@ -1,4 +1,5 @@
 import { PriceSeries, type PricePointT, type PriceSeriesT } from 'shared';
+import { getDateTimeFormat } from '../../../common/utils/intl';
 import { BitmapCanvas } from './bitmap-canvas';
 import type { DynamicRenderContext } from './dynamic-render-context';
 import type { FrameDrawKit } from './frame-draw-kit';
@@ -116,7 +117,13 @@ function periodDateLabel(series: PriceSeriesT): string {
   const first = series.points[0]?.timestamp;
   const last = series.points.at(-1)?.timestamp;
   if (!first || !last) return 'No historical points';
-  return `${new Date(first).toLocaleDateString('en-AU')} – ${new Date(last).toLocaleDateString('en-AU')}`;
+  const formatter = getDateTimeFormat('en-AU', {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  return `${formatter.format(new Date(first))} – ${formatter.format(new Date(last))}`;
 }
 
 function latestPoint(points: PricePointT[]): PricePointT | undefined {

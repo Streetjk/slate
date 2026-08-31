@@ -24,6 +24,18 @@ const GRANULARITY_BY_PERIOD: Record<PricePeriodT, number> = {
   monthly: 86400,
 };
 
+const MAX_POINTS_BY_PERIOD: Record<PricePeriodT, number> = {
+  daily: 288,
+  weekly: 168,
+  monthly: 30,
+};
+
+const WINDOW_MS_BY_PERIOD: Record<PricePeriodT, number> = {
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+  monthly: 30 * 24 * 60 * 60 * 1000,
+};
+
 interface CoinbaseSpotResponse {
   data?: { amount?: string; base?: string; currency?: string };
 }
@@ -56,7 +68,11 @@ export class BtcPriceProvider implements DataProvider<BtcPriceConfigT, PriceSeri
 
   private async fetchFresh(period: PricePeriodT, now: Date): Promise<PriceSeriesT> {
     const granularity = GRANULARITY_BY_PERIOD[period];
-    const candlesUrl = `${CANDLES_URL}?granularity=${granularity}`;
+    const start = new Date(now.getTime() - WINDOW_MS_BY_PERIOD[period]);
+    const candlesUrl =
+      `${CANDLES_URL}?granularity=${granularity}` +
+      `&start=${encodeURIComponent(start.toISOString())}` +
+      `&end=${encodeURIComponent(now.toISOString())}`;
     const [spot, candles] = await Promise.all([
       fetchJson<CoinbaseSpotResponse>(SPOT_URL, {
         timeoutMs: DEFAULT_PROVIDER_FETCH_TIMEOUT_MS,
@@ -70,7 +86,7 @@ export class BtcPriceProvider implements DataProvider<BtcPriceConfigT, PriceSeri
 
     const currentPriceUsd = parseCoinbaseAmount(spot.data?.amount);
     if (currentPriceUsd === null) throw new Error('Coinbase spot response has no valid BTC price');
-    const points = normalizeCoinbaseCandles(candles);
+    const points = normalizeCoinbaseCandles(candles).slice(-MAX_POINTS_BY_PERIOD[period]);
     if (points.length === 0) throw new Error('Coinbase candles response has no valid BTC points');
 
     const firstPrice = points[0]!.priceUsd;
