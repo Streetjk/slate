@@ -35,6 +35,8 @@ export interface DataProvider<C = unknown, D = unknown> {
 export interface DynamicContentFetchCtx {
   /** 当前时刻（测试可注入）。 */
   now: Date;
+  /** Authenticated owner of the containing group, when available. */
+  ownerUserId?: string | null;
   /** 上次落盘的 dynamicData，provider 可在失败时回退。 */
   lastData?: unknown;
 }

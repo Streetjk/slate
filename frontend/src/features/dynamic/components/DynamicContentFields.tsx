@@ -11,6 +11,7 @@ import { HotListConfigPanel } from './config/HotListConfig';
 import { WeatherAlertConfigPanel } from './config/WeatherAlertConfig';
 import { WeatherConfigPanel } from './config/WeatherConfig';
 import { BtcPriceConfigPanel } from './config/BtcPriceConfig';
+import { OutlookCalendarConfigPanel } from './config/OutlookCalendarConfig';
 
 export function DynamicContentFields({
   type,
@@ -111,6 +112,8 @@ function DynamicConfigFields({
       return <DynamicRefreshSettings config={config} onChange={onChange} />;
     case 'btc_price':
       return <BtcPriceConfigPanel config={config} onChange={onChange} />;
+    case 'outlook_calendar':
+      return <OutlookCalendarConfigPanel config={config} onChange={onChange} />;
     case 'dashboard':
       return (
         <DashboardConfigPanel

@@ -17,6 +17,7 @@ export const DynamicType = z.enum([
   'weather_alert',
   'earthquake_report',
   'btc_price',
+  'outlook_calendar',
   'dashboard',
   'font_test',
   'hot_list',
@@ -168,6 +169,15 @@ export const BtcPriceConfig = z.object({
 });
 export type BtcPriceConfigT = z.infer<typeof BtcPriceConfig>;
 
+export const OutlookCalendarConfig = z.object({
+  type: z.literal('outlook_calendar'),
+  tz: z.literal('Australia/Perth').default('Australia/Perth'),
+  days_ahead: z.coerce.number().int().min(1).max(31).default(7),
+  max_events: z.coerce.number().int().min(1).max(20).default(8),
+  refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(600),
+});
+export type OutlookCalendarConfigT = z.infer<typeof OutlookCalendarConfig>;
+
 export const DashboardTemplateRef = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('system'),
@@ -210,6 +220,7 @@ export const DynamicConfig = z.discriminatedUnion('type', [
   WeatherAlertConfig,
   EarthquakeReportConfig,
   BtcPriceConfig,
+  OutlookCalendarConfig,
   DashboardConfig,
   FontTestConfig,
   HotListConfig,

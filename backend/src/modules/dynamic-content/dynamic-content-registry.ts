@@ -12,6 +12,7 @@ import { DashboardProvider } from './providers/dashboard.provider';
 import { FontTestProvider } from './providers/font-test.provider';
 import { HotListProvider } from '../hot-list/hot-list.provider';
 import { BtcPriceProvider } from './providers/btc-price.provider';
+import { OutlookCalendarProvider } from './providers/outlook-calendar.provider';
 import dailyCalendarDefinition from './definitions/daily-calendar.json' with { type: 'json' };
 import monthCalendarDefinition from './definitions/month-calendar.json' with { type: 'json' };
 import weatherDefinition from './definitions/weather.json' with { type: 'json' };
@@ -22,6 +23,7 @@ import dashboardDefinition from './definitions/dashboard.json' with { type: 'jso
 import fontTestDefinition from './definitions/font-test.json' with { type: 'json' };
 import hotListDefinition from './definitions/hot-list.json' with { type: 'json' };
 import btcPriceDefinition from './definitions/btc-price.json' with { type: 'json' };
+import outlookCalendarDefinition from './definitions/outlook-calendar.json' with { type: 'json' };
 
 /**
  * 中央注册表。启动时把所有 (definition, provider) 对装进 Map。
@@ -44,7 +46,8 @@ export class DynamicContentRegistry implements OnModuleInit {
     private readonly dashboardProvider: DashboardProvider,
     private readonly fontTestProvider: FontTestProvider,
     private readonly hotListProvider: HotListProvider,
-    private readonly btcPriceProvider: BtcPriceProvider
+    private readonly btcPriceProvider: BtcPriceProvider,
+    private readonly outlookCalendarProvider: OutlookCalendarProvider
   ) {}
 
   onModuleInit(): void {
@@ -63,6 +66,7 @@ export class DynamicContentRegistry implements OnModuleInit {
     this.register(normalizeDefinition(fontTestDefinition), this.fontTestProvider);
     this.register(normalizeDefinition(hotListDefinition), this.hotListProvider);
     this.register(normalizeDefinition(btcPriceDefinition), this.btcPriceProvider);
+    this.register(normalizeDefinition(outlookCalendarDefinition), this.outlookCalendarProvider);
   }
 
   private register(def: DynamicContentDefinition, provider: DynamicContentEntry['provider']): void {

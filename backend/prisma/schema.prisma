@@ -42,10 +42,30 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  devices Device[] @relation("DeviceOwner")
-  groups  Group[]  @relation("GroupOwner")
+  devices      Device[]          @relation("DeviceOwner")
+  groups       Group[]           @relation("GroupOwner")
+  integrations UserIntegration[]
 
   @@map("users")
+}
+
+model UserIntegration {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  provider             String   @db.VarChar(64)
+  encryptedAccessToken String   @map("encrypted_access_token") @db.Text
+  encryptedTokenCache  String   @map("encrypted_token_cache") @db.Text
+  expiresAt            DateTime @map("expires_at")
+  scopes               String   @db.VarChar(512)
+  accountEmail         String?  @map("account_email") @db.VarChar(320)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([provider])
+  @@map("user_integrations")
 }
 
 model Device {

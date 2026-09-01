@@ -40,6 +40,12 @@ const BooleanEnv = z.union([z.boolean(), z.string()]).transform((value, ctx) => 
   return z.NEVER;
 });
 
+const TokenEncryptionKey = OptionalEnv(
+  z.string().refine(isTokenEncryptionKey, {
+    message: 'TOKEN_ENCRYPTION_KEY must be a 32-byte base64 or 64-character hex key',
+  })
+);
+
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -58,6 +64,11 @@ export const EnvSchema = z.object({
   TTS_BASE_URL: OptionalEnv(z.string().url()),
   TTS_MODEL: z.string().min(1).default('mimo-v2.5-tts'),
   TTS_DEFAULT_VOICE: TtsVoice.default(DEFAULT_TTS_VOICE),
+  MICROSOFT_CLIENT_ID: OptionalEnv(z.string().min(1)),
+  MICROSOFT_CLIENT_SECRET: OptionalEnv(z.string().min(1)),
+  MICROSOFT_REDIRECT_URI: OptionalEnv(z.string().url()),
+  MICROSOFT_AUTHORITY: z.string().url().default('https://login.microsoftonline.com/common'),
+  TOKEN_ENCRYPTION_KEY: TokenEncryptionKey,
   BACKGROUND_WORKERS: BooleanEnv.default(true),
 });
 
@@ -67,6 +78,15 @@ function hasReasonableSecretEntropy(value: string): boolean {
   const bytes = new TextEncoder().encode(value);
   if (new Set(bytes).size < 16) return false;
   return estimatedShannonBits(bytes) >= 128;
+}
+
+function isTokenEncryptionKey(value: string): boolean {
+  if (/^[0-9a-f]{64}$/i.test(value)) return true;
+  try {
+    return Buffer.from(value, 'base64').byteLength === 32;
+  } catch {
+    return false;
+  }
 }
 
 function estimatedShannonBits(bytes: Uint8Array): number {

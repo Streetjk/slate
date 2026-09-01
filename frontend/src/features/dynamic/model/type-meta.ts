@@ -8,6 +8,7 @@ import {
   CloudSun,
   Flame,
   Bitcoin,
+  Mail,
   Type as TypeIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -79,6 +80,14 @@ export const DYNAMIC_TYPE_META = {
     supportsAudio: false,
     Icon: Bitcoin,
   },
+  outlook_calendar: {
+    label: 'Outlook calendar',
+    hint: 'Read-only agenda · Australia/Perth',
+    description: 'Shows a cached read-only agenda from the connected Microsoft Outlook account.',
+    hasConfigurableParams: true,
+    supportsAudio: false,
+    Icon: Mail,
+  },
   dashboard: {
     label: 'External data',
     hint: 'Template + JSON data push',
@@ -114,6 +123,7 @@ export const DYNAMIC_TYPE_ORDER = [
   'weather_alert',
   'earthquake_report',
   'btc_price',
+  'outlook_calendar',
   'hot_list',
   'dashboard',
   'font_test',

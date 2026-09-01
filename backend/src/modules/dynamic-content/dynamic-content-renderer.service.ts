@@ -18,6 +18,7 @@ import { computeDynamicRefreshSchedule, computeErrorBackoffAt } from './dynamic-
 const DYNAMIC_RENDER_CONTENT_SELECT = {
   id: true,
   groupId: true,
+  group: { select: { ownerUserId: true } },
   frameName: true,
   imageEtag: true,
   audioEtag: true,
@@ -156,6 +157,7 @@ export class DynamicContentRendererService {
     try {
       data = await entry.provider.fetchData(config, {
         now,
+        ownerUserId: content.group.ownerUserId,
         lastData: content.dynamicData ?? undefined,
       });
     } catch (err) {
@@ -216,6 +218,7 @@ export class DynamicContentRendererService {
       } else {
         data = await entry.provider.fetchData(config, {
           now,
+          ownerUserId: content.group?.ownerUserId,
           lastData: content.dynamicData ?? undefined,
         });
       }

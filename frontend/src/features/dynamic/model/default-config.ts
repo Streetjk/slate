@@ -63,6 +63,14 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
         period: 'daily',
         refresh_interval_sec: 600,
       };
+    case 'outlook_calendar':
+      return {
+        type: 'outlook_calendar',
+        tz: 'Australia/Perth',
+        days_ahead: 7,
+        max_events: 8,
+        refresh_interval_sec: 600,
+      };
     case 'dashboard':
       return {
         type: 'dashboard',

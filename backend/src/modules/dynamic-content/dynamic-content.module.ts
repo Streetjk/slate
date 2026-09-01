@@ -25,6 +25,7 @@ import { IngestPayloadSizeGuard } from './ingest/ingest-payload-size.guard';
 import { IngestPayloadSizePipe } from './ingest/ingest-payload-size.pipe';
 import { DynamicPreviewController } from './dynamic-preview.controller';
 import { BtcPriceProvider } from './providers/btc-price.provider';
+import { OutlookModule } from './outlook/outlook.module';
 
 /**
  * 动态内容模板与渲染业务模块。
@@ -42,6 +43,7 @@ import { BtcPriceProvider } from './providers/btc-price.provider';
     HotListModule,
     DynamicRenderingModule,
     DynamicAudioModule,
+    OutlookModule,
   ],
   controllers: [WeatherCityController, DashboardIngestController, DynamicPreviewController],
   providers: [

@@ -33,6 +33,21 @@ export class AppConfig {
   get backgroundWorkers() {
     return this.cs.get('BACKGROUND_WORKERS', { infer: true });
   }
+  get microsoftClientId() {
+    return this.cs.get('MICROSOFT_CLIENT_ID', { infer: true });
+  }
+  get microsoftClientSecret() {
+    return this.cs.get('MICROSOFT_CLIENT_SECRET', { infer: true });
+  }
+  get microsoftRedirectUri() {
+    return this.cs.get('MICROSOFT_REDIRECT_URI', { infer: true });
+  }
+  get microsoftAuthority() {
+    return this.cs.get('MICROSOFT_AUTHORITY', { infer: true });
+  }
+  get tokenEncryptionKey() {
+    return this.cs.get('TOKEN_ENCRYPTION_KEY', { infer: true });
+  }
   get isProd() {
     return this.nodeEnv === 'production';
   }

@@ -15,6 +15,7 @@
       "name": "backend",
       "version": "0.1.1",
       "dependencies": {
+        "@azure/msal-node": "^6.0.0",
         "@fastify/cookie": "^11",
         "@fastify/multipart": "^9",
         "@fastify/static": "^8",
@@ -99,6 +100,10 @@
     },
   },
   "packages": {
+    "@azure/msal-common": ["@azure/msal-common@16.14.0", "", {}, "sha512-A4rb55hI86Q9tBl/+jBj7TMz7iX2RFgQs/nExFzcAtoI/BFRVdaH5SL/MivrYD7qvweMpN8AgVvVMHV8UBYxew=="],
+
+    "@azure/msal-node": ["@azure/msal-node@6.0.0", "", { "dependencies": { "@azure/msal-common": "16.14.0", "jsonwebtoken": "^9.0.0" } }, "sha512-PU0l3CsEZVm2K8vZNFxvgmM5d0Yx/sVL/axWW0hJBoeyiB6Q/uv7hXORb7EdzlNxvehsWEF82/o+/sXlIo+UIw=="],
+
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 
     "@babel/compat-data": ["@babel/compat-data@7.29.3", "", {}, "sha512-LIVqM46zQWZhj17qA8wb4nW/ixr2y1Nw+r1etiAWgRM6U1IqP+LNhL1yg440jYZR72jCWcWbLWzIosH+uP1fqg=="],
