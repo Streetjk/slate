@@ -117,7 +117,7 @@ class EpdSsd1683 {
     void    EpdSendData(uint8_t d);
     uint8_t EpdRecvData();  // refresh_task only:切到 RX 模式读 1 字节,读完切回 TX
     void    WriteBytes(const uint8_t* buf, int len);
-    void    ReadBusy();
+    void    ReadBusy(const char* stage = "unknown");
     void    EpdPowerOn();  // 主动管 EPD_PWR_PIN(含 hold_dis/set/hold_en)
     void    EpdPowerOff();
 

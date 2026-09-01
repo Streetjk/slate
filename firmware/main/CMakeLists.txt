@@ -130,3 +130,7 @@ idf_component_register(
         pthread
         spi_flash
 )
+
+if(SLATE_EPD_TIMING)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE SLATE_EPD_TIMING=1)
+endif()

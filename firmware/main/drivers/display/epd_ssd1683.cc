@@ -11,6 +11,7 @@
 
 #include "bsp/config.h"
 #include "drivers/display/framebuffer_ops.h"
+#include "utils/timing_trace.h"
 #include "utils/gpio_util.h"
 
 namespace {
@@ -207,6 +208,8 @@ void EpdSsd1683::LvglFlushCb(lv_display_t* disp, const lv_area_t* area, uint8_t*
     }
 
     xSemaphoreGive(self->dirty_mutex_);
+    SLATE_TIMING_LOG(kTag, "lvgl_flush_done area=(%d,%d,%d,%d) dirty=(%d,%d,%d,%d)", area->x1, area->y1, area->x2,
+                     area->y2, r.x, r.y, r.w, r.h);
     if (do_notify)
         xTaskNotifyGive(task);
     lv_disp_flush_ready(disp);
@@ -437,6 +440,7 @@ bool EpdSsd1683::ShouldUseFullRefresh(const epd::DiffResult& diff, bool force_fu
 
 void EpdSsd1683::RunRefresh(bool full_refresh) {
     const int64_t start_us = esp_timer_get_time();
+    SLATE_TIMING_LOG(kTag, "refresh_start path=%s", full_refresh ? "full" : "partial");
     ESP_LOGD(kTag, "refresh begin full=%d partial_since_full=%d", full_refresh ? 1 : 0, partial_since_full_);
     // 两条路径都先调 EpdInit() 做硬 reset + 寄存器初始化:
     // 1) full 路径里 EpdDisplayFull 自己会发 0xA5 切到 full 模式;
@@ -448,6 +452,8 @@ void EpdSsd1683::RunRefresh(bool full_refresh) {
         partial_since_full_ = 0;
         ESP_LOGI(kTag, "refresh done full=1 elapsed_ms=%lld",
                  static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
+        SLATE_TIMING_LOG(kTag, "refresh_done path=full elapsed_us=%lld",
+                         static_cast<long long>(esp_timer_get_time() - start_us));
         return;
     }
 
@@ -455,6 +461,8 @@ void EpdSsd1683::RunRefresh(bool full_refresh) {
     EpdDisplayPartial();
     ESP_LOGI(kTag, "refresh done full=0 partial_count=%d elapsed_ms=%lld", partial_since_full_,
              static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
+    SLATE_TIMING_LOG(kTag, "refresh_done path=partial elapsed_us=%lld",
+                     static_cast<long long>(esp_timer_get_time() - start_us));
 }
 
 void EpdSsd1683::FinishRefreshSnapshot() {
@@ -485,6 +493,7 @@ void EpdSsd1683::RefreshTaskLoop() {
             break;
 
         DebounceRefreshNotify();
+        SLATE_TIMING_LOG(kTag, "refresh_task_start");
 
         bool urgent     = false;
         bool force_full = false;

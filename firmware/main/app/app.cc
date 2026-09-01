@@ -39,6 +39,7 @@
 #include "sync/api_client.h"
 #include "sync/sync_service.h"
 #include "utils/time_utils.h"
+#include "utils/timing_trace.h"
 #include "xiaozhi/service/audio_service.h"
 #include "xiaozhi/service/xiaozhi_service.h"
 
@@ -343,6 +344,7 @@ void App::AttachInputs() {
     ESP_LOGD(kTag, "input attach");
     auto post_button = [](UiEventKind kind, ButtonId b) {
         return [kind, b]() {
+            SLATE_TIMING_LOG(kTag, "button_event kind=%s btn=%s", evt::log::KindName(kind), evt::log::ButtonName(b));
             ESP_LOGD(kTag, "button event kind=%s btn=%s", evt::log::KindName(kind), evt::log::ButtonName(b));
             evt::PostButton(kind, b);
         };

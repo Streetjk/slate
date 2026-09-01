@@ -4,7 +4,12 @@
 #include <freertos/task.h>
 
 #include "drivers/display/framebuffer_ops.h"
+#include "utils/timing_trace.h"
 #include "utils/time_utils.h"
+
+namespace {
+constexpr char kTag[] = "epd";
+}
 
 void EpdSsd1683::EpdInit() {
     EpdPowerOn();
@@ -15,7 +20,7 @@ void EpdSsd1683::EpdInit() {
     vTaskDelay(pdMS_TO_TICKS(20));
     gpio_set_level(rst_, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
-    ReadBusy();
+    ReadBusy("init-reset");
     EpdSendCommand(0x00);
     EpdSendData(0x2F);
     EpdSendData(0x2E);
@@ -35,7 +40,7 @@ void EpdSsd1683::ApplyTemperatureBoost() {
         booster = cached_booster_;
     } else {
         EpdSendCommand(0x40);
-        ReadBusy();
+        ReadBusy("temperature");
         const uint8_t temp = EpdRecvData();
         // 5 档:≤5°C 用 -24°C 偏置(0xE8),≤10 用 -21,≤20 用 -18,≤30 用 -15,
         // ≤127 用 -12;>127(寄存器异常)按最冷处理。
@@ -68,10 +73,12 @@ void EpdSsd1683::EpdDisplayFull() {
 
     ApplyTemperatureBoost();
     EpdSendCommand(0xA5);  // Master Activation:加载 LUT(full 模式必需)
-    ReadBusy();
+    ReadBusy("full-master");
     vTaskDelay(pdMS_TO_TICKS(10));
 
     EpdSendCommand(0x10);
+    const int64_t transfer_start_us = esp_timer_get_time();
+    SLATE_TIMING_LOG(kTag, "spi_frame_start path=full bytes=%d", bpr_out * kHeight);
     for (int y = 0; y < kHeight; ++y) {
         const uint8_t* src = snapshot_ + y * bpr;
         uint8_t*       dst = line;
@@ -83,6 +90,8 @@ void EpdSsd1683::EpdDisplayFull() {
         }
         WriteBytes(line, bpr_out);
     }
+    SLATE_TIMING_LOG(kTag, "spi_frame_end path=full bytes=%d elapsed_us=%lld", bpr_out * kHeight,
+                     static_cast<long long>(esp_timer_get_time() - transfer_start_us));
     EpdTurnOnDisplay();
 }
 
@@ -99,7 +108,9 @@ void EpdSsd1683::EpdDisplayPartial() {
     // 参考 esp32-eink/.../custom_lcd_display.cc:1135 EPD_DisplayPart 同样不写 booster。
 
     EpdSendCommand(0x10);
-    ReadBusy();  // 跟参考实现对齐:0x10 之后等 BUSY 回 HIGH
+    ReadBusy("partial-load");  // 跟参考实现对齐:0x10 之后等 BUSY 回 HIGH
+    const int64_t transfer_start_us = esp_timer_get_time();
+    SLATE_TIMING_LOG(kTag, "spi_frame_start path=partial bytes=%d", bpr_out * kHeight);
     for (int y = 0; y < kHeight; ++y) {
         const uint8_t* prev = prev_snapshot_ + y * bpr;
         const uint8_t* now  = snapshot_ + y * bpr;
@@ -108,18 +119,20 @@ void EpdSsd1683::EpdDisplayPartial() {
         }
         WriteBytes(line, bpr_out);
     }
+    SLATE_TIMING_LOG(kTag, "spi_frame_end path=partial bytes=%d elapsed_us=%lld", bpr_out * kHeight,
+                     static_cast<long long>(esp_timer_get_time() - transfer_start_us));
     EpdTurnOnDisplay();
 }
 
 void EpdSsd1683::EpdTurnOnDisplay() {
     EpdSendCommand(0x04);  // power on
-    ReadBusy();
+    ReadBusy("power-on");
     EpdSendCommand(0x12);  // display refresh
     EpdSendData(0x00);
-    ReadBusy();
+    ReadBusy("display-refresh");
     EpdSendCommand(0x02);  // power off (controller internal)
     EpdSendData(0x00);
-    ReadBusy();
+    ReadBusy("power-off");
     // 跟参考实现对齐:每次刷完屏都断 GPIO6,跟刷新前的 EpdInit() 内 EpdPowerOn 配对。
     // 见 esp32-eink/main/boards/zectrix-s3-epaper-4.2/custom_lcd_display.cc:826。
     EpdPowerOff();

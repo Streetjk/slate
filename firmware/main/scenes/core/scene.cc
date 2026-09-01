@@ -5,6 +5,7 @@
 
 #include "drivers/display/epd_ssd1683.h"
 #include "ui/status_bar.h"
+#include "utils/timing_trace.h"
 
 namespace {
 constexpr char kTag[]        = "scene";
@@ -67,8 +68,10 @@ bool Scene::SyncRender(SceneContext& ctx, std::function<void()> before_refresh, 
     }
     if (before_refresh)
         before_refresh();
+    SLATE_TIMING_LOG(kTag, "ui_invalidation scene=%s force_full=%d", Name(), force_full ? 1 : 0);
     ESP_LOGD(kTag, "lvgl refresh begin scene=%s", Name());
     lv_refr_now(NULL);
+    SLATE_TIMING_LOG(kTag, "lvgl_flush_return scene=%s", Name());
     ESP_LOGD(kTag, "lvgl refresh done scene=%s", Name());
     ctx.epd->Unlock();
     if (force_full)
@@ -97,8 +100,10 @@ bool Scene::SyncRenderIfChanged(SceneContext& ctx, std::function<bool()> update,
     }
     const bool changed = update ? update() : false;
     if (changed) {
+        SLATE_TIMING_LOG(kTag, "ui_invalidation scene=%s force_full=%d changed_only=1", Name(), force_full ? 1 : 0);
         ESP_LOGD(kTag, "lvgl refresh begin scene=%s", Name());
         lv_refr_now(NULL);
+        SLATE_TIMING_LOG(kTag, "lvgl_flush_return scene=%s changed_only=1", Name());
         ESP_LOGD(kTag, "lvgl refresh done scene=%s", Name());
     }
     ctx.epd->Unlock();

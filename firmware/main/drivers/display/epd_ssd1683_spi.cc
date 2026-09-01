@@ -7,6 +7,7 @@
 #include <freertos/task.h>
 
 #include "bsp/config.h"
+#include "utils/timing_trace.h"
 #include "utils/gpio_util.h"
 #include "utils/time_utils.h"
 
@@ -121,12 +122,13 @@ void EpdSsd1683::SpiGpioInit() {
     gpio_set_level(cs_, 1);  // CS 默认拉高(SPI device 不被选中)
 }
 
-void EpdSsd1683::ReadBusy() {
+void EpdSsd1683::ReadBusy(const char* stage) {
     // 5s 超时兜底:屏挂死/带线松了不会让 refresh task 永久阻塞。
     // 正常 full 刷 ~3s,partial ~1s,5s 留足余量。超时直接 panic 重启,
     // 比挂死 + WDT 复位更可控,日志也更明确。
     constexpr int64_t kBusyTimeoutMs = 5000;
     const int64_t     start_ms       = time_utils::NowMs();
+    SLATE_TIMING_LOG(kTag, "busy_start stage=%s", stage ? stage : "unknown");
     while (gpio_get_level(busy_) == 0) {
         vTaskDelay(pdMS_TO_TICKS(5));
         if (time_utils::NowMs() - start_ms > kBusyTimeoutMs) {
@@ -134,6 +136,8 @@ void EpdSsd1683::ReadBusy() {
             esp_restart();
         }
     }
+    SLATE_TIMING_LOG(kTag, "busy_done stage=%s elapsed_ms=%lld", stage ? stage : "unknown",
+                     static_cast<long long>(time_utils::NowMs() - start_ms));
 }
 
 void EpdSsd1683::EpdSendCommand(uint8_t c) {
