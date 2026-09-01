@@ -5,9 +5,9 @@ Integration branch: `integration/note4-custom`
 Last known good SHA: `948934c9211709fc2bc29d0a8435181ae1ca2814` (custom backend runtime fix deployed healthy on Orange Pi; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
 Campaign instructions SHA: `9ef57b70e3143ca39c1783acf1603ce1f3893cd8`
 
-Current campaign: Campaign 6C — Orange Pi backend deployment
-Current stage: Phase O4 — NOTE4 LAN connection handoff after O3 backend verification
-Current status: PASS through O3 — custom ARM64 backend and MySQL are healthy and reachable at `http://192.168.50.108:3001`; NOTE4 physical connection/validation remains pending
+Current campaign: Campaign 6D — NOTE4 E-Ink refresh optimization
+Current stage: Phase D0 — pair and establish physical refresh baseline
+Current status: BLOCKED — no NOTE4 USB serial device is detected on macOS; pairing completion and physical baseline measurements are unverified
 
 Completed campaigns:
 
@@ -51,6 +51,7 @@ Completed campaigns:
   - Final deterministic regression and exact ESP-IDF Docker build passed; final AGY high-effort adversarial review passed with two deferred P3 operational observations.
   - Hardware flashing, physical NOTE4 flows, and live personal OAuth consent remain pending human action.
 - Campaign 6C — Orange Pi backend deployment: PASS through O3; custom ARM64 Slate backend and MySQL are healthy at `http://192.168.50.108:3001`; O4 NOTE4 device handoff remains pending human action.
+- Campaign 6D — E-Ink refresh optimization: D0 BLOCKED; no physical NOTE4 serial device detected, no firmware changes or flash attempted.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -84,6 +85,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: after the human enters the server address and reconnects the NOTE4, resume the Campaign 6 physical validation matrix; do not begin Airtable/Gantt.
+Next automatic action: after the human reconnects NOTE4 USB and completes pairing if necessary, resume D0 physical timing baseline; do not begin Airtable/Gantt or change refresh behavior before baseline evidence.
 
-Human action required: YES — enter `http://192.168.50.108:3001` in NOTE4 and perform physical validation; OAuth consent/checks remain pending afterward.
+Human action required: YES — reconnect the NOTE4 USB serial device and, if needed, enter its transient Add Device code at `http://192.168.50.108:3001`; physical baseline and OAuth checks remain pending afterward.
