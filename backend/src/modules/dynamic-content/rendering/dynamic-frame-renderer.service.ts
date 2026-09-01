@@ -16,6 +16,7 @@ import { renderFontTestFrame } from './font-test-frame-renderer';
 import { renderHotListFrame } from './hot-list-frame-renderer';
 import { renderWeatherAlertFrame, renderWeatherFrame } from './weather-frame-renderer';
 import { renderBtcPriceFrame } from './btc-price-frame-renderer';
+import { renderOutlookCalendarFrame } from '../outlook/outlook-calendar-frame-renderer';
 
 export type { DynamicRenderContext } from './dynamic-render-context';
 
@@ -63,6 +64,9 @@ export class DynamicFrameRendererService {
         break;
       case 'btc_price':
         renderBtcPriceFrame(c, fonts, ctx, this.drawKit);
+        break;
+      case 'outlook_calendar':
+        renderOutlookCalendarFrame(c, fonts, ctx, this.drawKit);
         break;
       default:
         this.renderFallback(c, fonts, `Unknown dynamic type ${ctx.type}`);
