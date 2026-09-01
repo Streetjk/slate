@@ -2,20 +2,32 @@ import { describe, expect, test } from 'bun:test';
 import {
   AssistantRequest,
   AssistantResponse,
-  AssistantToolName,
   AssistantToolRequest,
   AssistantToolResult,
   CalendarEvent,
+  GetBtcPriceToolInput,
   PricePoint,
   PriceSeries,
+  ProposeGoogleCalendarEventToolInput,
   ProposedCalendarEvent,
+  TTS_VOICE_LABELS,
+  TTS_VOICES,
   VoiceTranscript,
+  WebSearchToolInput,
 } from '../src/types/integrations.js';
+import { TTS_VOICE_LABELS, TTS_VOICES } from '../src/dynamic/config.js';
 
 const timedStart = '2026-09-04T15:00:00+08:00';
 const timedEnd = '2026-09-04T16:00:00+08:00';
 
 describe('shared integration contracts', () => {
+  test('keeps user-facing TTS labels in English while preserving provider IDs', () => {
+    expect(Object.keys(TTS_VOICE_LABELS).sort()).toEqual([...TTS_VOICES].sort());
+    expect(Object.values(TTS_VOICE_LABELS).every((label) => !/[\u3400-\u9fff]/u.test(label))).toBe(
+      true
+    );
+  });
+
   test('accepts a normalized BTC price series', () => {
     const result = PriceSeries.safeParse({
       symbol: 'BTC/USD',
@@ -144,11 +156,57 @@ describe('shared integration contracts', () => {
       }).success
     ).toBe(false);
 
-    for (const name of AssistantToolName.options) {
-      expect(
-        AssistantToolRequest.safeParse({ callId: `call-${name}`, name, input: {} }).success
-      ).toBe(true);
-    }
+    expect(
+      AssistantToolRequest.safeParse({
+        callId: 'call-search',
+        name: 'web_search',
+        input: { query: 'BTC price', language: 'en', maxResults: 5 },
+      }).success
+    ).toBe(true);
+    expect(
+      AssistantToolRequest.safeParse({
+        callId: 'call-btc',
+        name: 'get_btc_price',
+        input: { period: 'weekly' },
+      }).success
+    ).toBe(true);
+    expect(
+      AssistantToolRequest.safeParse({
+        callId: 'call-calendar',
+        name: 'propose_google_calendar_event',
+        input: {
+          title: 'Dentist',
+          start: timedStart,
+          end: timedEnd,
+          allDay: false,
+          timezone: 'Australia/Perth',
+        },
+      }).success
+    ).toBe(true);
+
+    expect(
+      WebSearchToolInput.safeParse({
+        query: 'latest BTC news',
+        url: 'https://outlook.office.com',
+      }).success
+    ).toBe(false);
+    expect(GetBtcPriceToolInput.safeParse({ period: 'hourly' }).success).toBe(false);
+    expect(
+      ProposeGoogleCalendarEventToolInput.safeParse({
+        title: 'Dentist',
+        start: timedStart,
+        end: timedEnd,
+        allDay: false,
+        body: 'read Outlook',
+      }).success
+    ).toBe(false);
+    expect(
+      AssistantToolRequest.safeParse({
+        callId: 'call-outlook-injection',
+        name: 'web_search',
+        input: { query: 'x', body: 'https://graph.microsoft.com/v1.0/me/events' },
+      }).success
+    ).toBe(false);
 
     expect(
       AssistantResponse.parse({

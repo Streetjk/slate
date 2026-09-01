@@ -92,7 +92,9 @@ export const CalendarEvent = CalendarEventFields.extend({
 }).superRefine(validateCalendarEventBounds);
 export type CalendarEventT = z.infer<typeof CalendarEvent>;
 
-export const ProposedCalendarEvent = CalendarEventFields.superRefine(validateCalendarEventBounds);
+export const ProposedCalendarEvent = CalendarEventFields.strict().superRefine(
+  validateCalendarEventBounds
+);
 export type ProposedCalendarEventT = z.infer<typeof ProposedCalendarEvent>;
 
 export const VoiceLanguage = z.enum(['en', 'ja']);
@@ -123,11 +125,42 @@ export const AssistantToolName = z.enum([
 ]);
 export type AssistantToolNameT = z.infer<typeof AssistantToolName>;
 
-export const AssistantToolRequest = z.object({
-  callId: z.string().trim().min(1).max(128),
-  name: AssistantToolName,
-  input: z.record(z.string(), z.unknown()),
-});
+const ToolCallId = z.string().trim().min(1).max(128);
+
+export const WebSearchToolInput = z
+  .object({
+    query: z.string().trim().min(1).max(2048),
+    language: VoiceLanguage.optional(),
+    maxResults: z.number().int().min(1).max(10).optional(),
+  })
+  .strict();
+export type WebSearchToolInputT = z.infer<typeof WebSearchToolInput>;
+
+export const GetBtcPriceToolInput = z
+  .object({
+    period: PricePeriod.default('daily'),
+  })
+  .strict();
+export type GetBtcPriceToolInputT = z.infer<typeof GetBtcPriceToolInput>;
+
+export const ProposeGoogleCalendarEventToolInput = ProposedCalendarEvent;
+export type ProposeGoogleCalendarEventToolInputT = z.infer<
+  typeof ProposeGoogleCalendarEventToolInput
+>;
+
+export const AssistantToolRequest = z.discriminatedUnion('name', [
+  z.object({ callId: ToolCallId, name: z.literal('web_search'), input: WebSearchToolInput }),
+  z.object({
+    callId: ToolCallId,
+    name: z.literal('propose_google_calendar_event'),
+    input: ProposeGoogleCalendarEventToolInput,
+  }),
+  z.object({
+    callId: ToolCallId,
+    name: z.literal('get_btc_price'),
+    input: GetBtcPriceToolInput,
+  }),
+]);
 export type AssistantToolRequestT = z.infer<typeof AssistantToolRequest>;
 
 export const AssistantToolResult = z
