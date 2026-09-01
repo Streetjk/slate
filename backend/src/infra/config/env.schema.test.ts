@@ -36,4 +36,16 @@ describe('EnvSchema', () => {
 
     expect(parsed.DB_ALLOW_PUBLIC_KEY_RETRIEVAL).toBe(false);
   });
+
+  it('accepts a 32-byte token encryption key and rejects shorter keys', () => {
+    expect(
+      EnvSchema.safeParse({
+        ...baseEnv,
+        TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+      }).success
+    ).toBe(true);
+    expect(EnvSchema.safeParse({ ...baseEnv, TOKEN_ENCRYPTION_KEY: 'too-short' }).success).toBe(
+      false
+    );
+  });
 });
