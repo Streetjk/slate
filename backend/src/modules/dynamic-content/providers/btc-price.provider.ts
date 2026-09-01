@@ -55,15 +55,9 @@ export class BtcPriceProvider implements DataProvider<BtcPriceConfigT, PriceSeri
     const key = `BTC-USD:${config.period}`;
     const now = ctx.now.getTime();
     const ttlSec = Math.max(config.refresh_interval_sec ?? DEFAULT_PROVIDER_CACHE_TTL_SEC, 300);
-    return this.fetcher.getOrFetch(key, now, ttlSec * 1000, async () => {
-      try {
-        return await this.fetchFresh(config.period, ctx.now);
-      } catch (error) {
-        const fallback = fallbackSeries(config, ctx.lastData);
-        if (fallback) return fallback;
-        throw error;
-      }
-    });
+    return this.fetcher.getOrFetch(key, now, ttlSec * 1000, () =>
+      this.fetchFresh(config.period, ctx.now)
+    );
   }
 
   private async fetchFresh(period: PricePeriodT, now: Date): Promise<PriceSeriesT> {
@@ -116,7 +110,9 @@ export function normalizeCoinbaseCandles(candles: unknown): PriceSeriesT['points
     const timestamp = parseFiniteNumber(candle[0]);
     const close = parseFiniteNumber(candle[4]);
     if (timestamp === null || close === null || timestamp <= 0 || close < 0) return [];
-    return [{ timestamp: new Date(timestamp * 1000).toISOString(), priceUsd: close }];
+    const date = new Date(timestamp * 1000);
+    if (!Number.isFinite(date.getTime())) return [];
+    return [{ timestamp: date.toISOString(), priceUsd: close }];
   });
   const unique = new Map(points.map((point) => [point.timestamp, point]));
   return [...unique.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
@@ -126,12 +122,4 @@ function parseFiniteNumber(value: unknown): number | null {
   const parsed =
     typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function fallbackSeries(config: BtcPriceConfigT, lastData: unknown): PriceSeriesT | null {
-  const parsed = PriceSeries.safeParse(lastData);
-  if (!parsed.success || parsed.data.symbol !== 'BTC/USD' || parsed.data.period !== config.period) {
-    return null;
-  }
-  return parsed.data;
 }
