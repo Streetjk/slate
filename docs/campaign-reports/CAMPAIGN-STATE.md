@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `7dd15c310c9d5b8e8da0159e3ef9cfeaee95b4da` (Campaign 6D D1 candidate; deterministic gates pass; no optimized artifact flashed)
+Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 8A routing candidate; deterministic gates and AGY routing review pass; firmware not flashed)
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
-Current campaign: Campaign 6D — NOTE4 E-Ink refresh optimization
-Current stage: D1 second-pass windowed partial candidate built
-Current status: HUMAN_BOUNDARY_PENDING — candidate source `7dd15c310c9d5b8e8da0159e3ef9cfeaee95b4da` passed deterministic tests and exact ESP-IDF 5.5.2/esp32s3 build. Full image SHA-256 is `1d3e9c90b7a3082df3727796ebe959b6c33ba2054f2f87114176227a4dcee1ea`; app SHA-256 is `3d5e226d55686466deba9860f64713bdefd92eaa8ded9050d3749efb2b250841`. It has not been flashed. AGY medium review returned no response within 3 minutes, so no independent PASS is claimed. D0 physical baseline remains the only physical timing dataset.
+Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
+Current stage: 8B backend candidate deployment
+Current status: BLOCKED_HUMAN_DOCKER_RECOVERY — candidate image is built and the known-good rollback is preserved, but Orange Pi Docker operations hang on a stale builder snapshot. Current production containers remain healthy and compose was restored to the known-good image. No firmware was flashed.
 
 Completed campaigns:
 
@@ -76,8 +76,9 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
+- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8A routing candidate; backend deployment pending Docker daemon recovery.
 
-Last test status: PASS — D1 host window/packing test, format, lint, typecheck, 270 backend tests, frontend build, and exact ESP-IDF `v5.5.2`/`esp32s3` build plus merged artifact all passed. D0 diagnostic app SHA-256 remains `a22b1e00da653abc5faad29f1d561c72859a2e3f6fc7d1de22b56ca4e2467506`; no D1 artifact was flashed.
+Last test status: PASS for the existing Campaign 8A candidate — 273 backend tests, 6 shared tests, format, lint, typecheck, frontend build, exact ESP-IDF `v5.5.2`/`esp32s3` build, merged firmware artifacts, and AGY high routing review. Backend deployment validation is pending Docker daemon recovery; candidate endpoint tests have not been claimed.
 Last AGY verdict: `BLOCKED_EXTERNAL_REVIEW` — D1 `gemini-3.7-flash-medium` read-only review request timed out without output. Previous Campaign 5 high-effort PASS remains historical and does not review D1.
 
 External review gate:
@@ -105,6 +106,34 @@ OPTIMIZED_FIRMWARE_FLASHED=NO
 PHYSICAL_D1_MEASUREMENTS=NOT_RUN
 AGY_D1_REVIEW=BLOCKED_EXTERNAL_REVIEW_NO_RESPONSE
 READY_FOR_OPTIMIZED_FLASH=NO
+```
+
+## Campaign 8B — Slate Voice Backend Deployment Checkpoint
+
+```text
+CAMPAIGN=8B
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=BLOCKED_DOCKER_DAEMON_RECOVERY
+CURRENT_DEPLOYED_SOURCE=948934c9211709fc2bc29d0a8435181ae1ca2814
+CURRENT_DEPLOYED_IMAGE=slate-note4:campaign5-runtime-fix-948934c
+ROLLBACK_IMAGE=slate-note4:rollback-before-campaign8-948934c
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+CANDIDATE_BACKEND_SOURCE=121622c3bd1d23587b4aadb3a079ec85d2052278
+CANDIDATE_IMAGE_ID=sha256:f24a88f4b91766eba7d2e3a4843bb99226026e27eabda8460fa65f3e36dcf41f
+CANDIDATE_IMAGE_DEPLOYED=NO
+SLATE_HEALTH_CURRENT_IMAGE=PASS
+MYSQL_HEALTH_CURRENT_IMAGE=PASS
+PUBLIC_HEALTH_CANDIDATE=NOT_RUN
+NOTE4_POLLING_CANDIDATE=NOT_RUN
+VOICE_CONFIG_AUTH_TEST=NOT_RUN_CANDIDATE_NOT_DEPLOYED
+DISK_FREE_BYTES_APPROX=552000000
+PERSISTENT_DATA_CHANGED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=NO
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION=ssh note4-orangepi; sudo systemctl restart docker
+NEXT_ACTION=RESUME_BACKEND_DEPLOYMENT_AFTER_DOCKER_RECOVERY
 ```
 
 ## Campaign 6D D0 Reconciliation

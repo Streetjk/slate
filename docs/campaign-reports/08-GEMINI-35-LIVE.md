@@ -314,3 +314,55 @@ PR1_TOUCHED=NO
 ```
 
 The candidate has not been flashed or physically re-tested. The next action is human authorization to flash exactly the artifact/hash above using the existing factory-backup and rollback procedure, followed by physical Slate voice E2E validation. No vendor account or activation code should be entered.
+
+## Campaign 8B — Slate Voice Backend Deployment Checkpoint
+
+Date: 2026-09-02 (Australia/Perth)
+Status: BLOCKED_DOCKER_DAEMON_RECOVERY — no firmware flash authorized or performed
+
+### Deployment evidence
+
+- Target: `note4-orangepi` (`192.168.50.108`), deployment directory `/home/pi/slate-note4-deploy`.
+- Current production source: `948934c9211709fc2bc29d0a8435181ae1ca2814`.
+- Current production image: `slate-note4:campaign5-runtime-fix-948934c`.
+- Preserved rollback tag: `slate-note4:rollback-before-campaign8-948934c`.
+- Rollback image ID: `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
+- Candidate backend source: `121622c3bd1d23587b4aadb3a079ec85d2052278`.
+- Candidate runtime delta is limited to `backend/src/modules/devices/device-firmware.controller.ts`; firmware and production Gemini settings are unchanged.
+- Candidate ARM64 image was built locally from the preserved production image: `sha256:f24a88f4b91766eba7d2e3a4843bb99226026e27eabda8460fa65f3e36dcf41f`.
+- Candidate image was not loaded or started on Orange Pi. The remote compose file was restored to the known-good image.
+
+### Deterministic and host checks
+
+- Local candidate image architecture: `linux/arm64`; image size `1006537577` bytes.
+- Candidate controller hash inside image: `bdac7b3a68f1e0e28100fdb54b9b8f9f37987952ac9146df4281a1583860e6ac`.
+- `slate-note4` and `slate-note4-mysql` remain running and healthy.
+- Current local `/healthz`: PASS (`{"status":"ok"}`).
+- Persistent mounts and production `.env` were not changed; no firmware was flashed.
+- Remote root filesystem: `/dev/mmcblk1p1`, 14G total, 14G used, 552M available, 97% used at final check.
+- Public Funnel, authenticated device polling, and candidate voice-config endpoint were not revalidated because the candidate was not deployed; no candidate production result is claimed.
+
+### Blocker and required recovery
+
+The Orange Pi Docker daemon retained a stale BuildKit/legacy-builder snapshot after failed disposable candidate-build/load attempts. Remote image/build operations hang before modifying the running containers. Non-interactive sudo is unavailable, so safe daemon recovery requires the operator to run:
+
+```text
+ssh note4-orangepi
+sudo systemctl restart docker
+```
+
+After Docker recovery, re-verify both containers, persistent mounts, the rollback tag, and disk space before deploying the candidate. Do not flash the NOTE4 until the candidate backend endpoint and WebSocket authentication checks pass.
+
+### Current flash boundary
+
+```text
+FIRMWARE_SOURCE_SHA=121622c3bd1d23587b4aadb3a079ec85d2052278
+CUSTOM_FULL_IMAGE_SHA256=eba9427558bf08eb387894bb1feac2da5ec1d0b2ab8c8785285251d65afe33
+CUSTOM_APP_IMAGE_SHA256=95ddf7e41c3dbb3aafb7d983708ccf39c131d68a89eac7f000c48adb5e99c9d4
+ROLLBACK_SOURCE_SHA=bca05819e2cccc5cfdc128d82ffda052b3913412
+ROLLBACK_FULL_IMAGE_SHA256=522f189bd36ea9b19cfe6767d70ea00c87c909d7e98ae4c8e1b7015430a1b41c
+ROLLBACK_APP_IMAGE_SHA256=e880386b0155780389469c2895177528959a81c46f2fe44b411668ac184062b9
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=NO
+NEXT_ACTION=HUMAN_DOCKER_RECOVERY_THEN_RESUME_BACKEND_DEPLOYMENT
+```
