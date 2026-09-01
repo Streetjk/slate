@@ -2,7 +2,7 @@
 
 Stage: Campaign 6E — Public HTTPS + roaming connectivity
 Date: 2026-09-01 (Australia/Perth)
-Status: BLOCKED at E1 human authorization boundary; E0 PASS
+Status: E0/E1/E2 PASS; E3 HUMAN_PENDING at provider OAuth boundary
 
 ## Repository State
 
@@ -113,6 +113,59 @@ The non-root attempt correctly returned that the serve configuration is denied
 and must be run with sudo. The sudo attempt stopped at the human boundary:
 `sudo: a password is required`. No Funnel configuration was created.
 
+## E2–E3 Continuation Evidence
+
+The user subsequently enabled Funnel on `note4-orangepi`. The verified
+configuration is:
+
+```text
+orangepi5.tail6aabef.ts.net:443 /
+  -> http://127.0.0.1:3001
+```
+
+`tailscale funnel status --json` reports HTTPS on 443, the root proxy above,
+and `AllowFunnel: true`. Tailscale remains online and `tailscaled` is enabled
+and active. The background Funnel configuration was observed from separate SSH
+sessions. An actual Orange Pi reboot was not performed, so reboot survival is
+not claimed as a hardware-tested result.
+
+Public verification from the Mac:
+
+- DNS: `orangepi5.tail6aabef.ts.net` resolved to `100.98.54.118`.
+- `curl https://orangepi5.tail6aabef.ts.net/healthz`: HTTP/2 200 with
+  `application/json` and valid certificate verification.
+- `curl https://orangepi5.tail6aabef.ts.net/`: HTTP/2 200,
+  `text/html; charset=utf-8`, 1451 bytes.
+- Certificate subject: `orangepi5.tail6aabef.ts.net`; issuer Let's Encrypt
+  `YE1`; validity observed 2026-09-01 through 2026-11-30.
+- HTTP port 80 did not accept a connection; no HTTP downgrade was observed.
+- Public WebSocket `wss://orangepi5.tail6aabef.ts.net/api/v1/voice/websocket`
+  completed the upgrade and closed with code `1008` / reason
+  `device authentication failed` when no device secret was supplied. This
+  verifies the public upgrade path and authentication gate without exposing a
+  credential or starting a device session.
+- Port 8443 was not configured. MySQL remains without a host-published port.
+- Direct `http://orangepi5.tail6aabef.ts.net:3001` was reachable from the
+  Mac's Tailscale/LAN context because the existing Compose binding is
+  `0.0.0.0:3001`; this is not the public Funnel listener and no Internet route
+  or router port-forward was added. The public Internet endpoint is HTTPS on
+  443 only.
+
+The exact callback route shapes are present in source and are reachable on the
+public HTTPS host (malformed requests return the existing application error):
+
+```text
+https://orangepi5.tail6aabef.ts.net/api/v1/integrations/google/calendar/callback
+https://orangepi5.tail6aabef.ts.net/api/v1/integrations/microsoft/calendar/callback
+```
+
+The deployed environment currently has neither redirect variable set, and no
+client IDs/secrets were read or changed. E3 therefore stops at the provider
+account boundary. The user must register the exact redirect URIs in the Google
+and Microsoft provider consoles and enter any required values directly into
+the Orange Pi's mode-600 deployment environment. Do not send credentials in
+chat, commit them, or put them in this report.
+
 ## Files Changed
 
 - `docs/campaign-reports/06E-PUBLIC-HTTPS-ROAMING.md` — this E0/E1 evidence
@@ -219,10 +272,12 @@ provider credentials in Git or reports.
 
 ## Final Stage Verdict
 
-NOT READY — E0 is READY; E1/E2 await the minimal human root authorization.
+NOT READY — E0, E1, and E2 are PASS; E3 is HUMAN_PENDING for provider-console
+redirect registration and interactive OAuth consent. E4 physical NOTE4 URL
+migration and valid-device/off-LAN tests remain pending.
 
-START_SHA=`dd18b72e95831e8972d5c0528574aa483b96ada5`
-END_SHA=`dd18b72e95831e8972d5c0528574aa483b96ada5` (no product changes)
+START_SHA=`248c974d717519f9e0987349ba85124f90a10751`
+END_SHA=`248c974d717519f9e0987349ba85124f90a10751` (no product changes)
 E0_DISK_BEFORE=`/dev/mmcblk1p1 14G, 13G used, 508M free, 97%`
 E0_DOCKER_USAGE_BEFORE=`3 images / 3.606GB; builder cache approximately 2.826GB`
 E0_RUNNING_SLATE_IMAGE=`slate-note4:campaign5-runtime-fix-948934 @ sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`
@@ -235,22 +290,22 @@ E0_MYSQL_HEALTH=PASS
 TAILSCALE_VERSION=`1.102.2`
 TAILSCALE_LOGGED_IN=YES
 TAILSCALE_HOSTNAME=`orangepi5.tail6aabef.ts.net`
-FUNNEL_AVAILABLE=UNKNOWN — CLI installed; tailnet policy approval not tested because sudo was required first
+FUNNEL_AVAILABLE=YES
 PUBLIC_SURFACE_SECURITY=PASS
-FUNNEL_ENABLED=NO
-PUBLIC_HTTPS_HEALTHZ=NOT_RUN
-PUBLIC_WEB_UI=NOT_RUN
-PUBLIC_WEBSOCKET=NOT_RUN
-FUNNEL_REBOOT_PERSISTENCE=NOT_RUN
-NOTE4_PUBLIC_SERVER_ADDRESS=NOT SET
-GOOGLE_REDIRECT_URI=`https://<verified-funnel-host>/api/v1/integrations/google/calendar/callback` (provider registration not changed)
-MICROSOFT_REDIRECT_URI=`https://<verified-funnel-host>/api/v1/integrations/microsoft/calendar/callback` (provider registration not changed)
-GOOGLE_OAUTH_LIVE=NOT_RUN
-MICROSOFT_OAUTH_LIVE=NOT_RUN
-NOTE4_PUBLIC_URL_MIGRATED=NO
-OFF_LAN_DEVICE_TEST=NOT_RUN
+FUNNEL_ENABLED=YES
+PUBLIC_HTTPS_HEALTHZ=PASS
+PUBLIC_WEB_UI=PASS
+PUBLIC_WEBSOCKET=PASS — upgrade reached gateway; unauthenticated close 1008 as designed
+FUNNEL_REBOOT_PERSISTENCE=NOT_RUN — background config and enabled Tailscale service verified; no reboot performed
+NOTE4_PUBLIC_SERVER_ADDRESS=`https://orangepi5.tail6aabef.ts.net`
+GOOGLE_REDIRECT_URI=`https://orangepi5.tail6aabef.ts.net/api/v1/integrations/google/calendar/callback` (provider registration HUMAN_PENDING)
+MICROSOFT_REDIRECT_URI=`https://orangepi5.tail6aabef.ts.net/api/v1/integrations/microsoft/calendar/callback` (provider registration HUMAN_PENDING)
+GOOGLE_OAUTH_LIVE=HUMAN_PENDING
+MICROSOFT_OAUTH_LIVE=HUMAN_PENDING
+NOTE4_PUBLIC_URL_MIGRATED=HUMAN_PENDING
+OFF_LAN_DEVICE_TEST=HUMAN_PENDING
 MULTI_WIFI_DESIGN=DEFERRED
 MULTI_WIFI_IMPLEMENTED=NO
-HUMAN_ACTION_REQUIRED=`Run the sudo Funnel command on note4-orangepi; no password/token should be shared`
-BLOCKER=`SSH user pi lacks passwordless root permission to configure Tailscale Funnel`
-NEXT_ACTION=`Human runs sudo tailscale funnel --bg --yes http://127.0.0.1:3001, then resume E2 verification`
+HUMAN_ACTION_REQUIRED=`Register the exact Google/Microsoft HTTPS callbacks, complete consent without sharing credentials, then perform NOTE4 server_url migration through the supported UI`
+BLOCKER=`Provider-console redirect registration and interactive OAuth consent are required before E3 live validation; physical NOTE4 URL migration is required for device roaming`
+NEXT_ACTION=`After provider setup, resume E3 live callback checks, then E4 physical NOTE4 public server-address migration; do not flash firmware`

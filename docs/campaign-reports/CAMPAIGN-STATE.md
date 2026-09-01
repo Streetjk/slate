@@ -6,8 +6,8 @@ Last known good SHA: `948934c9211709fc2bc29d0a8435181ae1ca2814` (custom backend 
 Campaign instructions SHA: `9ef57b70e3143ca39c1783acf1603ce1f3893cd8`
 
 Current campaign: Campaign 6E — Public HTTPS + roaming connectivity
-Current stage: Phase E1 — Tailscale Funnel root authorization boundary
-Current status: BLOCKED — E0 disk/cache hygiene passed; Funnel configuration requires a sudo-authorized Orange Pi session. Campaign 6D remains independently blocked on the physical NOTE4 USB/baseline and was not altered.
+Current stage: Phase E3 — OAuth callback/provider-account human boundary
+Current status: HUMAN_BOUNDARY — E0 disk/cache hygiene, E1 public-surface audit, and E2 HTTPS Funnel verification passed. Provider-console redirect registration and interactive OAuth consent are required; Campaign 6D remains independently blocked on the physical NOTE4 USB/baseline and was not altered.
 
 Completed campaigns:
 
@@ -52,7 +52,7 @@ Completed campaigns:
   - Hardware flashing, physical NOTE4 flows, and live personal OAuth consent remain pending human action.
 - Campaign 6C — Orange Pi backend deployment: PASS through O3; custom ARM64 Slate backend and MySQL are healthy at `http://192.168.50.108:3001`; O4 NOTE4 device handoff remains pending human action.
 - Campaign 6D — E-Ink refresh optimization: D0 BLOCKED; no physical NOTE4 serial device detected, no firmware changes or flash attempted.
-- Campaign 6E — Public HTTPS + roaming connectivity: E0 PASS; Orange Pi Docker cache safely reduced, Slate/MySQL healthy, and public-surface audit completed. E1 is at the human root-authorization boundary; Funnel is not enabled.
+- Campaign 6E — Public HTTPS + roaming connectivity: E0/E1/E2 PASS; Orange Pi Docker cache safely reduced, Slate/MySQL healthy, public surface audited, and Funnel verified at `https://orangepi5.tail6aabef.ts.net` with `/healthz`, SPA, TLS, and WebSocket authentication-gate evidence. E3 is HUMAN_PENDING for provider redirect registration and OAuth consent.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -68,7 +68,7 @@ Deferred campaigns / required later gates:
 - XR-002 BTC D/W/M automatic trio UX: RESOLVED in Campaign 5 through authenticated trio provisioning and existing frame navigation.
 - XR-004 strict per-tool input schemas: RESOLVED in Campaign 4 through static proposal DTO validation and proposal-only voice dispatch.
 - Campaign 6C O4 — human must enter `http://192.168.50.108:3001` in the NOTE4 captive portal and perform the physical validation checklist; live Microsoft/Google OAuth consent remains separate.
-- Campaign 6E E1 — human must run `sudo tailscale funnel --bg --yes http://127.0.0.1:3001` on `note4-orangepi`; do not share the sudo password or any Tailscale credential. After that, resume E2 public HTTPS verification.
+- Campaign 6E E3 — human must register `https://orangepi5.tail6aabef.ts.net/api/v1/integrations/google/calendar/callback` and `https://orangepi5.tail6aabef.ts.net/api/v1/integrations/microsoft/calendar/callback` in the provider consoles, complete any interactive OAuth consent, and enter required secrets directly into the mode-600 Orange Pi environment. Do not share or commit credentials. Then resume E3 live checks and E4 NOTE4 URL migration.
 
 Active feature branches:
 
@@ -87,6 +87,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: after the human performs the one-time sudo Funnel authorization, resume Campaign 6E E2 public HTTPS verification; do not flash firmware, alter Campaign 6D measurements, or begin Airtable/Gantt.
+Next automatic action: after provider redirect registration and consent, resume Campaign 6E E3 live OAuth checks, then E4 public server-address migration through the supported NOTE4 UI; do not flash firmware, alter Campaign 6D measurements, or begin Airtable/Gantt.
 
-Human action required: YES — run `sudo tailscale funnel --bg --yes http://127.0.0.1:3001` on `note4-orangepi`; physical NOTE4 baseline and provider OAuth checks remain separate pending actions.
+Human action required: YES — register the exact HTTPS callbacks and complete provider consent/secure environment setup; later enter the public server address on NOTE4 through its supported UI. Never send credentials in chat or reports.
