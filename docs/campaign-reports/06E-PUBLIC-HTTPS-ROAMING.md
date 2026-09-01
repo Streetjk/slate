@@ -2,14 +2,14 @@
 
 Stage: Campaign 6E — Public HTTPS + roaming connectivity
 Date: 2026-09-01 (Australia/Perth)
-Status: E0/E1/E2 PASS; E3 HUMAN_PENDING at provider OAuth boundary
+Status: E0/E1/E2 PASS; A1-A4 PASS; A0 NOTE4 Server Address migration HUMAN_PENDING at the physical captive-portal boundary
 
 ## Repository State
 
 Repository: `Streetjk/slate`
 Branch: `integration/note4-custom`
 Base SHA: `dd18b72e95831e8972d5c0528574aa483b96ada5`
-Head SHA: `dd18b72e95831e8972d5c0528574aa483b96ada5` before this report commit
+Head SHA: `478653d1c46c449f67b5293c27c863142ef1ccd3` before this report update commit
 Upstream SHA: not changed in this stage
 
 ## Harness
@@ -36,7 +36,7 @@ Slate, and MySQL) and approximately 2.826 GB of builder cache.
 
 The following preservation set was mechanically identified:
 
-- Active Slate image: `slate-note4:campaign5-runtime-fix-948934`,
+- Active Slate image: `slate-note4:campaign5-runtime-fix-948934c`,
   `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
 - Active MySQL image: `mysql:8`,
   `sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb`.
@@ -235,52 +235,160 @@ tests remain unchanged.
 Google Calendar confirmation gate: unchanged; no source/config change.
 Secrets detected: none in changed files or report; `.env` was not read.
 
-Public exposure: NOT ENABLED. `tailscale funnel status` remains `No serve
-config`.
+The earlier E1 observation that public exposure was not enabled is historical.
+The current E2 Funnel configuration is enabled and remains verified after the
+storage audit; see the continuation evidence below.
 
 ## Known Issues
 
-- Funnel cannot be enabled non-interactively from the current SSH account until
-  a user with Orange Pi sudo authority performs the one command below.
-- Storage improved to approximately 1.2–1.4 GB free, below the preferred 2 GB
-  target but above the 1 GB continuation threshold. No further destructive
-  cleanup was authorized or necessary for this boundary.
-- Public HTTPS health, Web UI, WebSocket, OAuth callback validation, NOTE4 URL
-  migration, and off-LAN testing are not run because Funnel is not enabled.
-- Campaign 6D remains independently blocked on the physical NOTE4 USB/baseline;
-  this stage did not alter or flash the device.
+- The NOTE4 Server Address has not yet been entered through the supported
+  captive-portal path. Live paired-device polling over the public HTTPS URL and
+  off-LAN roaming are therefore not claimed.
+- Provider-console redirect registration and interactive Google/Microsoft OAuth
+  consent remain a separate E3 human boundary.
+- Campaign 6D remains independently blocked on its physical refresh-baseline
+  work; this stage did not alter or flash the device.
+- Optional apt-cache and disabled Snap-revision cleanup remains available only
+  through root/snap administration. It is not needed for the preferred free
+  space target and was not attempted.
 
 ## Deviations
 
-- AGY review was not invoked because this stage made no source or deployment
-  configuration change and stopped before public exposure. A high-effort AGY
-  security review is required if source/config changes are introduced.
-- E2–E5 were not started because Funnel requires a root/admin action first.
+- AGY review was not invoked because this continuation made no product source
+  or deployment configuration change; the work was a read-only audit plus
+  authorized cache-only cleanup. A high-effort AGY security review remains
+  required if source/config changes are introduced.
+- The addendum's A0 physical migration remains pending because the supported
+  firmware UI exposes the setup portal only when Wi-Fi setup is entered. No
+  factory reset or re-registration was used.
 
 ## Next Recommended Stage
 
-At the Orange Pi console or an SSH session with sudo authorization, run:
+On the paired NOTE4, perform the minimum supported server-address migration:
 
 ```bash
-sudo tailscale funnel --bg --yes http://127.0.0.1:3001
+1. Temporarily make its saved Wi-Fi unavailable so it falls back to setup mode.
+2. Connect a phone/laptop to the SSID shown by the NOTE4 (for example,
+   `Slate-XXXX`).
+3. Browse to `http://192.168.4.1`.
+4. Enter the existing Wi-Fi SSID and password and set Server Address to:
+   https://orangepi5.tail6aabef.ts.net
+5. Submit and wait for the NOTE4 to restart and reconnect.
 ```
 
-Then return to this campaign and verify `sudo tailscale funnel status`, the
-actual `https://orangepi5.tail6aabef.ts.net` endpoint, TLS, `/healthz`, Web UI,
-and WebSocket behavior before preparing OAuth redirect migration. Do not enter
+Do not choose Factory reset and do not re-register the device. Firmware source
+separates `server_url` storage from `device_id`/`device_secret`, so this
+supported save path is expected to preserve pairing. Afterward, verify a valid
+paired-device poll/backend session and an off-LAN HTTPS sync. Do not enter
 provider credentials in Git or reports.
+
+## Addendum — A0-A5 Disk Audit and Server Address Boundary
+
+This continuation was performed against the exact integration branch at
+`478653d1c46c449f67b5293c27c863142ef1ccd3`. No product source, firmware,
+Compose, environment, persistent data, or Campaign 6D files were changed.
+
+### A0 — NOTE4 Server Address and pairing preservation
+
+Permanent Server Address:
+`https://orangepi5.tail6aabef.ts.net`
+
+The supported setup portal was inspected in firmware source. It saves
+`wifi_ssid`, `wifi_pwd`, and `server_url` separately from the pairing
+`device_id` and `device_secret`; Factory reset/Clear is the separate identity
+destructive path. The live device's secret was not read or printed, and live
+paired polling cannot be verified until the user performs the portal entry.
+
+Status: `HUMAN_PENDING` — the exact physical action is listed under Next
+Recommended Stage. No factory reset or re-registration was performed.
+
+### A1 — Exact Orange Pi storage inventory
+
+The physical/system media was verified with `lsblk`, not inferred from `df`:
+
+- Root/system block device: `/dev/mmcblk1`, `15476981760` bytes
+  (approximately 14.42 GiB), model not reported by the board.
+- Root partition: `/dev/mmcblk1p1`, `15300820992` bytes, `ext4`, mounted at
+  `/` (also visible at `/var/log.hdd` in the board's mount listing).
+- Root filesystem after cleanup: `14985895936` bytes total,
+  `11827781632` bytes used, `2958172160` bytes available, `80%`.
+- Other physical media was preserved: 10 TB HDD at `/mnt/hdd-archive` and
+  256 GB NVMe at `/mnt/ssd-tmp`; neither is the root system disk.
+- `findmnt /`: `/dev/mmcblk1p1 ext4 rw,relatime,errors=remount-ro,commit=120`.
+
+Initial inventory identified `/var/lib/snapd` at approximately 3.5 GB,
+`/var/cache/apt` at approximately 417 MB, and only 12.3 MB of systemd
+journals. Home contained the active source checkout and deployment only; no
+stale build directory or archive was deleted.
+
+### A2 — Cleanup candidates and safety decisions
+
+- Docker BuildKit cache: approximately `1.472 GB`, mechanically reclaimable
+  and separate from the running images; safe to prune.
+- Dangling images: none; `docker image prune` reclaimed `0 B`.
+- Apt archives: `324121668` bytes of `.deb` files, root-owned and requiring
+  sudo; not removed because no passwordless sudo was available.
+- Disabled Snap revisions: `1845465088` bytes, unrelated OS package data and
+  requiring root/snap administration; not removed.
+- Journals: `12.3 MB`, not materially large; no vacuum performed.
+- `/tmp` and `/var/tmp`: no files older than seven days; no deletion needed.
+- User cache and rotated logs were small or tied to active desktop processes;
+  they were preserved.
+
+### A3 — Actions actually taken
+
+The only cleanup was:
+
+```text
+docker builder prune -a -f
+docker image prune -f
+```
+
+The old builder client stopped responding after the cache reached zero; only
+that stale prune client was terminated with `SIGTERM` after verifying it was
+the idle cleanup client. No Docker volumes, bind mounts, containers, active
+images, rollback image, Compose file, `.env`, Tailscale state, SSH state,
+backups, or user data were touched. `docker system prune -a` was not used.
+
+### A4 — Post-cleanup validation
+
+- Docker Build Cache: `1.472 GB` before to `0 B` after.
+- Docker images: exactly three preserved images; active Slate image
+  `slate-note4:campaign5-runtime-fix-948934c`, rollback image
+  `slate-note4:campaign5-bca0581`, and `mysql:8`.
+- Containers: `slate-note4` and `slate-note4-mysql` both `healthy`; no host
+  MySQL port was added.
+- Local `http://127.0.0.1:3001/healthz`: `200`, JSON status `ok`.
+- Public `https://orangepi5.tail6aabef.ts.net/healthz`: `200`, JSON status
+  `ok`.
+- Public Web UI: `200`, HTML, `1451` bytes.
+- Funnel: enabled; `443` HTTPS proxies `/` to `http://127.0.0.1:3001`.
+- `tailscaled`: enabled and active.
+- Exact final root free space: `2958172160` bytes (approximately 2.75 GiB),
+  meeting the preferred `>2 GB` free-space target.
+
+Filesystem-level reclaimed bytes are not claimed as an exact delta because
+the pre-cleanup `df -h` evidence was human-rounded and Docker overlay storage
+accounting is separate. The exact Docker-reported reclaim is the cache change
+above.
+
+### A5 — Current boundary
+
+The Orange Pi service and public HTTPS infrastructure are ready. The remaining
+6E action is physical NOTE4 portal entry and paired/off-LAN verification. This
+stage does not authorize firmware flashing.
 
 ## Final Stage Verdict
 
-NOT READY — E0, E1, and E2 are PASS; E3 is HUMAN_PENDING for provider-console
-redirect registration and interactive OAuth consent. E4 physical NOTE4 URL
-migration and valid-device/off-LAN tests remain pending.
+NOT READY — A1-A4 PASS and E2 remains PASS. A0 physical NOTE4 Server Address
+migration and paired/off-LAN verification are HUMAN_PENDING; E3 provider OAuth
+console/consent is also HUMAN_PENDING.
 
-START_SHA=`248c974d717519f9e0987349ba85124f90a10751`
-END_SHA=`248c974d717519f9e0987349ba85124f90a10751` (no product changes)
+START_SHA=`478653d1c46c449f67b5293c27c863142ef1ccd3`
+END_SHA=`478653d1c46c449f67b5293c27c863142ef1ccd3` before this report commit
 E0_DISK_BEFORE=`/dev/mmcblk1p1 14G, 13G used, 508M free, 97%`
 E0_DOCKER_USAGE_BEFORE=`3 images / 3.606GB; builder cache approximately 2.826GB`
-E0_RUNNING_SLATE_IMAGE=`slate-note4:campaign5-runtime-fix-948934 @ sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`
+E0_RUNNING_SLATE_IMAGE=`slate-note4:campaign5-runtime-fix-948934c @ sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`
 E0_ROLLBACK_SLATE_IMAGE=`slate-note4:campaign5-bca0581 @ sha256:52ee3c48f993e7e562665d79f8b0de495a22d2dc49ebc69a9a0fd7a3eb564398`
 E0_CLEANUP_ACTIONS=`docker builder prune -f; docker image prune -f; no volumes/images/data removed`
 E0_DISK_AFTER=`/dev/mmcblk1p1 14G, approximately 1.2–1.4GB free, 91–92% used`
@@ -303,9 +411,10 @@ MICROSOFT_REDIRECT_URI=`https://orangepi5.tail6aabef.ts.net/api/v1/integrations/
 GOOGLE_OAUTH_LIVE=HUMAN_PENDING
 MICROSOFT_OAUTH_LIVE=HUMAN_PENDING
 NOTE4_PUBLIC_URL_MIGRATED=HUMAN_PENDING
+PAIRING_DEVICE_SECRET=`not accessed; preservation path verified; live state unverified`
 OFF_LAN_DEVICE_TEST=HUMAN_PENDING
 MULTI_WIFI_DESIGN=DEFERRED
 MULTI_WIFI_IMPLEMENTED=NO
-HUMAN_ACTION_REQUIRED=`Register the exact Google/Microsoft HTTPS callbacks, complete consent without sharing credentials, then perform NOTE4 server_url migration through the supported UI`
-BLOCKER=`Provider-console redirect registration and interactive OAuth consent are required before E3 live validation; physical NOTE4 URL migration is required for device roaming`
-NEXT_ACTION=`After provider setup, resume E3 live callback checks, then E4 physical NOTE4 public server-address migration; do not flash firmware`
+HUMAN_ACTION_REQUIRED=`Use the supported captive portal: temporarily make saved Wi-Fi unavailable, connect to the displayed Slate-XXXX AP, browse http://192.168.4.1, enter the existing Wi-Fi credentials and https://orangepi5.tail6aabef.ts.net; do not factory-reset or re-register`
+BLOCKER=`Physical portal entry and subsequent paired HTTPS/off-LAN confirmation; provider OAuth console/consent remains separate`
+NEXT_ACTION=`After portal entry, verify paired polling and off-LAN HTTPS sync; then resume E3/E4 live checks`
