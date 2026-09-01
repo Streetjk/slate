@@ -284,105 +284,192 @@ Integrate all passed campaigns and run full regression:
 
 Run AGY high-effort adversarial final review.
 
-Do not claim real hardware success without testing real hardware.
+Do not claim real hardware validation unless it actually occurred.
 
-When physical NOTE4 flashing/testing is the remaining boundary, produce a pre-hardware report containing:
+---
 
-- exact source SHA;
-- firmware artifact names;
-- artifact hashes;
-- flash instructions;
-- expected boot behavior;
-- test checklist;
-- rollback method.
+# External review gate — findings added 2026-09-01
 
-Then stop for physical user interaction.
+These findings came from an independent review of the actual `integration/note4-custom` source after Campaign 1. Codex must not blindly accept them; it must inspect the current code and the latest AGY/Codex reports, then either fix each valid issue or reject it with concrete evidence in the next relevant report.
 
-## Campaign 6 — Airtable Gantt (post-MVP)
+This section is intentionally revisitable. At the next pushed Campaign 2 report/checkpoint, compare these findings against the new implementation and AGY conclusions. If later code or evidence changes severity/scope, update this directive rather than preserving stale assumptions.
 
-Do not begin until the software MVP gate passes unless explicitly instructed otherwise.
+## XR-001 — P1 candidate: BTC provider stale fallback bypasses central reuse policy
 
-Design for user-scoped Airtable sync, normalized tasks and server-rendered 400x300 Gantt output. Initially keep Airtable outside Gemini's tool access.
+Current concern:
+
+`BtcPriceProvider.fetchData()` catches upstream Coinbase failures and returns `ctx.lastData` itself. Slate's central `DynamicContentRendererService` normally catches provider failures and calls `canReuseDynamicData()` to decide whether stale data is still within the configured reuse age. If the provider converts the failure into a successful return, the central policy cannot reject expired data, and the provider's in-memory cache may cache the stale fallback as if it were a successful fetch.
+
+Required action before Campaign 1 is treated as fully hardened:
+
+1. Reproduce the behavior with a deterministic test using an expired `PriceSeries`.
+2. Prefer removing provider-level `lastData` fallback and allowing Slate's existing central reuse policy to own stale-data acceptance/rejection.
+3. If keeping provider-level fallback, prove with tests that it applies the exact same freshness semantics and does not reset/cache stale age as fresh. This is less preferred because it duplicates central policy.
+4. Add tests for:
+   - recent stale fallback accepted by the central path;
+   - expired stale data rejected;
+   - upstream failure remains recorded as an error/backoff event rather than becoming a false success;
+   - subsequent retry timing is not incorrectly extended by caching fallback data.
+5. Run AGY re-review after the fix.
+
+Do not silently downgrade this finding solely because previous AGY review passed. Either fix it or document evidence proving the concern is incorrect.
+
+## XR-002 — P2 candidate: BTC D/W/M product UX requires three manually configured content items
+
+Current implementation appears to model one `period` per `btc_price` dynamic-content item. The desired product behavior is immediate NOTE4 switching among Daily/Weekly/Monthly views with all required frames/data already available locally/cached.
+
+Required action:
+
+1. Confirm the current user flow end-to-end from Web creation through group/frame sync and device button navigation.
+2. If the user must manually create three separate BTC content items, treat the backend provider as technically valid but the product requirement as incomplete.
+3. Implement the minimum-change UX that gives the intended result. Preferred options, in order:
+   - an "Add BTC" workflow that provisions a D/W/M trio automatically into the selected group using existing Slate frame navigation;
+   - another mechanism that guarantees all three views are created/synced/cached without a network request per button press.
+4. Do not add a new low-level firmware navigation stack if existing frame/group navigation already satisfies switching.
+5. Add deterministic tests for the provisioning/config behavior where practical and document what still requires real-device confirmation.
+
+This may be scheduled as Campaign 1B hardening rather than blocking Outlook research, but it must be resolved before final MVP completion.
+
+## XR-003 — P2 candidate: malformed finite Coinbase timestamps can throw during normalization
+
+Current concern:
+
+The Coinbase candle normalizer accepts a finite positive timestamp and then constructs `new Date(timestamp * 1000).toISOString()`. A finite number can still be outside JavaScript Date's representable range, causing `toISOString()` to throw instead of filtering the malformed external row.
+
+Required action:
+
+1. Add a regression case using an out-of-range but finite timestamp.
+2. Validate the constructed Date (`Number.isFinite(date.getTime())`) before calling `toISOString()`.
+3. Filter invalid rows rather than crashing normalization.
+4. Re-run focused BTC tests and AGY review.
+
+## XR-004 — P2-before-AI candidate: assistant tool names are restricted but tool inputs are generic
+
+Current shared contract restricts tool names, which is good, but tool input is currently a generic record. Before any real Gemini tool execution is enabled, convert the tool request contract to strict per-tool input schemas.
+
+Minimum target:
+
+- `web_search` — explicit query/options only;
+- `get_btc_price` — explicit supported period/parameters only;
+- `propose_google_calendar_event` — explicit proposal fields only, using the normalized calendar proposal contract where appropriate.
+
+Required behavior:
+
+1. Prefer a discriminated union keyed by tool name.
+2. Reject unknown fields where practical.
+3. Add positive/negative tests for each tool input.
+4. Explicitly prove no Outlook/Microsoft capability can be smuggled through a generic URL/body/tool input.
+5. This finding does **not** need to block Outlook Campaign 2 research/implementation, but it **must** block Campaign 3B/4 production tool execution if unresolved.
+
+## XR-005 — P3/P2 candidate: full-English display still exposes Chinese defaults/voice labels
+
+Current concern:
+
+Some user-visible TTS voice identifiers and the default weather location still appear in Chinese even though machine identifiers should remain stable.
+
+Required action:
+
+1. Distinguish internal/provider identifiers from user-facing labels.
+2. Preserve underlying voice IDs if required by existing TTS compatibility.
+3. Add an English display-label map for voice choices rather than renaming protocol values.
+4. Replace or localize default visible weather location behavior so an English-first install does not initially present Beijing/Chinese text unless that is genuinely provider data selected by the user.
+5. Re-run the remaining-user-facing-Han-character inventory and classify each remaining occurrence as:
+   - internal/comment/provider data — acceptable;
+   - user-visible label/default — fix;
+   - deliberate proper name/provider vocabulary — document.
+
+Do not mass-translate schema/provider constants just to reach zero Han characters.
+
+---
+
+# External review sequencing rule
+
+Because Campaign 2 Outlook research is already running, do not throw away useful in-progress work merely to service the above findings.
+
+Preferred sequencing:
+
+1. Allow current AGY Outlook architecture/research to complete.
+2. Persist its findings/report/checkpoint.
+3. Before promoting a completed Outlook implementation beyond its normal review gate, execute a short `Campaign 1B — external-review hardening` lane for XR-001, XR-003 and XR-005, unless they have already been resolved by intervening commits.
+4. Resolve XR-002 no later than the MVP integration/hardening campaign; do it earlier if it is low-risk to add the BTC trio provisioning UX.
+5. Resolve XR-004 before Gemini production tool execution starts.
+6. Run deterministic regression and AGY review after each affected fix.
+7. Update the relevant historical campaign report by appending hardening evidence or create `01B-EXTERNAL-REVIEW-HARDENING.md`; do not rewrite prior AGY results as if these findings were known at the time.
+
+At the next report boundary, explicitly include:
+
+```text
+EXTERNAL_REVIEW_RECHECK:
+XR-001: CONFIRMED / FIXED / REJECTED / DEFERRED
+XR-002: CONFIRMED / FIXED / REJECTED / DEFERRED
+XR-003: CONFIRMED / FIXED / REJECTED / DEFERRED
+XR-004: CONFIRMED / FIXED / REJECTED / DEFERRED
+XR-005: CONFIRMED / FIXED / REJECTED / DEFERRED
+
+NEW_EVIDENCE:
+AGY_AGREEMENT_OR_DISAGREEMENT:
+SEVERITY_CHANGES:
+NEXT_REQUIRED_ACTION:
+```
+
+A rejected external finding must include code/test evidence, not only model disagreement.
 
 ---
 
 # Hard-stop conditions
 
-Routine compiler errors, test failures, P2/P3 findings, ordinary merge conflicts and normal bug fixing are **not** reasons to stop the autonomous campaign. Resolve them where reasonable.
+Stop the affected dependency chain and persist state for:
 
-Stop/persist/escalate for:
-
+- P0/security-critical finding;
 - credential or OAuth token leakage;
-- unexpected Outlook write capability;
-- Gemini gaining Outlook/Microsoft access;
-- calendar write possible without confirmation;
-- unresolved P0 security finding;
-- persistent P1 after the defined review loop;
-- implementation requiring prohibited static Gemini/API-key auth;
-- repository state/rollback becoming unsafe;
-- interactive OAuth consent that requires the user;
-- physical NOTE4 connection/flashing;
-- destructive external-account action;
-- new paid service/subscription requirement.
+- Gemini access to Outlook/Microsoft Graph;
+- Outlook write capability;
+- Google Calendar write without explicit confirmation;
+- required static Gemini API key under the locked auth policy;
+- unrecoverable repository corruption;
+- unresolved P1 after normal bounded review/fix cycles;
+- genuinely required interactive OAuth/hardware/user-account action.
 
-When stopped, preserve safe completed work, push the report/state, and state the exact external action required.
+Ordinary compiler/test failures, P2/P3 findings and correctable implementation defects should be handled automatically.
 
 ---
 
-# Reporting and shared coordination
+# Continuous reporting
 
-Maintain:
-
-`docs/campaign-reports/CAMPAIGN-STATE.md`
-
-with at least:
-
-- repository/branch;
-- last known good SHA;
-- current campaign/stage/status;
-- completed/blocked/deferred campaigns;
-- active feature branches;
-- last deterministic test result;
-- last AGY verdict/model;
-- next automatic action;
-- whether human action is required.
+Maintain `docs/campaign-reports/CAMPAIGN-STATE.md` as the resumable state record.
 
 At every major stage boundary:
 
-1. implement;
-2. test;
-3. AGY review;
-4. fix/re-test/re-review as needed;
-5. write stage report;
-6. update campaign state;
-7. commit;
-8. push;
-9. continue automatically if no hard stop.
+1. test;
+2. AGY review;
+3. fix/retest/re-review as needed;
+4. write/update stage report;
+5. update campaign state;
+6. commit;
+7. push to `origin`;
+8. fetch/re-read this instruction file before starting the next major campaign, because external review instructions may have changed.
 
-Reports must preserve actual commands/results, accepted/rejected AGY findings and security checks. Never commit OAuth tokens, secrets, cookies, authorization headers or private keys.
+Reports must include exact branch/SHAs, commands/tests, AGY model/verdict/findings, accepted/rejected findings, security state, known issues and next action.
 
 ---
 
-# External reviewer communication protocol
+# Human boundary
 
-This file is intentionally designed so an external reviewer can update instructions through GitHub.
+Software campaigns may continue automatically until genuinely blocked.
 
-At the start of each new campaign or after pulling new commits:
+Require human action before:
 
-- check whether `CAMPAIGN-INSTRUCTIONS.md` changed;
-- if changed, read the complete latest version before proceeding;
-- record the instruction-file commit SHA in the next campaign report/state file.
-
-Do not assume this file will change during an already-running command. Re-read it at campaign/stage boundaries and after explicit repository refreshes.
+- flashing/physically testing the NOTE4;
+- interactive personal OAuth consent when unavoidable;
+- entering production credentials;
+- destructive external-account operations;
+- activating a paid service;
+- final merge/release to `master`.
 
 ---
 
 # Governing principle
 
-Optimize for correctness, security, reproducibility, auditability and automatic progress.
+Use Codex for implementation/integration, AGY/Gemini for independent research/review, deterministic tests for truth, Git for rollback/auditability, and OAuth for authentication.
 
-Preferred loop:
-
-`PLAN -> IMPLEMENT -> TEST -> AGY REVIEW -> FIX -> RETEST -> RE-REVIEW -> PASS -> COMMIT -> PUSH REPORT/STATE -> REFRESH INSTRUCTIONS -> NEXT CAMPAIGN`
-
-Continue automatically until a genuine hard-stop condition above is reached.
+Continue automatically when evidence is green. Do not allow a previous model PASS to override a newly demonstrated code defect, and do not allow an external reviewer assertion to override code/test evidence either.
