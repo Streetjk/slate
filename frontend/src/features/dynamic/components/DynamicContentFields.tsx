@@ -25,6 +25,7 @@ export function DynamicContentFields({
   dashboardData,
   onDashboardDataChange,
   dashboardDataLabel,
+  onCreateBtcTrio,
 }: {
   type: DynamicTypeT;
   config: DynamicConfigT;
@@ -37,6 +38,7 @@ export function DynamicContentFields({
   dashboardData?: Record<string, unknown> | null;
   onDashboardDataChange?: (data: Record<string, unknown>) => void;
   dashboardDataLabel?: string;
+  onCreateBtcTrio?: () => void;
 }) {
   return (
     <>
@@ -69,6 +71,7 @@ export function DynamicContentFields({
               dashboardData={dashboardData ?? undefined}
               onDashboardDataChange={type === 'dashboard' ? onDashboardDataChange : undefined}
               dashboardDataLabel={dashboardDataLabel}
+              onCreateBtcTrio={onCreateBtcTrio}
             />
           </ErrorBoundary>
         </FormSection>
@@ -90,6 +93,7 @@ function DynamicConfigFields({
   dashboardData,
   onDashboardDataChange,
   dashboardDataLabel,
+  onCreateBtcTrio,
 }: {
   config: DynamicConfigT;
   onChange: (config: DynamicConfigT) => void;
@@ -97,6 +101,7 @@ function DynamicConfigFields({
   dashboardData?: Record<string, unknown>;
   onDashboardDataChange?: (data: Record<string, unknown>) => void;
   dashboardDataLabel?: string;
+  onCreateBtcTrio?: () => void;
 }) {
   switch (config.type) {
     case 'daily_calendar':
@@ -111,7 +116,13 @@ function DynamicConfigFields({
     case 'earthquake_report':
       return <DynamicRefreshSettings config={config} onChange={onChange} />;
     case 'btc_price':
-      return <BtcPriceConfigPanel config={config} onChange={onChange} />;
+      return (
+        <BtcPriceConfigPanel
+          config={config}
+          onChange={onChange}
+          onCreateBtcTrio={onCreateBtcTrio}
+        />
+      );
     case 'outlook_calendar':
       return <OutlookCalendarConfigPanel config={config} onChange={onChange} />;
     case 'dashboard':

@@ -27,6 +27,21 @@ export function useCreateDynamicContent(gid: string) {
   });
 }
 
+export function useCreateBtcTrio(gid: string) {
+  const invalidate = useInvalidateContentDependencies(gid);
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<ContentMutationResponseT[]>(
+        `${API_PREFIX}/groups/${gid}/contents/btc-trio`
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      data.forEach((content) => invalidate(content.id));
+    },
+  });
+}
+
 export function useUpdateDynamicContent(gid: string) {
   const invalidate = useInvalidateContentDependencies(gid);
   return useMutation({

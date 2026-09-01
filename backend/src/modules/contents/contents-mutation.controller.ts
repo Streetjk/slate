@@ -57,6 +57,15 @@ export class ContentsMutationController {
     return this.dynamicContent.append(groupId, user.userId, body as CreateDynamicContentDto);
   }
 
+  @Post('groups/:groupId/contents/btc-trio')
+  @HttpCode(201)
+  createBtcTrio(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: WebUserContext
+  ): Promise<ContentMutationResponseT[]> {
+    return this.dynamicContent.appendBtcTrio(groupId, user.userId);
+  }
+
   @Put('groups/:groupId/contents/order')
   reorder(
     @Param('groupId') groupId: string,

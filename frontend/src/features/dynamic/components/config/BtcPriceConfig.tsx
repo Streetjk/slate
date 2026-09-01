@@ -1,4 +1,6 @@
+import { Layers3 } from 'lucide-react';
 import { PricePeriod, type DynamicConfigT, type PricePeriodT } from 'shared';
+import { Button } from '@/components/ui/Button';
 import { Select, SelectItem } from '@/components/ui/Select';
 import { DynamicRefreshSettings } from './RefreshSettings';
 import type { DynamicConfigChange } from '@/features/dynamic/model/config-types';
@@ -9,9 +11,11 @@ const isPricePeriod = createSafeParseGuard<PricePeriodT>(PricePeriod);
 export function BtcPriceConfigPanel({
   config,
   onChange,
+  onCreateBtcTrio,
 }: {
   config: Extract<DynamicConfigT, { type: 'btc_price' }>;
   onChange: DynamicConfigChange;
+  onCreateBtcTrio?: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -38,6 +42,18 @@ export function BtcPriceConfigPanel({
         </Select>
       </div>
       <DynamicRefreshSettings config={config} onChange={onChange} />
+      {onCreateBtcTrio && (
+        <div className="border-t border-line pt-3">
+          <p className="font-sans text-[12px] leading-relaxed text-stone mb-2">
+            Create all three cached views together so NOTE4 can switch without another network
+            request.
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={onCreateBtcTrio}>
+            <Layers3 size={14} className="mr-1.5" />
+            Add BTC trio
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

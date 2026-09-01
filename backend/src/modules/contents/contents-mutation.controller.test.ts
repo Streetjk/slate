@@ -19,4 +19,24 @@ describe('ContentsMutationController multipart parameters', () => {
     expect(createTypes[3]).toBe(Object);
     expect(patchTypes[3]).toBe(Object);
   });
+
+  it('delegates BTC trio provisioning to the dynamic content service', async () => {
+    const response = [{ id: 'daily' }, { id: 'weekly' }, { id: 'monthly' }];
+    const dynamicContent = {
+      appendBtcTrio: async (groupId: string, userId: string) => {
+        expect(groupId).toBe('group-1');
+        expect(userId).toBe('user-1');
+        return response;
+      },
+    };
+    const controller = new ContentsMutationController(
+      undefined as never,
+      dynamicContent as never,
+      undefined as never
+    );
+
+    await expect(
+      controller.createBtcTrio('group-1', { userId: 'user-1' } as never)
+    ).resolves.toEqual(response);
+  });
 });
