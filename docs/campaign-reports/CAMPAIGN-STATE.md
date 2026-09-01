@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `cfd0886da8ef0875b14b271323aff695b59f8003` (Campaign 6B authorization/reporting commit; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
+Last known good SHA: `62c351c858583440db27a597b808733e075fac3d` (Campaign 6C corrected-target O0 checkpoint; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
 Campaign instructions SHA: `9ef57b70e3143ca39c1783acf1603ce1f3893cd8`
 
 Current campaign: Campaign 6C — Orange Pi backend deployment
-Current stage: Phase O0 — non-destructive Orange Pi reconnaissance
-Current status: BLOCKED — 192.168.50.108 is LAN-reachable, but SSH authentication is unavailable through the existing authorized path
+Current stage: Phase O1/O2 — runtime prerequisite before custom ARM64 build and persistent deployment
+Current status: BLOCKED — 192.168.50.108 is authenticated and inspected; Docker/Compose and alternative runtimes are absent, and non-interactive sudo is unavailable
 
 Completed campaigns:
 
@@ -82,6 +82,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: resume Phase O0 reconnaissance after authorized SSH access to `192.168.50.108` is available; do not begin Airtable/Gantt.
+Next automatic action: after human-authorized interactive installation of Docker Engine and Docker Compose on `192.168.50.108`, resume Phase O1 custom ARM64 image build and O2 persistent deployment; do not begin Airtable/Gantt.
 
-Human action required: YES — provide an already-authorized SSH user/key path for `192.168.50.108:22`; physical NOTE4/OAuth checks remain pending afterward.
+Human action required: YES — authorize/install Docker Engine plus Docker Compose (or provide a supported preinstalled runtime) on `192.168.50.108`; physical NOTE4/OAuth checks remain pending afterward.
