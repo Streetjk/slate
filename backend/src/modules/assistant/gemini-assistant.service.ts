@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { GenerateContentResponse } from '@google/genai';
 import {
   AssistantRequest,
@@ -8,7 +8,11 @@ import {
   type AssistantResponseT,
 } from 'shared';
 import { GeminiConfig } from './gemini.config';
-import { createGeminiClient, type GeminiClientFactory } from './gemini.client';
+import {
+  createGeminiClient,
+  GEMINI_CLIENT_FACTORY,
+  type GeminiClientFactory,
+} from './gemini.client';
 import { buildGeminiToolRegistry, isGeminiToolName } from './gemini-tool-registry';
 import { GeminiConfigurationError } from './gemini-live.service';
 
@@ -21,6 +25,7 @@ export class GeminiAssistantService {
 
   constructor(
     private readonly config: GeminiConfig,
+    @Inject(GEMINI_CLIENT_FACTORY)
     private readonly clientFactory: GeminiClientFactory = createGeminiClient
   ) {}
 

@@ -1,8 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Modality, type LiveServerMessage, type Session } from '@google/genai';
 import type { VoiceLanguageT } from 'shared';
 import { GeminiConfig } from './gemini.config';
-import { createGeminiClient, type GeminiClientFactory } from './gemini.client';
+import {
+  createGeminiClient,
+  GEMINI_CLIENT_FACTORY,
+  type GeminiClientFactory,
+} from './gemini.client';
 import { buildGeminiToolRegistry } from './gemini-tool-registry';
 
 export interface GeminiLiveEvent {
@@ -30,6 +34,7 @@ export class GeminiLiveService {
 
   constructor(
     private readonly config: GeminiConfig,
+    @Inject(GEMINI_CLIENT_FACTORY)
     private readonly clientFactory: GeminiClientFactory = createGeminiClient
   ) {}
 
