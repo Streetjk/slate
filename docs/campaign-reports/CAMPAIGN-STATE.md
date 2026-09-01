@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `c37f86f9554f3bf63230b5000c1a42168489445b` (Campaign 4 implementation integration; report publication follows)
+Last known good SHA: `bca05819e2cccc5cfdc128d82ffda052b3913412` (Campaign 5 software implementation integration; report publication follows)
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
-Current campaign: Campaign 4 — Google Calendar voice writes
-Current stage: Campaign 5 — MVP integration/hardening
-Current status: RUNNING — Campaign 4 passed and was published; Campaign 5 hardening audit in progress
+Current campaign: Campaign 5 — MVP integration/hardening
+Current stage: Human hardware checkpoint after software MVP completion
+Current status: PASS — software MVP gate and final AGY review passed; physical NOTE4 validation required
 
 Completed campaigns:
 
@@ -46,6 +46,10 @@ Completed campaigns:
   - Deterministic gates passed: 267 backend tests, 6 shared tests, lint, typecheck, format, Prisma validation, frontend build, and exact ESP-IDF `v5.5.2`/`esp32s3` Docker build with merged artifacts.
   - AGY high-effort review passed with no P0–P2 findings and one deferred P3 ticket-retention observation.
   - Live Google consent/account testing and physical NOTE4 interaction remain human-boundary actions.
+- Campaign 5 — MVP integration/hardening: PASS software gate; reports `05-MVP-FINAL.md` and `05-MVP-PRE-HARDWARE.md`
+  - XR-002 BTC trio provisioning was implemented; XR-001, XR-003, XR-004, and XR-005 were rechecked as fixed.
+  - Final deterministic regression and exact ESP-IDF Docker build passed; final AGY high-effort adversarial review passed with two deferred P3 operational observations.
+  - Hardware flashing, physical NOTE4 flows, and live personal OAuth consent remain pending human action.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -58,7 +62,7 @@ Deferred campaigns / required later gates:
 
 - GitHub Actions workflow registration is infrastructure debt; local exact ESP-IDF fallback is the current reproducible firmware path.
 - Live Microsoft/Google OAuth consent and physical NOTE4 testing remain future human-boundary actions.
-- XR-002 BTC D/W/M automatic trio UX may be completed in Campaign 1B or no later than MVP hardening.
+- XR-002 BTC D/W/M automatic trio UX: RESOLVED in Campaign 5 through authenticated trio provisioning and existing frame navigation.
 - XR-004 strict per-tool input schemas: RESOLVED in Campaign 4 through static proposal DTO validation and proposal-only voice dispatch.
 
 Active feature branches:
@@ -67,17 +71,17 @@ Active feature branches:
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 
-Last test status: PASS — backend tests (267 tests, 0 failures, 839 expectations), shared tests (6 tests, 0 failures, 27 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, exact ESP-IDF 5.5.2/esp32s3 Docker build and merge-bin, artifact hashes, and `git diff --check`.
-Last AGY verdict: PASS — Campaign 4 high-effort `gemini-3.7-flash-high` review; no P0/P1/P2 findings, P3-001 ticket pruning deferred, reviewer tree unchanged.
+Last test status: PASS — backend tests (270 tests, 0 failures, 845 expectations), shared tests (6 tests, 0 failures, 27 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, secret-pattern scan, exact ESP-IDF 5.5.2/esp32s3 Docker build and merge-bin, artifact hashes, and `git diff --check`.
+Last AGY verdict: PASS — Campaign 5 high-effort `gemini-3.7-flash-high` adversarial review; no P0/P1/P2 findings, P3-001 ticket pruning and P3-002 process-local OAuth state deferred, reviewer tree unchanged.
 
 External review gate:
 
-- XR-001 — BTC stale fallback / central freshness policy: RECHECK REQUIRED; P1 candidate.
-- XR-002 — D/W/M automatic cached switching UX: RECHECK REQUIRED; P2 requirement gap candidate.
-- XR-003 — out-of-range Coinbase timestamp normalization: RECHECK REQUIRED; P2 candidate.
-- XR-004 — strict per-tool input contracts before Gemini execution: REQUIRED BEFORE CAMPAIGN 3B/4.
-- XR-005 — remaining English display labels/defaults: RECHECK REQUIRED; P3/P2 candidate.
+- XR-001 — BTC stale fallback / central freshness policy: FIXED and rechecked.
+- XR-002 — D/W/M automatic cached switching UX: FIXED through BTC trio provisioning and rechecked.
+- XR-003 — out-of-range Coinbase timestamp normalization: FIXED and rechecked.
+- XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
+- XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: audit and resolve remaining external-review hardening items, then run full regression and high-effort adversarial AGY review.
+Next automatic action: none until human hardware checkpoint is completed; after hardware evidence, review final release readiness. Do not begin Airtable/Gantt before MVP acceptance.
 
-Human action required: NO
+Human action required: YES — flash/test the physical NOTE4 and perform interactive Microsoft/Google OAuth consent as needed.
