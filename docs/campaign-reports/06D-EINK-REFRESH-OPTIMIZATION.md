@@ -2,14 +2,14 @@
 
 Stage: Campaign 6D — NOTE4 E-Ink refresh optimization
 Date: 2026-09-01
-Status: D0 BASELINE COMPLETE — second-pass optimization pending; optimized flash not authorized
+Status: D1 CANDIDATE BUILT — physical validation and optimized flash not authorized; AGY review unavailable
 
 ## Repository State
 
 Repository: `Streetjk/slate`
 Branch: `integration/note4-custom`
 Start SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
-End SHA: `e32ff24` (diagnostic instrumentation; report/state reconciliation follows)
+End SHA: `7dd15c3` (D1 windowed partial candidate; report/state update follows)
 Campaign instruction SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 Campaign 5 production firmware source SHA: `bca05819e2cccc5cfdc128d82ffda052b3913412`
 Diagnostic firmware source SHA: `e32ff24` (same product behavior, compile-time timing trace enabled)
@@ -19,7 +19,7 @@ Diagnostic app SHA-256: `a22b1e00da653abc5faad29f1d561c72859a2e3f6fc7d1de22b56ca
 
 Codex version: `codex-cli 0.147.0`
 AGY version: `1.1.23`
-AGY model: not invoked
+AGY model: `gemini-3.7-flash-medium` requested for D1; no response returned within 3 minutes
 AGY authentication: OAuth/ADC only
 Orchestration mode: `CODEX_PRIMARY`
 
@@ -142,11 +142,11 @@ Secrets detected in report changes: none.
 
 ## Next Recommended Stage
 
-Next automatic action: implement the bounded `0x83` dirty-rectangle candidate, add deterministic rectangle/packing/fallback tests, build with ESP-IDF `v5.5.2`, and obtain AGY review. Do not flash that new artifact without explicit physical-flash authorization for its exact hash.
+Next automatic action: obtain a returned AGY review for the committed D1 candidate, then request explicit physical-flash authorization for its exact hash. Do not flash that artifact automatically.
 
 ## Final Stage Verdict
 
-NOT READY FOR OPTIMIZED FLASH — D0 baseline is complete; second-pass implementation/review and authorized physical validation remain.
+NOT READY FOR OPTIMIZED FLASH — D1 deterministic candidate is built, but independent review and authorized physical validation remain.
 
 ## Required Gate
 
@@ -155,4 +155,92 @@ READY_FOR_OPTIMIZED_FLASH=false
 PAIRING_COMPLETE=preserved; live HTTPS poll failed during diagnostic capture
 PHYSICAL_DEVICE_DETECTED=true (/dev/cu.usbmodem31201)
 FIRMWARE_CHANGED=true (diagnostic app only; no optimized artifact flashed)
+```
+
+## D1 Second-Pass Candidate
+
+### Candidate source and artifact identity
+
+```text
+CANDIDATE_SOURCE_SHA=7dd15c310c9d5b8e8da0159e3ef9cfeaee95b4da
+BASE_SOURCE_SHA=72fffdf4f58e30fd9ca68d7eb18c3df72d44d0a4
+ESP_IDF=5.5.2
+TARGET=esp32s3
+BUILD_DIR=/tmp/note4-6d-window-artifacts/build-6d-window
+APP_IMAGE_SHA256=3d5e226d55686466deba9860f64713bdefd92eaa8ded9050d3749efb2b250841
+FULL_IMAGE_SHA256=1d3e9c90b7a3082df3727796ebe959b6c33ba2054f2f87114176227a4dcee1ea
+BOOTLOADER_IMAGE_SHA256=6ccfa024101f5bc44eaad5bf0a5999dfdf2c5767f10ab44457b8e4252808ff86
+PARTITION_TABLE_IMAGE_SHA256=6f0657eb6b8007c0dbfed6f64cf7a0d59f8ee1752af898e2f66dd218846b1835
+FULL_IMAGE_SIZE_BYTES=2584432
+APP_IMAGE_SIZE_BYTES=2518896
+OPTIMIZED_ARTIFACT_FLASHED=NO
+```
+
+### Changes implemented
+
+- Added `epd::MakePartialWindow`, which clips the accumulated LVGL dirty rectangle and expands only its horizontal bounds to byte-aligned coordinates.
+- Preserved the existing old-to-new transition encoding by packing only the selected rows and bytes from `prev_snapshot_` and `snapshot_`.
+- Added the SSD2683/SSD1683-compatible `0x83` partial-window command with inclusive x/y endpoints and the existing partial data path.
+- Preserved snapshot completion, mutex ownership, invalid-window full-refresh fallback, the 50 ms sliding debounce, the `>=30%` full-refresh threshold, the eight-partial cleanup cadence, LUT/booster handling, reset/re-init, power sequencing, and SPI settings.
+- Added host tests for alignment, clipping, invalid windows, and transition byte encoding.
+
+The source change is expected to reduce SPI payload for small dirty regions mechanically; it has not been physically measured because this candidate was not flashed. The prior subjective speed impression cannot be attributed to this source change. No candidate button-to-visible, SPI, BUSY, or full-refresh before/after measurement exists yet.
+
+### D0 versus D1 measurement status
+
+| Metric | D0 physical baseline | D1 candidate |
+|---|---:|---:|
+| Partial total median | 829.26 ms | NOT MEASURED — not flashed |
+| Partial SPI median | 21.80 ms / 30,000 bytes | NOT MEASURED — window-dependent |
+| Partial display BUSY median | 451.59 ms | NOT MEASURED |
+| Full total median | 1262.55 ms | UNCHANGED BY SOURCE; no new physical sample |
+| Full SPI median | 14.56 ms | UNCHANGED BY SOURCE; no new physical sample |
+| Button → visible update | ~923–975 ms direct partial flows | NOT MEASURED |
+
+The D1 transfer size is mechanically `2 * (window.w / 8) * window.h` bytes after `0x83`; physical timing and visual/ghosting behavior require an authorized flash and real-device measurements.
+
+### D1 deterministic validation
+
+- `firmware/test/run_framebuffer_ops_host_test.sh` — PASS: `framebuffer_ops_host_test: PASS`.
+- `docker run --rm -v "$PWD":/project -w /project espressif/idf:v5.5.2 idf.py -C firmware -B /project/firmware/build-6d-window build` — PASS; ESP-IDF 5.5.2, ESP32-S3; app partition check passed with 40% free.
+- `docker run --rm -v "$PWD":/project -w /project espressif/idf:v5.5.2 idf.py -C firmware -B /project/firmware/build-6d-window merge-bin -o /project/firmware/build-6d-window/slate-full.bin` — PASS; merged full image written.
+- `bun run format:check` — PASS.
+- `bun run lint` — PASS.
+- `bun run typecheck` — PASS.
+- `bun run --cwd backend test` — PASS: 270 tests, 0 failures, 845 assertions.
+- `bun run --cwd frontend build` — PASS: Vite production build completed.
+- `git diff --check` — PASS.
+
+### D1 AGY review
+
+Reviewer model: `gemini-3.7-flash-medium`
+Effort level: medium
+Requested mode: read-only / plan
+Command result: no response or verdict within the configured 3-minute print timeout; the process exited without review output. No AGY file changes were detected.
+
+Verdict: `BLOCKED_EXTERNAL_REVIEW`
+
+P0 findings: not available.
+P1 findings: not available.
+P2 findings: not available.
+P3 findings: not available.
+
+Findings accepted: none.
+Findings rejected: none; no substantive review was returned.
+
+This is an external review availability blocker, not a finding that the candidate is correct. The candidate is not promoted and is not eligible for automatic flashing.
+
+### D1 safety boundary
+
+```text
+NEW_FIRMWARE_FLASHED=NO
+LUT_CHANGED=NO
+BOOSTER_OR_VOLTAGE_CHANGED=NO
+SPI_CLOCK_CHANGED=NO
+POWER_SEQUENCE_CHANGED=NO
+RESET_REINIT_CHANGED=NO
+FULL_REFRESH_POLICY_CHANGED=NO
+PAIRING_OR_DEVICE_DATA_TOUCHED=NO
+READY_FOR_OPTIMIZED_FLASH=NO
+BLOCKER=AGY review did not return; physical candidate validation and explicit exact-hash flash authorization remain required
 ```

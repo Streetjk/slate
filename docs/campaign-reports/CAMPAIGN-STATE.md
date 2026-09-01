@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `e32ff24` (Campaign 6D diagnostic timing source; no optimized artifact flashed)
+Last known good SHA: `7dd15c310c9d5b8e8da0159e3ef9cfeaee95b4da` (Campaign 6D D1 candidate; deterministic gates pass; no optimized artifact flashed)
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 6D — NOTE4 E-Ink refresh optimization
-Current stage: D0 complete; bounded D1 second-pass windowed partial implementation pending
-Current status: TESTING_BASELINE_COMPLETE — diagnostic app source `e32ff24` was flashed app-only at `0x10000`; 28 refreshes were captured. No optimized artifact has been flashed. Existing pairing/storage were preserved; HTTPS polls failed during the capture, so BTC D/W/M is not validated by this trace.
+Current stage: D1 second-pass windowed partial candidate built
+Current status: HUMAN_BOUNDARY_PENDING — candidate source `7dd15c310c9d5b8e8da0159e3ef9cfeaee95b4da` passed deterministic tests and exact ESP-IDF 5.5.2/esp32s3 build. Full image SHA-256 is `1d3e9c90b7a3082df3727796ebe959b6c33ba2054f2f87114176227a4dcee1ea`; app SHA-256 is `3d5e226d55686466deba9860f64713bdefd92eaa8ded9050d3749efb2b250841`. It has not been flashed. AGY medium review returned no response within 3 minutes, so no independent PASS is claimed. D0 physical baseline remains the only physical timing dataset.
 
 Completed campaigns:
 
@@ -77,8 +77,8 @@ Active feature branches:
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 
-Last test status: PASS — prior Campaign 5/6E software gates remain PASS; Campaign 6D diagnostic firmware built with ESP-IDF `v5.5.2`/`esp32s3`, diagnostic app SHA-256 `a22b1e00da653abc5faad29f1d561c72859a2e3f6fc7d1de22b56ca4e2467506`, app-only write verified by esptool write hash, and serial capture produced 28 completed refreshes. No optimized firmware build or review has completed.
-Last AGY verdict: PASS — Campaign 5 high-effort `gemini-3.7-flash-high` adversarial review; no P0/P1/P2 findings, P3-001 ticket pruning and P3-002 process-local OAuth state deferred, reviewer tree unchanged.
+Last test status: PASS — D1 host window/packing test, format, lint, typecheck, 270 backend tests, frontend build, and exact ESP-IDF `v5.5.2`/`esp32s3` build plus merged artifact all passed. D0 diagnostic app SHA-256 remains `a22b1e00da653abc5faad29f1d561c72859a2e3f6fc7d1de22b56ca4e2467506`; no D1 artifact was flashed.
+Last AGY verdict: `BLOCKED_EXTERNAL_REVIEW` — D1 `gemini-3.7-flash-medium` read-only review request timed out without output. Previous Campaign 5 high-effort PASS remains historical and does not review D1.
 
 External review gate:
 
@@ -88,9 +88,24 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: publish this reconciled D0 state, then implement the bounded `0x83` dirty-rectangle partial candidate with deterministic tests; build with ESP-IDF `v5.5.2` and obtain AGY review. Do not flash the new artifact without authorization for its exact hash. Do not begin Airtable/Gantt.
+Next automatic action: obtain a returned AGY review for D1 and, only after review PASS plus explicit exact-hash human authorization, perform the physical before/after refresh measurements. Do not flash automatically. Do not begin Airtable/Gantt.
 
 Human action required: YES — provide a genuinely different Internet egress for NOTE4 off-LAN validation and separately complete provider consent/secure environment setup. Never send credentials in chat or reports.
+
+## Campaign 6D D1 Candidate Checkpoint
+
+```text
+BASE_SHA=72fffdf4f58e30fd9ca68d7eb18c3df72d44d0a4
+CANDIDATE_SHA=7dd15c310c9d5b8e8da0159e3ef9cfeaee95b4da
+FULL_IMAGE_SHA256=1d3e9c90b7a3082df3727796ebe959b6c33ba2054f2f87114176227a4dcee1ea
+APP_IMAGE_SHA256=3d5e226d55686466deba9860f64713bdefd92eaa8ded9050d3749efb2b250841
+ESP_IDF=5.5.2
+TARGET=esp32s3
+OPTIMIZED_FIRMWARE_FLASHED=NO
+PHYSICAL_D1_MEASUREMENTS=NOT_RUN
+AGY_D1_REVIEW=BLOCKED_EXTERNAL_REVIEW_NO_RESPONSE
+READY_FOR_OPTIMIZED_FLASH=NO
+```
 
 ## Campaign 6D D0 Reconciliation
 
