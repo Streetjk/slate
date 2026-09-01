@@ -339,10 +339,6 @@ bool Protocol::IsTimeout() const {
 }
 
 std::unique_ptr<Protocol> CreatePreferredProtocol() {
-    settings::MqttConfig mqtt;
-    if (settings::LoadMqtt(mqtt)) {
-        return std::make_unique<MqttProtocol>();
-    }
     settings::WebsocketConfig ws;
     if (settings::LoadWebsocket(ws)) {
         return std::make_unique<WebsocketProtocol>();

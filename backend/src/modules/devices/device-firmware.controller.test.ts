@@ -2,6 +2,14 @@ import { describe, expect, it } from 'bun:test';
 import { DeviceFirmwareController } from './device-firmware.controller';
 
 describe('DeviceFirmwareController', () => {
+  it('returns only the Slate voice WebSocket path and protocol version', () => {
+    const controller = new DeviceFirmwareController({} as never, {} as never);
+
+    expect(controller.voiceConfig()).toEqual({
+      websocket: { path: '/api/v1/voice/websocket', version: 1 },
+    });
+  });
+
   it('returns the service-normalized MAC address in register responses', async () => {
     const controller = new DeviceFirmwareController(
       {

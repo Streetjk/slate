@@ -22,7 +22,6 @@ struct IncomingMessage;
 
 enum class XiaozhiState : int {
     kCheckingConfig = 0,
-    kAwaitingActivation,
     kReadyIdle,
     kConnecting,
     kListening,
@@ -48,8 +47,6 @@ struct XiaozhiSnapshot {
     XiaozhiState                state = XiaozhiState::kCheckingConfig;
     std::string                 status;
     std::string                 emotion = "neutral";
-    std::string                 activation_message;
-    std::string                 activation_code;
     std::string                 user_text;
     std::string                 assistant_text;
     std::vector<XiaozhiMessage> messages;
@@ -131,7 +128,6 @@ class XiaozhiService {
     void         EndAudioSession();
     void         SetState(XiaozhiState state, const std::string& status = "");
     void         SetError(const std::string& error);
-    void         SetActivation(const std::string& message, const std::string& code);
     void         SetUserText(const std::string& text);
     void         SetAssistantText(const std::string& text);
     void         SetAlert(const std::string& status, const std::string& message, const std::string& emotion);

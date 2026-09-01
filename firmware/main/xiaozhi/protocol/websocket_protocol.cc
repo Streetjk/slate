@@ -10,7 +10,8 @@
 
 #include "utils/byte_utils.h"
 #include "utils/json_utils.h"
-#include "xiaozhi/config/activation_client.h"
+#include "utils/mac_utils.h"
+#include "network/cred_store.h"
 #include "xiaozhi/config/settings.h"
 
 namespace {
@@ -77,7 +78,11 @@ bool WebsocketProtocol::OpenAudioChannel() {
         SetError("WebSocket initialization failed");
         return false;
     }
-    std::string token = cfg.token;
+    // Always use the current Slate identity. Never reuse a token persisted by
+    // an older/vendor configuration response, even if its URL looks valid.
+    std::string token = cred::GetDeviceSecret();
+    if (token.empty())
+        return close_failed_channel("Slate device secret is unavailable");
     if (!token.empty()) {
         if (token.find(' ') == std::string::npos)
             token = "Bearer " + token;
@@ -85,8 +90,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
     }
     const std::string protocol_version = std::to_string(version_.load(std::memory_order_acquire));
     websocket->SetHeader("Protocol-Version", protocol_version.c_str());
-    ActivationClient  client;
-    const std::string device_id = client.DeviceId();
+    const std::string device_id = util::WifiStaMacString();
     const std::string client_id = settings::GetUuid();
     websocket->SetHeader("Device-Id", device_id.c_str());
     websocket->SetHeader("Client-Id", client_id.c_str());

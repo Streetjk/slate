@@ -4,6 +4,7 @@
 
 #include <cstdio>
 
+#include "network/cred_store.h"
 #include "storage/nvs/nvs_schema.h"
 #include "storage/nvs/nvs_store.h"
 #include "storage/nvs/volume_store.h"
@@ -41,6 +42,23 @@ bool LoadWebsocketFromNamespace(const char* ns, xiaozhi::settings::WebsocketConf
     out.version = nvs_store::GetInt32(ns, nvs_schema::ws::kVersion, 0);
     return !out.url.empty();
 }
+
+bool IsCurrentSlateWebsocket(const xiaozhi::settings::WebsocketConfig& cfg) {
+    const std::string server_url = cred::GetServerUrl();
+    if (server_url.empty() || cfg.version != 1)
+        return false;
+    std::string expected = server_url;
+    if (expected.rfind("https://", 0) == 0)
+        expected.replace(0, 8, "wss://");
+    else if (expected.rfind("http://", 0) == 0)
+        expected.replace(0, 7, "ws://");
+    else
+        return false;
+    while (!expected.empty() && expected.back() == '/')
+        expected.pop_back();
+    expected += "/api/v1/voice/websocket";
+    return cfg.url == expected;
+}
 }  // namespace
 
 namespace xiaozhi {
@@ -73,12 +91,7 @@ bool SaveMqtt(const MqttConfig& cfg) {
 }
 
 bool LoadMqtt(MqttConfig& out) {
-    if (LoadMqttFromNamespace(nvs_schema::kXiaozhiMqtt, out))
-        return true;
-    if (!LoadMqttFromNamespace(nvs_schema::kLegacyXiaozhiMqtt, out))
-        return false;
-    SaveMqtt(out);
-    return true;
+    return LoadMqttFromNamespace(nvs_schema::kXiaozhiMqtt, out);
 }
 
 void ClearMqtt() {
@@ -95,12 +108,7 @@ bool SaveWebsocket(const WebsocketConfig& cfg) {
 }
 
 bool LoadWebsocket(WebsocketConfig& out) {
-    if (LoadWebsocketFromNamespace(nvs_schema::kXiaozhiWs, out))
-        return true;
-    if (!LoadWebsocketFromNamespace(nvs_schema::kLegacyXiaozhiWs, out))
-        return false;
-    SaveWebsocket(out);
-    return true;
+    return LoadWebsocketFromNamespace(nvs_schema::kXiaozhiWs, out) && IsCurrentSlateWebsocket(out);
 }
 
 void ClearWebsocket() {
@@ -108,15 +116,8 @@ void ClearWebsocket() {
 }
 
 bool HasProtocolConfig() {
-    if (nvs_store::HasStrings(nvs_schema::kXiaozhiMqtt,
-                              {nvs_schema::mqtt::kEndpoint, nvs_schema::mqtt::kClientId, nvs_schema::mqtt::kPubTopic}))
-        return true;
-    if (nvs_store::HasString(nvs_schema::kXiaozhiWs, nvs_schema::ws::kUrl))
-        return true;
-    if (nvs_store::HasStrings(nvs_schema::kLegacyXiaozhiMqtt,
-                              {nvs_schema::mqtt::kEndpoint, nvs_schema::mqtt::kClientId, nvs_schema::mqtt::kPubTopic}))
-        return true;
-    return nvs_store::HasString(nvs_schema::kLegacyXiaozhiWs, nvs_schema::ws::kUrl);
+    WebsocketConfig cfg;
+    return LoadWebsocket(cfg);
 }
 
 int GetVolume() {

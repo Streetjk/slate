@@ -23,8 +23,6 @@ std::string XiaozhiStateName(XiaozhiState state) {
     switch (state) {
         case XiaozhiState::kCheckingConfig:
             return "checking_config";
-        case XiaozhiState::kAwaitingActivation:
-            return "awaiting_activation";
         case XiaozhiState::kReadyIdle:
             return "ready_idle";
         case XiaozhiState::kConnecting:

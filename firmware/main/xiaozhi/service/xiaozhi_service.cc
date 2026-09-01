@@ -9,7 +9,7 @@
 #include "drivers/audio/audio_player.h"
 #include "events/event_bus.h"
 #include "storage/nvs/volume_store.h"
-#include "xiaozhi/config/activation_client.h"
+#include "xiaozhi/config/slate_voice_config_client.h"
 #include "xiaozhi/config/settings.h"
 #include "xiaozhi/service/audio_service.h"
 #include "xiaozhi/service/message_handler.h"
@@ -22,8 +22,6 @@ const char* XiaozhiStateName(xiaozhi::XiaozhiState state) {
     switch (state) {
         case xiaozhi::XiaozhiState::kCheckingConfig:
             return "checking_config";
-        case xiaozhi::XiaozhiState::kAwaitingActivation:
-            return "awaiting_activation";
         case xiaozhi::XiaozhiState::kReadyIdle:
             return "ready_idle";
         case xiaozhi::XiaozhiState::kConnecting:
@@ -159,7 +157,6 @@ void XiaozhiService::ToggleXiaozhi() {
             }
             break;
         case XiaozhiState::kCheckingConfig:
-        case XiaozhiState::kAwaitingActivation:
             break;
     }
 }
@@ -441,8 +438,8 @@ void XiaozhiService::ConfigTask() {
     while (in_mode_.load(std::memory_order_relaxed) && !config_stop_requested_.load(std::memory_order_relaxed) &&
            !settings::HasProtocolConfig()) {
         SetState(XiaozhiState::kCheckingConfig, "Loading voice configuration...");
-        ActivationClient       client;
-        ActivationConfigResult result = client.Fetch();
+        SlateVoiceConfigClient client;
+        SlateVoiceConfigResult result = client.Fetch();
         if (config_stop_requested_.load(std::memory_order_relaxed) || !in_mode_.load(std::memory_order_relaxed))
             return;
         {
@@ -454,24 +451,13 @@ void XiaozhiService::ConfigTask() {
             SetState(XiaozhiState::kReadyIdle, "Voice ready");
             return;
         }
-        if (result.has_activation_challenge) {
-            if (!result.activation_code.empty())
-                SetActivation(result.activation_message, result.activation_code);
-            esp_err_t activate_err = client.Activate(result.activation_challenge);
-            if (activate_err != ESP_OK && activate_err != ESP_ERR_TIMEOUT)
-                ESP_LOGW(kTag, "activation challenge failed err=%s", esp_err_to_name(activate_err));
-        }
-        if (result.has_activation) {
-            SetActivation(result.activation_message, result.activation_code);
-        } else if (!result.ok) {
+        if (!result.ok) {
             SetError(result.error.empty() ? "Voice configuration failed" : result.error);
-        } else if (result.has_activation_challenge) {
-            SetState(XiaozhiState::kCheckingConfig, "Confirming voice activation...");
         } else {
-            SetError("Voice service returned no protocol configuration");
+            SetError("Slate voice service returned no protocol configuration");
         }
 
-        const int delay_steps = result.has_activation ? 30 : 100;
+        const int delay_steps = 100;
         for (int i = 0; i < delay_steps && in_mode_.load(std::memory_order_relaxed) &&
                         !config_stop_requested_.load(std::memory_order_relaxed) && !settings::HasProtocolConfig();
              ++i)
@@ -830,10 +816,6 @@ void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
             snapshot_.assistant_text.clear();
             snapshot_.calendar_proposal = {};
         }
-        if (state != XiaozhiState::kAwaitingActivation) {
-            snapshot_.activation_message.clear();
-            snapshot_.activation_code.clear();
-        }
         if (state != XiaozhiState::kError)
             snapshot_.error.clear();
     }
@@ -848,21 +830,6 @@ void XiaozhiService::SetError(const std::string& error) {
         snapshot_.emotion      = "sad";
         snapshot_.error        = error;
         snapshot_.has_protocol = settings::HasProtocolConfig();
-        ClearAlertLocked();
-    }
-    PostChanged();
-}
-
-void XiaozhiService::SetActivation(const std::string& message, const std::string& code) {
-    {
-        std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.state              = XiaozhiState::kAwaitingActivation;
-        snapshot_.status             = "Voice activation";
-        snapshot_.emotion            = "thinking";
-        snapshot_.activation_message = message;
-        snapshot_.activation_code    = code;
-        snapshot_.has_protocol       = false;
-        snapshot_.error.clear();
         ClearAlertLocked();
     }
     PostChanged();
