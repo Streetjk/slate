@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `919d723146b19813cf3a43725ce2c4cc39842c8b` (Campaign 3B implementation integration; report publication follows)
+Last known good SHA: `c37f86f9554f3bf63230b5000c1a42168489445b` (Campaign 4 implementation integration; report publication follows)
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 4 — Google Calendar voice writes
-Current stage: Campaign 3B report publication; then Campaign 4 confirmation-ticket implementation
-Current status: PASS — Campaign 3B software gate passed; Campaign 4 QUEUED
+Current stage: Campaign 4 report publication; then Campaign 5 MVP integration/hardening
+Current status: PASS — Campaign 4 software and reproducible firmware gates passed; Campaign 5 QUEUED
 
 Completed campaigns:
 
@@ -41,6 +41,11 @@ Completed campaigns:
   - ADC-backed text assistant, configurable Gemini Live native-audio gateway, Xiaozhi WebSocket bridge, Opus/PCM conversion, strict tools, and lifecycle/security tests integrated.
   - Deterministic gates passed: 252 backend tests, 6 shared tests, lint, typecheck, format, Prisma validation, and frontend build.
   - AGY medium final re-review passed after a high-effort REVISE cycle fixed seven lifecycle/codec/controller findings. Live Google ADC account and physical NOTE4 tests remain human-boundary actions.
+- Campaign 4 — Google Calendar voice writes: PASS; report publication in `04-GOOGLE-CALENDAR-VOICE.md`
+  - Google OAuth/PKCE, encrypted user credentials, proposal validation, single-use confirmation tickets, narrow `events.insert`, voice proposal routing, and NOTE4 confirm/cancel UI integrated.
+  - Deterministic gates passed: 267 backend tests, 6 shared tests, lint, typecheck, format, Prisma validation, frontend build, and exact ESP-IDF `v5.5.2`/`esp32s3` Docker build with merged artifacts.
+  - AGY high-effort review passed with no P0–P2 findings and one deferred P3 ticket-retention observation.
+  - Live Google consent/account testing and physical NOTE4 interaction remain human-boundary actions.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -54,7 +59,7 @@ Deferred campaigns / required later gates:
 - GitHub Actions workflow registration is infrastructure debt; local exact ESP-IDF fallback is the current reproducible firmware path.
 - Live Microsoft/Google OAuth consent and physical NOTE4 testing remain future human-boundary actions.
 - XR-002 BTC D/W/M automatic trio UX may be completed in Campaign 1B or no later than MVP hardening.
-- XR-004 strict per-tool input schemas MUST be resolved before Gemini production tool execution in Campaign 3B/4.
+- XR-004 strict per-tool input schemas: RESOLVED in Campaign 4 through static proposal DTO validation and proposal-only voice dispatch.
 
 Active feature branches:
 
@@ -62,8 +67,8 @@ Active feature branches:
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 
-Last test status: PASS — backend tests (252 tests, 0 failures, 803 expectations), shared tests (6 tests, 0 failures, 27 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, focused assistant tests, and `git diff --check`.
-Last AGY verdict: PASS — Campaign 3B final `gemini-3.7-flash-medium` re-review; all seven prior findings fixed, no new P0-P3 findings, reviewer tree unchanged.
+Last test status: PASS — backend tests (267 tests, 0 failures, 839 expectations), shared tests (6 tests, 0 failures, 27 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, exact ESP-IDF 5.5.2/esp32s3 Docker build and merge-bin, artifact hashes, and `git diff --check`.
+Last AGY verdict: PASS — Campaign 4 high-effort `gemini-3.7-flash-high` review; no P0/P1/P2 findings, P3-001 ticket pruning deferred, reviewer tree unchanged.
 
 External review gate:
 
@@ -73,6 +78,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: REQUIRED BEFORE CAMPAIGN 3B/4.
 - XR-005 — remaining English display labels/defaults: RECHECK REQUIRED; P3/P2 candidate.
 
-Next automatic action: implement Campaign 4’s Google OAuth Calendar client and confirmation-ticket flow with deterministic mocks; invoke AGY high-scrutiny review before integration.
+Next automatic action: begin Campaign 5 full MVP integration/hardening after publishing the Campaign 4 report; run full regression, secret/dependency checks already available, and high-effort adversarial AGY review.
 
 Human action required: NO
