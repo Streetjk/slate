@@ -2,11 +2,11 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `98dd2abbd82260c6a112bf476f1d66294dbb56e7`
+Last known good SHA: `5edab3c45e060426fbd0986eac52cf04695d6c0e` (Campaign 1B integration)
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
-Current campaign: Campaign 1B — external-review hardening
-Current stage: Recheck XR-001, XR-003, XR-004, and XR-005 before Gemini production tool execution
+Current campaign: Campaign 3B — Gemini voice, Search, and Q&A
+Current stage: Backend voice gateway architecture and provider implementation
 Current status: RUNNING
 
 Completed campaigns:
@@ -37,6 +37,9 @@ Completed campaigns:
   - `gemini-3.7-flash` is selected for text reasoning, Search grounding, structured output, and function calling.
   - `gemini-live-2.5-flash-native-audio` is selected for live audio, transcription, multilingual interaction, Search, and function calling because Gemini 3.7 Flash does not support Live API.
   - Cloud Speech-to-Text V2 `chirp_3` covers the required English and Japanese locales; TTS has an ADC-compatible Google Cloud path.
+- Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
+  - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
+  - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
 
 Blocked campaigns:
 
@@ -53,6 +56,7 @@ Active feature branches:
 
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
+- `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 
 Last test status: PASS — backend tests (226 tests, 0 failures, 743 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, Outlook security/normalization tests, and secret-pattern scan. Campaign 3A feasibility was research-only; its pre-report tree was clean and `git diff --check` passed.
 Last AGY verdict: READY — Campaign 3A `gemini-3.7-flash-high` feasibility research; no P0-P3 findings. Primary Google documentation independently verified the model/capability split.
@@ -65,11 +69,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: REQUIRED BEFORE CAMPAIGN 3B/4.
 - XR-005 — remaining English display labels/defaults: RECHECK REQUIRED; P3/P2 candidate.
 
-Next automatic action:
-
-1. Re-read `CAMPAIGN-INSTRUCTIONS.md` and inspect the existing BTC, shared contract, and English UI evidence for XR-001, XR-003, XR-004, and XR-005.
-2. Reassess XR-002 and implement it in Campaign 1B if low-risk; otherwise leave it explicitly scheduled no later than MVP hardening.
-3. For every XR finding, record CONFIRMED/FIXED/REJECTED/DEFERRED with code/test evidence and AGY agreement/disagreement.
-4. Run deterministic regression and AGY review after confirmed fixes, push `01B-EXTERNAL-REVIEW-HARDENING.md`, then resume Campaign 3B if all blocking items are cleared.
+Next automatic action: implement Campaign 3B’s configurable ADC-backed voice gateway, preserving Slate’s audio lifecycle, strict assistant tool schemas, and the Outlook/AI boundary; use deterministic mocks before AGY review.
 
 Human action required: NO
