@@ -43,6 +43,7 @@ describe('XiaozhiVoiceSession', () => {
       sendAudio: (pcm) => sentAudio.push(pcm),
       sendText: () => {},
       endAudio: () => {},
+      respondToToolCalls: () => {},
       rejectToolCalls: () => {},
       reconnect: async () => {},
       close: () => {},
@@ -114,6 +115,7 @@ describe('XiaozhiVoiceSession', () => {
             sendAudio: () => {},
             sendText: () => {},
             endAudio: () => {},
+            respondToToolCalls: () => {},
             rejectToolCalls: () => {},
             reconnect: async () => {},
             close: () => {},
@@ -150,6 +152,7 @@ describe('XiaozhiVoiceSession', () => {
             sendAudio: () => {},
             sendText: () => {},
             endAudio: () => {},
+            respondToToolCalls: () => {},
             rejectToolCalls: () => {},
             reconnect: async () => {},
             close: () => {},
@@ -176,6 +179,85 @@ describe('XiaozhiVoiceSession', () => {
     );
     eventHandler?.({ message: { data: Buffer.from([1, 2]).toString('base64') } as never });
     expect(ws.closed).toEqual({ code: 1011, reason: 'voice session failed' });
+  });
+
+  it('turns a model calendar proposal into a device confirmation flow', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let eventHandler: ((event: GeminiLiveEvent) => void) | undefined;
+    let toolResponses: unknown;
+    const session = new XiaozhiVoiceSession(
+      ws,
+      {
+        connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+          eventHandler = onEvent;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: (calls: unknown) => {
+              toolResponses = calls;
+            },
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never,
+      codec,
+      {
+        propose: async (value) => ({ ticket: 'a'.repeat(43), proposal: value, expiresAt: 'later' }),
+        confirm: async (ticket) => ({ id: `event:${ticket}` }),
+        cancel: async () => {},
+      }
+    );
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    eventHandler?.({
+      message: {
+        toolCall: {
+          functionCalls: [
+            { id: 'call-1', name: 'propose_google_calendar_event', args: { title: 'Dentist' } },
+          ],
+        },
+      } as never,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    const proposalMessage = ws.sent
+      .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+      .find((item) => item?.type === 'calendar_proposal');
+    expect(proposalMessage).toMatchObject({
+      type: 'calendar_proposal',
+      ticket: 'a'.repeat(43),
+      proposal: { title: 'Dentist' },
+    });
+    expect(toolResponses).toEqual([
+      {
+        id: 'call-1',
+        name: 'propose_google_calendar_event',
+        response: { ok: true, status: 'proposal_created' },
+      },
+    ]);
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'calendar', action: 'confirm', ticket: 'a'.repeat(43) })),
+      false
+    );
+    const createdMessage = ws.sent
+      .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+      .find((item) => item?.state === 'created');
+    expect(createdMessage).toEqual({
+      type: 'calendar',
+      state: 'created',
+      event_id: `event:${'a'.repeat(43)}`,
+    });
   });
 
   it('rejects audio before handshake/session and closes resources', async () => {

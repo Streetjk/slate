@@ -4,6 +4,16 @@ import type { RawData, WebSocket } from 'ws';
 import { GeminiLiveService, type GeminiLiveConnection } from './gemini-live.service';
 import { OpusPcmCodec, type VoiceCodec } from './opus-pcm-codec';
 
+export interface VoiceCalendarActions {
+  propose(proposal: unknown): Promise<{
+    ticket: string;
+    proposal: unknown;
+    expiresAt: string;
+  }>;
+  confirm(ticket: string): Promise<{ id: string; htmlLink?: string }>;
+  cancel(ticket: string): Promise<void>;
+}
+
 export class XiaozhiVoiceSession {
   private readonly sessionId = randomUUID();
   private readonly codec: VoiceCodec;
@@ -15,7 +25,8 @@ export class XiaozhiVoiceSession {
   constructor(
     private readonly socket: WebSocket,
     private readonly liveService: GeminiLiveService,
-    codecFactory: () => VoiceCodec = () => new OpusPcmCodec()
+    codecFactory: () => VoiceCodec = () => new OpusPcmCodec(),
+    private readonly calendarActions?: VoiceCalendarActions
   ) {
     this.codec = codecFactory();
   }
@@ -53,6 +64,9 @@ export class XiaozhiVoiceSession {
         this.live = undefined;
         this.speaking = false;
         this.codec.reset();
+        return;
+      case 'calendar':
+        await this.handleCalendarMessage(message);
         return;
       case 'goodbye':
         this.close();
@@ -127,16 +141,58 @@ export class XiaozhiVoiceSession {
 
       const calls = message.toolCall?.functionCalls ?? [];
       if (calls.length > 0 && this.live) {
-        this.live.rejectToolCalls(
-          calls.map((call) => ({
-            id: call.id ?? crypto.randomUUID(),
-            name: call.name ?? 'unknown',
-          }))
-        );
+        void this.handleToolCalls(this.live, calls).catch((error: unknown) => this.fail(error));
       }
     } catch (error) {
       this.fail(error);
     }
+  }
+
+  private async handleToolCalls(
+    live: GeminiLiveConnection,
+    calls: Array<{ id?: string; name?: string; args?: unknown }>
+  ): Promise<void> {
+    const accepted: Array<{ id: string; name: string; response: Record<string, unknown> }> = [];
+    const rejected: Array<{ id: string; name: string }> = [];
+    for (const call of calls) {
+      const id = call.id ?? randomUUID();
+      const name = call.name ?? 'unknown';
+      if (name !== 'propose_google_calendar_event' || !this.calendarActions) {
+        rejected.push({ id, name });
+        continue;
+      }
+      try {
+        const ticket = await this.calendarActions.propose(call.args);
+        this.sendJson({
+          type: 'calendar_proposal',
+          ticket: ticket.ticket,
+          proposal: ticket.proposal,
+          expires_at: ticket.expiresAt,
+        });
+        accepted.push({ id, name, response: { ok: true, status: 'proposal_created' } });
+      } catch {
+        accepted.push({ id, name, response: { ok: false, error: 'calendar proposal rejected' } });
+      }
+    }
+    if (accepted.length > 0) live.respondToToolCalls(accepted);
+    if (rejected.length > 0) live.rejectToolCalls(rejected);
+  }
+
+  private async handleCalendarMessage(message: Record<string, unknown>): Promise<void> {
+    if (!this.handshaken) throw new Error('voice session not initialized; hello required');
+    if (!this.calendarActions) throw new Error('Google Calendar voice actions are unavailable');
+    const ticket = typeof message.ticket === 'string' ? message.ticket : '';
+    if (message.action === 'confirm') {
+      const event = await this.calendarActions.confirm(ticket);
+      this.sendJson({ type: 'calendar', state: 'created', event_id: event.id });
+      return;
+    }
+    if (message.action === 'cancel') {
+      await this.calendarActions.cancel(ticket);
+      this.sendJson({ type: 'calendar', state: 'cancelled' });
+      return;
+    }
+    throw new Error('unsupported calendar action');
   }
 
   private startSpeaking(): void {

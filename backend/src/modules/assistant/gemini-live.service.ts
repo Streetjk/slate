@@ -13,6 +13,9 @@ export interface GeminiLiveConnection {
   sendAudio(pcm16: Uint8Array): void;
   sendText(text: string): void;
   endAudio(): void;
+  respondToToolCalls(
+    calls: Array<{ id: string; name: string; response: Record<string, unknown> }>
+  ): void;
   rejectToolCalls(calls: Array<{ id: string; name: string }>): void;
   reconnect(): Promise<void>;
   close(): void;
@@ -109,6 +112,10 @@ export class GeminiLiveService {
           turnComplete: true,
         }),
       endAudio: () => requireSession().sendRealtimeInput({ audioStreamEnd: true }),
+      respondToToolCalls: (calls) =>
+        requireSession().sendToolResponse({
+          functionResponses: calls.map(({ id, name, response }) => ({ id, name, response })),
+        }),
       rejectToolCalls: (calls) =>
         requireSession().sendToolResponse({
           functionResponses: calls.map(({ id, name }) => ({

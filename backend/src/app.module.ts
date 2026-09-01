@@ -22,6 +22,7 @@ import { ZodValidationPipe } from './common/nest/pipes/zod-validation.pipe';
 import { JwtAuthGuard } from './common/nest/guards/jwt-auth.guard';
 import { RateLimitGuard } from './common/rate-limit/rate-limit-guard';
 import { AssistantModule } from './modules/assistant/assistant.module';
+import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AssistantModule } from './modules/assistant/assistant.module';
     UsersModule,
     DevicesModule,
     AssistantModule,
+    GoogleCalendarModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },

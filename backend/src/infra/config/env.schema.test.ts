@@ -46,6 +46,15 @@ describe('EnvSchema', () => {
     expect(Object.hasOwn(parsed, 'GEMINI_API_KEY')).toBe(false);
   });
 
+  it('defaults Google Calendar to the primary calendar without an API key setting', () => {
+    const result = EnvSchema.parse({
+      ...baseEnv,
+      GOOGLE_CALENDAR_ID: undefined,
+    });
+    expect(result.GOOGLE_CALENDAR_ID).toBe('primary');
+    expect('GOOGLE_CALENDAR_API_KEY' in result).toBe(false);
+  });
+
   it('accepts a 32-byte token encryption key and rejects shorter keys', () => {
     expect(
       EnvSchema.safeParse({
