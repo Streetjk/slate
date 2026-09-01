@@ -6,8 +6,8 @@ Last known good SHA: `478653d1c46c449f67b5293c27c863142ef1ccd3` (Campaign 6E add
 Campaign instructions SHA: `478653d1c46c449f67b5293c27c863142ef1ccd3`
 
 Current campaign: Campaign 6E — Public HTTPS + roaming connectivity
-Current stage: Phase A0 — NOTE4 public Server Address migration / paired off-LAN verification
-Current status: HUMAN_BOUNDARY — Campaign 6E A1-A4 disk audit, safe Docker cache cleanup, and public HTTPS validation passed. Physical NOTE4 portal entry is required to set `https://orangepi5.tail6aabef.ts.net`; pairing state must then be verified. Campaign 6D remains independently blocked on its physical refresh-baseline work and was not altered.
+Current stage: Phase S1/S2 — disabled Snap revision and apt-cache cleanup sudo boundary
+Current status: HUMAN_BOUNDARY — NOTE4 Server Address migration completed; existing pairing is preserved and authenticated public poll traffic is passing. Campaign 6E S0 inventory identified eight explicitly disabled Snap revisions, but Orange Pi sudo requires a password. Campaign 6D remains independently blocked on its physical refresh-baseline work and was not altered.
 
 Completed campaigns:
 
@@ -52,7 +52,7 @@ Completed campaigns:
   - Hardware flashing, physical NOTE4 flows, and live personal OAuth consent remain pending human action.
 - Campaign 6C — Orange Pi backend deployment: PASS through O3; custom ARM64 Slate backend and MySQL are healthy at `http://192.168.50.108:3001`; O4 NOTE4 device handoff remains pending human action.
 - Campaign 6D — E-Ink refresh optimization: D0 BLOCKED; no physical NOTE4 serial device detected, no firmware changes or flash attempted.
-- Campaign 6E — Public HTTPS + roaming connectivity: E0/E1/E2 and addendum A1-A4 PASS; Orange Pi system disk `/dev/mmcblk1` is `15476981760` bytes, exact root free space is `2958172160` bytes after Docker BuildKit cache fell from `1.472GB` to `0B`, and active Slate/MySQL/rollback assets were preserved. Funnel remains verified at `https://orangepi5.tail6aabef.ts.net` with local/public health and SPA evidence. A0 physical NOTE4 Server Address entry and paired/off-LAN verification are HUMAN_PENDING; E3 provider redirect registration/OAuth consent remains separate.
+- Campaign 6E — Public HTTPS + roaming connectivity: E0/E1/E2, addendum A1-A4, V0, and S0 PASS; the NOTE4 Server Address is `https://orangepi5.tail6aabef.ts.net`, existing pairing is preserved, and 23 authenticated device polls returned HTTP 201 after migration. Orange Pi system disk `/dev/mmcblk1` is `15476981760` bytes, exact root free space is `2958049280` bytes before Snap cleanup, and active Slate/MySQL/rollback assets remain preserved. Funnel and public health remain verified. S1/S2 cleanup is HUMAN_PENDING for sudo; true off-LAN and E3 OAuth checks remain separate.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -67,8 +67,8 @@ Deferred campaigns / required later gates:
 - Live Microsoft/Google OAuth consent and physical NOTE4 testing remain future human-boundary actions.
 - XR-002 BTC D/W/M automatic trio UX: RESOLVED in Campaign 5 through authenticated trio provisioning and existing frame navigation.
 - XR-004 strict per-tool input schemas: RESOLVED in Campaign 4 through static proposal DTO validation and proposal-only voice dispatch.
-- Campaign 6C O4 — human must enter the current public Server Address through the NOTE4 supported setup portal and perform the physical validation checklist; live Microsoft/Google OAuth consent remains separate.
-- Campaign 6E A0 — human must temporarily make the saved NOTE4 Wi-Fi unavailable, connect to the displayed `Slate-XXXX` setup AP, browse `http://192.168.4.1`, enter the existing Wi-Fi credentials and `https://orangepi5.tail6aabef.ts.net`, then verify paired HTTPS polling and off-LAN sync. Do not factory-reset or re-register.
+- Campaign 6C O4 — Server Address entry is complete and pairing is verified; the remaining physical validation checklist and true off-LAN test remain pending.
+- Campaign 6E S1/S2 — human must run the exact eight `sudo snap remove ... --revision=...` commands and `sudo apt-get clean` listed in the 06E report. Do not factory-reset/re-register NOTE4 or remove active Snap revisions.
 - Campaign 6E E3 — human must register `https://orangepi5.tail6aabef.ts.net/api/v1/integrations/google/calendar/callback` and `https://orangepi5.tail6aabef.ts.net/api/v1/integrations/microsoft/calendar/callback` in the provider consoles, complete any interactive OAuth consent, and enter required secrets directly into the mode-600 Orange Pi environment. Do not share or commit credentials. Then resume E3 live checks.
 
 Active feature branches:
@@ -88,6 +88,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: after the user completes the supported NOTE4 portal entry, verify paired HTTPS polling and off-LAN sync; then resume Campaign 6E E3 live OAuth checks. Do not flash firmware, alter Campaign 6D measurements, or begin Airtable/Gantt.
+Next automatic action: after the human sudo cleanup, verify Snap state, disk free space, service health, Funnel, and public HTTPS; then complete true off-LAN and Campaign 6E E3 live OAuth boundaries. Do not flash firmware, alter Campaign 6D measurements, or begin Airtable/Gantt.
 
-Human action required: YES — first perform the physical NOTE4 portal entry using the existing Wi-Fi credentials and exact public Server Address above, without factory reset/re-registration; separately register HTTPS callbacks and complete provider consent/secure environment setup. Never send credentials in chat or reports.
+Human action required: YES — run the exact S1/S2 sudo cleanup commands in the 06E report; separately complete true off-LAN validation and provider consent/secure environment setup. Never send credentials in chat or reports.

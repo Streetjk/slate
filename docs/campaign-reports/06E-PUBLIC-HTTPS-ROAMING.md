@@ -2,14 +2,14 @@
 
 Stage: Campaign 6E — Public HTTPS + roaming connectivity
 Date: 2026-09-01 (Australia/Perth)
-Status: E0/E1/E2 PASS; A1-A4 PASS; A0 NOTE4 Server Address migration HUMAN_PENDING at the physical captive-portal boundary
+Status: E0/E1/E2 PASS; A1-A4 PASS; V0 pairing/public sync PASS; S0/S1 HUMAN_PENDING at the required sudo authorization boundary
 
 ## Repository State
 
 Repository: `Streetjk/slate`
 Branch: `integration/note4-custom`
 Base SHA: `dd18b72e95831e8972d5c0528574aa483b96ada5`
-Head SHA: `478653d1c46c449f67b5293c27c863142ef1ccd3` before this report update commit
+Head SHA: `5bb99a1b2061e7f3d560d0dae0319bfa726c7285` before this report update commit
 Upstream SHA: not changed in this stage
 
 ## Harness
@@ -264,22 +264,10 @@ storage audit; see the continuation evidence below.
 
 ## Next Recommended Stage
 
-On the paired NOTE4, perform the minimum supported server-address migration:
-
-```bash
-1. Temporarily make its saved Wi-Fi unavailable so it falls back to setup mode.
-2. Connect a phone/laptop to the SSID shown by the NOTE4 (for example,
-   `Slate-XXXX`).
-3. Browse to `http://192.168.4.1`.
-4. Enter the existing Wi-Fi SSID and password and set Server Address to:
-   https://orangepi5.tail6aabef.ts.net
-5. Submit and wait for the NOTE4 to restart and reconnect.
-```
-
-Do not choose Factory reset and do not re-register the device. Firmware source
-separates `server_url` storage from `device_id`/`device_secret`, so this
-supported save path is expected to preserve pairing. Afterward, verify a valid
-paired-device poll/backend session and an off-LAN HTTPS sync. Do not enter
+The NOTE4 Server Address migration is complete and the existing pairing is
+working. The next action is the S1/S2 Orange Pi sudo boundary documented below:
+remove only the eight explicitly disabled Snap revisions and run
+`sudo apt-get clean`, then return for S3 post-cleanup validation. Do not enter
 provider credentials in Git or reports.
 
 ## Addendum — A0-A5 Disk Audit and Server Address Boundary
@@ -378,14 +366,106 @@ The Orange Pi service and public HTTPS infrastructure are ready. The remaining
 6E action is physical NOTE4 portal entry and paired/off-LAN verification. This
 stage does not authorize firmware flashing.
 
+## Continuation — V0 Connection Verification and S0 Snap Inventory
+
+This continuation follows the user-confirmed NOTE4 setup completion and was
+performed against source/instructions at
+`5bb99a1b2061e7f3d560d0dae0319bfa726c7285`. No product source, firmware,
+deployment configuration, persistent data, or Campaign 6D artifact was changed.
+
+### V0 — NOTE4 pairing and public connection
+
+The user entered the permanent Server Address:
+`https://orangepi5.tail6aabef.ts.net`
+
+The existing pairing was mechanically verified without reading or recording
+the device secret:
+
+- The NOTE4 USB serial device remains detected as `/dev/cu.usbmodem31201`.
+- The Slate backend recorded `23` `POST /api/v1/devices/current/poll` requests
+  in the 30-minute observation window after setup.
+- The observed poll responses all completed with HTTP status `201`, proving
+  the existing device authentication/pairing remained valid.
+- The device's configured Server Address is the public HTTPS hostname supplied
+  by the user; the successful post-migration authenticated poll is therefore
+  recorded as paired public HTTPS sync `PASS`.
+- Backend access logging omits the request Host header, so this report does
+  not claim packet-level host-header attribution beyond the configured device
+  URL and post-migration successful authenticated traffic.
+
+Public infrastructure remained healthy:
+
+- Funnel status: HTTPS `443`, `/` -> `http://127.0.0.1:3001`.
+- Local and public `/healthz`: HTTP `200`, JSON status `ok`.
+- Slate and MySQL containers: `healthy`.
+- Tailscale service: enabled and active.
+- Public Web UI: HTTP `200`, HTML response.
+
+Pairing result: `PRESERVED / PASS`. Device secret: not accessed.
+True off-LAN roaming is not claimed because this Mac/Orange Pi validation path
+does not provide an independently different Internet egress.
+
+### S0 — Snap inventory before deletion
+
+Pre-cleanup storage:
+
+- `df -h /`: `/dev/mmcblk1p1`, `14G` total, `12G` used, `2.8G` available,
+  `80%`.
+- `df -B1 /`: total `14985895936`, used `11827904512`, available
+  `2958049280` bytes, `80%`.
+- `du -sh /var/lib/snapd`: `3.5G`.
+- `systemctl --failed`: two pre-existing failed units were reported:
+  `bluetooth-hciattach.service` and `vncserver@1.service`; no unit was changed.
+
+Rows explicitly marked `disabled` by `snap list --all` and eligible for the
+supported removal command are:
+
+| Snap | Disabled revision | Active revision preserved |
+| --- | ---: | ---: |
+| `core22` | `2412` | `2438` |
+| `core24` | `1588` | `1644` |
+| `cups` | `1233` | `1237` |
+| `firefox` | `8762` | `8801` |
+| `gnome-42-2204` | `245` | `264` |
+| `gnome-46-2404` | `147` | `154` |
+| `mesa-2404` | `1166` | `1836` |
+| `snapd` | `27595` | `27709` |
+
+No active revision is included in the deletion list. No Snap removal was
+attempted because `sudo -n -v` returned `NO` (`sudo: a password is required`).
+The apt archive cache was likewise not cleaned because it also requires sudo.
+
+### S1/S2 — Human authorization boundary
+
+No files were deleted and no system state was changed. After entering the
+Orange Pi sudo password locally, the human may run exactly these commands; they
+use the supported Snap removal method and do not remove active revisions:
+
+```text
+sudo snap remove core22 --revision=2412
+sudo snap remove core24 --revision=1588
+sudo snap remove cups --revision=1233
+sudo snap remove firefox --revision=8762
+sudo snap remove gnome-42-2204 --revision=245
+sudo snap remove gnome-46-2404 --revision=147
+sudo snap remove mesa-2404 --revision=1166
+sudo snap remove snapd --revision=27595
+sudo apt-get clean
+```
+
+Run no `autoremove`, uninstall, wildcard deletion, volume prune, or manual
+deletion under Snap state directories. After the commands succeed, resume
+Campaign 6E for S3 post-cleanup verification and update this same report.
+
 ## Final Stage Verdict
 
-NOT READY — A1-A4 PASS and E2 remains PASS. A0 physical NOTE4 Server Address
-migration and paired/off-LAN verification are HUMAN_PENDING; E3 provider OAuth
-console/consent is also HUMAN_PENDING.
+NOT READY — V0 pairing/public sync PASS. S0 inventory PASS, but S1 Snap
+cleanup and optional S2 apt cleanup are HUMAN_PENDING because sudo requires a
+password. No active Snap, Slate/MySQL data, Docker image, Tailscale state, or
+SSH configuration was touched.
 
-START_SHA=`478653d1c46c449f67b5293c27c863142ef1ccd3`
-END_SHA=`478653d1c46c449f67b5293c27c863142ef1ccd3` before this report commit
+START_SHA=`5bb99a1b2061e7f3d560d0dae0319bfa726c7285`
+END_SHA=`5bb99a1b2061e7f3d560d0dae0319bfa726c7285` before this report commit
 E0_DISK_BEFORE=`/dev/mmcblk1p1 14G, 13G used, 508M free, 97%`
 E0_DOCKER_USAGE_BEFORE=`3 images / 3.606GB; builder cache approximately 2.826GB`
 E0_RUNNING_SLATE_IMAGE=`slate-note4:campaign5-runtime-fix-948934c @ sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`
@@ -410,11 +490,14 @@ GOOGLE_REDIRECT_URI=`https://orangepi5.tail6aabef.ts.net/api/v1/integrations/goo
 MICROSOFT_REDIRECT_URI=`https://orangepi5.tail6aabef.ts.net/api/v1/integrations/microsoft/calendar/callback` (provider registration HUMAN_PENDING)
 GOOGLE_OAUTH_LIVE=HUMAN_PENDING
 MICROSOFT_OAUTH_LIVE=HUMAN_PENDING
-NOTE4_PUBLIC_URL_MIGRATED=HUMAN_PENDING
-PAIRING_DEVICE_SECRET=`not accessed; preservation path verified; live state unverified`
+NOTE4_PUBLIC_URL_MIGRATED=PASS
+PAIRING_DEVICE_SECRET=`not accessed; pairing verified by authenticated polls`
+PAIRING_PRESERVED=PASS
+PAIRED_PUBLIC_SYNC=PASS — 23 authenticated poll responses with HTTP 201 in 30 minutes
+OFF_LAN_TEST=NOT_CLAIMED — validation path was not independently off-LAN
 OFF_LAN_DEVICE_TEST=HUMAN_PENDING
 MULTI_WIFI_DESIGN=DEFERRED
 MULTI_WIFI_IMPLEMENTED=NO
-HUMAN_ACTION_REQUIRED=`Use the supported captive portal: temporarily make saved Wi-Fi unavailable, connect to the displayed Slate-XXXX AP, browse http://192.168.4.1, enter the existing Wi-Fi credentials and https://orangepi5.tail6aabef.ts.net; do not factory-reset or re-register`
-BLOCKER=`Physical portal entry and subsequent paired HTTPS/off-LAN confirmation; provider OAuth console/consent remains separate`
-NEXT_ACTION=`After portal entry, verify paired polling and off-LAN HTTPS sync; then resume E3/E4 live checks`
+HUMAN_ACTION_REQUIRED=`Run the exact sudo snap removal and sudo apt-get clean commands in the S1/S2 section; do not remove active revisions or other system/deployment data`
+BLOCKER=`sudo password required for eight explicitly disabled Snap revisions and optional apt cache cleanup; true off-LAN validation and provider OAuth remain separate human boundaries`
+NEXT_ACTION=`After human sudo cleanup, resume S3 post-cleanup checks; then complete true off-LAN/personal OAuth boundaries`
