@@ -7,7 +7,7 @@ Campaign instructions SHA: `9ef57b70e3143ca39c1783acf1603ce1f3893cd8`
 
 Current campaign: Campaign 6C — Orange Pi backend deployment
 Current stage: Phase O0 — non-destructive Orange Pi reconnaissance
-Current status: BLOCKED — 192.168.1.108 is unreachable over ICMP and SSH/TCP port 22
+Current status: BLOCKED — 192.168.50.108 is LAN-reachable, but SSH authentication is unavailable through the existing authorized path
 
 Completed campaigns:
 
@@ -82,6 +82,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: resume Phase O0 reconnaissance after the Orange Pi is reachable through its existing SSH path; do not begin Airtable/Gantt.
+Next automatic action: resume Phase O0 reconnaissance after authorized SSH access to `192.168.50.108` is available; do not begin Airtable/Gantt.
 
-Human action required: YES — make the Orange Pi reachable on `192.168.1.108:22` or provide an already-authorized SSH path; physical NOTE4/OAuth checks remain pending afterward.
+Human action required: YES — provide an already-authorized SSH user/key path for `192.168.50.108:22`; physical NOTE4/OAuth checks remain pending afterward.

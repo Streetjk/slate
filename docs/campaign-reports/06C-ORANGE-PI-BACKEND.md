@@ -2,7 +2,7 @@
 
 Stage: Campaign 6C — Orange Pi Slate backend deployment  
 Date: 2026-09-01  
-Status: BLOCKED at non-destructive reconnaissance; Orange Pi SSH/LAN access unavailable
+Status: BLOCKED at non-destructive reconnaissance; Orange Pi LAN reachable but SSH authentication unavailable
 
 ## Repository State
 
@@ -22,16 +22,16 @@ Orchestration mode: `CODEX_PRIMARY`
 
 ## Objective
 
-Deploy the custom Slate backend/Web UI to the user's Orange Pi at `192.168.1.108`, verify persistent Docker services and LAN reachability, and provide the NOTE4 server address without deploying the stock upstream image.
+Deploy the custom Slate backend/Web UI to the user's Orange Pi at `192.168.50.108`, verify persistent Docker services and LAN reachability, and provide the NOTE4 server address without deploying the stock upstream image.
 
 ## Work Completed
 
 - Fetched `origin` and fast-forwarded the local branch to the current documentation-only deployment directive.
 - Verified the local branch is `integration/note4-custom`; no product source changes were made.
-- Resolved the existing SSH configuration for `192.168.1.108` without changing it or reading credentials. The configured user resolves to `ollama` on port 22.
-- Attempted one normal non-interactive SSH connection with `BatchMode` and a six-second timeout.
+- Resolved the existing SSH configuration for `192.168.50.108` without changing it or reading credentials. The configured user resolves to `ollama` on port 22.
+- Attempted one normal non-interactive SSH connection with `BatchMode` and an eight-second timeout.
 - Performed one ICMP reachability check and one TCP port-22 check.
-- Both SSH and TCP checks timed out; ping received 0/2 replies. Deployment was not attempted.
+- ICMP received 2/2 replies and TCP port 22 accepted a connection, but SSH authentication returned `Permission denied (publickey,password)`. Deployment was not attempted.
 - No Orange Pi services, containers, files, SSH configuration, or credentials were changed.
 
 ## Files Changed
@@ -62,7 +62,7 @@ Deploy the custom Slate backend/Web UI to the user's Orange Pi at `192.168.1.108
 ## Deployment Evidence
 
 ```text
-ORANGE_PI_REACHABLE=NO — SSH and TCP port 22 timed out; ICMP received 0/2
+ORANGE_PI_REACHABLE=YES at LAN level; SSH authentication unavailable
 ORANGE_PI_OS=NOT_RUN
 ORANGE_PI_ARCH=NOT_RUN
 ORANGE_PI_RAM=NOT_RUN
@@ -76,8 +76,8 @@ SLATE_CONTAINER=NOT_RUN
 MYSQL_CONTAINER=NOT_RUN
 HEALTHZ=NOT_RUN
 WEB_UI=NOT_RUN
-LAN_REACHABILITY=FAIL — target host did not respond to ICMP or TCP/22
-NOTE4_SERVER_ADDRESS=UNVERIFIED; intended http://192.168.1.108:3001
+LAN_REACHABILITY=PARTIAL — ICMP 2/2 and TCP/22 succeeded; Slate endpoint unverified
+NOTE4_SERVER_ADDRESS=UNVERIFIED; intended http://192.168.50.108:3001
 OAUTH_HTTPS_READY=UNKNOWN
 GOOGLE_ADC_READY=UNKNOWN
 ```
@@ -103,18 +103,22 @@ P3 findings: none.
 
 ## Known Issues
 
-- Orange Pi `192.168.1.108` is currently unreachable from this Mac mini, and SSH access cannot be established with the existing configuration.
-- It is unknown whether the Orange Pi is powered, on the same LAN, using the expected address, or listening on SSH.
+- Orange Pi `192.168.50.108` is reachable on the LAN and has TCP/22 open, but SSH authentication cannot be completed with the existing configured path.
+- It is unknown which already-authorized SSH user/key path should be used; no credential guessing was attempted.
 - No deployment, container startup, health check, or NOTE4 server-address verification has been performed.
 
 ## Deviations
 
-- Deployment stopped at Phase O0 as required when normal SSH/LAN access was unavailable. No credential guessing, SSH configuration changes, port commandeering, or service mutation was attempted.
+- Deployment stopped at Phase O0 as required when normal SSH authentication was unavailable. No password prompt, credential guessing, SSH configuration change, port commandeering, or service mutation was attempted.
 
 ## Next Recommended Stage
 
-Human action: power/connect the Orange Pi to the same LAN and make its existing SSH service reachable at `192.168.1.108:22`, or provide an already-authorized SSH alias/user path. Then resume O0 reconnaissance. Do not provide passwords or tokens in chat or reports.
+Human action: provide an already-authorized SSH alias/user/key path for `192.168.50.108:22` or configure the Orange Pi to accept the existing authorized key. Then resume O0 reconnaissance. Do not provide passwords or tokens in chat or reports.
 
 ## Final Stage Verdict
 
-BLOCKED — human LAN/SSH availability action required before Orange Pi inspection or deployment.
+BLOCKED — human SSH-authentication action required before Orange Pi inspection or deployment.
+
+## Address Correction
+
+The initial 06C attempt used `192.168.1.108` because that address was present in the first deployment directive. The user subsequently corrected the target to `192.168.50.108`; the O0 checks above supersede the earlier unreachable-address result. No action was taken against the earlier address beyond the documented timeout probe.
