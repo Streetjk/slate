@@ -19,6 +19,12 @@ describe('resamplePcm16', () => {
   it('rejects odd PCM payloads', () => {
     expect(() => resamplePcm16(new Uint8Array([1]), 24_000, 16_000)).toThrow('complete samples');
   });
+
+  it('accepts a complete PCM view with an unaligned byte offset', () => {
+    const source = new Uint8Array(10);
+    const view = source.subarray(1, 9);
+    expect(() => resamplePcm16(view, 24_000, 16_000)).not.toThrow();
+  });
 });
 
 describe('OpusPcmCodec', () => {
@@ -38,5 +44,16 @@ describe('OpusPcmCodec', () => {
     codec.close();
     expect(() => codec.decodeDevicePacket(new Uint8Array([1]))).toThrow('codec is closed');
     expect(() => codec.close()).not.toThrow();
+  });
+
+  it('resets a partial output frame between turns', () => {
+    const codec = new OpusPcmCodec();
+    try {
+      expect(codec.encodeModelPcm(Buffer.alloc(1_000))).toHaveLength(0);
+      codec.reset();
+      expect(codec.encodeModelPcm(Buffer.alloc(2_880))).toHaveLength(1);
+    } finally {
+      codec.close();
+    }
   });
 });

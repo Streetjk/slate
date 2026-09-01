@@ -41,6 +41,7 @@ export class XiaozhiVoiceSession {
         this.handleHello(message);
         return;
       case 'listen':
+        if (!this.handshaken) throw new Error('voice session not initialized; hello required');
         if (message.state === 'start') {
           await this.ensureLive();
         } else if (message.state === 'stop') {
@@ -50,9 +51,12 @@ export class XiaozhiVoiceSession {
       case 'abort':
         this.live?.close();
         this.live = undefined;
+        this.speaking = false;
+        this.codec.reset();
         return;
       case 'goodbye':
         this.close();
+        if (this.socket.readyState === this.socket.OPEN) this.socket.close(1000, 'goodbye');
         return;
       default:
         return;
@@ -96,34 +100,42 @@ export class XiaozhiVoiceSession {
   }
 
   private handleGeminiMessage(message: LiveServerMessage): void {
-    const inputText = message.serverContent?.inputTranscription?.text?.trim();
-    if (inputText) this.sendJson({ type: 'stt', text: inputText });
+    try {
+      const inputText = message.serverContent?.inputTranscription?.text?.trim();
+      if (inputText) this.sendJson({ type: 'stt', text: inputText });
 
-    const outputText =
-      message.serverContent?.outputTranscription?.text?.trim() || message.text?.trim();
-    if (outputText) {
-      this.startSpeaking();
-      this.sendJson({ type: 'tts', state: 'sentence_start', text: outputText });
-    }
-
-    const audio = message.data;
-    if (audio) {
-      this.startSpeaking();
-      for (const packet of this.codec.encodeModelPcm(Buffer.from(audio, 'base64'))) {
-        this.socket.send(packet, { binary: true });
+      const outputText =
+        message.serverContent?.outputTranscription?.text?.trim() || message.text?.trim();
+      if (outputText) {
+        this.startSpeaking();
+        this.sendJson({ type: 'tts', state: 'sentence_start', text: outputText });
       }
-    }
 
-    if (message.serverContent?.turnComplete && this.speaking) {
-      this.sendJson({ type: 'tts', state: 'stop' });
-      this.speaking = false;
-    }
+      const audio = message.data;
+      if (audio) {
+        this.startSpeaking();
+        for (const packet of this.codec.encodeModelPcm(Buffer.from(audio, 'base64'))) {
+          this.socket.send(packet, { binary: true });
+        }
+      }
 
-    const calls = message.toolCall?.functionCalls ?? [];
-    if (calls.length > 0 && this.live) {
-      this.live.rejectToolCalls(
-        calls.map((call) => ({ id: call.id ?? crypto.randomUUID(), name: call.name ?? 'unknown' }))
-      );
+      if (message.serverContent?.turnComplete && this.speaking) {
+        this.sendJson({ type: 'tts', state: 'stop' });
+        this.speaking = false;
+        this.codec.reset();
+      }
+
+      const calls = message.toolCall?.functionCalls ?? [];
+      if (calls.length > 0 && this.live) {
+        this.live.rejectToolCalls(
+          calls.map((call) => ({
+            id: call.id ?? crypto.randomUUID(),
+            name: call.name ?? 'unknown',
+          }))
+        );
+      }
+    } catch (error) {
+      this.fail(error);
     }
   }
 

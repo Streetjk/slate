@@ -10,6 +10,7 @@ const FRAME_BYTES = FRAME_SAMPLES * 2;
 export interface VoiceCodec {
   decodeDevicePacket(packet: Uint8Array): Uint8Array;
   encodeModelPcm(pcm24: Uint8Array): Uint8Array[];
+  reset(): void;
   close(): void;
 }
 
@@ -47,6 +48,11 @@ export class OpusPcmCodec implements VoiceCodec {
     return packets;
   }
 
+  reset(): void {
+    this.assertOpen();
+    this.pendingPcm16 = Buffer.alloc(0);
+  }
+
   close(): void {
     if (this.closed) return;
     this.closed = true;
@@ -65,7 +71,8 @@ export function resamplePcm16(pcm: Uint8Array, inputRate: number, outputRate: nu
   if (inputRate <= 0 || outputRate <= 0) throw new Error('PCM sample rates must be positive');
   if (inputRate === outputRate) return Buffer.from(pcm);
 
-  const input = new Int16Array(pcm.buffer, pcm.byteOffset, pcm.byteLength / 2);
+  const alignedPcm = pcm.byteOffset % 2 === 0 ? pcm : Uint8Array.from(pcm);
+  const input = new Int16Array(alignedPcm.buffer, alignedPcm.byteOffset, alignedPcm.byteLength / 2);
   const outputLength = Math.floor((input.length * outputRate) / inputRate);
   const output = Buffer.alloc(outputLength * 2);
   for (let index = 0; index < outputLength; index++) {

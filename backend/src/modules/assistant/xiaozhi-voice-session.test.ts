@@ -29,6 +29,7 @@ function codec(): VoiceCodec {
   return {
     decodeDevicePacket: (packet) => packet,
     encodeModelPcm: () => [Buffer.from([7, 8])],
+    reset: () => {},
     close: () => {},
   };
 }
@@ -82,6 +83,99 @@ describe('XiaozhiVoiceSession', () => {
     expect(
       ws.sent.map((item) => (item.binary ? 'binary' : JSON.parse(String(item.data)).type))
     ).toEqual(['hello', 'tts', 'tts', 'binary', 'tts']);
+  });
+
+  it('requires the handshake before opening Gemini Live', async () => {
+    const session = new XiaozhiVoiceSession(
+      socket(),
+      {
+        connect: async () => {
+          throw new Error('must not connect');
+        },
+      } as never,
+      codec
+    );
+
+    await expect(
+      session.handleMessage(Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })), false)
+    ).rejects.toThrow('hello required');
+  });
+
+  it('closes goodbye cleanly and resets speaking state on abort', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let resetCount = 0;
+    const liveEvents: Array<(event: GeminiLiveEvent) => void> = [];
+    const session = new XiaozhiVoiceSession(
+      ws,
+      {
+        connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+          liveEvents.push(onEvent);
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never,
+      () => ({ ...codec(), reset: () => resetCount++ })
+    );
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    liveEvents[0]?.({ message: { text: 'answer' } as never });
+    await session.handleMessage(Buffer.from(JSON.stringify({ type: 'abort' })), false);
+    expect(resetCount).toBe(1);
+    await session.handleMessage(Buffer.from(JSON.stringify({ type: 'goodbye' })), false);
+    expect(ws.closed).toEqual({ code: 1000, reason: 'goodbye' });
+  });
+
+  it('fails the socket when a model event cannot be encoded', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let eventHandler: ((event: GeminiLiveEvent) => void) | undefined;
+    const session = new XiaozhiVoiceSession(
+      ws,
+      {
+        connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+          eventHandler = onEvent;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never,
+      () => ({
+        decodeDevicePacket: (packet) => packet,
+        encodeModelPcm: () => {
+          throw new Error('bad model audio');
+        },
+        reset: () => {},
+        close: () => {},
+      })
+    );
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    eventHandler?.({ message: { data: Buffer.from([1, 2]).toString('base64') } as never });
+    expect(ws.closed).toEqual({ code: 1011, reason: 'voice session failed' });
   });
 
   it('rejects audio before handshake/session and closes resources', async () => {
