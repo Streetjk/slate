@@ -13,6 +13,7 @@ export interface GeminiLiveConnection {
   sendAudio(pcm16: Uint8Array): void;
   sendText(text: string): void;
   endAudio(): void;
+  rejectToolCalls(calls: Array<{ id: string; name: string }>): void;
   reconnect(): Promise<void>;
   close(): void;
 }
@@ -108,6 +109,14 @@ export class GeminiLiveService {
           turnComplete: true,
         }),
       endAudio: () => requireSession().sendRealtimeInput({ audioStreamEnd: true }),
+      rejectToolCalls: (calls) =>
+        requireSession().sendToolResponse({
+          functionResponses: calls.map(({ id, name }) => ({
+            id,
+            name,
+            response: { error: 'Tool execution is not available in the voice session' },
+          })),
+        }),
       reconnect: async () => {
         if (closed) {
           throw new GeminiLiveStateError('Cannot reconnect a closed Gemini Live session');

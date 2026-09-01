@@ -426,6 +426,11 @@ TTS 使用 OpenAI-compatible `/chat/completions`，请求 `audio: { format: 'pcm
 | `TTS_BASE_URL` | 空 | OpenAI-compatible TTS base URL |
 | `TTS_MODEL` | `mimo-v2.5-tts` | TTS 模型 |
 | `TTS_DEFAULT_VOICE` | `冰糖` | 默认音色，需属于 shared 的 `TTS_VOICES` |
+| `GOOGLE_CLOUD_PROJECT` | 空 | Gemini Vertex/ADC 项目；不配置时 assistant API fail closed |
+| `GOOGLE_CLOUD_LOCATION` | 空 | Gemini Vertex/ADC 区域 |
+| `GEMINI_TEXT_MODEL` | `gemini-3.7-flash` | 文字问答模型，使用 Google Cloud ADC |
+| `GEMINI_LIVE_MODEL` | `gemini-live-2.5-flash-native-audio` | 实时语音模型，使用 Google Cloud ADC |
+| `GEMINI_LIVE_CONNECT_TIMEOUT_MS` | `15000` | Live 连接建立超时 |
 | `BACKGROUND_WORKERS` | `true` | 是否启动动态刷新后台 worker |
 
 开发环境示例见 [.env.example](.env.example)。
