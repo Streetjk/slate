@@ -6,8 +6,8 @@ Last known good SHA: `98dd2abbd82260c6a112bf476f1d66294dbb56e7`
 Campaign instructions SHA: `e4de34fde343c93ea13e42304ca85ee4d53a57e6`
 
 Current campaign: Campaign 3A — Gemini OAuth feasibility
-Current stage: Queued after Campaign 2 promotion
-Current status: QUEUED
+Current stage: Official Google OAuth/ADC capability feasibility research
+Current status: RUNNING
 
 Completed campaigns:
 
@@ -49,6 +49,6 @@ Active feature branches:
 Last test status: PASS — backend tests (226 tests, 0 failures, 743 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, Outlook security/normalization tests, and secret-pattern scan.
 Last AGY verdict: PASS — Outlook `gemini-3.7-flash-high` security review; no P0-P3 findings.
 
-Next automatic action: run Campaign 3A official Google OAuth/ADC feasibility research; do not use an API-key fallback.
+Next automatic action: compare AGY and official Google documentation for OAuth/ADC model access and the required STT, reasoning, Search grounding, TTS, function-calling, and streaming capabilities.
 
 Human action required: NO
