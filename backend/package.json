@@ -22,6 +22,7 @@
     "@fastify/cookie": "^11",
     "@fastify/multipart": "^9",
     "@fastify/static": "^8",
+    "@google/genai": "^2",
     "@nestjs/common": "^11",
     "@nestjs/config": "^4",
     "@nestjs/core": "^11",
