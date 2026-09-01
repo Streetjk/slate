@@ -3,11 +3,11 @@
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
 Last known good SHA: `cfd0886da8ef0875b14b271323aff695b59f8003` (Campaign 6B authorization/reporting commit; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
-Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
+Campaign instructions SHA: `9ef57b70e3143ca39c1783acf1603ce1f3893cd8`
 
-Current campaign: Campaign 5 — MVP integration/hardening
-Current stage: Campaign 6B — post-flash physical and live-account validation checkpoint
-Current status: FLASH PASS — boot/read-back evidence captured; physical NOTE4 and interactive OAuth checks remain human-required
+Current campaign: Campaign 6C — Orange Pi backend deployment
+Current stage: Phase O0 — non-destructive Orange Pi reconnaissance
+Current status: BLOCKED — 192.168.1.108 is unreachable over ICMP and SSH/TCP port 22
 
 Completed campaigns:
 
@@ -82,6 +82,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: none until the human physical NOTE4 checklist and interactive Microsoft/Google OAuth checks are supplied; then review final release readiness. Do not begin Airtable/Gantt.
+Next automatic action: resume Phase O0 reconnaissance after the Orange Pi is reachable through its existing SSH path; do not begin Airtable/Gantt.
 
-Human action required: YES — complete the post-flash physical NOTE4 checklist and perform interactive Microsoft/Google OAuth consent as needed.
+Human action required: YES — make the Orange Pi reachable on `192.168.1.108:22` or provide an already-authorized SSH path; physical NOTE4/OAuth checks remain pending afterward.
