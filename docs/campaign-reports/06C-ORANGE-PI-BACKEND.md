@@ -2,7 +2,7 @@
 
 Stage: Campaign 6C — Orange Pi Slate backend deployment  
 Date: 2026-09-01  
-Status: BLOCKED at O1/O2 runtime prerequisite; Orange Pi is reachable and inspected, but Docker/Compose installation requires interactive sudo authorization
+Status: PASS through O3; custom ARM64 backend is healthy and LAN-reachable. O4 NOTE4 address entry and live OAuth remain human-boundary actions.
 
 ## Repository State
 
@@ -10,6 +10,7 @@ Repository: `Streetjk/slate`
 Branch: `integration/note4-custom`  
 Start SHA: `62c351c858583440db27a597b808733e075fac3d`
 Current report base SHA: `62c351c858583440db27a597b808733e075fac3d`
+Runtime-fix source SHA: `948934c9211709fc2bc29d0a8435181ae1ca2814`
 Accepted application source SHA: `bca05819e2cccc5cfdc128d82ffda052b3913412`  
 Upstream SHA: `cf5b4ffb0b3db09cb44c058b425b77c4fa58d21e`
 
@@ -36,6 +37,10 @@ Deploy the custom Slate backend/Web UI to the user's Orange Pi at `192.168.50.10
 - Confirmed non-interactive `sudo -n true` returns `NO`; installing the required runtime would require an interactive privileged action.
 - Confirmed no listener occupies Slate port `3001` or MySQL port `3306`. Existing unrelated services (VNC, Deluge, CUPS, Samba, Tailscale, SSH, and others) were only inspected and preserved.
 - No Orange Pi services, containers, files, SSH configuration, credentials, or flash state were changed.
+- After Docker/Compose became available, the custom image was built on the Orange Pi from the branch checkout at `948934c9211709fc2bc29d0a8435181ae1ca2814`.
+- The first custom image exposed a real Nest startup defect: `GeminiAssistantService` and then `GeminiLiveService` used an un-tokenized function-valued dependency. The minimal explicit `GEMINI_CLIENT_FACTORY` token/provider fix was committed as `948934c` and re-built.
+- The corrected image started successfully; all four Prisma migrations applied, and Slate/MySQL remained healthy.
+- Deployment uses a separate server-side Compose file at `/home/pi/slate-note4-deploy/compose.yml`; the repository stock upstream image was not deployed.
 
 ## Files Changed
 
@@ -61,29 +66,32 @@ Deploy the custom Slate backend/Web UI to the user's Orange Pi at `192.168.50.10
 - Non-interactive privilege check — BLOCKED; `sudo -n true` returned `NO`.
 - Listener/service inspection — PASS; no `3001` or `3306` listener; unrelated services preserved.
 - Custom ARM64 image build/deployment — NOT RUN; SSH unavailable.
-- `/healthz`, Web UI, LAN reachability, restart persistence — NOT RUN; deployment did not begin.
+- Custom ARM64 image build — PASS; Docker image `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3` reports `arm64/linux`.
+- `docker compose up -d` — PASS; `slate-note4` and `slate-note4-mysql` are running and healthy.
+- Prisma migrations — PASS; four migrations applied, including the two user-integration/calendar-ticket migrations.
+- `/healthz`, Web UI, LAN reachability, restart persistence — PASS; see the deployment completion evidence below.
 
 ## Deployment Evidence
 
 ```text
-ORANGE_PI_REACHABLE=YES; SSH alias authenticated and O0 completed
+ORANGE_PI_REACHABLE=YES; SSH alias authenticated and O0/O3 completed
 ORANGE_PI_OS=Armbian 25.5.2 noble 24.04
 ORANGE_PI_ARCH=aarch64
 ORANGE_PI_RAM=3813072 kB total; 3086748 kB available
 ORANGE_PI_FREE_DISK=5.9G free of 14G on / (58% used)
-DOCKER_AVAILABLE=NO; executable absent
-COMPOSE_AVAILABLE=NO; executable absent
-ALTERNATIVE_RUNTIME_AVAILABLE=NO; Podman/nerdctl/Bun/Node/MySQL/MariaDB absent
-SUDO_NONINTERACTIVE=NO
+DOCKER_AVAILABLE=YES; Docker 29.1.3
+COMPOSE_AVAILABLE=YES; Docker Compose 2.40.3
+ALTERNATIVE_RUNTIME_AVAILABLE=NO; host-native alternative runtimes absent; Docker is the supported runtime
+SUDO_NONINTERACTIVE=NO; installation was completed by the user before resumption
 EXISTING_SERVICE_CONFLICTS=NONE on ports 3001 and 3306; unrelated listeners preserved
 CUSTOM_SOURCE_SHA=bca05819e2cccc5cfdc128d82ffda052b3913412
-CUSTOM_IMAGE_BUILD=NOT_RUN
-SLATE_CONTAINER=NOT_RUN
-MYSQL_CONTAINER=NOT_RUN
-HEALTHZ=NOT_RUN
-WEB_UI=NOT_RUN
-LAN_REACHABILITY=HOST_ONLY — SSH host reachable; Slate endpoint unverified
-NOTE4_SERVER_ADDRESS=UNVERIFIED; intended http://192.168.50.108:3001
+CUSTOM_IMAGE_BUILD=PASS; built on ARM64 Orange Pi from source 948934c
+SLATE_CONTAINER=PASS; healthy as slate-note4
+MYSQL_CONTAINER=PASS; healthy as slate-note4-mysql
+HEALTHZ=PASS; local and LAN curl returned {"status":"ok"}
+WEB_UI=PASS; Mac HTTP 200
+LAN_REACHABILITY=PASS; Mac reached 192.168.50.108:3001
+NOTE4_SERVER_ADDRESS=http://192.168.50.108:3001
 OAUTH_HTTPS_READY=UNKNOWN
 GOOGLE_ADC_READY=UNKNOWN
 ```
@@ -98,32 +106,32 @@ Secrets detected: NONE in repository changes or report.
 
 ## AGY Review
 
-Reviewer model: not invoked; no product source or deployment configuration was changed.  
-Effort level: not applicable.  
-Verdict: not applicable.
+Reviewer model: `gemini-3.7-flash-high`
+Effort level: high.
+Verdict: PASS.
 
 P0 findings: none.  
-P1 findings: none.  
+P1 findings: F-01 and F-02 were the observed startup failures and are resolved by commit `948934c`.
 P2 findings: none.  
-P3 findings: none.
+P3 findings: F-03 — add a Nest module-compilation regression test; deferred as non-blocking because the corrected ARM64 application boot and health checks pass.
 
 ## Known Issues
 
 - Orange Pi `192.168.50.108` is reachable and authenticated through `ssh note4-orangepi`.
-- Required container/runtime dependencies are absent and installing them requires interactive `sudo`; no password was requested, guessed, or recorded.
-- No deployment, container startup, health check, or NOTE4 server-address verification has been performed.
+- Root filesystem has approximately `508M` free (`97%` used) after Docker layers and MySQL initialization. No cleanup was performed automatically so the previous image remains available for rollback.
+- LAN HTTP is healthy, but Microsoft/Google OAuth callback suitability over LAN HTTP and live personal consent remain unverified human/account boundaries.
 
 ## Deviations
 
-- Deployment stopped after O0 and before O1/O2 because the required host runtime is absent and privileged installation requires a human-authorized interactive action. No password prompt, credential guessing, SSH configuration change, port commandeering, or service mutation was attempted.
+- Initial deployment stopped after O0 because Docker/Compose was absent. After the user installed the runtime, deployment resumed. A source-level runtime defect was fixed and independently reviewed; no API key or OAuth credential was introduced.
 
 ## Next Recommended Stage
 
-Human action: interactively authorize installation and enablement of Docker Engine plus Docker Compose on `192.168.50.108`, or provide a preinstalled supported container runtime. Do not provide passwords or tokens in chat or reports. Then resume O1/O2 deployment validation.
+Human action: enter `http://192.168.50.108:3001` as the NOTE4 Server Address and perform the physical NOTE4 validation checklist. Live Microsoft/Google consent remains separate. Do not provide passwords or tokens in chat or reports.
 
 ## Final Stage Verdict
 
-BLOCKED — human privileged runtime-installation action required before Orange Pi deployment.
+PASS through O3 — backend deployed and verified; O4 NOTE4 LAN handoff is pending human device interaction.
 
 ## Address Correction
 
@@ -160,4 +168,32 @@ HEALTHZ=NOT_RUN
 WEB_UI=NOT_RUN
 ```
 
-O0 is complete. O1/O2 cannot begin until a supported runtime is installed with authorized interactive privilege. This is a human boundary, not a product-source failure.
+O0, O1, O2, and O3 are complete. O4 is intentionally held at the human NOTE4 device-interaction boundary. The Docker installation was completed by the user before this deployment resumption.
+
+## Deployment Completion Evidence
+
+```text
+TARGET_HOST=192.168.50.108
+SSH_ALIAS=note4-orangepi
+SOURCE_CHECKOUT_SHA=948934c9211709fc2bc29d0a8435181ae1ca2814
+CUSTOM_IMAGE=slate-note4:campaign5-runtime-fix-948934c
+CUSTOM_IMAGE_DIGEST=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+CUSTOM_IMAGE_PLATFORM=arm64/linux
+SLATE_CONTAINER=Up (healthy)
+MYSQL_CONTAINER=Up (healthy)
+PRISMA_MIGRATIONS=4 applied; subsequent startup reported no pending migrations
+SLATE_RESTART_POLICY=unless-stopped
+MYSQL_RESTART_POLICY=unless-stopped
+SLATE_DATA_MOUNT=/home/pi/slate-note4-deploy/slate-data:/data
+MYSQL_DATA_MOUNT=/home/pi/slate-note4-deploy/mysql-data:/var/lib/mysql
+MAC_HEALTHZ_HTTP=200; {"status":"ok",...}
+MAC_ROOT_HTTP=200
+MAC_REGISTER_HTTP=200
+ORANGE_PI_HEALTHZ_HTTP=200; {"status":"ok",...}
+SLATE_PORT=192.168.50.108:3001
+MYSQL_HOST_PORT=not published; container network only
+```
+
+The initial image failed before serving because Nest could not resolve `GeminiAssistantService`'s function factory dependency. The fix added `GEMINI_CLIENT_FACTORY`, registered it with `useValue: createGeminiClient`, and applied the same token to `GeminiLiveService`. The corrected container booted and passed the checks above.
+
+AGY high-effort review returned `PASS`. It classified the two observed P1 startup findings as resolved and recommended one non-blocking P3: add a Nest module-compilation test. AGY did not edit, commit, or push. The Mac local Bun 1.3.13 full test runner still reports four existing decorator-related test errors; targeted Gemini tests (9 pass), backend typecheck, lint, and format checks pass, and the production image runs on its Bun 1.4 base.

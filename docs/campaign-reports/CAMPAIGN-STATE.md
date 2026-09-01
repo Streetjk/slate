@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `62c351c858583440db27a597b808733e075fac3d` (Campaign 6C corrected-target O0 checkpoint; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
+Last known good SHA: `948934c9211709fc2bc29d0a8435181ae1ca2814` (custom backend runtime fix deployed healthy on Orange Pi; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
 Campaign instructions SHA: `9ef57b70e3143ca39c1783acf1603ce1f3893cd8`
 
 Current campaign: Campaign 6C — Orange Pi backend deployment
-Current stage: Phase O1/O2 — runtime prerequisite before custom ARM64 build and persistent deployment
-Current status: BLOCKED — 192.168.50.108 is authenticated and inspected; Docker/Compose and alternative runtimes are absent, and non-interactive sudo is unavailable
+Current stage: Phase O4 — NOTE4 LAN connection handoff after O3 backend verification
+Current status: PASS through O3 — custom ARM64 backend and MySQL are healthy and reachable at `http://192.168.50.108:3001`; NOTE4 physical connection/validation remains pending
 
 Completed campaigns:
 
@@ -50,6 +50,7 @@ Completed campaigns:
   - XR-002 BTC trio provisioning was implemented; XR-001, XR-003, XR-004, and XR-005 were rechecked as fixed.
   - Final deterministic regression and exact ESP-IDF Docker build passed; final AGY high-effort adversarial review passed with two deferred P3 operational observations.
   - Hardware flashing, physical NOTE4 flows, and live personal OAuth consent remain pending human action.
+- Campaign 6C — Orange Pi backend deployment: PASS through O3; custom ARM64 Slate backend and MySQL are healthy at `http://192.168.50.108:3001`; O4 NOTE4 device handoff remains pending human action.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -64,6 +65,7 @@ Deferred campaigns / required later gates:
 - Live Microsoft/Google OAuth consent and physical NOTE4 testing remain future human-boundary actions.
 - XR-002 BTC D/W/M automatic trio UX: RESOLVED in Campaign 5 through authenticated trio provisioning and existing frame navigation.
 - XR-004 strict per-tool input schemas: RESOLVED in Campaign 4 through static proposal DTO validation and proposal-only voice dispatch.
+- Campaign 6C O4 — human must enter `http://192.168.50.108:3001` in the NOTE4 captive portal and perform the physical validation checklist; live Microsoft/Google OAuth consent remains separate.
 
 Active feature branches:
 
@@ -82,6 +84,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: after human-authorized interactive installation of Docker Engine and Docker Compose on `192.168.50.108`, resume Phase O1 custom ARM64 image build and O2 persistent deployment; do not begin Airtable/Gantt.
+Next automatic action: after the human enters the server address and reconnects the NOTE4, resume the Campaign 6 physical validation matrix; do not begin Airtable/Gantt.
 
-Human action required: YES — authorize/install Docker Engine plus Docker Compose (or provide a supported preinstalled runtime) on `192.168.50.108`; physical NOTE4/OAuth checks remain pending afterward.
+Human action required: YES — enter `http://192.168.50.108:3001` in NOTE4 and perform physical validation; OAuth consent/checks remain pending afterward.
