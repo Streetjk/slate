@@ -39,6 +39,7 @@ export const WA_PUBLIC_HOLIDAYS_BY_YEAR: Readonly<Record<number, readonly WaPubl
     ['2027-09-27', "King's Birthday"],
     ['2027-12-25', 'Christmas Day'],
     ['2027-12-26', 'Boxing Day'],
+    ['2027-12-27', 'Christmas Day (observed)'],
     ['2027-12-28', 'Boxing Day (observed)'],
   ]),
 };

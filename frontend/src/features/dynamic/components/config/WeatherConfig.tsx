@@ -17,7 +17,7 @@ export function WeatherConfigPanel({
         onSelect={({ locationId, label, provider, latitude, longitude, timezone }) =>
           onChange({
             ...config,
-            provider: provider ?? 'qweather',
+            provider: provider ?? config.provider ?? 'open_meteo',
             location_id: locationId,
             location_label: label,
             latitude,
