@@ -1,4 +1,10 @@
-import { TTS_VOICES, isTtsVoice, type TtsVoiceT, type ContentAudioStatusT } from 'shared';
+import {
+  TTS_VOICE_LABELS,
+  TTS_VOICES,
+  isTtsVoice,
+  type TtsVoiceT,
+  type ContentAudioStatusT,
+} from 'shared';
 import { Select, SelectItem } from '@/components/ui/Select';
 import { inputCls } from '@/components/ui/styles/form';
 import { cn } from '@/lib/cn';
@@ -44,7 +50,7 @@ export function TtsFields({
         >
           {TTS_VOICES.map((item) => (
             <SelectItem key={item} value={item}>
-              {item}
+              {TTS_VOICE_LABELS[item]}
             </SelectItem>
           ))}
         </Select>

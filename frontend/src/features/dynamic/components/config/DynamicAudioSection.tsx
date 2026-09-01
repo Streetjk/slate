@@ -1,4 +1,4 @@
-import { TTS_VOICES, isTtsVoice, type DynamicConfigT } from 'shared';
+import { TTS_VOICE_LABELS, TTS_VOICES, isTtsVoice, type DynamicConfigT } from 'shared';
 import { Select, SelectItem } from '@/components/ui/Select';
 import { Checkbox } from '@/components/ui/Checkbox';
 import type { AudioDynamicConfig } from '@/features/dynamic/model/config-types';
@@ -29,7 +29,7 @@ export function DynamicAudioSection({
         >
           {TTS_VOICES.map((voice) => (
             <SelectItem key={voice} value={voice}>
-              {voice}
+              {TTS_VOICE_LABELS[voice]}
             </SelectItem>
           ))}
         </Select>

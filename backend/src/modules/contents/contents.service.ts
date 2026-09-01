@@ -158,11 +158,12 @@ export class ContentsService {
     raw: { text: string; voice: string }
   ): Promise<ContentMutationResponseT> {
     const content = await this.requireOwnedContent(contentId, ownerUserId);
-    if (content.kind !== 'image') throw new ValidationError('只有图片内容支持手动输入 TTS 文案');
+    if (content.kind !== 'image')
+      throw new ValidationError('Only image content supports manual TTS text');
     const text = raw.text.trim();
-    if (!text) throw new ValidationError('TTS 文案不能为空');
+    if (!text) throw new ValidationError('TTS text cannot be empty');
     if (text.length > MAX_TTS_TEXT_CHARS) {
-      throw new ValidationError(`TTS 文案不能超过 ${MAX_TTS_TEXT_CHARS} 字`, {
+      throw new ValidationError(`TTS text cannot exceed ${MAX_TTS_TEXT_CHARS} characters`, {
         code: 'tts_text_too_long',
         max_chars: MAX_TTS_TEXT_CHARS,
       });

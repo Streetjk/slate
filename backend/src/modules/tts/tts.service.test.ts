@@ -151,6 +151,6 @@ describe('TtsService', () => {
 
     await expect(
       service.synthesizeToDevicePcm({ text: 'hello', voice: DEFAULT_TTS_VOICE })
-    ).rejects.toThrow('TTS 音频超过');
+    ).rejects.toThrow('TTS audio exceeds');
   });
 });

@@ -45,7 +45,7 @@ export class ContentAudioBlobService {
 
     if (content.audioSource === 'tts' && content.audioText && content.audioVoice) {
       data.audioStatus = 'failed';
-      data.audioLastError = 'TTS 音频文件丢失，请重新生成';
+      data.audioLastError = 'TTS audio file is missing; please generate it again';
     } else if (content.audioSource === 'upload') {
       data.audioStatus = 'failed';
       data.audioLastError = '上传音频文件丢失，请重新上传';

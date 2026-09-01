@@ -51,7 +51,7 @@ export class TtsService {
   normalizeVoice(voice: string | null | undefined): TtsVoiceT {
     if (!voice) return this.defaultVoice();
     if (isTtsVoice(voice)) return voice;
-    throw new ValidationError(`未知音色: ${voice}`);
+    throw new ValidationError(`Unknown TTS voice: ${voice}`);
   }
 
   async synthesizeToDevicePcm(input: {
@@ -60,16 +60,16 @@ export class TtsService {
     style?: string;
   }): Promise<Buffer> {
     const text = input.text.trim();
-    if (!text) throw new ValidationError('TTS 文案不能为空');
+    if (!text) throw new ValidationError('TTS text cannot be empty');
     if (text.length > MAX_TTS_TEXT_CHARS) {
-      throw new ValidationError(`TTS 文案不能超过 ${MAX_TTS_TEXT_CHARS} 字`, {
+      throw new ValidationError(`TTS text cannot exceed ${MAX_TTS_TEXT_CHARS} characters`, {
         code: 'tts_text_too_long',
         max_chars: MAX_TTS_TEXT_CHARS,
       });
     }
     const style = input.style?.trim() ?? '';
     if (style.length > MAX_TTS_STYLE_CHARS) {
-      throw new ValidationError(`TTS 风格描述不能超过 ${MAX_TTS_STYLE_CHARS} 字`, {
+      throw new ValidationError(`TTS style cannot exceed ${MAX_TTS_STYLE_CHARS} characters`, {
         code: 'tts_style_too_long',
         max_chars: MAX_TTS_STYLE_CHARS,
       });
@@ -77,7 +77,7 @@ export class TtsService {
     const apiKey = this.config.apiKey;
     const baseUrl = this.config.baseUrl;
     if (!apiKey || !baseUrl) {
-      throw new NotImplementedError('TTS_API_KEY 或 TTS_BASE_URL 未配置', {
+      throw new NotImplementedError('TTS_API_KEY or TTS_BASE_URL is not configured', {
         code: 'tts_not_configured',
       });
     }
@@ -128,7 +128,7 @@ export class TtsService {
         `TTS HTTP ${resp.status}${detail ? `: ${detail.slice(0, 240)}` : ''}`
       );
     }
-    if (!resp.body) throw new TtsProviderError('TTS 响应为空');
+    if (!resp.body) throw new TtsProviderError('TTS response body is empty');
 
     const chunks: Buffer[] = [];
     let bytes = 0;
@@ -141,13 +141,13 @@ export class TtsService {
         const chunk = Buffer.from(audio, 'base64');
         bytes += chunk.byteLength;
         if (bytes > MAX_TTS_PCM_BYTES) {
-          throw new TtsProviderError(`TTS 音频超过 ${MAX_TTS_PCM_BYTES} bytes`);
+          throw new TtsProviderError(`TTS audio exceeds ${MAX_TTS_PCM_BYTES} bytes`);
         }
         chunks.push(chunk);
       }
     }
     const pcm = Buffer.concat(chunks);
-    if (pcm.length === 0) throw new TtsProviderError('TTS 音频为空');
+    if (pcm.length === 0) throw new TtsProviderError('TTS audio is empty');
     if (pcm.length % 2 !== 0) {
       throw new TtsProviderError(`TTS PCM 长度未按 16-bit 对齐: ${pcm.length}`);
     }
