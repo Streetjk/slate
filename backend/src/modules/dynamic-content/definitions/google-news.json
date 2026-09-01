@@ -1,0 +1,9 @@
+{
+  "type": "google_news",
+  "default_ttl_sec": 900,
+  "layout": {
+    "size": [400, 300],
+    "top_offset": 24,
+    "body": []
+  }
+}

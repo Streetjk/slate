@@ -14,12 +14,15 @@ export function WeatherConfigPanel({
     <div className="space-y-4">
       <CitySearch
         value={config.location_label}
-        onSelect={({ locationId, label }) =>
+        onSelect={({ locationId, label, provider, latitude, longitude, timezone }) =>
           onChange({
             ...config,
-            provider: 'qweather',
+            provider: provider ?? 'qweather',
             location_id: locationId,
             location_label: label,
+            latitude,
+            longitude,
+            location_timezone: timezone,
           })
         }
       />

@@ -12,6 +12,7 @@ import { WeatherAlertConfigPanel } from './config/WeatherAlertConfig';
 import { WeatherConfigPanel } from './config/WeatherConfig';
 import { BtcPriceConfigPanel } from './config/BtcPriceConfig';
 import { OutlookCalendarConfigPanel } from './config/OutlookCalendarConfig';
+import { GoogleNewsConfigPanel } from './config/GoogleNewsConfig';
 
 export function DynamicContentFields({
   type,
@@ -125,6 +126,8 @@ function DynamicConfigFields({
       );
     case 'outlook_calendar':
       return <OutlookCalendarConfigPanel config={config} onChange={onChange} />;
+    case 'google_news':
+      return <GoogleNewsConfigPanel config={config} onChange={onChange} />;
     case 'dashboard':
       return (
         <DashboardConfigPanel
