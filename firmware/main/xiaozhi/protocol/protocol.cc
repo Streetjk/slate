@@ -145,6 +145,14 @@ void Protocol::SendAbortSpeaking(AbortReason reason) {
     SendText(message);
 }
 
+void Protocol::SendCalendarAction(const std::string& action, const std::string& ticket) {
+    if ((action != "confirm" && action != "cancel") || ticket.empty())
+        return;
+    const std::string message = "{\"type\":\"calendar\",\"action\":" + JsonStringLiteral(action) +
+                                ",\"ticket\":" + JsonStringLiteral(ticket) + "}";
+    SendText(message);
+}
+
 void Protocol::SendMcpMessage(const std::string& payload) {
     McpSendItem item{};
     item.data = static_cast<char*>(std::malloc(payload.size() + 1));

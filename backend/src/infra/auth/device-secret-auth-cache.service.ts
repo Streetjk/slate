@@ -34,14 +34,18 @@ export class DeviceSecretAuthCacheService {
 
     const device = await this.prisma.device.findUnique({
       where: { secretHash: hash },
-      select: { id: true, mac: true },
+      select: { id: true, mac: true, ownerUserId: true },
     });
     if (!device) {
       this.setCache(hash, null, now + DEVICE_SECRET_NEGATIVE_CACHE_TTL_MS);
       return null;
     }
 
-    const context = { deviceId: device.id, mac: device.mac };
+    const context = {
+      deviceId: device.id,
+      mac: device.mac,
+      ...(device.ownerUserId ? { ownerUserId: device.ownerUserId } : {}),
+    };
     this.setCache(hash, context, now + DEVICE_SECRET_CACHE_TTL_MS);
     return context;
   }

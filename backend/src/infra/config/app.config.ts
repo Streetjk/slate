@@ -54,4 +54,16 @@ export class AppConfig {
   get isDev() {
     return this.nodeEnv === 'development';
   }
+  get googleCalendarClientId() {
+    return this.cs.get('GOOGLE_CALENDAR_CLIENT_ID', { infer: true });
+  }
+  get googleCalendarClientSecret() {
+    return this.cs.get('GOOGLE_CALENDAR_CLIENT_SECRET', { infer: true });
+  }
+  get googleCalendarRedirectUri() {
+    return this.cs.get('GOOGLE_CALENDAR_REDIRECT_URI', { infer: true });
+  }
+  get googleCalendarId() {
+    return this.cs.get('GOOGLE_CALENDAR_ID', { infer: true });
+  }
 }

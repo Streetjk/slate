@@ -12,7 +12,9 @@ describe('XiaozhiVoiceGateway', () => {
     const calls: unknown[][] = [];
     const gateway = new XiaozhiVoiceGateway(
       { authenticate: async () => null } as never,
-      { connect: async () => (connected = true) as never } as never
+      { connect: async () => (connected = true) as never } as never,
+      {} as never,
+      {} as never
     );
 
     await gateway.handle(socket as never, request('a'.repeat(64)));
@@ -34,7 +36,9 @@ describe('XiaozhiVoiceGateway', () => {
           { deviceId: 'd1', mac: 'm1' }
         ),
       } as never,
-      { connect: async () => ({}) } as never
+      { connect: async () => ({}) } as never,
+      {} as never,
+      {} as never
     );
 
     await gateway.handle(socket as never, request('b'.repeat(64)));

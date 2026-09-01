@@ -7,6 +7,7 @@ export interface WebUserContext {
 export interface DeviceContext {
   deviceId: string;
   mac: string;
+  ownerUserId?: string;
 }
 
 export const CURRENT_USER_KEY = 'currentUser';

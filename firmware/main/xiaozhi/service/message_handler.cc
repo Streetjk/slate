@@ -49,6 +49,35 @@ IncomingMessage ParseIncomingMessage(const cJSON* root) {
         return message;
     }
 
+    if (std::strcmp(type->valuestring, "calendar_proposal") == 0) {
+        message.ticket = json_utils::JsonString(root, "ticket");
+        cJSON* proposal = cJSON_GetObjectItem(root, "proposal");
+        if (!cJSON_IsObject(proposal))
+            return message;
+        message.title    = json_utils::JsonString(proposal, "title");
+        message.start    = json_utils::JsonString(proposal, "start");
+        message.end      = json_utils::JsonString(proposal, "end");
+        message.location = json_utils::JsonString(proposal, "location");
+        message.timezone = json_utils::JsonString(proposal, "timezone");
+        cJSON* all_day   = cJSON_GetObjectItem(proposal, "allDay");
+        message.all_day  = cJSON_IsTrue(all_day);
+        if (!message.ticket.empty() && !message.title.empty() && !message.start.empty() && !message.end.empty())
+            message.kind = IncomingMessageKind::kCalendarProposal;
+        return message;
+    }
+
+    if (std::strcmp(type->valuestring, "calendar") == 0) {
+        const std::string state = json_utils::JsonString(root, "state");
+        if (state == "created") {
+            message.message = "Event created";
+            message.kind    = IncomingMessageKind::kCalendarCreated;
+        } else if (state == "cancelled") {
+            message.message = "Event cancelled";
+            message.kind    = IncomingMessageKind::kCalendarCancelled;
+        }
+        return message;
+    }
+
     return message;
 }
 

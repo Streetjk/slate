@@ -71,6 +71,7 @@ class Protocol {
     void SendStartListening(ListeningMode mode);
     void SendStopListening();
     void SendAbortSpeaking(AbortReason reason);
+    void SendCalendarAction(const std::string& action, const std::string& ticket);
     void SendMcpMessage(const std::string& payload);
 
    protected:

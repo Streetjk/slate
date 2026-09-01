@@ -247,6 +247,38 @@ void XiaozhiService::NotifyNetworkClosed(uint32_t conversation_token) {
     RequestControlClose(conversation_token);
 }
 
+void XiaozhiService::ConfirmCalendarProposal() {
+    std::string ticket;
+    {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        if (!snapshot_.calendar_proposal.active)
+            return;
+        ticket = snapshot_.calendar_proposal.ticket;
+        snapshot_.calendar_proposal = {};
+        snapshot_.status = "Creating calendar event...";
+    }
+    PostChanged();
+    std::lock_guard<std::mutex> lock(protocol_mutex_);
+    if (protocol_)
+        protocol_->SendCalendarAction("confirm", ticket);
+}
+
+void XiaozhiService::CancelCalendarProposal() {
+    std::string ticket;
+    {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        if (!snapshot_.calendar_proposal.active)
+            return;
+        ticket = snapshot_.calendar_proposal.ticket;
+        snapshot_.calendar_proposal = {};
+        snapshot_.status = "Cancelling calendar event...";
+    }
+    PostChanged();
+    std::lock_guard<std::mutex> lock(protocol_mutex_);
+    if (protocol_)
+        protocol_->SendCalendarAction("cancel", ticket);
+}
+
 void XiaozhiService::StartConversationTask() {
     if (!started_.load(std::memory_order_relaxed))
         return;
@@ -741,9 +773,46 @@ void XiaozhiService::HandleIncomingJson(const cJSON* root) {
         case IncomingMessageKind::kAlertMissingMessage:
             ESP_LOGW(kTag, "alert ignored reason=message_missing");
             break;
+        case IncomingMessageKind::kCalendarProposal:
+            SetCalendarProposal(message);
+            break;
+        case IncomingMessageKind::kCalendarCreated:
+        case IncomingMessageKind::kCalendarCancelled:
+            SetCalendarResult(message.message);
+            break;
         case IncomingMessageKind::kNone:
             break;
     }
+}
+
+void XiaozhiService::SetCalendarProposal(const IncomingMessage& message) {
+    {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        snapshot_.calendar_proposal.active   = true;
+        snapshot_.calendar_proposal.all_day  = message.all_day;
+        snapshot_.calendar_proposal.ticket   = message.ticket;
+        snapshot_.calendar_proposal.title    = message.title;
+        snapshot_.calendar_proposal.start    = message.start;
+        snapshot_.calendar_proposal.end      = message.end;
+        snapshot_.calendar_proposal.location = message.location;
+        snapshot_.calendar_proposal.timezone = message.timezone;
+        snapshot_.status                     = "Calendar confirmation";
+        snapshot_.alert_active               = false;
+    }
+    PostChanged();
+}
+
+void XiaozhiService::SetCalendarResult(const std::string& message) {
+    {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        snapshot_.calendar_proposal = {};
+        snapshot_.status             = message;
+        snapshot_.alert_active       = true;
+        snapshot_.alert_status       = "Calendar";
+        snapshot_.alert_message      = message;
+        snapshot_.alert_emotion      = "neutral";
+    }
+    PostChanged();
 }
 
 void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
@@ -759,6 +828,7 @@ void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
             snapshot_.messages.clear();
             snapshot_.user_text.clear();
             snapshot_.assistant_text.clear();
+            snapshot_.calendar_proposal = {};
         }
         if (state != XiaozhiState::kAwaitingActivation) {
             snapshot_.activation_message.clear();

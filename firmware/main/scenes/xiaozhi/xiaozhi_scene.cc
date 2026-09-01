@@ -288,18 +288,30 @@ void XiaozhiScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
             switch (e.u.button.btn) {
                 case ButtonId::kEnter:
                     ESP_LOGD(kTag, "button short btn=enter action=toggle_chat");
-                    if (auto* service = Service(ctx))
-                        service->ToggleXiaozhi();
+                    if (auto* service = Service(ctx)) {
+                        if (service->Snapshot().calendar_proposal.active)
+                            service->ConfirmCalendarProposal();
+                        else
+                            service->ToggleXiaozhi();
+                    }
                     break;
                 case ButtonId::kUp:
                     ESP_LOGD(kTag, "button short btn=up action=volume_up");
-                    if (auto* service = Service(ctx))
-                        service->AdjustVolume(+1);
+                    if (auto* service = Service(ctx)) {
+                        if (service->Snapshot().calendar_proposal.active)
+                            service->CancelCalendarProposal();
+                        else
+                            service->AdjustVolume(+1);
+                    }
                     break;
                 case ButtonId::kDown:
                     ESP_LOGD(kTag, "button short btn=down action=volume_down");
-                    if (auto* service = Service(ctx))
-                        service->AdjustVolume(-1);
+                    if (auto* service = Service(ctx)) {
+                        if (service->Snapshot().calendar_proposal.active)
+                            service->CancelCalendarProposal();
+                        else
+                            service->AdjustVolume(-1);
+                    }
                     break;
             }
             break;
@@ -355,7 +367,19 @@ void XiaozhiScene::RenderContent() {
     UpdateStatusBarTitle(snap);
     HideContentViews();
 
-    if (snap.alert_active) {
+    if (snap.calendar_proposal.active) {
+        const auto& proposal = snap.calendar_proposal;
+        std::string body     = "CREATE EVENT?\n\n" + DisplayText(proposal.title) + "\n\n";
+        if (proposal.all_day) {
+            body += DisplayText(proposal.start) + "\nALL DAY";
+        } else {
+            const std::string date = proposal.start.size() >= 10 ? proposal.start.substr(0, 10) : proposal.start;
+            const std::string start = proposal.start.size() >= 16 ? proposal.start.substr(11, 5) : proposal.start;
+            const std::string end   = proposal.end.size() >= 16 ? proposal.end.substr(11, 5) : proposal.end;
+            body += date + "\n" + start + "–" + end;
+        }
+        RenderSystemMessage(body, false, "");
+    } else if (snap.alert_active) {
         const std::string title   = DisplayText(snap.alert_status.empty() ? "Voice alert" : snap.alert_status);
         const std::string message = util::TrimForScreen(util::SanitizeForScreen(snap.alert_message), 72);
         RenderSystemMessage(title + (message.empty() ? "" : "\n\n" + message), false, "");
@@ -389,7 +413,10 @@ void XiaozhiScene::RenderContent() {
                 break;
         }
     }
-    if (snap.state == xiaozhi::XiaozhiState::kListening || snap.state == xiaozhi::XiaozhiState::kSpeaking) {
+    if (snap.calendar_proposal.active) {
+        lv_obj_clear_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(hint_label_, "ENTER confirm   UP/DOWN cancel");
+    } else if (snap.state == xiaozhi::XiaozhiState::kListening || snap.state == xiaozhi::XiaozhiState::kSpeaking) {
         lv_obj_add_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);

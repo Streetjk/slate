@@ -60,4 +60,23 @@ describe('device secret auth cache', () => {
 
     expect(calls).toBe(2);
   });
+
+  it('keeps the owning user identity available for user-scoped device capabilities', async () => {
+    const prisma = {
+      device: {
+        findUnique: async () => ({
+          id: 'device-1',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          ownerUserId: 'user-a',
+        }),
+      },
+    } as unknown as PrismaService;
+    service = new DeviceSecretAuthCacheService(prisma);
+
+    await expect(service.authenticate('c'.repeat(64))).resolves.toEqual({
+      deviceId: 'device-1',
+      mac: 'AA:BB:CC:DD:EE:FF',
+      ownerUserId: 'user-a',
+    });
+  });
 });
