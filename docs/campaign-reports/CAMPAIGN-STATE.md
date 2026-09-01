@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `bca05819e2cccc5cfdc128d82ffda052b3913412` (Campaign 5 software implementation integration; report publication follows)
+Last known good SHA: `cfd0886da8ef0875b14b271323aff695b59f8003` (Campaign 6B authorization/reporting commit; flashed source remains `bca05819e2cccc5cfdc128d82ffda052b3913412`)
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 5 — MVP integration/hardening
-Current stage: Human hardware checkpoint after software MVP completion
-Current status: PASS — software MVP gate and final AGY review passed; physical NOTE4 validation required
+Current stage: Campaign 6B — post-flash physical and live-account validation checkpoint
+Current status: FLASH PASS — boot/read-back evidence captured; physical NOTE4 and interactive OAuth checks remain human-required
 
 Completed campaigns:
 
@@ -82,6 +82,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: none until human hardware checkpoint is completed; after hardware evidence, review final release readiness. Do not begin Airtable/Gantt before MVP acceptance.
+Next automatic action: none until the human physical NOTE4 checklist and interactive Microsoft/Google OAuth checks are supplied; then review final release readiness. Do not begin Airtable/Gantt.
 
-Human action required: YES — flash/test the physical NOTE4 and perform interactive Microsoft/Google OAuth consent as needed.
+Human action required: YES — complete the post-flash physical NOTE4 checklist and perform interactive Microsoft/Google OAuth consent as needed.
