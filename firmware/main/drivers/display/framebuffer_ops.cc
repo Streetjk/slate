@@ -93,6 +93,24 @@ Rect AlignX8(const Rect& r) {
     return {x0, r.y, x1 - x0, r.h};
 }
 
+bool MakePartialWindow(const Rect& dirty, int width, int height, Rect& window) {
+    window = {};
+    if (width <= 0 || height <= 0 || Area(dirty) <= 0)
+        return false;
+
+    const Rect clipped = Clamp(dirty, width, height);
+    if (Area(clipped) <= 0)
+        return false;
+
+    const int x0 = std::max(0, (clipped.x / 8) * 8);
+    const int x1 = std::min(width, ((clipped.x + clipped.w + 7) / 8) * 8);
+    if (x1 <= x0 || clipped.y < 0 || clipped.y + clipped.h > height || (x1 - x0) % 8 != 0)
+        return false;
+
+    window = {x0, clipped.y, x1 - x0, clipped.h};
+    return true;
+}
+
 bool Rgb565IsWhite(uint16_t c, uint8_t threshold) {
     const uint8_t  r5  = (c >> 11) & 0x1F;
     const uint8_t  g6  = (c >> 5) & 0x3F;

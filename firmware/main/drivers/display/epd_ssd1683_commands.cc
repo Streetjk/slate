@@ -77,7 +77,9 @@ void EpdSsd1683::EpdDisplayFull() {
     vTaskDelay(pdMS_TO_TICKS(10));
 
     EpdSendCommand(0x10);
+#if defined(SLATE_EPD_TIMING)
     const int64_t transfer_start_us = esp_timer_get_time();
+#endif
     SLATE_TIMING_LOG(kTag, "spi_frame_start path=full bytes=%d", bpr_out * kHeight);
     for (int y = 0; y < kHeight; ++y) {
         const uint8_t* src = snapshot_ + y * bpr;
@@ -95,9 +97,12 @@ void EpdSsd1683::EpdDisplayFull() {
     EpdTurnOnDisplay();
 }
 
-void EpdSsd1683::EpdDisplayPartial() {
-    int      bpr     = (kWidth + 7) >> 3;
-    int      bpr_out = bpr * 2;
+void EpdSsd1683::EpdDisplayPartial(const epd::Rect& window) {
+    const int x0      = window.x;
+    const int y0      = window.y;
+    const int x1      = window.x + window.w - 1;
+    const int y1      = window.y + window.h - 1;
+    const int bpr_out = (window.w >> 3) * 2;
     uint8_t* line    = epd_line_.data();
 
     // 不要重写 booster!
@@ -107,19 +112,33 @@ void EpdSsd1683::EpdDisplayPartial() {
     // ApplyTemperatureBoost + EpdInit 时已经设好,partial 复用即可。
     // 参考 esp32-eink/.../custom_lcd_display.cc:1135 EPD_DisplayPart 同样不写 booster。
 
+    EpdSendCommand(0x83);
+    const uint8_t window_values[] = {
+        static_cast<uint8_t>((x0 >> 8) & 0x03), static_cast<uint8_t>(x0),
+        static_cast<uint8_t>((x1 >> 8) & 0x03), static_cast<uint8_t>(x1),
+        static_cast<uint8_t>((y0 >> 8) & 0x03), static_cast<uint8_t>(y0),
+        static_cast<uint8_t>((y1 >> 8) & 0x03), static_cast<uint8_t>(y1), 0x01};
+    for (const uint8_t value : window_values)
+        EpdSendData(value);
+
+    SLATE_TIMING_LOG(kTag, "partial_window x=%d y=%d w=%d h=%d bytes=%d", x0, y0, window.w, window.h,
+                     bpr_out * window.h);
     EpdSendCommand(0x10);
     ReadBusy("partial-load");  // 跟参考实现对齐:0x10 之后等 BUSY 回 HIGH
+#if defined(SLATE_EPD_TIMING)
     const int64_t transfer_start_us = esp_timer_get_time();
-    SLATE_TIMING_LOG(kTag, "spi_frame_start path=partial bytes=%d", bpr_out * kHeight);
-    for (int y = 0; y < kHeight; ++y) {
-        const uint8_t* prev = prev_snapshot_ + y * bpr;
-        const uint8_t* now  = snapshot_ + y * bpr;
-        for (int xb = 0; xb < bpr; ++xb) {
+#endif
+    const int bpr = (kWidth + 7) >> 3;
+    SLATE_TIMING_LOG(kTag, "spi_frame_start path=partial bytes=%d", bpr_out * window.h);
+    for (int y = y0; y <= y1; ++y) {
+        const uint8_t* prev = prev_snapshot_ + y * bpr + (x0 >> 3);
+        const uint8_t* now  = snapshot_ + y * bpr + (x0 >> 3);
+        for (int xb = 0; xb < (window.w >> 3); ++xb) {
             epd::PackPartial1bppTo2683(prev[xb], now[xb], line[2 * xb + 0], line[2 * xb + 1]);
         }
         WriteBytes(line, bpr_out);
     }
-    SLATE_TIMING_LOG(kTag, "spi_frame_end path=partial bytes=%d elapsed_us=%lld", bpr_out * kHeight,
+    SLATE_TIMING_LOG(kTag, "spi_frame_end path=partial bytes=%d elapsed_us=%lld", bpr_out * window.h,
                      static_cast<long long>(esp_timer_get_time() - transfer_start_us));
     EpdTurnOnDisplay();
 }

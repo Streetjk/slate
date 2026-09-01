@@ -366,7 +366,7 @@ void EpdSsd1683::DebounceRefreshNotify() {
              static_cast<unsigned long>(xTaskGetTickCount() - first_tick));
 }
 
-bool EpdSsd1683::TakeRefreshRequest(bool& urgent, bool& force_full) {
+bool EpdSsd1683::TakeRefreshRequest(bool& urgent, bool& force_full, epd::Rect& dirty) {
     // read-and-clear at start:防止 refresh_task 跑刷新期间又有
     // RequestUrgentXxxRefresh 设 flag 时,本轮完成时把它误清。
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
@@ -380,6 +380,7 @@ bool EpdSsd1683::TakeRefreshRequest(bool& urgent, bool& force_full) {
     urgent_refresh_     = false;
     force_full          = force_full_refresh_;
     force_full_refresh_ = false;
+    dirty               = dirty_;
     if (pending_) {
         pending_ = false;
         dirty_   = {0, 0, 0, 0};
@@ -438,7 +439,7 @@ bool EpdSsd1683::ShouldUseFullRefresh(const epd::DiffResult& diff, bool force_fu
     return full;
 }
 
-void EpdSsd1683::RunRefresh(bool full_refresh) {
+void EpdSsd1683::RunRefresh(bool full_refresh, const epd::Rect& partial_window) {
     const int64_t start_us = esp_timer_get_time();
     SLATE_TIMING_LOG(kTag, "refresh_start path=%s", full_refresh ? "full" : "partial");
     ESP_LOGD(kTag, "refresh begin full=%d partial_since_full=%d", full_refresh ? 1 : 0, partial_since_full_);
@@ -458,7 +459,7 @@ void EpdSsd1683::RunRefresh(bool full_refresh) {
     }
 
     partial_since_full_++;
-    EpdDisplayPartial();
+    EpdDisplayPartial(partial_window);
     ESP_LOGI(kTag, "refresh done full=0 partial_count=%d elapsed_ms=%lld", partial_since_full_,
              static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
     SLATE_TIMING_LOG(kTag, "refresh_done path=partial elapsed_us=%lld",
@@ -495,9 +496,10 @@ void EpdSsd1683::RefreshTaskLoop() {
         DebounceRefreshNotify();
         SLATE_TIMING_LOG(kTag, "refresh_task_start");
 
-        bool urgent     = false;
-        bool force_full = false;
-        if (!TakeRefreshRequest(urgent, force_full))
+        bool      urgent     = false;
+        bool      force_full = false;
+        epd::Rect dirty      = {};
+        if (!TakeRefreshRequest(urgent, force_full, dirty))
             break;
 
         if (!ThrottleRefreshSampling(urgent, force_full))
@@ -508,7 +510,14 @@ void EpdSsd1683::RefreshTaskLoop() {
         if (!CaptureRefreshSnapshot(force_full, diff, prev_synced))
             continue;
 
-        RunRefresh(ShouldUseFullRefresh(diff, force_full, prev_synced));
+        bool      full_refresh = ShouldUseFullRefresh(diff, force_full, prev_synced);
+        epd::Rect partial_window;
+        if (!full_refresh && !epd::MakePartialWindow(dirty, kWidth, kHeight, partial_window)) {
+            full_refresh = true;
+            ESP_LOGW(kTag, "partial fallback reason=invalid_window dirty=(%d,%d,%d,%d)", dirty.x, dirty.y, dirty.w,
+                     dirty.h);
+        }
+        RunRefresh(full_refresh, partial_window);
 
         // force_full_refresh_ 已在 start 处清(read-and-clear)。这里不要重设,
         // 否则会覆盖全刷期间又有新 RequestUrgentFullRefresh 设的 true。

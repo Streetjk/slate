@@ -25,6 +25,7 @@ int  Area(const Rect& r);
 Rect Union(const Rect& a, const Rect& b);
 Rect Clamp(const Rect& r, int width, int height);
 Rect AlignX8(const Rect& r);
+bool MakePartialWindow(const Rect& dirty, int width, int height, Rect& window);
 
 bool Rgb565IsWhite(uint16_t c, uint8_t threshold);
 void SetPx1(uint8_t* fb, int width, int x, int y, bool white);

@@ -92,11 +92,11 @@ class EpdSsd1683 {
     void        RefreshTaskLoop();
     bool        RefreshTaskShouldStop();
     void        DebounceRefreshNotify();
-    bool        TakeRefreshRequest(bool& urgent, bool& force_full);
+    bool        TakeRefreshRequest(bool& urgent, bool& force_full, epd::Rect& dirty);
     bool        ThrottleRefreshSampling(bool urgent, bool force_full);
     bool        CaptureRefreshSnapshot(bool force_full, epd::DiffResult& diff, bool& prev_synced);
     bool        ShouldUseFullRefresh(const epd::DiffResult& diff, bool force_full, bool prev_synced) const;
-    void        RunRefresh(bool full_refresh);
+    void        RunRefresh(bool full_refresh, const epd::Rect& partial_window);
     void        FinishRefreshSnapshot();
     void        MarkRefreshIdle();
 
@@ -106,7 +106,7 @@ class EpdSsd1683 {
     void SpiGpioInit();
     void EpdInit();
     void EpdDisplayFull();
-    void EpdDisplayPartial();
+    void EpdDisplayPartial(const epd::Rect& window);
     void EpdTurnOnDisplay();
     // 读屏内温度寄存器(0x40)→映射 5 档 booster 写 0xE0/0xE6,Full/Partial 共用。
     // 60 s 内重复刷新会复用上次温度避免每次 5~10 ms 切换 SPI 模式开销。
