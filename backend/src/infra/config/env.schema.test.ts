@@ -42,6 +42,7 @@ describe('EnvSchema', () => {
 
     expect(parsed.GEMINI_TEXT_MODEL).toBe('gemini-3.7-flash');
     expect(parsed.GEMINI_LIVE_MODEL).toBe('gemini-live-2.5-flash-native-audio');
+    expect(parsed.GEMINI_LIVE_CONNECT_TIMEOUT_MS).toBe(15_000);
     expect(Object.hasOwn(parsed, 'GEMINI_API_KEY')).toBe(false);
   });
 

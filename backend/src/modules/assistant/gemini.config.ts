@@ -22,6 +22,10 @@ export class GeminiConfig {
     return this.cs.get('GEMINI_LIVE_MODEL', { infer: true });
   }
 
+  get liveConnectTimeoutMs(): number {
+    return this.cs.get('GEMINI_LIVE_CONNECT_TIMEOUT_MS', { infer: true });
+  }
+
   isConfigured(): boolean {
     return Boolean(this.project && this.location);
   }

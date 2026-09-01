@@ -13,6 +13,7 @@ export interface GeminiLiveConnection {
   sendAudio(pcm16: Uint8Array): void;
   sendText(text: string): void;
   endAudio(): void;
+  reconnect(): Promise<void>;
   close(): void;
 }
 
@@ -35,33 +36,52 @@ export class GeminiLiveService {
     enableWebSearch = true
   ): Promise<GeminiLiveConnection> {
     this.assertConfigured();
-    let session: Session;
-    try {
-      const client = this.clientFactory({
-        vertexai: true,
-        project: this.config.project,
-        location: this.config.location,
-      });
-      session = await client.live.connect({
-        model: this.config.liveModel,
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction: `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          tools: buildGeminiToolRegistry(enableWebSearch),
-        },
-        callbacks: {
-          onmessage: (message) => onEvent({ message }),
-          onerror: (event) => {
-            const error =
-              event instanceof Error ? event : new Error('Gemini Live connection error');
-            this.logger.warn(`Gemini Live error: ${error.message}`);
-            onError?.(error);
+    let session: Session | undefined;
+    let closed = false;
+    const client = this.clientFactory({
+      vertexai: true,
+      project: this.config.project,
+      location: this.config.location,
+    });
+
+    const connectSession = async (): Promise<void> => {
+      session = undefined;
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => abortController.abort(), this.config.liveConnectTimeoutMs);
+      try {
+        const nextSession = await client.live.connect({
+          model: this.config.liveModel,
+          config: {
+            abortSignal: abortController.signal,
+            responseModalities: [Modality.AUDIO],
+            systemInstruction: `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
+            tools: buildGeminiToolRegistry(enableWebSearch),
           },
-          onclose: () => this.logger.debug('Gemini Live session closed'),
-        },
-      });
+          callbacks: {
+            onmessage: (message) => onEvent({ message }),
+            onerror: (event) => {
+              const error =
+                event instanceof Error ? event : new Error('Gemini Live connection error');
+              this.logger.warn(`Gemini Live error: ${error.message}`);
+              onError?.(error);
+            },
+            onclose: () => this.logger.debug('Gemini Live session closed'),
+          },
+        });
+        if (closed) {
+          nextSession.close();
+          throw new GeminiLiveStateError('Gemini Live session was closed while connecting');
+        }
+        session = nextSession;
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
+    try {
+      await connectSession();
     } catch (error) {
       const normalized = normalizeError(error, 'Gemini Live connection failed');
       this.logger.warn(normalized.message);
@@ -69,19 +89,37 @@ export class GeminiLiveService {
       throw normalized;
     }
 
+    const requireSession = (): Session => {
+      if (closed || !session) {
+        throw new GeminiLiveStateError('Gemini Live session is not connected');
+      }
+      return session;
+    };
+
     return {
       sendAudio: (pcm16) => {
-        session.sendRealtimeInput({
+        requireSession().sendRealtimeInput({
           audio: { data: Buffer.from(pcm16).toString('base64'), mimeType: 'audio/pcm;rate=16000' },
         });
       },
       sendText: (text) =>
-        session.sendClientContent({
+        requireSession().sendClientContent({
           turns: [{ role: 'user', parts: [{ text }] }],
           turnComplete: true,
         }),
-      endAudio: () => session.sendRealtimeInput({ audioStreamEnd: true }),
-      close: () => session.close(),
+      endAudio: () => requireSession().sendRealtimeInput({ audioStreamEnd: true }),
+      reconnect: async () => {
+        if (closed) {
+          throw new GeminiLiveStateError('Cannot reconnect a closed Gemini Live session');
+        }
+        session?.close();
+        await connectSession();
+      },
+      close: () => {
+        closed = true;
+        session?.close();
+        session = undefined;
+      },
     };
   }
 
@@ -98,6 +136,13 @@ export class GeminiConfigurationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'GeminiConfigurationError';
+  }
+}
+
+export class GeminiLiveStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GeminiLiveStateError';
   }
 }
 
