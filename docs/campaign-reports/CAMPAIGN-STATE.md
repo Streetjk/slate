@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `5edab3c45e060426fbd0986eac52cf04695d6c0e` (Campaign 1B integration)
+Last known good SHA: `919d723146b19813cf3a43725ce2c4cc39842c8b` (Campaign 3B implementation integration; report publication follows)
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
-Current campaign: Campaign 3B — Gemini voice, Search, and Q&A
-Current stage: Backend voice gateway architecture and provider implementation
-Current status: RUNNING
+Current campaign: Campaign 4 — Google Calendar voice writes
+Current stage: Campaign 3B report publication; then Campaign 4 confirmation-ticket implementation
+Current status: PASS — Campaign 3B software gate passed; Campaign 4 QUEUED
 
 Completed campaigns:
 
@@ -37,6 +37,10 @@ Completed campaigns:
   - `gemini-3.7-flash` is selected for text reasoning, Search grounding, structured output, and function calling.
   - `gemini-live-2.5-flash-native-audio` is selected for live audio, transcription, multilingual interaction, Search, and function calling because Gemini 3.7 Flash does not support Live API.
   - Cloud Speech-to-Text V2 `chirp_3` covers the required English and Japanese locales; TTS has an ADC-compatible Google Cloud path.
+- Campaign 3B — Gemini voice, Search, and Q&A: PASS; report publication in `03-GEMINI-VOICE-QA.md`
+  - ADC-backed text assistant, configurable Gemini Live native-audio gateway, Xiaozhi WebSocket bridge, Opus/PCM conversion, strict tools, and lifecycle/security tests integrated.
+  - Deterministic gates passed: 252 backend tests, 6 shared tests, lint, typecheck, format, Prisma validation, and frontend build.
+  - AGY medium final re-review passed after a high-effort REVISE cycle fixed seven lifecycle/codec/controller findings. Live Google ADC account and physical NOTE4 tests remain human-boundary actions.
 - Campaign 1B — external-review hardening: PASS; report published in `01B-EXTERNAL-REVIEW-HARDENING.md`
   - XR-001, XR-003, XR-004, and XR-005 were fixed and re-reviewed by AGY with final PASS.
   - XR-002 BTC D/W/M trio provisioning was confirmed as a real UX gap and deferred to MVP hardening with a named “Add BTC Trio” follow-up.
@@ -58,8 +62,8 @@ Active feature branches:
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 
-Last test status: PASS — backend tests (226 tests, 0 failures, 743 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, Outlook security/normalization tests, and secret-pattern scan. Campaign 3A feasibility was research-only; its pre-report tree was clean and `git diff --check` passed.
-Last AGY verdict: READY — Campaign 3A `gemini-3.7-flash-high` feasibility research; no P0-P3 findings. Primary Google documentation independently verified the model/capability split.
+Last test status: PASS — backend tests (252 tests, 0 failures, 803 expectations), shared tests (6 tests, 0 failures, 27 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, focused assistant tests, and `git diff --check`.
+Last AGY verdict: PASS — Campaign 3B final `gemini-3.7-flash-medium` re-review; all seven prior findings fixed, no new P0-P3 findings, reviewer tree unchanged.
 
 External review gate:
 
@@ -69,6 +73,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: REQUIRED BEFORE CAMPAIGN 3B/4.
 - XR-005 — remaining English display labels/defaults: RECHECK REQUIRED; P3/P2 candidate.
 
-Next automatic action: implement Campaign 3B’s configurable ADC-backed voice gateway, preserving Slate’s audio lifecycle, strict assistant tool schemas, and the Outlook/AI boundary; use deterministic mocks before AGY review.
+Next automatic action: implement Campaign 4’s Google OAuth Calendar client and confirmation-ticket flow with deterministic mocks; invoke AGY high-scrutiny review before integration.
 
 Human action required: NO
