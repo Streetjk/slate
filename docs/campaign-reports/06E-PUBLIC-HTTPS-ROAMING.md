@@ -2,7 +2,7 @@
 
 Stage: Campaign 6E — Public HTTPS + roaming connectivity
 Date: 2026-09-01 (Australia/Perth)
-Status: E0/E1/E2 PASS; A1-A4 PASS; V0 pairing/public sync PASS; S0/S1 HUMAN_PENDING at the required sudo authorization boundary
+Status: E0/E1/E2 PASS; A1-A4 PASS; V0 pairing/public sync PASS; S0-S3 PASS; true off-LAN and OAuth checks HUMAN_PENDING
 
 ## Repository State
 
@@ -265,10 +265,9 @@ storage audit; see the continuation evidence below.
 ## Next Recommended Stage
 
 The NOTE4 Server Address migration is complete and the existing pairing is
-working. The next action is the S1/S2 Orange Pi sudo boundary documented below:
-remove only the eight explicitly disabled Snap revisions and run
-`sudo apt-get clean`, then return for S3 post-cleanup validation. Do not enter
-provider credentials in Git or reports.
+working. The S1/S2 Orange Pi sudo boundary has also been completed. The next
+action is the true off-LAN and provider OAuth human boundary documented below.
+Do not enter provider credentials in Git or reports.
 
 ## Addendum — A0-A5 Disk Audit and Server Address Boundary
 
@@ -287,8 +286,8 @@ The supported setup portal was inspected in firmware source. It saves
 destructive path. The live device's secret was not read or printed, and live
 paired polling cannot be verified until the user performs the portal entry.
 
-Status: `HUMAN_PENDING` — the exact physical action is listed under Next
-Recommended Stage. No factory reset or re-registration was performed.
+Status: `PASS` — the user completed the supported physical setup path. No
+factory reset or re-registration was performed.
 
 ### A1 — Exact Orange Pi storage inventory
 
@@ -435,11 +434,12 @@ No active revision is included in the deletion list. No Snap removal was
 attempted because `sudo -n -v` returned `NO` (`sudo: a password is required`).
 The apt archive cache was likewise not cleaned because it also requires sudo.
 
-### S1/S2 — Human authorization boundary
+### S1/S2 — Authorized cleanup commands and boundary
 
-No files were deleted and no system state was changed. After entering the
-Orange Pi sudo password locally, the human may run exactly these commands; they
-use the supported Snap removal method and do not remove active revisions:
+At the S0 checkpoint, no files had been deleted and no system state had been
+changed. The user subsequently entered the Orange Pi sudo password and ran
+these exact commands. They use the supported Snap removal method and do not
+remove active revisions:
 
 ```text
 sudo snap remove core22 --revision=2412
@@ -453,16 +453,62 @@ sudo snap remove snapd --revision=27595
 sudo apt-get clean
 ```
 
-Run no `autoremove`, uninstall, wildcard deletion, volume prune, or manual
-deletion under Snap state directories. After the commands succeed, resume
-Campaign 6E for S3 post-cleanup verification and update this same report.
+No `autoremove`, uninstall, wildcard deletion, volume prune, or manual deletion
+under Snap state directories was performed. The commands completed successfully;
+the S3 result is recorded below.
+
+### S3 — Post-cleanup validation
+
+- `snap list --all` shows zero rows marked `disabled`.
+- Active revisions preserved: `core22=2438`, `core24=1644`, `cups=1237`,
+  `firefox=8801`, `gnome-42-2204=264`, `gnome-46-2204=154`,
+  `mesa-2404=1836`, and `snapd=27709`. No active revision was removed.
+- `/var/lib/snapd`: `1896283324` bytes (`1.8G` human-readable).
+- Apt archive cache: `324121668` bytes before, `0` bytes after
+  `sudo apt-get clean`.
+- Root filesystem: `14985895936` bytes total, `11384066048` used,
+  `3401887744` available, `77%` (`3.2G` free human-readable).
+- Root free-space increase from the S0 snapshot: `443838464` bytes.
+- `slate-note4` and `slate-note4-mysql`: `healthy`.
+- Local and public `/healthz`: HTTP `200`, JSON status `ok`.
+- Public Web UI: HTTP `200`, HTML response.
+- Tailscale: service enabled/active; Funnel remains HTTPS `443`, `/` ->
+  `http://127.0.0.1:3001`.
+- Authenticated NOTE4 polling: `40` successful current-poll requests were
+  present in the final 60-minute log window, all with HTTP `201`.
+- The two pre-existing failed units (`bluetooth-hciattach.service` and
+  `vncserver@1.service`) remain unchanged; no new service failure was caused
+  by cleanup.
+
+Exact disabled revisions removed:
+
+```text
+core22=2412
+core24=1588
+cups=1233
+firefox=8762
+gnome-42-2204=245
+gnome-46-2204=147
+mesa-2404=1166
+snapd=27595
+```
+
+No active Snap revision, Snap daemon, Slate/MySQL data, Docker image,
+Tailscale state, SSH configuration, or unrelated system data was removed.
+
+### Next human boundary
+
+The remaining boundary is a genuinely different Internet egress for true
+off-LAN NOTE4 sync validation, followed by the already-defined Google and
+Microsoft OAuth provider-console/consent actions. The current Mac/Orange Pi
+path is not sufficient evidence for off-LAN roaming.
 
 ## Final Stage Verdict
 
-NOT READY — V0 pairing/public sync PASS. S0 inventory PASS, but S1 Snap
-cleanup and optional S2 apt cleanup are HUMAN_PENDING because sudo requires a
-password. No active Snap, Slate/MySQL data, Docker image, Tailscale state, or
-SSH configuration was touched.
+NOT READY — V0 pairing/public sync and S0-S3 cleanup/validation PASS. True
+off-LAN validation and provider OAuth remain HUMAN_PENDING. No active Snap,
+Slate/MySQL data, Docker image, Tailscale state, or SSH configuration was
+touched.
 
 START_SHA=`5bb99a1b2061e7f3d560d0dae0319bfa726c7285`
 END_SHA=`5bb99a1b2061e7f3d560d0dae0319bfa726c7285` before this report commit
@@ -493,11 +539,11 @@ MICROSOFT_OAUTH_LIVE=HUMAN_PENDING
 NOTE4_PUBLIC_URL_MIGRATED=PASS
 PAIRING_DEVICE_SECRET=`not accessed; pairing verified by authenticated polls`
 PAIRING_PRESERVED=PASS
-PAIRED_PUBLIC_SYNC=PASS — 23 authenticated poll responses with HTTP 201 in 30 minutes
+PAIRED_PUBLIC_SYNC=PASS — 40 authenticated poll responses with HTTP 201 in 60 minutes
 OFF_LAN_TEST=NOT_CLAIMED — validation path was not independently off-LAN
 OFF_LAN_DEVICE_TEST=HUMAN_PENDING
 MULTI_WIFI_DESIGN=DEFERRED
 MULTI_WIFI_IMPLEMENTED=NO
-HUMAN_ACTION_REQUIRED=`Run the exact sudo snap removal and sudo apt-get clean commands in the S1/S2 section; do not remove active revisions or other system/deployment data`
-BLOCKER=`sudo password required for eight explicitly disabled Snap revisions and optional apt cache cleanup; true off-LAN validation and provider OAuth remain separate human boundaries`
-NEXT_ACTION=`After human sudo cleanup, resume S3 post-cleanup checks; then complete true off-LAN/personal OAuth boundaries`
+SUDO_CLEANUP=PASS — eight disabled revisions removed; apt cache cleaned
+BLOCKER=`true off-LAN NOTE4 validation requires a different Internet egress; provider OAuth console/consent remains a separate human boundary`
+NEXT_ACTION=`Perform true off-LAN paired sync validation, then resume Campaign 6E E3 OAuth checks`
