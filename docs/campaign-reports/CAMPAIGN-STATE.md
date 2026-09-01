@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
+Last known good SHA: `98dd2abbd82260c6a112bf476f1d66294dbb56e7`
 Campaign instructions SHA: `e4de34fde343c93ea13e42304ca85ee4d53a57e6`
 
-Current campaign: Campaign 2 — Outlook read-only calendar
-Current stage: Outlook architecture/research
-Current status: RUNNING
+Current campaign: Campaign 3A — Gemini OAuth feasibility
+Current stage: Queued after Campaign 2 promotion
+Current status: QUEUED
 
 Completed campaigns:
 
@@ -26,6 +26,10 @@ Completed campaigns:
   - BTC current, daily, weekly, and monthly dynamic content integrated with cached backend data, English configuration controls, and deterministic 1bpp renderer tests.
   - Deterministic gates and exact local ESP-IDF `v5.5.2` firmware regression passed.
   - AGY medium review returned PASS with two accepted P3 hardening observations; fixes were re-reviewed with final PASS and no findings.
+- Campaign 2 — Outlook read-only calendar: PASS
+  - User-owned Microsoft OAuth/MSAL + PKCE, encrypted token cache, Graph calendarView normalization, Perth agenda rendering, offline fallback, and English connect UI integrated.
+  - Deterministic gates passed: 226 backend tests, lint, typecheck, format, Prisma validation, and frontend build.
+  - AGY high-effort review passed with no P0-P3 findings. Live Microsoft consent/account smoke test is deferred to the human OAuth boundary.
 
 Blocked campaigns:
 
@@ -42,9 +46,9 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 
-Last test status: PASS — backend tests (213 tests, 0 failures, 712 expectations), BTC focused tests, workspace format/typecheck/lint, frontend build, exact ESP-IDF `v5.5.2` firmware build and merge-bin artifacts, and secret-pattern scan.
-Last AGY verdict: PASS — BTC `gemini-3.7-flash-medium` re-review after two accepted P3 fixes; no findings.
+Last test status: PASS — backend tests (226 tests, 0 failures, 743 expectations), workspace format/typecheck/lint, frontend build, Prisma validation, Outlook security/normalization tests, and secret-pattern scan.
+Last AGY verdict: PASS — Outlook `gemini-3.7-flash-high` security review; no P0-P3 findings.
 
-Next automatic action: invoke AGY `gemini-3.7-flash-high` researcher for current official Microsoft OAuth/MSAL/Graph requirements, then inspect the Slate user/auth/provider paths before Outlook implementation.
+Next automatic action: run Campaign 3A official Google OAuth/ADC feasibility research; do not use an API-key fallback.
 
 Human action required: NO
