@@ -2,7 +2,7 @@
 
 Stage: Campaign 8 — Gemini 3.5 Live evaluation / voice-stack upgrade
 Date: 2026-09-02 (Australia/Perth)
-Status: PASS — evaluation complete; Outcome C, no runtime migration selected
+Status: READY_FOR_SLATE_VOICE_FLASH — routing defect fixed; replacement candidate pending explicit human flash authorization
 
 ## Repository State
 
@@ -10,9 +10,10 @@ Repository: `Streetjk/slate`
 Branch: `feature/gemini-35-live-evaluation`
 Base SHA: `2d4a2a9e9a380c591c2ac7f0f3120f1f7939b65d` (`origin/integration/note4-custom`)
 Start SHA: `ad6ed1ec04ad7afffd9822be1632b456fa066d11`
-Implementation SHA: `ad6ed1ec04ad7afffd9822be1632b456fa066d11` (no product/runtime changes)
-Head SHA: `ad6ed1ec04ad7afffd9822be1632b456fa066d11` before this report commit
+Implementation SHA: `121622c3bd1d23587b4aadb3a079ec85d2052278` (Slate voice routing migration)
+Head SHA: `121622c3bd1d23587b4aadb3a079ec85d2052278` before this report commit
 Campaign 8 instruction SHA: `ad6ed1ec04ad7afffd9822be1632b456fa066d11`
+Campaign 8A instruction SHA: `6b61af7` (newer precedence addendum)
 PR: #2, draft, base `integration/note4-custom`
 
 ## Harness
@@ -82,7 +83,7 @@ No access token, credential file, `.env` value, API key, or production secret wa
 
 ## Existing Architecture and Button Path
 
-No implementation migration was justified. Source inspection confirms the model remains backend-owned:
+No Gemini model migration was justified. Campaign 8A separately fixes the physical voice-routing defect while keeping the model backend-owned:
 
 ```text
 NOTE4 ENTER double-click
@@ -99,7 +100,7 @@ The existing backend continues to provide input/output transcription, English/Ja
 
 ## Implementation Changes
 
-No product/runtime implementation changes were made. This branch adds only the Campaign 8 directive initially; the evaluation result is captured in this report and the campaign state. A no-op runtime result was selected because changing the model would either require an unverified product surface/authentication path or lose required capabilities.
+The Gemini model evaluation remains a no-op Outcome C. Campaign 8A adds the Slate-owned firmware voice bootstrap and narrow backend configuration endpoint described below. Existing audio, UI, protocol framing, button mapping, Calendar confirmation, and Outlook isolation were retained.
 
 ## Tests and Validation
 
@@ -185,4 +186,131 @@ Human review of PR #2. If live comparative testing is desired, provide an approv
 
 ## Final Stage Verdict
 
-READY FOR HUMAN REVIEW — OUTCOME C / NO MIGRATION; NOT DEPLOYED
+READY_FOR_SLATE_VOICE_FLASH — OUTCOME C / ROUTING FIX COMPLETE; NOT FLASHED OR DEPLOYED
+
+## Campaign 8A — Slate Voice Routing Defect and Flash Checkpoint
+
+Instruction precedence: `08A-VOICE-ROUTING-TENCLASS-INSTRUCTIONS.md`, remote instruction commit `6b61af7`.
+
+### Physical evidence
+
+The real NOTE4 evidence is recorded without retaining the transient verification code:
+
+```text
+MIC_CAPTURE=PASS
+VOICE_UI=PASS
+LEGACY_XIAOZHI_ACTIVATION_DETECTED=YES
+SLATE_GEMINI_VOICE_E2E=FAIL/BLOCKED
+```
+
+The old firmware reached Voice AI and captured/transcribed microphone input, then entered its external activation fallback. No Tenclass/Xiaozhi control-panel pairing was performed.
+
+### Root cause
+
+Before this fix, `XiaozhiService::ConfigTask()` called `ActivationClient::Fetch()` whenever no local protocol configuration existed. `ActivationClient::kConfigUrl` pointed at the Tenclass OTA/configuration service. An activation response was converted into `kAwaitingActivation`, and `XiaozhiScene` rendered the vendor activation message/code. The Slate WebSocket route was only reached after that external service returned protocol configuration.
+
+### Current and intended routing
+
+```text
+BROKEN (old firmware)
+ENTER double-click
+  → XiaozhiScene / XiaozhiService
+  → ActivationClient::Fetch()
+  → external vendor activation/configuration
+  → kAwaitingActivation + control-panel code
+  → vendor protocol config (if returned)
+  → voice transport
+
+INTENDED (candidate firmware)
+ENTER double-click
+  → XiaozhiScene / XiaozhiService
+  → authenticated Slate GET /api/v1/devices/current/voice/config
+       Authorization: Bearer <existing device_secret>
+  → Slate returns only { websocket.path, websocket.version }
+  → firmware derives wss://<configured Slate server>/api/v1/voice/websocket
+  → existing Slate device-secret WebSocket handshake
+  → Slate Xiaozhi-compatible session bridge
+  → backend GeminiLiveService / configured Gemini Live model
+```
+
+### Migration implemented
+
+- Added authenticated `GET /api/v1/devices/current/voice/config` under `DeviceAuthGuard`; it returns only the fixed Slate WebSocket path and protocol version, never a vendor activation response or cloud credential.
+- Added firmware `SlateVoiceConfigClient`, which uses the existing authenticated Slate API client and configured server address.
+- Removed the production `ActivationClient`, its Tenclass endpoint, activation HMAC/challenge flow, and `kAwaitingActivation` UI/state.
+- The WebSocket transport always reads the current Slate `device_secret` from the existing `slate.net` NVS namespace. It ignores any old persisted voice token, preventing stale vendor credentials from being reused.
+- Existing protocol configuration is accepted only when it exactly matches the configured Slate server, `wss`/`ws` scheme, fixed `/api/v1/voice/websocket` path, and protocol version 1. Stale or foreign configuration is rejected and refreshed from Slate.
+- Protocol selection is now Slate WebSocket-only; old MQTT/vendor configuration cannot silently become the production voice route.
+- ENTER/UP/DOWN controls, audio capture/playback, and physical Calendar Confirm/Cancel behavior are unchanged.
+
+### Changed files
+
+- `backend/src/modules/devices/device-firmware.controller.ts` — authenticated Slate voice-config endpoint.
+- `backend/src/modules/devices/device-firmware.controller.test.ts` — endpoint response contract test.
+- `backend/src/common/nest/guards/device-auth.guard.test.ts` — missing/valid device-auth coverage.
+- `firmware/main/sync/api_client.{h,cc}` — authenticated voice-config request/parser.
+- `firmware/main/xiaozhi/config/slate_voice_config_client.{h,cc}` — Slate-owned URL/config persistence.
+- `firmware/main/xiaozhi/protocol/websocket_protocol.cc` — current Slate secret for handshake.
+- `firmware/main/xiaozhi/config/settings.cc` — reject stale/foreign protocol configuration.
+- `firmware/main/xiaozhi/service/xiaozhi_service.{h,cc}` and `scenes/xiaozhi/xiaozhi_scene.cc` — remove activation state and fallback UI.
+- `firmware/test/no_vendor_voice_dependency_test.sh` — production source regression scan.
+- `firmware/README.md` — Slate voice bootstrap documentation.
+
+### Deterministic validation
+
+- `bun run --cwd backend test` — PASS; **273 passed, 0 failed**, 849 assertions across 72 files.
+- `bun run --cwd shared test` — PASS; **6 passed, 0 failed**, 27 assertions.
+- Targeted device/auth/voice tests — PASS; **7 passed, 0 failed**, 11 assertions.
+- `bun run format:check` — PASS.
+- `bun run lint` — PASS; zero errors/warnings.
+- `bun run typecheck` — PASS.
+- `bun run --cwd frontend build` — PASS; Vite transformed 2,169 modules.
+- `bash firmware/test/no_vendor_voice_dependency_test.sh` — PASS.
+- Production firmware source scan for `api.tenclass.net`, `ActivationClient`, `ActivationConfigResult`, `kAwaitingActivation`, and `activation_client` — PASS; no matches under `firmware/main`.
+- Firmware scan for Gemini model identifiers/API-key names — PASS; no matches under `firmware/main`.
+- `bash firmware/test/run_framebuffer_ops_host_test.sh` — PASS.
+- `docker run ... espressif/idf:v5.5.2 idf.py -C firmware build` — PASS; target `esp32s3`, app size `0x262dd0`, 40% app partition free.
+- Exact firmware merge command — PASS; merged image size `2,567,632` bytes.
+- `git diff --check` — PASS.
+
+### AGY routing review
+
+- Reviewer: `gemini-3.7-flash-high`; effort: high; mode: read-only.
+- Verdict: **PASS**. No P0, P1, or P2 findings; no production files were edited by the reviewer.
+- Accepted: removal of the vendor activation state and endpoint, narrow Slate-owned config contract, reuse of the existing device secret, stale configuration rejection, and preservation of the existing audio/UI/button path.
+- Deferred P3 observations: transient physical activation-code isolation and the already-documented live ADC probe boundary. Neither blocks the routing fix or authorizes a flash.
+
+### Firmware artifacts and rollback
+
+```text
+FIRMWARE_SOURCE_SHA=121622c3bd1d23587b4aadb3a079ec85d2052278
+ESP_IDF=5.5.2
+TARGET=esp32s3
+BOOTLOADER_SHA256=fdcbdeeb3ab93e7a58059ce4c18894ec5d3178b445dc4c4a00e05eff6fb54151
+PARTITION_TABLE_SHA256=6f0657eb6b8007c0dbfed6f64cf7a0d59f8ee1752af898e2f66dd218846b1835
+CUSTOM_FULL_IMAGE_PATH=firmware/build/slate-full.bin
+CUSTOM_FULL_IMAGE_SHA256=eba9427558bf08eb387894bbba1feac2da5ec1d0b2ab8c8785285251d65afe33
+CUSTOM_APP_IMAGE_PATH=firmware/build/slate-ota.bin
+CUSTOM_APP_IMAGE_SHA256=95ddf7e41c3dbb3aafb7d983708ccf39c131d68a89eac7f000c48adb5e99c9d4
+OPTIMIZED_OR_REPLACEMENT_FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=true
+```
+
+Rollback reference is the accepted Campaign 5 firmware source `bca05819e2cccc5cfdc128d82ffda052b3913412`, with previously accepted full-image SHA-256 `522f189bd36ea9b19cfe6767d70ea00c87c909d7e98ae4c8e1b7015430a1b41c` and app/OTA SHA-256 `e880386b0155780389469c2895177528959a81c46f2fe44b411668ac184062b9`, documented in `05-MVP-PRE-HARDWARE.md`. Do not erase or flash until explicit human authorization.
+
+### Security and remaining boundary
+
+```text
+TENCLASS_URL_IN_PRODUCTION_FIRMWARE=NO
+VENDOR_ACTIVATION_FLOW_IN_PRODUCTION_FIRMWARE=NO
+FIRMWARE_GEMINI_CREDENTIALS=NO
+FIRMWARE_GEMINI_MODEL_IDS=NO
+SLATE_CONFIG_REQUIRES_DEVICE_SECRET=YES
+SLATE_VOICE_WEBSOCKET_REQUIRES_DEVICE_SECRET=YES
+OUTLOOK_EXPOSED_TO_GEMINI=NO
+CALENDAR_WRITE_WITHOUT_CONFIRM=NO
+CAMPAIGN6D_TOUCHED=NO
+PR1_TOUCHED=NO
+```
+
+The candidate has not been flashed or physically re-tested. The next action is human authorization to flash exactly the artifact/hash above using the existing factory-backup and rollback procedure, followed by physical Slate voice E2E validation. No vendor account or activation code should be entered.
