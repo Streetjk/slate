@@ -36,7 +36,7 @@ describe('ContentAudioBlobService', () => {
       audioEtag: null,
       audioSize: null,
       audioStatus: 'failed',
-      audioLastError: 'TTS 音频文件丢失，请重新生成',
+      audioLastError: 'TTS audio file is missing; please generate it again',
       audioLeaseUntil: null,
     });
     expect(updateData).not.toHaveProperty('audioAttempts');

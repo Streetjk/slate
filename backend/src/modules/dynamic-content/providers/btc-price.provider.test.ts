@@ -20,6 +20,7 @@ describe('normalizeCoinbaseCandles', () => {
         [1710000060, 1, 2, 3, '11'],
         [1710000000, 1, 2, 3, '12'],
         [1710000120, 1, 2, 3, '-1'],
+        [Number.MAX_VALUE, 1, 2, 3, '13'],
       ])
     ).toEqual([
       { timestamp: '2024-03-09T16:00:00.000Z', priceUsd: 12 },
@@ -95,8 +96,10 @@ describe('BtcPriceProvider', () => {
     expect(result.points.at(-1)!.priceUsd).toBe(69034);
   });
 
-  it('uses a matching previous series when the public endpoint fails', async () => {
+  it('propagates endpoint failures so central reuse policy owns stale acceptance', async () => {
+    let requests = 0;
     globalThis.fetch = (async () => {
+      requests += 1;
       throw new Error('network timeout');
     }) as unknown as typeof fetch;
     const provider = new BtcPriceProvider();
@@ -115,7 +118,15 @@ describe('BtcPriceProvider', () => {
         now: new Date('2026-05-18T00:00:00.000Z'),
         lastData: cached,
       })
-    ).resolves.toEqual(cached);
+    ).rejects.toThrow('network timeout');
+
+    await expect(
+      provider.fetchData(config, {
+        now: new Date('2026-05-18T00:10:00.000Z'),
+        lastData: cached,
+      })
+    ).rejects.toThrow('network timeout');
+    expect(requests).toBe(4);
   });
 
   it('rejects invalid spot prices instead of rendering fabricated values', () => {

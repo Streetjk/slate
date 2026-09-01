@@ -31,6 +31,16 @@ export const TTS_VOICES = ['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe
 export const DEFAULT_TTS_VOICE = '冰糖';
 export const TtsVoice = z.enum(TTS_VOICES);
 export type TtsVoiceT = z.infer<typeof TtsVoice>;
+export const TTS_VOICE_LABELS: Record<TtsVoiceT, string> = {
+  冰糖: 'Bingtang',
+  茉莉: 'Jasmine',
+  苏打: 'Soda',
+  白桦: 'Birch',
+  Mia: 'Mia',
+  Chloe: 'Chloe',
+  Milo: 'Milo',
+  Dean: 'Dean',
+};
 
 export function isTtsVoice(value: string): value is TtsVoiceT {
   return (TTS_VOICES as readonly string[]).includes(value);
