@@ -2,7 +2,10 @@ import type { FormEvent, ReactNode } from 'react';
 import { isAudioDynamicConfig, type DynamicTypeT } from 'shared';
 import { useToast } from '@/components/feedback/toast-context';
 import { FormActions } from '@/components/ui/FormActions';
-import { useCreateDynamicContent } from '@/features/dynamic/query/dynamic-content-queries';
+import {
+  useCreateBtcTrio,
+  useCreateDynamicContent,
+} from '@/features/dynamic/query/dynamic-content-queries';
 import { DynamicContentFields } from '@/features/dynamic/components/DynamicContentFields';
 import { DynamicContentFormShell } from '@/features/dynamic/components/DynamicContentFormShell';
 import { DynamicFramePreview } from '@/features/dynamic/components/DynamicFramePreview';
@@ -20,6 +23,7 @@ interface DynamicCreateFormProps {
 
 export function DynamicCreateForm({ gid, type, form, header, onDone }: DynamicCreateFormProps) {
   const createDynamic = useCreateDynamicContent(gid);
+  const createBtcTrio = useCreateBtcTrio(gid);
   const toast = useToast();
   const dynamicMeta = DYNAMIC_TYPE_META[type];
   const showDynamicParams = Boolean(dynamicMeta?.hasConfigurableParams);
@@ -44,6 +48,16 @@ export function DynamicCreateForm({ gid, type, form, header, onDone }: DynamicCr
       onDone();
     } catch (err) {
       toast.error('Create failed', getApiErrorMessage(err));
+    }
+  }
+
+  async function submitBtcTrio() {
+    try {
+      await createBtcTrio.mutateAsync();
+      toast.success('Created Daily, Weekly, and Monthly BTC frames');
+      onDone();
+    } catch (err) {
+      toast.error('BTC trio creation failed', getApiErrorMessage(err));
     }
   }
 
@@ -78,6 +92,7 @@ export function DynamicCreateForm({ gid, type, form, header, onDone }: DynamicCr
             dashboardData={form.dashboardData}
             onDashboardDataChange={form.setDashboardData}
             dashboardDataLabel="Initial data JSON"
+            onCreateBtcTrio={type === 'btc_price' ? () => void submitBtcTrio() : undefined}
           />
         ) : null
       }

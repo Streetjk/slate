@@ -24,6 +24,7 @@ import { deleteContentAudioBlob } from '../../infra/blob/content-audio-blobs';
 import { DynamicContentRegistry } from './dynamic-content-registry';
 import { DynamicContentRendererService } from './dynamic-content-renderer.service';
 import { defaultDynamicFrameName } from './status-text/dynamic-content-status-text';
+import { createBtcTrioRequests } from './providers/btc-price-trio';
 import { toContentMutationResponse } from '../contents/content-mutation-response';
 
 const DYNAMIC_MUTATION_TAIL_TTL_MS = 5 * 60_000;
@@ -174,6 +175,23 @@ export class DynamicContentService {
       if (created.didCreate) await this.rollbackCreation(contentId, gid, err);
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
         throw new ConflictError('Content sequence number already exists');
+      throw err;
+    }
+  }
+
+  async appendBtcTrio(gid: string, ownerUserId: string): Promise<ContentMutationResponseT[]> {
+    const created: ContentMutationResponseT[] = [];
+    try {
+      for (const request of createBtcTrioRequests()) {
+        created.push(await this.append(gid, ownerUserId, request));
+      }
+      return created;
+    } catch (err) {
+      await Promise.allSettled(
+        created.map((content) =>
+          this.rollbackCreation(content.id, gid, new Error('BTC trio provisioning failed'))
+        )
+      );
       throw err;
     }
   }
