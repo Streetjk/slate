@@ -6,8 +6,8 @@ Last known good SHA: `c37f86f9554f3bf63230b5000c1a42168489445b` (Campaign 4 impl
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 4 — Google Calendar voice writes
-Current stage: Campaign 4 report publication; then Campaign 5 MVP integration/hardening
-Current status: PASS — Campaign 4 software and reproducible firmware gates passed; Campaign 5 QUEUED
+Current stage: Campaign 5 — MVP integration/hardening
+Current status: RUNNING — Campaign 4 passed and was published; Campaign 5 hardening audit in progress
 
 Completed campaigns:
 
@@ -78,6 +78,6 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: REQUIRED BEFORE CAMPAIGN 3B/4.
 - XR-005 — remaining English display labels/defaults: RECHECK REQUIRED; P3/P2 candidate.
 
-Next automatic action: begin Campaign 5 full MVP integration/hardening after publishing the Campaign 4 report; run full regression, secret/dependency checks already available, and high-effort adversarial AGY review.
+Next automatic action: audit and resolve remaining external-review hardening items, then run full regression and high-effort adversarial AGY review.
 
 Human action required: NO
