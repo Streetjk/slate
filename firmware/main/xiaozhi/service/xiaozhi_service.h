@@ -18,6 +18,7 @@ class AudioPlayer;
 namespace xiaozhi {
 
 class AudioService;
+struct IncomingMessage;
 
 enum class XiaozhiState : int {
     kCheckingConfig = 0,
@@ -59,6 +60,16 @@ struct XiaozhiSnapshot {
     std::string                 error;
     int                         volume       = 0;
     bool                        has_protocol = false;
+    struct CalendarProposal {
+        bool active = false;
+        bool all_day = false;
+        std::string ticket;
+        std::string title;
+        std::string start;
+        std::string end;
+        std::string location;
+        std::string timezone;
+    } calendar_proposal;
 };
 
 class XiaozhiService {
@@ -79,6 +90,8 @@ class XiaozhiService {
     bool BlocksSleep() const;
     void SuspendForSleep();
     void NotifyNetworkClosed(uint32_t conversation_token);
+    void ConfirmCalendarProposal();
+    void CancelCalendarProposal();
 
     XiaozhiSnapshot Snapshot();
 
@@ -122,6 +135,8 @@ class XiaozhiService {
     void         SetUserText(const std::string& text);
     void         SetAssistantText(const std::string& text);
     void         SetAlert(const std::string& status, const std::string& message, const std::string& emotion);
+    void         SetCalendarProposal(const IncomingMessage& message);
+    void         SetCalendarResult(const std::string& message);
     void         ClearAlertLocked();
     void         TrimMessagesLocked();
     XiaozhiState CurrentState();

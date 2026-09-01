@@ -15,6 +15,9 @@ enum class IncomingMessageKind {
     kLlmEmotion,
     kAlert,
     kAlertMissingMessage,
+    kCalendarProposal,
+    kCalendarCreated,
+    kCalendarCancelled,
 };
 
 struct IncomingMessage {
@@ -23,6 +26,13 @@ struct IncomingMessage {
     std::string         status;
     std::string         message;
     std::string         emotion;
+    std::string         ticket;
+    std::string         title;
+    std::string         start;
+    std::string         end;
+    std::string         location;
+    std::string         timezone;
+    bool                all_day = false;
 };
 
 IncomingMessage ParseIncomingMessage(const cJSON* root);
