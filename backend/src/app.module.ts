@@ -21,6 +21,7 @@ import { RequestIdInterceptor } from './common/nest/interceptors/request-id.inte
 import { ZodValidationPipe } from './common/nest/pipes/zod-validation.pipe';
 import { JwtAuthGuard } from './common/nest/guards/jwt-auth.guard';
 import { RateLimitGuard } from './common/rate-limit/rate-limit-guard';
+import { AssistantModule } from './modules/assistant/assistant.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { RateLimitGuard } from './common/rate-limit/rate-limit-guard';
     AuthModule,
     UsersModule,
     DevicesModule,
+    AssistantModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },

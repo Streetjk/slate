@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Logger as NestLogger, RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { FastifyRequest } from 'fastify';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AppConfig } from './infra/config/app.config';
@@ -24,9 +25,13 @@ async function bootstrap(): Promise<void> {
 
   const cookiePlugin = (await import('@fastify/cookie')).default;
   const multipartPlugin = (await import('@fastify/multipart')).default;
+  const websocketPlugin = (await import('@fastify/websocket')).default;
   await registerFastifyPlugin(app, cookiePlugin);
   await registerFastifyPlugin(app, multipartPlugin, {
     limits: { fileSize: 32 * 1024 * 1024 },
+  });
+  await registerFastifyPlugin(app, websocketPlugin, {
+    options: { maxPayload: 64 * 1024, perMessageDeflate: false },
   });
   // 注：@fastify/rate-limit 装了但不在这里 register —— Nest+Fastify 适配层不暴露
   // route-level Fastify config，全局 rate-limit 不便单独保护 ingest 端点。
@@ -35,6 +40,21 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'healthz', method: RequestMethod.GET }],
   });
+
+  const voiceGateway = app.get(
+    (await import('./modules/assistant/xiaozhi-voice.gateway')).XiaozhiVoiceGateway
+  );
+  const fastify = app.getHttpAdapter().getInstance();
+  const registerVoiceRoute = fastify.get.bind(fastify) as unknown as (
+    path: string,
+    options: { websocket: true },
+    handler: (socket: import('ws').WebSocket, req: FastifyRequest) => void
+  ) => void;
+  registerVoiceRoute(
+    '/api/v1/voice/websocket',
+    { websocket: true },
+    (socket, req) => void voiceGateway.handle(socket, req)
+  );
 
   // 单镜像生产部署 serve frontend dist；dev 模式 dist 不存在则跳过（走 vite dev server）。
   // backend/src/main.ts → ../../frontend/dist，runtime 镜像里同位置（/app/backend/src）。

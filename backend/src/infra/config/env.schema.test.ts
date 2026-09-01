@@ -37,6 +37,15 @@ describe('EnvSchema', () => {
     expect(parsed.DB_ALLOW_PUBLIC_KEY_RETRIEVAL).toBe(false);
   });
 
+  it('uses the approved ADC model defaults without defining a Gemini API key', () => {
+    const parsed = EnvSchema.parse(baseEnv);
+
+    expect(parsed.GEMINI_TEXT_MODEL).toBe('gemini-3.7-flash');
+    expect(parsed.GEMINI_LIVE_MODEL).toBe('gemini-live-2.5-flash-native-audio');
+    expect(parsed.GEMINI_LIVE_CONNECT_TIMEOUT_MS).toBe(15_000);
+    expect(Object.hasOwn(parsed, 'GEMINI_API_KEY')).toBe(false);
+  });
+
   it('accepts a 32-byte token encryption key and rejects shorter keys', () => {
     expect(
       EnvSchema.safeParse({
