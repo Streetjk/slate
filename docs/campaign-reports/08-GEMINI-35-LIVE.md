@@ -484,6 +484,135 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8D1B — O4/O5 Gemini Developer API OAuth verification
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_OAUTH_SCOPE_OR_LIVE_PATH_REVIEW_REQUIRED — billing and Vertex remained disabled; no production change and no firmware flash
+
+The operator completed the O3 browser consent and ADC was saved on the Orange Pi.
+O4 non-secret verification and the authorized model-catalogue checks completed.
+O5 reached a Google authorization boundary while attempting the bounded synthetic
+Live probe. No NOTE4 audio, calendar data, Outlook data, names, search requests,
+tool calls, or generated audio were sent or retained.
+
+### O4 evidence
+
+```text
+GCLOUD=/mnt/ssd-tmp/slate-tools/google-cloud-sdk/bin/gcloud
+GCLOUD_VERSION=583.0.0
+PROJECT=slate-note4
+ACTIVE_GCLOUD_ACCOUNT=streetjk@gmail.com
+ADC_TOKEN_PROBE=PASS
+ADC_FILE_METADATA=pi:pi mode_600 size_361_bytes
+ADC_TOKENINFO=PASS
+ADC_SCOPES_EXPECTED_PRESENT=YES
+ADC_SCOPE_COUNT=2
+GENERATIVE_LANGUAGE_API=ENABLED
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+```
+
+The ADC scope names were checked without printing any token or credential file:
+`cloud-platform` and `generative-language.retriever`. The ADC access token itself
+was never printed, persisted by this probe, or placed in the repository.
+
+OAuth model listing was performed in memory over the official Generative Language
+REST API with the access token and quota-project header; response bodies were not
+written to disk:
+
+```text
+V1_OAUTH=PASS
+V1_MODEL_COUNT=19
+V1_GEMINI31_LIVE=ABSENT
+V1BETA_OAUTH=PASS
+V1BETA_MODEL_COUNT=52
+V1BETA_GEMINI31_LIVE=PRESENT
+V1BETA_GEMINI31_LIVE_METHOD=bidiGenerateContent
+```
+
+This version difference is material: the exact `gemini-3.1-flash-live-preview`
+resource is visible in `v1beta` and advertises `bidiGenerateContent`, but is not
+present in the stable `v1` catalogue. This is model visibility evidence only, not
+proof of a successful Live session or free-tier quota.
+
+### O5 bounded Live probe evidence
+
+The disposable official `google-genai` Python package (`2.21.0`) was installed in
+`/mnt/ssd-tmp/slate-tools/gemini-oauth/probe-venv`; no system package or Slate
+production dependency was changed. The SDK default constructor rejected the
+Developer API path without an API key. Supplying the ADC credential explicitly
+with `vertexai=False` produced the same no-API-key requirement, so no API key was
+provided and no Vertex client was used.
+
+A raw WebSocket attempt using the ADC bearer token was rejected by the Live
+service (`ConnectionClosedError`). The official documented OAuth-compatible Live
+route requires an ephemeral token for the constrained endpoint. A single-use,
+short-lived synthetic-token request was then attempted using the same ADC OAuth
+credential, with model/configuration constraints and no user data. Google
+returned:
+
+```text
+EPHEMERAL_TOKEN_OAUTH=FAIL_HTTP 403
+ERROR_STATUS=PERMISSION_DENIED
+ERROR_REASON=ACCESS_TOKEN_SCOPE_INSUFFICIENT
+```
+
+Therefore:
+
+```text
+GEMINI31_LIVE_MODEL_VISIBLE=YES_V1BETA_ONLY
+GEMINI31_LIVE_OAUTH=UNPROVEN_SCOPE_LIMITATION
+GEMINI31_LIVE_FREE_TIER=NOT_PROVEN
+EPHEMERAL_TOKEN_CREATED=NO
+SYNTHETIC_LIVE_SESSION=NOT_ESTABLISHED
+GOOGLE_SEARCH_LIVE_PROBE=NOT_RUN
+CALENDAR_LIVE_PROBE=NOT_RUN
+```
+
+The exact current official references used for this decision are:
+
+- [Google OAuth quickstart](https://ai.google.dev/gemini-api/docs/oauth) — ADC and Generative Language API OAuth setup.
+- [Live WebSocket reference](https://ai.google.dev/api/live) — Live endpoint, OAuth-compatible ephemeral-token route, and `bidiGenerateContent`.
+- [Live ephemeral tokens](https://ai.google.dev/gemini-api/docs/live-api/ephemeral-tokens) — short-lived constrained-token flow.
+- [Python Gen AI SDK](https://googleapis.github.io/python-genai/) — current SDK authentication behavior.
+
+### Safety and non-mutation evidence
+
+```text
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+PRODUCTION_RESTARTED_FOR_GEMINI=NO
+NOTE4_PRIVATE_DATA_SENT_TO_FREE_TIER=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+BILLING_CHANGED=NO
+VERTEX_API_ENABLED=NO
+VERTEX_MODEL_CALLS=0
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+NVME_DATA_MIGRATION=NO
+```
+
+### Human boundary and next action
+
+The next action requires human Google-authentication/product-policy review:
+determine whether an additional officially supported OAuth scope or another
+approved OAuth/ADC Live provisioning path may be consented to, while keeping
+billing off and `aiplatform.googleapis.com` disabled. Do not re-authenticate,
+enable billing/API, create an API key, call Vertex, send private NOTE4 data, or
+change production settings until that decision is made.
+
+```text
+READY_FOR_GEMINI31_LIVE_FREE_TIER=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_ADDITIONAL_OAUTH_SCOPE_OR_APPROVED_LIVE_PROVISIONING_PATH
+```
+
+### Final stage verdict
+
+NOT READY — Developer API OAuth model visibility is proven, but Live OAuth
+transport authorization and free-tier acceptance remain unproven.
+
 ## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck
 
 Date: 2026-09-02 (Australia/Perth)
