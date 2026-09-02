@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K Node Live non-production E2E
-Current status: HARD_STOP_HARNESS_TIMEOUT_NO_SANITIZED_RESULT — the first authorized Node bridge call did not return its sanitized summary, so calls 2 and 3 were not used.
+Current stage: 8D1K-R disposable Node harness recovery
+Current status: HARNESS_RECOVERED_NO_PROVIDER_CALL — durable mock success and failure results survived an intentionally interrupted control launcher; calls 2 and 3 remain unused.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: recover or replace the disposable Node harness, then obtain explicit authorization before using any remaining 8D1K provider-call budget.
+Next automatic action: stop at the human boundary and obtain explicit authorization before using any remaining 8D1K provider-call budget.
 
-Human action required: YES — review the sanitized harness-timeout boundary before any remaining non-production provider call, and separately review/authorize any production credential/data-policy decision. Keep the key and all credential material out of chat and Git.
+Human action required: YES — reauthorize the remaining two 8D1K provider calls after reviewing the durable harness recovery. Keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -1104,3 +1104,60 @@ READY_FOR_8D1L=NO
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=RECOVER_OR_REPLACE_DISPOSABLE_NODE_HARNESS_AND_REAUTHORIZE_SEQUENCE_BEFORE_ANY_REMAINING_CALL
 ```
+
+## Campaign 8D1K-R — Disposable Node harness recovery checkpoint
+
+```text
+CAMPAIGN=8D1K_R
+STATUS=HARNESS_RECOVERED_NO_PROVIDER_CALL
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+REMOTE_HEAD_BEFORE_CHECKPOINT=ca20b0b2bd401f340ec04aa08ae8253697333edf
+IMPLEMENTATION_SHA=90ab7cbbff39dfb4dda79cf1260611e5f26cf941
+CAMPAIGN_INSTRUCTIONS_SHA=08501bb3ca75739e43fbf4f54811e0243ca5d193
+PR=2
+PR_STATE=OPEN_DRAFT_UNMERGED
+CONTROLLER=LUNA
+WORKER=SONNET_4_6_BOUNDED
+REVIEWER=GLM_5_3_FLASH_NOT_REQUIRED_NO_PRODUCT_SOURCE_CHANGE
+PROVIDER_CALLS_THIS_STAGE=0
+8D1K_TOTAL_PROVIDER_CALLS_USED=1_OF_3
+HARNESS_DURABLE_RESULT=PASS
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+PRODUCT_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1K_REAUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REAUTHORIZE_REMAINING_8D1K_PROVIDER_CALLS
+```
+
+Recovery evidence was deterministic and provider-disabled only. Local Docker
+was available after the reboot, so no remote disposable container or protected
+credential path was used. The pinned Node image was
+`node:22.22.2-alpine3.22` (`sha256:7dcbccda199cd32f6613be82a2a5e91a6c502e01dca56302c9f8d38e2ff5ea58`).
+Each container was uniquely named, created without `--rm`, isolated with
+`--network none` and a read-only filesystem, and had only a temporary mock
+driver mount plus a temporary writable result mount. No credential mount was
+present.
+
+The success container `slate-8d1kr-success-1788392816906944000` wrote and
+retained a sanitized PASS record with exit `0`, `OOM=false`, failure class
+`NONE`, and provider event fields `NOT_APPLICABLE`. The failure container
+`slate-8d1kr-failure-1788392819418211000` wrote and retained a sanitized FAIL
+record with exit `23`, `OOM=false`, and failure class
+`MOCK_PROVIDER_DISABLED`. Both cases had their `docker wait` launcher
+intentionally terminated while the container was still running. Separate
+polling, `docker wait`, inspect, result-copy, and log commands then recovered
+the records and verified `RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES`.
+Containers and result files were removed only after verification. The
+disposable mock driver was not committed.
+
+Production read-only postcheck remained green: Slate and MySQL were running
+and healthy, each had zero restarts, and local `/healthz` returned
+`{"status":"ok"}`. The reviewed bridge source remained unchanged. No Gemini
+provider call, credential read/mount, production mutation, billing/Vertex
+change, firmware flash, or PR merge occurred in this stage.

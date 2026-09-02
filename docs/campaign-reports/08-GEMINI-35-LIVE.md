@@ -2699,3 +2699,90 @@ NEXT_ACTION=RECOVER_OR_REPLACE_DISPOSABLE_NODE_HARNESS_AND_REAUTHORIZE_SEQUENCE_
 8D1L was not started. Production deployment/restart, production Gemini
 settings, billing, Vertex, firmware, credential movement, and PR merge remain
 closed.
+
+## Campaign 8D1K-R — Disposable Node harness recovery
+
+Date: 2026-09-03 (Australia/Perth)
+Status: `HARNESS_RECOVERED_NO_PROVIDER_CALL`
+
+This recovery stage used no Gemini provider call. The local Mac Docker daemon
+was available, so recovery was performed against a separate local disposable
+Docker path; production was checked read-only before and after.
+
+### Durable result design and evidence
+
+The pinned image was `node:22.22.2-alpine3.22`, image ID
+`sha256:7dcbccda199cd32f6613be82a2a5e91a6c502e01dca56302c9f8d38e2ff5ea58`.
+Two uniquely named containers were created without `--rm`, using a
+provider-disabled mock driver, `--network none`, a read-only root filesystem,
+and only two temporary mounts: the mock driver and a writable result
+directory. No Gemini credential or secret mount was used.
+
+The success case used container
+`slate-8d1kr-success-1788392816906944000` and recovered this sanitized result
+after deliberately terminating its `docker wait` launcher:
+
+```text
+HARNESS_RESULT_VERSION=1
+HARNESS_TERMINAL_STATE=PASS
+DRIVER_EXIT_CODE=0
+OOM=false
+SANITIZED_FAILURE_CLASS=NONE
+MODEL_EVENT=NOT_APPLICABLE
+TURN_COMPLETE=NOT_APPLICABLE
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+```
+
+The deterministic failure case used container
+`slate-8d1kr-failure-1788392819418211000` and recovered this sanitized result
+after the same deliberate launcher interruption:
+
+```text
+HARNESS_RESULT_VERSION=1
+HARNESS_TERMINAL_STATE=FAIL
+DRIVER_EXIT_CODE=23
+OOM=false
+SANITIZED_FAILURE_CLASS=MOCK_PROVIDER_DISABLED
+MODEL_EVENT=NOT_APPLICABLE
+TURN_COMPLETE=NOT_APPLICABLE
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+```
+
+For both cases, completion polling, exit/OOM inspection, result retrieval via
+`docker cp`, and log retrieval via `docker logs` were separate bounded Docker
+commands. Result JSON and retained Docker logs were verified before explicit
+container/file cleanup. No raw provider error, token, private data, or audio
+was written. The disposable mock driver was deleted and no tracked harness or
+product/runtime source was changed.
+
+### Production and campaign safety
+
+The postcheck found `slate-note4` and `slate-note4-mysql` running and healthy,
+both with zero restarts; local production `/healthz` returned `status=ok`.
+The exact reviewed bridge implementation remained unchanged at
+`90ab7cbbff39dfb4dda79cf1260611e5f26cf941`. No credential was read or mounted,
+no provider call was made, and billing, Vertex, production settings,
+deployment/restart, firmware, and PR merge remained closed.
+
+```text
+CAMPAIGN=8D1K_R
+STATUS=HARNESS_RECOVERED_NO_PROVIDER_CALL
+PROVIDER_CALLS_THIS_STAGE=0
+8D1K_TOTAL_PROVIDER_CALLS_USED=1_OF_3
+HARNESS_DURABLE_RESULT=PASS
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+PRODUCT_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1K_REAUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REAUTHORIZE_REMAINING_8D1K_PROVIDER_CALLS
+```
+
+The remaining two 8D1K provider calls are intentionally unused. This stage
+stops at the explicit human reauthorization boundary; 8D1L and 8D1M were not
+started.
