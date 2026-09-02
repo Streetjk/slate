@@ -613,6 +613,118 @@ NEXT_ACTION=HUMAN_REVIEW_ADDITIONAL_OAUTH_SCOPE_OR_APPROVED_LIVE_PROVISIONING_PA
 NOT READY — Developer API OAuth model visibility is proven, but Live OAuth
 transport authorization and free-tier acceptance remain unproven.
 
+## Campaign 8D1C — Gemini 3.1 Live OAuth path reconciliation
+
+Date: 2026-09-02 (Australia/Perth)
+Starting checkpoint: `40b30b180265414bb8954f0cad79f404f762d082`
+Ending checkpoint: `dc71a68` plus this report/state commit
+Status: NOT_VIABLE_OAUTH_ONLY_LIVE_CURRENT_GOOGLE_SURFACE
+
+The directive was fetched from origin and executed without product, production,
+firmware, billing, or Vertex changes. The existing ADC was verified non-secretly;
+the credential contents and tokens were never printed, copied, or committed.
+
+### R0 machine-state evidence
+
+```text
+GCLOUD=/mnt/ssd-tmp/slate-tools/google-cloud-sdk/bin/gcloud
+GCLOUD_VERSION=583.0.0
+PROJECT=slate-note4
+ADC_TOKEN_PROBE=PASS
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+SLATE_HEALTH=PASS_HTTP_200
+MYSQL_HEALTH=PASS_HEALTHY
+TAILSCALE=Running
+FUNNEL=ACTIVE
+PUBLIC_HEALTH=PASS_HTTP_200
+PUBLIC_WEB_UI=PASS_HTTP_200
+NOTE4_POLLING=PASS; 11 HTTP-201 log matches in the last 10 minutes
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+```
+
+### R1 authoritative metadata reconciliation
+
+The public Generative Language discovery documents were retrieved for `v1`,
+`v1beta`, and `v1alpha`. All exposed `auth_tokens.create` as
+`POST v1beta/auth_tokens` but did not advertise method-specific OAuth scopes;
+the discovery root advertised only `https://www.googleapis.com/auth/devstorage.read_only`.
+The WebSocket `BidiGenerateContent` methods are not represented in that REST
+discovery document. No authoritative current metadata supported adding a new
+scope to the existing ADC consent, so no re-consent was attempted.
+
+The current official OAuth guide documents ADC and bearer-authenticated REST model
+listing with the already-consented `cloud-platform` and
+`generative-language.retriever` scopes. The current official Live server SDK guide
+initializes Developer API Live with an API key; the Live overview describes
+server-to-server and client-to-server separately and recommends ephemeral tokens
+for the latter. The WebSocket reference documents the constrained endpoint with
+an ephemeral token, not a normal ADC bearer token.
+
+### R2/R3 probe classification
+
+```text
+GEMINI31_LIVE_MODEL_VISIBLE=YES_V1BETA_ONLY
+V1_MODEL_COUNT=19
+V1BETA_MODEL_COUNT=52
+V1BETA_GEMINI31_LIVE_METHOD=bidiGenerateContent
+SERVER_TO_SERVER_OAUTH_PATH=NOT_DOCUMENTED_FOR_DEVELOPER_API_WEBSOCKET
+SERVER_TO_SERVER_OAUTH_PROBE=FAIL_CONNECTION_CLOSED
+EPHEMERAL_TOKEN_OAUTH_PATH=DOCUMENTED_CONSTRAINED_LIVE_ROUTE
+EPHEMERAL_TOKEN_OAUTH_PROBE=FAIL_HTTP_403_ACCESS_TOKEN_SCOPE_INSUFFICIENT
+FREE_TIER_ACCEPTANCE=NOT_PROVEN
+SDK_LIMITATION=PYTHON_2.21.0_DEVELOPER_CLIENT_REQUIRES_API_KEY; ADC_CREDENTIALS_BRANCH_IS_VERTEX
+API_AUTH_LIMITATION=OAUTH_MODEL_LISTING_WORKS_BUT_LIVE_AUTHORIZATION_NOT_ESTABLISHED
+```
+
+The one corrected non-private server-to-server attempt used the official
+`v1beta` WebSocket service name, an in-memory ADC bearer token, the
+`x-goog-user-project` header, the exact model resource, and a synthetic text
+prompt. The connection closed before a Live session was established. The
+ephemeral-token attempt used a single-use short-lived constrained request and
+returned `PERMISSION_DENIED / ACCESS_TOKEN_SCOPE_INSUFFICIENT`. No API key or
+Vertex endpoint was used.
+
+### R4/R5 decision
+
+No current official source or discovery metadata identified a specific additional
+OAuth scope that could be safely requested. The current official Developer API
+Live server guide requires an API key in its runnable path, while the approved ADC
+path has proven REST model listing but not Live authorization. Under the hard
+policy, the project must not guess a scope, add a static key, enable billing, or
+enable Vertex merely to continue the probe.
+
+```text
+GEMINI31_DEVELOPER_API_OAUTH_LIVE=NOT_CURRENTLY_SUPPORTED_FOR_REQUIRED_PATH
+FREE_TIER_LIVE_OAUTH=NOT_VIABLE_UNDER_CURRENT_POLICY
+READY_FOR_GEMINI_RUNTIME_DEPLOY=NO
+```
+
+### Safety and scope
+
+```text
+GEMINI_API_KEY_USED=NO
+GOOGLE_API_KEY_USED=NO
+VERTEX_API_ENABLEMENT=NO
+BILLING_ATTACHMENT=NO
+PRODUCTION_GEMINI_CONFIG_CHANGE=NO
+PRODUCTION_RESTART_FOR_GEMINI=NO
+PRIVATE_NOTE4_DATA_TO_PROBE=NO
+OUTLOOK_DATA_TO_GEMINI=NO
+CALENDAR_WRITE=NO
+APT_AUTOREMOVE=NO
+NVME_DATA_MIGRATION=NO
+```
+
+### Final stage verdict
+
+NOT_VIABLE_OAUTH_ONLY_LIVE_CURRENT_GOOGLE_SURFACE. The existing Slate Vertex/ADC
+runtime remains unchanged and no production migration is authorized. Future work
+requires a new, explicitly approved Google authentication/product-policy decision;
+it must not begin by creating an API key or enabling billing/Vertex.
+
 ## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck
 
 Date: 2026-09-02 (Australia/Perth)

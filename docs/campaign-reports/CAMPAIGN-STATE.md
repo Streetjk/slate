@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1B O5 Gemini 3.1 Live OAuth feasibility probe
-Current status: HUMAN_OAUTH_SCOPE_OR_LIVE_PATH_REVIEW_REQUIRED — ADC and Developer API OAuth model visibility passed; Live ephemeral-token provisioning returned scope-insufficient, with billing off and Vertex disabled.
+Current stage: 8D1C Gemini 3.1 Live OAuth path reconciliation
+Current status: NOT_VIABLE_OAUTH_ONLY_LIVE_CURRENT_GOOGLE_SURFACE — approved ADC proves Developer API REST model listing, but current official Developer API Live authorization is not established without a prohibited API key or an unsupported guessed scope.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for human review of an officially supported additional OAuth scope or approved Live provisioning path; do not re-authenticate, enable billing, call Vertex, create an API key, send private NOTE4 data, or change production settings.
+Next automatic action: park Gemini Developer API Live evaluation and await a new explicit Google authentication/product-policy decision; preserve the existing Slate Vertex/ADC runtime and do not create an API key, enable billing, call Vertex, or change production settings.
 
-Human action required: YES — decide whether to authorize an additional officially documented OAuth scope or another approved Live OAuth/ADC path. Keep tokens and credentials out of chat and Git.
+Human action required: YES — provide a new explicitly approved Google authentication/product-policy decision if Gemini Developer API Live evaluation is to resume. Keep tokens and credentials out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -546,6 +546,38 @@ FIRMWARE_FLASHED=NO
 PR2_MERGED=NO
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_REVIEW_ADDITIONAL_OAUTH_SCOPE_OR_APPROVED_LIVE_PROVISIONING_PATH
+```
+
+## Campaign 8D1C — Gemini 3.1 Live OAuth path reconciliation
+
+```text
+CAMPAIGN=8D1C
+STATUS=NOT_VIABLE_OAUTH_ONLY_LIVE_CURRENT_GOOGLE_SURFACE
+START_SHA=40b30b180265414bb8954f0cad79f404f762d082
+DISCOVERY_VERSIONS=v1,v1beta,v1alpha
+DISCOVERY_AUTH_TOKENS_CREATE=v1beta/auth_tokens;METHOD_SCOPES=NOT_ADVERTISED
+ADC_TOKEN_PROBE=PASS
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+SERVER_TO_SERVER_OAUTH_PATH=NOT_DOCUMENTED_FOR_DEVELOPER_API_WEBSOCKET
+SERVER_TO_SERVER_OAUTH_PROBE=FAIL_CONNECTION_CLOSED
+EPHEMERAL_TOKEN_OAUTH_PROBE=FAIL_HTTP_403_ACCESS_TOKEN_SCOPE_INSUFFICIENT
+GEMINI31_LIVE_MODEL_VISIBLE=YES_V1BETA_ONLY
+GEMINI31_LIVE_FREE_TIER=NOT_PROVEN
+GEMINI_API_KEY_USED=NO
+GOOGLE_API_KEY_USED=NO
+PRODUCTION_GEMINI_CONFIG_CHANGE=NO
+PRODUCTION_RESTART_FOR_GEMINI=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_EXPLICIT_GOOGLE_AUTHENTICATION_OR_PRODUCT_POLICY_DECISION
 ```
 
 ## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck
