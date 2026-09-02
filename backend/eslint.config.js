@@ -12,6 +12,7 @@ export default [
       'prisma.config.ts',
       'prisma/**',
       'src/modules/assistant/gemini-live-node-bridge-runtime.mjs',
+      'src/modules/assistant/gemini-live-node-bridge-session.mjs',
     ],
   },
   js.configs.recommended,

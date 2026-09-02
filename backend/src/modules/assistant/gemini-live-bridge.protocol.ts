@@ -6,6 +6,7 @@ export const GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES = 2 * 1024 * 1024;
 export type GeminiLiveBridgeOpen = {
   type: 'open';
   version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+  epoch: number;
   model: string;
   language: VoiceLanguageT;
   systemInstruction: string;
@@ -24,22 +25,24 @@ export type GeminiLiveBridgeRequest =
       version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
       calls: Array<{ id: string; name: string; response: Record<string, unknown> }>;
     }
-  | { type: 'reconnect'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION }
-  | { type: 'close'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION };
+  | { type: 'reconnect'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number }
+  | { type: 'close'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number };
 
 export type GeminiLiveBridgeResponse =
-  | { type: 'ready'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION }
+  | { type: 'ready'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number }
   | {
       type: 'server_message';
       version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+      epoch: number;
       message: unknown;
     }
   | {
       type: 'error';
       version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+      epoch: number;
       code: GeminiLiveBridgeErrorCode;
     }
-  | { type: 'closed'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION };
+  | { type: 'closed'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number };
 
 export type GeminiLiveBridgeErrorCode =
   | 'BRIDGE_NOT_READY'
@@ -84,15 +87,18 @@ export function parseGeminiLiveBridgeResponse(line: string): GeminiLiveBridgeRes
   switch (value.type) {
     case 'ready':
     case 'closed':
-      assertOnlyKeys(value, ['type', 'version']);
+      assertOnlyKeys(value, ['type', 'version', 'epoch']);
+      assertResponseEpoch(value);
       return value as GeminiLiveBridgeResponse;
     case 'server_message':
-      assertOnlyKeys(value, ['type', 'version', 'message']);
+      assertOnlyKeys(value, ['type', 'version', 'epoch', 'message']);
+      assertResponseEpoch(value);
       if (!('message' in value))
         throw new GeminiLiveBridgeProtocolError('server message is missing');
       return value as GeminiLiveBridgeResponse;
     case 'error':
-      assertOnlyKeys(value, ['type', 'version', 'code']);
+      assertOnlyKeys(value, ['type', 'version', 'epoch', 'code']);
+      assertResponseEpoch(value);
       if (!isBridgeErrorCode(value.code)) {
         throw new GeminiLiveBridgeProtocolError('bridge error code is unsupported');
       }
@@ -107,6 +113,7 @@ export function assertGeminiLiveBridgeOpen(value: unknown): asserts value is Gem
   assertOnlyKeys(value, [
     'type',
     'version',
+    'epoch',
     'model',
     'language',
     'systemInstruction',
@@ -114,9 +121,13 @@ export function assertGeminiLiveBridgeOpen(value: unknown): asserts value is Gem
     'enableWebSearch',
     'tools',
   ]);
+  const epoch = value.epoch;
   if (
     value.type !== 'open' ||
     value.version !== GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION ||
+    typeof epoch !== 'number' ||
+    !Number.isInteger(epoch) ||
+    epoch <= 0 ||
     typeof value.model !== 'string' ||
     value.model.length === 0 ||
     (value.language !== 'en' && value.language !== 'ja') ||
@@ -155,5 +166,11 @@ function assertOnlyKeys(value: Record<string, unknown>, keys: string[]): void {
   const allowed = new Set(keys);
   if (Object.keys(value).some((key) => !allowed.has(key))) {
     throw new GeminiLiveBridgeProtocolError('bridge frame contains an unknown field');
+  }
+}
+
+function assertResponseEpoch(value: Record<string, unknown>): void {
+  if (!Number.isInteger(value.epoch) || (value.epoch as number) < 0) {
+    throw new GeminiLiveBridgeProtocolError('bridge response epoch is invalid');
   }
 }

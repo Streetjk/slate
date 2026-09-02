@@ -9,6 +9,7 @@ import {
   type GeminiLiveBridgeRequest,
 } from './gemini-live-bridge.protocol';
 import { NodeGeminiLiveBridge, type BridgeTimers } from './gemini-live-node-bridge';
+import { createLiveSessionEpochController } from './gemini-live-node-bridge-session.mjs';
 
 class FakeStream {
   private readonly listeners: Array<(data: Buffer) => void> = [];
@@ -40,8 +41,9 @@ class FakeProcess {
       if (frame.type === 'open' || frame.type === 'reconnect') {
         queueMicrotask(() => {
           if (frame.type === 'reconnect' && this.suppressNextReady) return;
-          if (frame.type === 'reconnect') this.stdout.emit('{"type":"closed","version":1}');
-          this.stdout.emit('{"type":"ready","version":1}');
+          if (frame.type === 'reconnect')
+            this.stdout.emit(`{"type":"closed","version":1,"epoch":${frame.epoch - 1}}`);
+          this.stdout.emit(`{"type":"ready","version":1,"epoch":${frame.epoch}}`);
         });
       }
       return true;
@@ -121,6 +123,7 @@ function runtimeOpenFrame(overrides: Record<string, unknown> = {}): string {
   return `${JSON.stringify({
     type: 'open',
     version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+    epoch: 1,
     model: 'gemini-3.1-flash-live-preview',
     language: 'en',
     systemInstruction: 'synthetic',
@@ -247,22 +250,75 @@ describe('NodeGeminiLiveBridge', () => {
       { type: 'audio_end', version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION },
     ]);
 
-    child.stdout.emit('{"type":"server_message","version":1,"message":{"synthetic":true}}');
+    child.stdout.emit(
+      '{"type":"server_message","version":1,"epoch":1,"message":{"synthetic":true}}'
+    );
     expect(events).toEqual([{ synthetic: true }]);
     expect(errors).toHaveLength(0);
 
-    child.stdout.emit('{"type":"closed","version":1}');
+    child.stdout.emit('{"type":"closed","version":1,"epoch":1}');
     expect(errors).toHaveLength(1);
     await connection.reconnect();
     expect(child.writes.at(-1)).toEqual({
       type: 'reconnect',
       version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+      epoch: 2,
     });
     connection.close();
     expect(child.writes.at(-1)).toEqual({
       type: 'close',
       version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+      epoch: 2,
     });
+  });
+
+  it('ignores stale bridge responses after reconnect and close epochs advance', async () => {
+    const child = new FakeProcess();
+    const events: LiveServerMessage[] = [];
+    const errors: Error[] = [];
+    const bridge = new NodeGeminiLiveBridge(options(), (() => child as never) as never);
+    const connection = await bridge.connect(
+      'en',
+      ({ message }) => events.push(message),
+      (error) => errors.push(error),
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+
+    await connection.reconnect();
+    child.stdout.emit('{"type":"server_message","version":1,"epoch":1,"message":{"stale":true}}');
+    child.stdout.emit('{"type":"ready","version":1,"epoch":1}');
+    child.stdout.emit('{"type":"error","version":1,"epoch":1,"code":"BRIDGE_PROVIDER_ERROR"}');
+    child.stdout.emit('{"type":"closed","version":1,"epoch":1}');
+    expect(events).toEqual([]);
+    expect(errors).toEqual([]);
+
+    connection.close();
+    child.stdout.emit('{"type":"ready","version":1,"epoch":2}');
+    child.stdout.emit('{"type":"server_message","version":1,"epoch":2,"message":{"stale":true}}');
+    child.stdout.emit('{"type":"closed","version":1,"epoch":2}');
+    expect(events).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  it('keeps the replacement runtime session after a stale provider close callback', () => {
+    const sessions = createLiveSessionEpochController();
+    const oldSession = { sent: 0, close: () => undefined };
+    const newSession = { sent: 0, close: () => undefined };
+
+    sessions.begin(1);
+    expect(sessions.install(1, oldSession)).toBe(true);
+    sessions.begin(2);
+    expect(sessions.install(2, newSession)).toBe(true);
+
+    expect(sessions.clear(1, oldSession)).toBe(false);
+    expect(sessions.currentSession).toBe(newSession);
+    newSession.sent++;
+    expect(newSession.sent).toBe(1);
+    expect(sessions.clear(2, newSession)).toBe(true);
+    expect(sessions.currentSession).toBeUndefined();
   });
 
   it('fails safely when the configured Node runtime cannot be spawned', () => {
@@ -416,7 +472,7 @@ describe('NodeGeminiLiveBridge', () => {
     const malformed = await runRuntime('{"type":"unknown","version":1}\n');
     expect(malformed.code).toBe(2);
     expect(malformed.stdout).toBe(
-      '{"type":"error","version":1,"code":"BRIDGE_PROTOCOL_REJECTED"}\n'
+      '{"type":"error","version":1,"epoch":0,"code":"BRIDGE_PROTOCOL_REJECTED"}\n'
     );
 
     const badAudio = await runRuntime(
@@ -464,6 +520,7 @@ describe('NodeGeminiLiveBridge', () => {
       JSON.stringify({
         type: 'server_message',
         version: 1,
+        epoch: 1,
         message: 'x'.repeat(2 * 1024 * 1024),
       })
     );

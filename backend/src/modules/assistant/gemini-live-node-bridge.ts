@@ -111,6 +111,7 @@ export class NodeGeminiLiveBridge {
       connectTimeoutMs,
       enableWebSearch,
       tools: buildGeminiToolRegistry(enableWebSearch),
+      epoch: 1,
     });
   }
 }
@@ -125,6 +126,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   private openTimer: BridgeTimerHandle | undefined;
   private closeTimer: BridgeTimerHandle | undefined;
   private killTimer: BridgeTimerHandle | undefined;
+  private epoch = 0;
 
   constructor(
     private readonly process: BridgeProcess,
@@ -148,6 +150,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   }
 
   async open(frame: GeminiLiveBridgeRequest): Promise<GeminiLiveConnection> {
+    this.epoch = 1;
     this.openTimer = this.timers.setTimeout(
       () => this.failBeforeReady('Gemini Live Node bridge connection timed out'),
       this.connectTimeoutMs
@@ -202,13 +205,20 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
       () => this.failBeforeReady('Gemini Live Node bridge reconnect timed out'),
       this.connectTimeoutMs
     );
-    this.write({ type: 'reconnect', version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION });
+    this.epoch += 1;
+    this.write({
+      type: 'reconnect',
+      version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+      epoch: this.epoch,
+    });
     await this.readyPromise;
   }
 
   close(): void {
     if (this.state === 'closed') return;
     this.state = 'closed';
+    const closingEpoch = this.epoch;
+    this.epoch += 1;
     this.clearTimer();
     this.rejectPendingReady('Gemini Live Node bridge was closed');
     try {
@@ -216,6 +226,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
         encodeGeminiLiveBridgeFrame({
           type: 'close',
           version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+          epoch: closingEpoch,
         })
       );
       this.process.stdin.end();
@@ -253,6 +264,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
       this.failBeforeReady('Gemini Live Node bridge protocol was rejected');
       return;
     }
+    if (response.epoch !== this.epoch) return;
     switch (response.type) {
       case 'ready':
         this.state = 'ready';
@@ -381,6 +393,7 @@ function resolveExecutable(executable: string): string {
 
 function isSafeCredentialFileReference(filePath: string): boolean {
   try {
+    if (!isTrustedCredentialPath(filePath)) return false;
     if (lstatSync(filePath).isSymbolicLink()) return false;
     const stats = statSync(filePath);
     return (
@@ -396,6 +409,11 @@ function isSafeCredentialFileReference(filePath: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isTrustedCredentialPath(filePath: string): boolean {
+  const resolved = resolve(filePath);
+  return ['/run/secrets/', '/var/run/secrets/'].some((root) => resolved.startsWith(root));
 }
 
 function errorMessage(code: GeminiLiveBridgeErrorCode): string {

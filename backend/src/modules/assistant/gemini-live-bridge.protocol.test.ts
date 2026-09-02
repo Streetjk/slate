@@ -35,6 +35,7 @@ describe('Gemini Live bridge protocol', () => {
       assertGeminiLiveBridgeOpen({
         type: 'open',
         version: 1,
+        epoch: 1,
         model: 'gemini-3.1-flash-live-preview',
         language: 'ja',
         systemInstruction: 'synthetic',
@@ -48,6 +49,7 @@ describe('Gemini Live bridge protocol', () => {
       assertGeminiLiveBridgeOpen({
         type: 'open',
         version: 1,
+        epoch: 1,
         model: 'gemini-3.1-flash-live-preview',
         language: 'en',
         systemInstruction: 'synthetic',
@@ -60,34 +62,36 @@ describe('Gemini Live bridge protocol', () => {
   });
 
   it('rejects malformed or unknown responses', () => {
-    expect(() => parseGeminiLiveBridgeResponse('{"type":"ready","version":2}')).toThrow(
+    expect(() => parseGeminiLiveBridgeResponse('{"type":"ready","version":2,"epoch":1}')).toThrow(
       GeminiLiveBridgeProtocolError
     );
     expect(() => parseGeminiLiveBridgeResponse('{"type":"unknown","version":1}')).toThrow(
       GeminiLiveBridgeProtocolError
     );
     expect(() =>
-      parseGeminiLiveBridgeResponse('{"type":"error","version":1,"code":"raw-secret"}')
+      parseGeminiLiveBridgeResponse('{"type":"error","version":1,"epoch":1,"code":"raw-secret"}')
     ).toThrow(GeminiLiveBridgeProtocolError);
   });
 
   it('accepts sanitized errors and server messages', () => {
     expect(
       parseGeminiLiveBridgeResponse(
-        '{"type":"error","version":1,"code":"BRIDGE_PROVIDER_CONNECTION_FAILED"}'
+        '{"type":"error","version":1,"epoch":1,"code":"BRIDGE_PROVIDER_CONNECTION_FAILED"}'
       )
     ).toEqual({
       type: 'error',
       version: 1,
+      epoch: 1,
       code: 'BRIDGE_PROVIDER_CONNECTION_FAILED',
     });
     expect(
       parseGeminiLiveBridgeResponse(
-        '{"type":"server_message","version":1,"message":{"synthetic":true}}'
+        '{"type":"server_message","version":1,"epoch":1,"message":{"synthetic":true}}'
       )
     ).toEqual({
       type: 'server_message',
       version: 1,
+      epoch: 1,
       message: { synthetic: true },
     });
   });

@@ -1,5 +1,7 @@
 import { closeSync, fstatSync, openSync, readFileSync, constants } from 'node:fs';
+import { resolve } from 'node:path';
 import { GoogleGenAI, Modality } from '@google/genai/node';
+import { createLiveSessionEpochController } from './gemini-live-node-bridge-session.mjs';
 
 const PROTOCOL_VERSION = 1;
 const MAX_FRAME_BYTES = 2 * 1024 * 1024;
@@ -42,8 +44,8 @@ const CANONICAL_FUNCTION_DECLARATIONS = [
 const credentialFile = process.env.SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE;
 const authMode = process.env.SLATE_GEMINI_BRIDGE_AUTH_MODE;
 const expectedModel = process.env.SLATE_GEMINI_BRIDGE_MODEL;
-let session;
 let openFrame;
+const sessions = createLiveSessionEpochController();
 let shuttingDown = false;
 
 function send(frame) {
@@ -55,22 +57,25 @@ function send(frame) {
   }
 }
 
-function error(code) {
-  send({ type: 'error', version: PROTOCOL_VERSION, code });
+function error(code, epoch = sessions.activeEpoch) {
+  send({ type: 'error', version: PROTOCOL_VERSION, epoch, code });
 }
 
 function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
+  const currentSession = sessions.currentSession;
+  const closingEpoch = sessions.invalidate();
   try {
-    session?.close();
+    currentSession?.close();
   } catch {
     // Provider cleanup is best effort; the process is exiting.
   }
-  session = undefined;
   if (code === 0) {
     try {
-      process.stdout.write(`${JSON.stringify({ type: 'closed', version: PROTOCOL_VERSION })}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ type: 'closed', version: PROTOCOL_VERSION, epoch: closingEpoch })}\n`
+      );
     } catch {
       // stdout may already be closed.
     }
@@ -109,7 +114,9 @@ function createClient() {
     if (authMode === 'vertex_adc') {
       const project = process.env.SLATE_GEMINI_BRIDGE_PROJECT;
       const location = process.env.SLATE_GEMINI_BRIDGE_LOCATION;
-      if (!project || !location) throw new BridgeRuntimeError('BRIDGE_RUNTIME_UNAVAILABLE');
+      const adcFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      if (!project || !location || !isSafeCredentialFileReference(adcFile))
+        throw new BridgeRuntimeError('BRIDGE_RUNTIME_UNAVAILABLE');
       return new GoogleGenAI({
         vertexai: true,
         project,
@@ -123,13 +130,26 @@ function createClient() {
   }
 }
 
-async function openSession(frame) {
-  if (session) throw new BridgeRuntimeError('BRIDGE_ALREADY_OPEN');
+async function openSession(frame, epochAlreadyActive = false) {
+  if (sessions.currentSession) throw new BridgeRuntimeError('BRIDGE_ALREADY_OPEN');
+  if (!epochAlreadyActive) {
+    try {
+      sessions.begin(frame.epoch);
+    } catch {
+      throw new BridgeRuntimeError('BRIDGE_PROTOCOL_REJECTED');
+    }
+  } else if (frame.epoch !== sessions.activeEpoch) {
+    throw new BridgeRuntimeError('BRIDGE_PROTOCOL_REJECTED');
+  }
+  const epoch = frame.epoch;
   const client = createClient();
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), frame.connectTimeoutMs);
+  let nextSession;
+  const isCurrent = () =>
+    !shuttingDown && sessions.isCurrent(epoch, nextSession);
   try {
-    session = await client.live.connect({
+    nextSession = await client.live.connect({
       model: frame.model,
       config: {
         abortSignal: abortController.signal,
@@ -140,19 +160,28 @@ async function openSession(frame) {
         tools: frame.tools,
       },
       callbacks: {
-        onmessage: (message) =>
-          send({ type: 'server_message', version: PROTOCOL_VERSION, message }),
-        onerror: () => error('BRIDGE_PROVIDER_ERROR'),
+        onmessage: (message) => {
+          if (isCurrent())
+            send({ type: 'server_message', version: PROTOCOL_VERSION, epoch, message });
+        },
+        onerror: () => {
+          if (isCurrent()) error('BRIDGE_PROVIDER_ERROR', epoch);
+        },
         onclose: () => {
-          session = undefined;
-          if (!shuttingDown) send({ type: 'closed', version: PROTOCOL_VERSION });
+          if (!isCurrent()) return;
+          sessions.clear(epoch, nextSession);
+          send({ type: 'closed', version: PROTOCOL_VERSION, epoch });
         },
       },
     });
+    if (shuttingDown || sessions.activeEpoch !== epoch || !sessions.install(epoch, nextSession)) {
+      nextSession.close();
+      throw new BridgeRuntimeError('BRIDGE_PROVIDER_CONNECTION_FAILED');
+    }
     openFrame = frame;
-    send({ type: 'ready', version: PROTOCOL_VERSION });
+    send({ type: 'ready', version: PROTOCOL_VERSION, epoch });
   } catch (cause) {
-    session = undefined;
+    sessions.clear(epoch, nextSession);
     openFrame = undefined;
     if (cause?.name === 'AbortError')
       throw new BridgeRuntimeError('BRIDGE_PROVIDER_CONNECTION_FAILED');
@@ -195,15 +224,20 @@ async function handle(frame) {
       requireSession().sendToolResponse({ functionResponses: frame.calls });
       return;
     case 'reconnect':
-      if (!hasExactKeys(frame, ['type', 'version']))
+      if (
+        !hasExactKeys(frame, ['type', 'version', 'epoch']) ||
+        !Number.isInteger(frame.epoch) ||
+        frame.epoch <= sessions.activeEpoch
+      )
         throw new BridgeRuntimeError('BRIDGE_PROTOCOL_REJECTED');
       if (!openFrame) throw new BridgeRuntimeError('BRIDGE_NOT_READY');
-      session?.close();
-      session = undefined;
-      await openSession(openFrame);
+      const previousSession = sessions.currentSession;
+      sessions.begin(frame.epoch);
+      previousSession?.close();
+      await openSession({ ...openFrame, epoch: frame.epoch }, true);
       return;
     case 'close':
-      if (!hasExactKeys(frame, ['type', 'version']))
+      if (!hasExactKeys(frame, ['type', 'version', 'epoch']) || frame.epoch !== sessions.activeEpoch)
         throw new BridgeRuntimeError('BRIDGE_PROTOCOL_REJECTED');
       shutdown(0);
       return;
@@ -213,8 +247,8 @@ async function handle(frame) {
 }
 
 function requireSession() {
-  if (!session || shuttingDown) throw new BridgeRuntimeError('BRIDGE_NOT_READY');
-  return session;
+  if (!sessions.currentSession || shuttingDown) throw new BridgeRuntimeError('BRIDGE_NOT_READY');
+  return sessions.currentSession;
 }
 
 function isValidOpen(frame) {
@@ -222,6 +256,7 @@ function isValidOpen(frame) {
     hasExactKeys(frame, [
       'type',
       'version',
+      'epoch',
       'model',
       'language',
       'systemInstruction',
@@ -232,6 +267,8 @@ function isValidOpen(frame) {
     typeof frame.model === 'string' &&
     frame.model.length > 0 &&
     Buffer.byteLength(frame.model, 'utf8') <= MAX_MODEL_BYTES &&
+    Number.isInteger(frame.epoch) &&
+    frame.epoch > 0 &&
     typeof expectedModel === 'string' &&
     frame.model === expectedModel &&
     (frame.language === 'en' || frame.language === 'ja') &&
@@ -304,6 +341,24 @@ function isValidTools(tools, enableWebSearch) {
     hasExactKeys(functionTool, ['functionDeclarations']) &&
     JSON.stringify(functionTool.functionDeclarations) === expectedFunctions
   );
+}
+
+function isSafeCredentialFileReference(filePath) {
+  if (typeof filePath !== 'string') return false;
+  const resolved = resolve(filePath);
+  if (!['/run/secrets/', '/var/run/secrets/'].some((root) => resolved.startsWith(root)))
+    return false;
+  let descriptor;
+  try {
+    if (typeof constants.O_NOFOLLOW !== 'number') return false;
+    descriptor = openSync(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const stats = fstatSync(descriptor);
+    return stats.isFile() && stats.size > 0 && stats.size <= 64 * 1024 && (stats.mode & 0o077) === 0;
+  } catch {
+    return false;
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
 }
 
 function hasExactKeys(value, keys) {
