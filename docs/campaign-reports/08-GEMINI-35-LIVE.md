@@ -779,6 +779,65 @@ GEMINI31_LIVE_OAUTH=NOT_RUN
 GEMINI31_LIVE_FREE_TIER=NOT_PROVEN
 ```
 
+## Campaign 8D1B — O3 Gemini-scoped ADC browser-consent boundary
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_BROWSER_OAUTH_CONSENT_REQUIRED
+
+The Desktop OAuth client is now present at the required private path. Metadata was
+verified only; the JSON contents were not read or printed. O0/O1 safety conditions
+remain intact: billing is off and Vertex API is disabled.
+
+```text
+OAUTH_DESKTOP_CLIENT=READY
+CLIENT_SECRET_PATH=/mnt/ssd-tmp/slate-tools/gemini-oauth/client_secret.json
+CLIENT_SECRET_METADATA=pi:pi mode_600 size_348_bytes
+OAUTH_CLIENT_DIRECTORY=pi:pi mode_700
+GEMINI_ADC=PENDING_HUMAN
+GENERATIVE_LANGUAGE_API=ENABLED
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+ROOT_FREE_BYTES=3742515200
+NVME_FREE_BYTES=216502263808
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS_HTTP_201
+GEMINI31_LIVE_MODEL_VISIBLE=NOT_RUN
+GEMINI31_LIVE_OAUTH=NOT_RUN
+GEMINI31_LIVE_FREE_TIER=NOT_PROVEN
+GENERATIVE_LANGUAGE_REST_OAUTH=NOT_RUN
+VERTEX_MODEL_CALLS=0
+BILLING_CHANGED=NO
+API_ENABLEMENT_CHANGED=YES_GENERATIVE_LANGUAGE_ONLY
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+NVME_DATA_MIGRATION=NO
+```
+
+### O3 human action
+
+On the Orange Pi terminal, the operator must run the official no-browser ADC login
+and complete the browser consent on a trusted device. The verification result must
+remain in the Orange Pi terminal; do not paste URLs, codes, client JSON, or tokens
+into chat, Git, reports, or logs.
+
+```bash
+GCLOUD=/mnt/ssd-tmp/slate-tools/google-cloud-sdk/bin/gcloud
+
+"$GCLOUD" auth application-default login \
+  --no-browser \
+  --client-id-file=/mnt/ssd-tmp/slate-tools/gemini-oauth/client_secret.json \
+  --scopes='https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/generative-language.retriever'
+```
+
+After successful consent, resume O4 for non-secret ADC/REST/model-visibility
+verification. Do not run a Live probe yet and do not enable billing or Vertex.
+
 The required client JSON is absent. The operator must create a Desktop OAuth client
 for project `slate-note4` in Google Auth Platform, add the operator as a test user
 if required, download the JSON, and transfer it directly to the exact path above.

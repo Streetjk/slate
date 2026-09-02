@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1B O2 Gemini 3.1 Flash Live OAuth setup
-Current status: HUMAN_OAUTH_DESKTOP_CLIENT_REQUIRED — Generative Language API is enabled as authorized; billing remains off and Vertex remains disabled. The private OAuth-client directory exists, but the Desktop client JSON is absent. No model call or production change was made.
+Current stage: 8D1B O3 Gemini-scoped ADC browser-consent boundary
+Current status: HUMAN_BROWSER_OAUTH_CONSENT_REQUIRED — the Desktop OAuth client metadata is valid, Generative Language API is enabled, billing remains off, Vertex remains disabled, and no model call or production change was made.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for human creation/transfer of the Desktop OAuth client JSON, then resume O3; do not re-authenticate, call Vertex, change billing, run apt autoremove, or migrate NVMe data.
+Next automatic action: stop for human browser consent using the documented Gemini-scoped ADC command, then resume O4; do not call Vertex, change billing, run apt autoremove, or migrate NVMe data.
 
-Human action required: YES — create/download the Desktop OAuth client JSON for `slate-note4` and transfer it directly to the documented private Orange Pi path. Do not share credentials or move Slate/MySQL data.
+Human action required: YES — complete the documented Gemini-scoped ADC browser consent on a trusted device, keeping URLs/codes/tokens out of chat and Git. Do not move Slate/MySQL data.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -602,6 +602,43 @@ NVME_CHANGE=EMPTY_OAUTH_DIRECTORY_ONLY
 VERTEX_READINESS=HUMAN_API_ENABLEMENT_AND_BILLING_DECISION_REQUIRED
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_PROVIDE_DESKTOP_OAUTH_CLIENT_JSON_THEN_RESUME_8D1B_O3
+```
+
+## Campaign 8D1B — O3 Gemini-scoped ADC browser-consent boundary
+
+```text
+CAMPAIGN=8D1B
+STATUS=HUMAN_BROWSER_OAUTH_CONSENT_REQUIRED
+OAUTH_DESKTOP_CLIENT=READY
+CLIENT_SECRET_PATH=/mnt/ssd-tmp/slate-tools/gemini-oauth/client_secret.json
+CLIENT_SECRET_METADATA=pi:pi_mode_600_size_348_bytes
+OAUTH_CLIENT_DIRECTORY=pi:pi_mode_700
+GEMINI_ADC=PENDING_HUMAN
+GENERATIVE_LANGUAGE_API=ENABLED
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+ROOT_FREE_BYTES=3742515200
+NVME_FREE_BYTES=216502263808
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS
+GENERATIVE_LANGUAGE_REST_OAUTH=NOT_RUN
+GEMINI31_LIVE_MODEL_VISIBLE=NOT_RUN
+GEMINI31_LIVE_OAUTH=NOT_RUN
+GEMINI31_LIVE_FREE_TIER=NOT_PROVEN
+VERTEX_MODEL_CALLS=0
+BILLING_CHANGED=NO
+API_ENABLEMENT_CHANGED=YES_GENERATIVE_LANGUAGE_ONLY
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+NVME_DATA_MIGRATION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_RUN_OFFICIAL_GEMINI_SCOPED_ADC_LOGIN_AND_COMPLETE_BROWSER_CONSENT_THEN_RESUME_8D1B_O4
 ```
 
 ## Campaign 8D1 — Vertex ADC readiness check
