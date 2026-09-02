@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1C Gemini 3.1 Live OAuth path reconciliation
-Current status: NOT_VIABLE_OAUTH_ONLY_LIVE_CURRENT_GOOGLE_SURFACE — approved ADC proves Developer API REST model listing, but current official Developer API Live authorization is not established without a prohibited API key or an unsupported guessed scope.
+Current stage: 8D1D Gemini 3.1 Live API-key free-tier probe
+Current status: PASS_GEMINI31_LIVE_API_KEY_FREE_TIER_OBSERVED — one authorized synthetic Live session succeeded with billing unattached; production API-key migration remains human-gated.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: park Gemini Developer API Live evaluation and await a new explicit Google authentication/product-policy decision; preserve the existing Slate Vertex/ADC runtime and do not create an API key, enable billing, call Vertex, or change production settings.
+Next automatic action: stop at human review of secure production key integration and data policy; preserve the current production runtime and do not deploy, move the key, change Gemini settings, flash firmware, or merge PR #2.
 
-Human action required: YES — provide a new explicitly approved Google authentication/product-policy decision if Gemini Developer API Live evaluation is to resume. Keep tokens and credentials out of chat and Git.
+Human action required: YES — explicitly review/authorize any production API-key integration and data policy. Keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -578,6 +578,43 @@ FUNNEL=PASS
 NOTE4_POLLING=PASS
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_EXPLICIT_GOOGLE_AUTHENTICATION_OR_PRODUCT_POLICY_DECISION
+```
+
+## Campaign 8D1D — Gemini 3.1 Live API-key free-tier probe
+
+```text
+CAMPAIGN=8D1D
+STATUS=PASS_GEMINI31_LIVE_API_KEY_FREE_TIER_OBSERVED
+API_KEY_FILE_PRESENT=YES_METADATA_ONLY
+API_KEY_FILE_OWNER=pi:pi
+API_KEY_FILE_MODE=600
+API_KEY_DIRECTORY_MODE=700
+GENERATIVE_LANGUAGE_API=ENABLED
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+API_KEY_AUTH=PASS
+GEMINI31_LIVE_MODEL_VISIBLE=PASS
+GEMINI31_LIVE_SESSION=PASS
+GEMINI31_LIVE_FREE_TIER=PROVEN_FOR_THIS_PROJECT_AT_PROBE_TIME
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+PRODUCTION_RESTARTED_FOR_GEMINI=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+SEARCH_GROUNDING_USED=NO
+TOOL_CALLS_USED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+CREDENTIAL_EXPOSURE_HARD_STOP=NO
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS
+READY_FOR_PRODUCTION_API_KEY_MIGRATION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SECURE_PRODUCTION_KEY_INTEGRATION_AND_DATA_POLICY
 ```
 
 ## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck

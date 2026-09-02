@@ -725,6 +725,116 @@ runtime remains unchanged and no production migration is authorized. Future work
 requires a new, explicitly approved Google authentication/product-policy decision;
 it must not begin by creating an API key or enabling billing/Vertex.
 
+## Campaign 8D1D — Gemini 3.1 Live API-key free-tier probe
+
+Date: 2026-09-02 (Australia/Perth)
+Starting checkpoint: `ad31e548010ddeeeff3b8121bb12b365aa8b988b`
+Status: PASS_GEMINI31_LIVE_API_KEY_FREE_TIER_OBSERVED — bounded probe only; no production migration
+
+This stage followed the explicit temporary exception in
+`08D1D-GEMINI31-LIVE-API-KEY-FREE-TIER-PROBE.md`. The key was read from the
+protected Orange Pi file into process memory only. It was not printed, passed as
+a process argument, exported into a shell environment, written to a temporary
+file, included in an error dump, committed, or placed in a report/PR comment.
+
+### D0/D1 safety evidence
+
+```text
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+API_KEY_FILE_PRESENT=YES
+API_KEY_FILE_OWNER=pi:pi
+API_KEY_FILE_MODE=600
+API_KEY_FILE_NONZERO=YES; metadata size 53 bytes
+API_KEY_DIRECTORY_MODE=700
+GENERATIVE_LANGUAGE_API=ENABLED
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+SLATE_HEALTH=PASS_HTTP_200
+MYSQL_HEALTH=PASS_HEALTHY
+TAILSCALE=Running
+FUNNEL=ACTIVE
+PUBLIC_HEALTH=PASS_HTTP_200
+PUBLIC_WEB_UI=PASS_HTTP_200
+NOTE4_POLLING=PASS; 12 HTTP-201 log matches in the final 10-minute check
+```
+
+### D2 official model/auth evidence
+
+The current official model page still identifies the exact target
+`gemini-3.1-flash-live-preview` as a preview audio-to-audio model with Live API,
+audio generation, function calling, and Search grounding support. The current
+official server SDK guide shows Developer API Live initialization with an API
+key and the same exact model. References:
+
+- [Gemini 3.1 Flash Live model page](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview)
+- [Gemini Live SDK server guide](https://ai.google.dev/gemini-api/docs/live-api/get-started-sdk)
+
+### D3/D4 bounded probe evidence
+
+Exactly two Developer API calls were permitted and made: one minimal model
+metadata authentication check and one Live session. The key was loaded from the
+protected file in memory and supplied directly to the disposable official
+`google-genai` Python client; no Slate production dependency or setting changed.
+The Live input was the synthetic text `Say exactly TEST.`. Search grounding,
+function calling, Calendar data, Outlook data, NOTE4 data, and audio input were
+not used. Generated audio was not retained.
+
+```text
+GOOGLE_GENAI_PYTHON_SDK=2.21.0_DISPOSABLE_VENV
+API_KEY_AUTH=PASS
+GEMINI31_LIVE_MODEL_VISIBLE=PASS
+GEMINI31_LIVE_SESSION=CONNECTED
+GEMINI31_LIVE_RESPONSE_EVENT=PASS
+GEMINI31_LIVE_TURN_COMPLETE=PASS
+```
+
+### D5 classification
+
+The project/key accepted the single synthetic Live session while billing was
+unattached at probe time. This is an observation of current free-tier acceptance,
+not a guarantee of future quota or authorization, and it does not authorize use
+of the key in Slate production.
+
+```text
+GEMINI31_LIVE_API_KEY=PASS
+GEMINI31_LIVE_SESSION=PASS
+GEMINI31_LIVE_FREE_TIER=PROVEN_FOR_THIS_PROJECT_AT_PROBE_TIME
+BILLING_CHANGED=NO
+VERTEX_API_ENABLED=NO
+READY_FOR_PRODUCTION_API_KEY_MIGRATION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SECURE_PRODUCTION_KEY_INTEGRATION_AND_DATA_POLICY
+```
+
+### D6 security and regression evidence
+
+Post-probe checks confirmed the protected key metadata remained unchanged; Slate,
+MySQL, Tailscale/Funnel, public health, Web UI, ADC, billing, Vertex state, and
+NOTE4 polling remained healthy. No production restart, runtime model change,
+firmware flash, PR merge, or credential rotation occurred.
+
+```text
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+PRODUCTION_RESTARTED_FOR_GEMINI=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+SEARCH_GROUNDING_USED=NO
+TOOL_CALLS_USED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+CREDENTIAL_EXPOSURE_HARD_STOP=NO
+```
+
+### Final stage verdict
+
+PASS_GEMINI31_LIVE_API_KEY_FREE_TIER_OBSERVED. Stop at the production boundary:
+do not move the key, alter production Gemini settings, deploy, flash, or merge
+until a human explicitly reviews secure production key integration and data policy.
+
 ## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck
 
 Date: 2026-09-02 (Australia/Perth)
