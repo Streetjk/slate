@@ -484,6 +484,50 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8D1 — Vertex/ADC human setup boundary
+
+Date: 2026-09-02 (Australia/Perth)
+Status: BLOCKED_HUMAN_GOOGLE_CLOUD_SETUP — no firmware write
+
+The 8D1 directive and the Claude Sonnet 5 worker policy were fetched and read. No Claude worker was needed for this human-owned setup gate. Codex performed only non-secret checks.
+
+### Current verification
+
+- Orange Pi: `aarch64`, Armbian `25.5.2 noble`.
+- Slate candidate container: `healthy`; MySQL: `healthy`.
+- Public `/healthz`: HTTP 200; public Web UI: HTTP 200.
+- Candidate voice-config unauthenticated request: HTTP 401.
+- Production backend image, persistent data, Tailscale/Funnel state, and production Gemini settings were not changed.
+- Root filesystem: 14,985,895,936 bytes total, 800,813,056 bytes available, 95% used. No package installation or cleanup was attempted.
+
+ADC remains unavailable:
+
+```text
+GOOGLE_CLOUD_PROJECT=UNSET
+GOOGLE_CLOUD_LOCATION=UNSET
+GOOGLE_APPLICATION_CREDENTIALS=UNSET
+GCLOUD=UNAVAILABLE
+ADC_FILE=ABSENT
+VERTEX_ADC_AUTH=NOT_RUN_PENDING_HUMAN
+VERTEX_API_ENABLED=NOT_VERIFIED
+BILLING_PROJECT_READY=NOT_VERIFIED
+PRODUCTION_VERTEX_ENV=HUMAN_AUTH_REQUIRED
+VERTEX_LIVE_PROBE=NOT_RUN_PENDING_ENV
+READY_FOR_SLATE_VOICE_FLASH=false
+FIRMWARE_FLASHED=NO
+```
+
+### Human-owned next action
+
+The operator must choose the long-term Google account and one Google Cloud project, confirm billing is enabled, enable `aiplatform.googleapis.com`, and install the official Google Cloud CLI if needed. On the approved Orange Pi account or workstation, complete:
+
+```text
+gcloud init
+gcloud auth application-default login
+```
+
+If Google requests it, set the quota project with `gcloud auth application-default set-quota-project <PROJECT_ID>`. Do not create a service-account key file, API key, or paste any credential material into chat, Git, logs, or reports. After this interactive setup is complete, resume 8D1 for non-secret ADC/API/billing verification. Firmware remains unflashed.
+
 ## Campaign 8D0 Recheck — worker-policy continuation
 
 Date: 2026-09-02 (Australia/Perth)

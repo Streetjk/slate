@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D0 pre-flash backend and Google-runtime readiness
-Current status: HUMAN_VERTEX_ADC_SETUP_REQUIRED — Campaign 8C backend remains deployed and healthy; public/Funnel and security-negative checks pass. Vertex/ADC is absent on Orange Pi, so the physical firmware flash boundary cannot be entered yet. No firmware was flashed.
+Current stage: 8D1 Vertex/ADC human setup boundary
+Current status: HUMAN_GOOGLE_CLOUD_SETUP_REQUIRED — Campaign 8C backend remains deployed and healthy; public/Funnel and security-negative checks pass. Vertex/ADC, project/location, and gcloud are still absent on Orange Pi. No firmware was flashed.
 
 Completed campaigns:
 
@@ -239,6 +239,37 @@ FIRMWARE_FLASHED=NO
 READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
+```
+
+## Campaign 8D1 — Vertex/ADC human setup boundary
+
+```text
+CAMPAIGN=8D1
+STATUS=HUMAN_GOOGLE_CLOUD_SETUP_REQUIRED
+CLAUDE_WORKER=NOT_USED_HUMAN_SETUP_GATE
+ORANGE_PI_ARCH=aarch64
+ORANGE_PI_OS=Armbian_25.5.2_noble
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+PUBLIC_HEALTH=PASS_HTTP_200
+PUBLIC_WEB_UI=PASS_HTTP_200
+VOICE_CONFIG_UNAUTHENTICATED=REJECTED_HTTP_401
+ROOT_FREE_BYTES=800813056
+GOOGLE_CLOUD_PROJECT=UNSET
+GOOGLE_CLOUD_LOCATION=UNSET
+GOOGLE_APPLICATION_CREDENTIALS=UNSET
+GCLOUD=UNAVAILABLE
+ADC_FILE=ABSENT
+VERTEX_ADC_AUTH=NOT_RUN_PENDING_HUMAN
+VERTEX_API_ENABLED=NOT_VERIFIED
+BILLING_PROJECT_READY=NOT_VERIFIED
+PRODUCTION_VERTEX_ENV=HUMAN_AUTH_REQUIRED
+VERTEX_LIVE_PROBE=NOT_RUN_PENDING_ENV
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION=CHOOSE_PROJECT_ENABLE_BILLING_AND_VERTEX_API_INSTALL_GCLOUD_AND_COMPLETE_ADC_LOGIN
+NEXT_ACTION=RESUME_8D1_AFTER_INTERACTIVE_GOOGLE_SETUP
 ```
 
 ## Campaign 6D D0 Reconciliation
