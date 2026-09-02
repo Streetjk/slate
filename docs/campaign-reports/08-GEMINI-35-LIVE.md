@@ -484,6 +484,69 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0D — NordVPN post-removal verification
+
+Date: 2026-09-02 (Australia/Perth)
+Status: PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS
+
+This checkpoint was verification-only. `apt autoremove` was not run. Slate/MySQL
+data was not moved, the NVMe was not changed, and no firmware, production Gemini
+setting, credential, or Funnel configuration was changed.
+
+### Verification evidence
+
+```text
+NORDVPN_REMOVED=PASS
+NORDVPN_SERVICE_ACTIVE=NO
+NORDVPN_SERVICE_ENABLED=NO
+NORDVPN_PACKAGE_QUERY=NOT_INSTALLED
+NORDVPN_COMMAND=ABSENT
+NORDVPN_BYTES_RECLAIMED=APPROX_96_0_MB_AS_REPORTED_BY_APT
+ROOT_FREE_BYTES=2040111104
+ROOT_FILESYSTEM_BYTES=14985895936
+ROOT_USED_PERCENT=87%
+ORANGEPI_STORAGE_GATE=PASS
+SLATE_HEALTH=PASS_HTTP_200_LOCAL
+MYSQL_HEALTH=PASS_HEALTHY_CONTAINER
+TAILSCALE=PASS_ACTIVE
+PUBLIC_HEALTH=PASS_HTTP_200
+FUNNEL=PASS_HTTPS_TO_127_0_0_1_3001
+NOTE4_POLLING=PASS_HTTP_201_OBSERVED_03_00_01_THROUGH_03_04_20
+APT_AUTOREMOVE_EXECUTED=NO
+SLATE_DATA_MOVE_EXECUTED=NO
+NVME_CHANGED=NO
+FIRMWARE_FLASHED=NO
+```
+
+The measured root free-space increase from the pre-removal observation was
+`96,419,840` bytes, while the human-reported APT reclaim was approximately
+96.0 MB; the exact package-removal byte accounting was not claimed beyond that
+evidence. The three APT-suggested packages remain installed and were only inspected:
+
+```text
+libglapi-mesa 433 KB; reverse dependencies include libglx-mesa0, libgl1-mesa-dri, libegl-mesa0
+libllvm19 121821 KB; no installed reverse dependents reported
+libxcb-dri2-0 83 KB; reverse dependencies include libegl-mesa0, libglx-mesa0
+```
+
+No automatic removal is recommended from this checkpoint. The existing bounded
+NVMe recommendation remains unchanged: directory policy, 10 GB Slate cap, and 180 GB
+Deluge free-space reserve. No implementation of that policy has occurred.
+
+### Next human boundary
+
+The storage gate now passes, so the next authorized path is the existing human-owned
+Google Cloud/Vertex ADC setup. `gcloud` was not installed and no credentials were
+read or changed. Resume 8D1 only after the operator chooses the approved project,
+confirms billing/API authorization, and completes the official ADC login without
+sharing credential material.
+
+```text
+READY_FOR_GCLOUD_INSTALL=YES
+HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
+NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
+```
+
 ## Campaign 8E0C — NordVPN removal and bounded NVMe Slate assessment
 
 Date: 2026-09-02 (Australia/Perth)

@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8E0C NordVPN removal and bounded NVMe Slate assessment
-Current status: NVME_ASSESSMENT_COMPLETE_NORDVPN_REMOVAL_BLOCKED_SUDO — NordVPN ownership was confirmed but removal requires the Orange Pi sudo password. NVMe/Deluge/Slate sizing is complete; no Slate/MySQL data was moved.
+Current stage: 8E0D NordVPN post-removal verification
+Current status: PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS — NordVPN removal verified, root free space is 2,040,111,104 bytes, Slate/MySQL/Tailscale/Funnel/NOTE4 polling remain healthy, and no data was moved.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for human review and the minimal authorized NordVPN sudo action; do not move Slate/MySQL data or alter NVMe/Deluge configuration.
+Next automatic action: stop for the human Google Cloud/Vertex ADC setup boundary; do not move Slate/MySQL data or alter NVMe/Deluge configuration.
 
-Human action required: YES — run the authorized NordVPN removal command with local sudo if desired, then review the 8E0C assessment before any future data move. Never send credentials in chat or reports.
+Human action required: YES — choose the approved Google Cloud project, confirm billing/API authorization, and complete official ADC login before resuming 8D1. Never send credentials in chat or reports.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -488,4 +488,32 @@ GEMINI37_REVIEW_CALLS=0
 GEMINI37_SHADOW_CALLS=0
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_RUN_AUTHORIZED_NORDVPN_REMOVAL_WITH_LOCAL_SUDO_THEN_REVIEW_BEFORE_ANY_DATA_MOVE
+```
+
+## Campaign 8E0D — NordVPN post-removal verification
+
+```text
+CAMPAIGN=8E0D
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS
+NORDVPN_REMOVED=PASS
+NORDVPN_SERVICE_ACTIVE=NO
+NORDVPN_SERVICE_ENABLED=NO
+ROOT_FREE_BYTES=2040111104
+ORANGEPI_STORAGE_GATE=PASS
+SLATE_HEALTH=PASS_HTTP_200_LOCAL
+MYSQL_HEALTH=PASS_HEALTHY_CONTAINER
+TAILSCALE=PASS
+PUBLIC_HEALTH=PASS_HTTP_200
+FUNNEL=PASS
+NOTE4_POLLING=PASS_HTTP_201_OBSERVED_03_00_01_THROUGH_03_04_20
+APT_AUTOREMOVE_EXECUTED=NO
+SLATE_DATA_MOVE_EXECUTED=NO
+NVME_CHANGED=NO
+FIRMWARE_FLASHED=NO
+READY_FOR_GCLOUD_INSTALL=YES
+HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
 ```
