@@ -81,7 +81,7 @@ export class GeminiLiveService {
               const error =
                 event instanceof Error ? event : new Error('Gemini Live connection error');
               this.logger.warn(`Gemini Live error: ${safeGeminiErrorCategory(error)}`);
-              onError?.(error);
+              onError?.(new Error('Gemini Live connection error'));
             },
             onclose: () => this.logger.debug('Gemini Live session closed'),
           },

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GeminiConfig } from './gemini.config';
+import { DEVELOPER_API_LIVE_MODEL, GeminiConfig } from './gemini.config';
 
 function config(values: Record<string, unknown>): GeminiConfig {
   return new GeminiConfig({
@@ -36,6 +36,7 @@ describe('GeminiConfig', () => {
         GEMINI_AUTH_MODE: 'developer_api_key',
         GEMINI_API_KEY_FILE: file,
         GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
       });
 
       expect(value.isConfigured()).toBe(true);
@@ -55,6 +56,76 @@ describe('GeminiConfig', () => {
 
     expect(value.isConfigured()).toBe(false);
     expect(value.configurationErrorMessage()).toContain('readable');
+  });
+
+  it('rejects Developer API evaluation when the approved Live model is not selected', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-model-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+      });
+
+      expect(value.isConfigured()).toBe(false);
+      expect(() => value.clientOptions()).toThrow();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts Developer API evaluation only for the approved Live model', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-model-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+
+      expect(value.isConfigured()).toBe(true);
+      expect(value.clientOptions()).toEqual({ apiKeyFile: file });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed for whitespace-only and symlinked credential sources', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-file-'));
+    const file = join(directory, 'gemini-api-key');
+    const link = join(directory, 'gemini-api-key-link');
+    try {
+      writeFileSync(file, ' \n', { mode: 0o600 });
+      const whitespace = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+      expect(whitespace.isConfigured()).toBe(false);
+
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      // Replace the disposable file with a symlink using the test runtime API.
+      symlinkSync(file, link);
+      const symlinked = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: link,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+      expect(symlinked.isConfigured()).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('fails closed for Developer API mode in production even with a readable file', () => {

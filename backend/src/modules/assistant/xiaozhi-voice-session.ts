@@ -210,8 +210,10 @@ export class XiaozhiVoiceSession {
   }
 
   private fail(error: unknown): void {
-    const message = error instanceof Error ? error.message : String(error);
-    this.sendAlert('Voice service error', message.slice(0, 240));
+    // Provider and parser details are server-side diagnostics only. Never put
+    // arbitrary exception text on the device-facing protocol.
+    void error;
+    this.sendAlert('Voice service error', 'Voice service error');
     this.close();
     if (this.socket.readyState === this.socket.OPEN)
       this.socket.close(1011, 'voice session failed');

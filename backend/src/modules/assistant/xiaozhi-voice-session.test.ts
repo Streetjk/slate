@@ -162,7 +162,7 @@ describe('XiaozhiVoiceSession', () => {
       () => ({
         decodeDevicePacket: (packet) => packet,
         encodeModelPcm: () => {
-          throw new Error('bad model audio');
+          throw new Error('provider detail synthetic-secret-value');
         },
         reset: () => {},
         close: () => {},
@@ -179,6 +179,18 @@ describe('XiaozhiVoiceSession', () => {
     );
     eventHandler?.({ message: { data: Buffer.from([1, 2]).toString('base64') } as never });
     expect(ws.closed).toEqual({ code: 1011, reason: 'voice session failed' });
+    const alerts = ws.sent
+      .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+      .filter((item) => item?.type === 'alert');
+    expect(alerts).toEqual([
+      {
+        type: 'alert',
+        status: 'Voice service error',
+        message: 'Voice service error',
+        emotion: 'neutral',
+      },
+    ]);
+    expect(JSON.stringify(alerts)).not.toContain('synthetic-secret-value');
   });
 
   it('turns a model calendar proposal into a device confirmation flow', async () => {

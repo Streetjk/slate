@@ -140,6 +140,37 @@ describe('GeminiLiveService', () => {
     });
   });
 
+  it('redacts provider details before invoking the device-facing error callback', async () => {
+    let providerError: ((event: unknown) => void) | undefined;
+    const clientOptions: Record<string, unknown>[] = [];
+    const session = { close: () => {} } as unknown as Session;
+    const service = new GeminiLiveService(config(), (options) => {
+      clientOptions.push(options);
+      return {
+        models: {},
+        live: {
+          connect: async (parameters: Record<string, unknown>) => {
+            providerError = (parameters.callbacks as { onerror: (event: unknown) => void }).onerror;
+            return session;
+          },
+        },
+      } as unknown as GeminiClient;
+    });
+    const errors: Error[] = [];
+
+    await service.connect(
+      'en',
+      () => {},
+      (error) => errors.push(error)
+    );
+    providerError?.(new Error('provider detail synthetic-secret-value'));
+
+    expect(clientOptions).toHaveLength(1);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toBe('Gemini Live connection error');
+    expect(errors[0]?.message).not.toContain('synthetic-secret-value');
+  });
+
   it('aborts a connection that exceeds the configured timeout', async () => {
     const service = new GeminiLiveService(
       { ...config(), liveConnectTimeoutMs: 1 } as GeminiConfig,

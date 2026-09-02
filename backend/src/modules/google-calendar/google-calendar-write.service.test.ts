@@ -78,4 +78,40 @@ describe('GoogleCalendarWriteService', () => {
       google.calendar = originalCalendar;
     }
   });
+
+  it('burns the ticket when OAuth or Calendar insertion fails', async () => {
+    const originalCalendar = google.calendar;
+    let consumed = false;
+    let consumeCalls = 0;
+    google.calendar = (() => ({
+      events: {
+        insert: async () => {
+          throw new Error('provider detail synthetic-secret-value');
+        },
+      },
+    })) as never;
+    try {
+      const service = new GoogleCalendarWriteService(
+        {
+          consume: async () => {
+            consumeCalls++;
+            if (consumed) throw new Error('invalid or expired');
+            consumed = true;
+            return { proposal: timed, calendarId: 'primary' };
+          },
+        } as never,
+        { getAuthenticatedClient: async () => ({}) } as never
+      );
+
+      await expect(service.createConfirmedCalendarEvent('user-a', 'ticket')).rejects.toThrow(
+        'Google Calendar event creation failed'
+      );
+      await expect(service.createConfirmedCalendarEvent('user-a', 'ticket')).rejects.toThrow(
+        'invalid or expired'
+      );
+      expect(consumeCalls).toBe(2);
+    } finally {
+      google.calendar = originalCalendar;
+    }
+  });
 });
