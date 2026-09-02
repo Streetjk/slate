@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EnvT } from '../../infra/config/env.schema';
+import type { GeminiClientOptions } from './gemini.client';
+
+export type GeminiAuthMode = 'vertex_adc' | 'developer_api_key';
 
 @Injectable()
 export class GeminiConfig {
@@ -12,6 +15,14 @@ export class GeminiConfig {
 
   get location(): string | undefined {
     return this.cs.get('GOOGLE_CLOUD_LOCATION', { infer: true });
+  }
+
+  get authMode(): GeminiAuthMode {
+    return this.cs.get('GEMINI_AUTH_MODE', { infer: true });
+  }
+
+  get apiKeyFile(): string | undefined {
+    return this.cs.get('GEMINI_API_KEY_FILE', { infer: true });
   }
 
   get textModel(): string {
@@ -27,6 +38,27 @@ export class GeminiConfig {
   }
 
   isConfigured(): boolean {
-    return Boolean(this.project && this.location);
+    return this.authMode === 'developer_api_key'
+      ? Boolean(this.apiKeyFile)
+      : Boolean(this.project && this.location);
+  }
+
+  configurationErrorMessage(): string {
+    return this.authMode === 'developer_api_key'
+      ? 'Gemini runtime is not configured: GEMINI_API_KEY_FILE is required for developer_api_key mode'
+      : 'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode';
+  }
+
+  clientOptions(): GeminiClientOptions {
+    if (this.authMode === 'developer_api_key') {
+      if (!this.apiKeyFile) {
+        throw new Error('Gemini runtime credential file is not configured');
+      }
+      return { apiKeyFile: this.apiKeyFile };
+    }
+    if (!this.project || !this.location) {
+      throw new Error('Gemini OAuth/ADC project and location are not configured');
+    }
+    return { vertexai: true, project: this.project, location: this.location };
   }
 }

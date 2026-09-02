@@ -47,11 +47,7 @@ export class GeminiLiveService {
     this.assertConfigured();
     let session: Session | undefined;
     let closed = false;
-    const client = this.clientFactory({
-      vertexai: true,
-      project: this.config.project,
-      location: this.config.location,
-    });
+    const client = this.clientFactory(this.config.clientOptions());
 
     const connectSession = async (): Promise<void> => {
       session = undefined;
@@ -73,7 +69,7 @@ export class GeminiLiveService {
             onerror: (event) => {
               const error =
                 event instanceof Error ? event : new Error('Gemini Live connection error');
-              this.logger.warn(`Gemini Live error: ${error.message}`);
+              this.logger.warn(`Gemini Live error: ${error.name}`);
               onError?.(error);
             },
             onclose: () => this.logger.debug('Gemini Live session closed'),
@@ -146,9 +142,7 @@ export class GeminiLiveService {
 
   private assertConfigured(): void {
     if (!this.config.isConfigured()) {
-      throw new GeminiConfigurationError(
-        'Gemini OAuth/ADC is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required'
-      );
+      throw new GeminiConfigurationError(this.config.configurationErrorMessage());
     }
   }
 }
@@ -168,6 +162,8 @@ export class GeminiLiveStateError extends Error {
 }
 
 function normalizeError(error: unknown, fallback: string): Error {
-  if (error instanceof Error) return new Error(`${fallback}: ${error.message}`);
-  return new Error(`${fallback}: ${String(error)}`);
+  if (error instanceof GeminiConfigurationError || error instanceof GeminiLiveStateError) {
+    return error;
+  }
+  return new Error(fallback);
 }

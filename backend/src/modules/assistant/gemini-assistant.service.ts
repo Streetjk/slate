@@ -36,16 +36,10 @@ export class GeminiAssistantService {
   async answer(input: AssistantRequestT): Promise<AssistantResponseT> {
     const request = AssistantRequest.parse(input);
     if (!this.config.isConfigured()) {
-      throw new GeminiConfigurationError(
-        'Gemini OAuth/ADC is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required'
-      );
+      throw new GeminiConfigurationError(this.config.configurationErrorMessage());
     }
 
-    const client = this.clientFactory({
-      vertexai: true,
-      project: this.config.project,
-      location: this.config.location,
-    });
+    const client = this.clientFactory(this.config.clientOptions());
     let response: GenerateContentResponse;
     try {
       response = await client.models.generateContent({
@@ -57,8 +51,8 @@ export class GeminiAssistantService {
         },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Gemini answer failed: ${message.slice(0, 512)}`);
+      const errorType = error instanceof Error ? error.name : 'UnknownError';
+      this.logger.warn(`Gemini answer failed: ${errorType}`);
       throw new GeminiRequestError('Gemini answer request failed');
     }
 

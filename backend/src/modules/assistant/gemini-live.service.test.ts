@@ -11,6 +11,15 @@ function config(): GeminiConfig {
     textModel: 'gemini-3.7-flash',
     liveModel: 'gemini-live-2.5-flash-native-audio',
     liveConnectTimeoutMs: 15_000,
+    authMode: 'vertex_adc',
+    apiKeyFile: undefined,
+    clientOptions: () => ({
+      vertexai: true,
+      project: 'test-project',
+      location: 'australia-southeast1',
+    }),
+    configurationErrorMessage: () =>
+      'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode',
     isConfigured: () => true,
   } as GeminiConfig;
 }
@@ -86,6 +95,38 @@ describe('GeminiLiveService', () => {
     );
 
     await expect(service.connect('en', () => {})).rejects.toThrow('GOOGLE_CLOUD_PROJECT');
+  });
+
+  it('uses the explicitly selected Developer API runtime options without changing Live semantics', async () => {
+    const clientOptions: Record<string, unknown>[] = [];
+    const session = {
+      sendRealtimeInput: () => {},
+      sendClientContent: () => {},
+      sendToolResponse: () => {},
+      close: () => {},
+    } as unknown as Session;
+    const service = new GeminiLiveService(
+      {
+        ...config(),
+        project: undefined,
+        location: undefined,
+        authMode: 'developer_api_key',
+        apiKeyFile: '/run/secrets/gemini_api_key',
+        clientOptions: () => ({ apiKeyFile: '/run/secrets/gemini_api_key' }),
+      } as GeminiConfig,
+      (options) => {
+        clientOptions.push(options);
+        return {
+          models: {},
+          live: { connect: async () => session },
+        } as unknown as GeminiClient;
+      }
+    );
+
+    await service.connect('en', () => {});
+
+    expect(clientOptions).toEqual([{ apiKeyFile: '/run/secrets/gemini_api_key' }]);
+    expect(JSON.stringify(clientOptions)).not.toContain('synthetic');
   });
 
   it('aborts a connection that exceeds the configured timeout', async () => {

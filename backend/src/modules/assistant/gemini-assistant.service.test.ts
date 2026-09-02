@@ -12,6 +12,15 @@ function config(overrides: Partial<GeminiConfig> = {}): GeminiConfig {
     location: 'australia-southeast1',
     textModel: 'gemini-3.7-flash',
     liveModel: 'gemini-live-2.5-flash-native-audio',
+    authMode: 'vertex_adc',
+    apiKeyFile: undefined,
+    clientOptions: () => ({
+      vertexai: true,
+      project: 'test-project',
+      location: 'australia-southeast1',
+    }),
+    configurationErrorMessage: () =>
+      'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode',
     isConfigured: () => true,
     ...overrides,
   } as GeminiConfig;
@@ -77,6 +86,29 @@ describe('GeminiAssistantService', () => {
     expect(seen[0]?.model).toBe('gemini-3.7-flash');
     expect(seen[0]?.config?.tools).toEqual([{ functionDeclarations: expect.any(Array) }]);
     expect(JSON.stringify(clientOptions)).not.toContain('apiKey');
+  });
+
+  it('uses the explicitly selected Developer API runtime file reference', async () => {
+    const seen: GenerateContentParameters[] = [];
+    const clientOptions: Record<string, unknown>[] = [];
+    const service = new GeminiAssistantService(
+      config({
+        project: undefined,
+        location: undefined,
+        authMode: 'developer_api_key',
+        apiKeyFile: '/run/secrets/gemini_api_key',
+        clientOptions: () => ({ apiKeyFile: '/run/secrets/gemini_api_key' }),
+      }),
+      (options) => {
+        clientOptions.push(options);
+        return fakeClient({ text: 'The answer.' }, seen);
+      }
+    );
+
+    await expect(service.answer(request())).resolves.toMatchObject({ text: 'The answer.' });
+    expect(clientOptions).toEqual([{ apiKeyFile: '/run/secrets/gemini_api_key' }]);
+    expect(seen[0]?.model).toBe('gemini-3.7-flash');
+    expect(JSON.stringify(clientOptions)).not.toContain('synthetic-test-key');
   });
 
   it('enables only Google Search plus the narrow function declarations', async () => {
