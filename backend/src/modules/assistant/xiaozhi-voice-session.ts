@@ -109,7 +109,7 @@ export class XiaozhiVoiceSession {
     this.live = await this.liveService.connect(
       'en',
       ({ message }) => this.handleGeminiMessage(message),
-      (error) => this.sendAlert('Voice service error', error.message)
+      () => this.sendAlert('Voice service error', 'Voice service error')
     );
   }
 

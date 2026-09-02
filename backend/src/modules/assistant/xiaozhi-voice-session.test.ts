@@ -193,6 +193,54 @@ describe('XiaozhiVoiceSession', () => {
     expect(JSON.stringify(alerts)).not.toContain('synthetic-secret-value');
   });
 
+  it('redacts live-service callback details before sending an alert to the device', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let onError: ((error: Error) => void) | undefined;
+    const session = new XiaozhiVoiceSession(
+      ws,
+      {
+        connect: async (
+          _language: 'en',
+          _onEvent: (event: GeminiLiveEvent) => void,
+          callback: (error: Error) => void
+        ) => {
+          onError = callback;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never,
+      codec
+    );
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    onError?.(new Error('provider detail synthetic-secret-value'));
+
+    expect(ws.sent.at(-1)).toEqual({
+      data: JSON.stringify({
+        type: 'alert',
+        status: 'Voice service error',
+        message: 'Voice service error',
+        emotion: 'neutral',
+      }),
+      binary: false,
+    });
+    expect(String(ws.sent.at(-1)?.data)).not.toContain('synthetic-secret-value');
+  });
+
   it('turns a model calendar proposal into a device confirmation flow', async () => {
     const ws = socket() as unknown as FakeSocket;
     let eventHandler: ((event: GeminiLiveEvent) => void) | undefined;

@@ -79,7 +79,7 @@ describe('GoogleCalendarWriteService', () => {
     }
   });
 
-  it('burns the ticket when OAuth or Calendar insertion fails', async () => {
+  it('burns the ticket when Calendar insertion fails', async () => {
     const originalCalendar = google.calendar;
     let consumed = false;
     let consumeCalls = 0;
