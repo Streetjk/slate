@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'bun:test';
+import { spawn } from 'node:child_process';
+import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import type { LiveServerMessage } from '@google/genai';
 import {
   GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
@@ -59,6 +63,95 @@ function options() {
     authMode: 'developer_api_key' as const,
     apiKeyFile: '/run/secrets/gemini_api_key',
   };
+}
+
+const runtimeScript = resolve(import.meta.dir, 'gemini-live-node-bridge-runtime.mjs');
+const runtimeCwd = resolve(import.meta.dir, '../../../../');
+
+function runtimeOpenFrame(overrides: Record<string, unknown> = {}): string {
+  return `${JSON.stringify({
+    type: 'open',
+    version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+    model: 'gemini-3.1-flash-live-preview',
+    language: 'en',
+    systemInstruction: 'synthetic',
+    connectTimeoutMs: 1_000,
+    enableWebSearch: false,
+    tools: [
+      {
+        functionDeclarations: [
+          {
+            name: 'propose_google_calendar_event',
+            description:
+              'Propose a Google Calendar event for user confirmation. Never create or modify an event directly.',
+            parametersJsonSchema: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['title', 'start', 'end', 'allDay'],
+              properties: {
+                title: { type: 'string', minLength: 1, maxLength: 256 },
+                start: {
+                  type: 'string',
+                  description: 'ISO 8601 date-time or YYYY-MM-DD for all-day events',
+                },
+                end: {
+                  type: 'string',
+                  description: 'ISO 8601 date-time or YYYY-MM-DD for all-day events',
+                },
+                allDay: { type: 'boolean' },
+                location: { type: 'string', minLength: 1, maxLength: 256 },
+                timezone: { type: 'string', minLength: 1, maxLength: 64 },
+              },
+            },
+          },
+          {
+            name: 'get_btc_price',
+            description: 'Request a cached BTC/USD series for a supported display period.',
+            parametersJsonSchema: {
+              type: 'object',
+              additionalProperties: false,
+              properties: { period: { type: 'string', enum: ['daily', 'weekly', 'monthly'] } },
+            },
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  })}\n`;
+}
+
+async function runRuntime(input: string, credentialFile?: string) {
+  const child = spawn('node', [runtimeScript], {
+    cwd: runtimeCwd,
+    env: {
+      PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+      NODE_ENV: 'test',
+      SLATE_GEMINI_BRIDGE_AUTH_MODE: 'developer_api_key',
+      SLATE_GEMINI_BRIDGE_MODEL: 'gemini-3.1-flash-live-preview',
+      ...(credentialFile ? { SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE: credentialFile } : {}),
+    },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  let stdout = '';
+  child.stdout.on('data', (data: Buffer) => {
+    stdout += data.toString();
+  });
+  child.stdin.end(input);
+  const code = await new Promise<number | null>((resolveCode, reject) => {
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error('runtime test child timed out'));
+    }, 5_000);
+    child.once('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once('close', (exitCode) => {
+      clearTimeout(timer);
+      resolveCode(exitCode);
+    });
+  });
+  return { code, stdout };
 }
 
 describe('NodeGeminiLiveBridge', () => {
@@ -157,5 +250,62 @@ describe('NodeGeminiLiveBridge', () => {
     const reconnect = connection.reconnect();
     connection.close();
     await expect(reconnect).rejects.toThrow('was closed');
+  });
+
+  it('fails closed for malformed runtime frames before provider access', async () => {
+    const malformed = await runRuntime('{"type":"unknown","version":1}\n');
+    expect(malformed.code).toBe(2);
+    expect(malformed.stdout).toBe(
+      '{"type":"error","version":1,"code":"BRIDGE_PROTOCOL_REJECTED"}\n'
+    );
+
+    const badAudio = await runRuntime(
+      `${JSON.stringify({ type: 'audio', version: 1, data: 'AQID' })}\n`
+    );
+    expect(badAudio.code).toBe(2);
+    expect(badAudio.stdout).toContain('BRIDGE_PROTOCOL_REJECTED');
+
+    const unknownTool = await runRuntime(
+      `${JSON.stringify({
+        type: 'tool_response',
+        version: 1,
+        calls: [{ id: 'x', name: 'outlook', response: {} }],
+      })}\n`
+    );
+    expect(unknownTool.code).toBe(2);
+    expect(unknownTool.stdout).toContain('BRIDGE_PROTOCOL_REJECTED');
+
+    const nonCanonicalTools = await runRuntime(
+      runtimeOpenFrame({ tools: [{ functionDeclarations: [] }] })
+    );
+    expect(nonCanonicalTools.code).toBe(2);
+    expect(nonCanonicalTools.stdout).toContain('BRIDGE_PROTOCOL_REJECTED');
+  });
+
+  it('fails closed for missing, empty, loose, and symlinked credentials', async () => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'slate-live-bridge-runtime-'));
+    const file = resolve(directory, 'credential');
+    const link = resolve(directory, 'credential-link');
+    try {
+      for (const contents of ['', ' \n']) {
+        writeFileSync(file, contents, { mode: 0o600 });
+        const result = await runRuntime(runtimeOpenFrame(), file);
+        expect(result.code).toBe(2);
+        expect(result.stdout).toContain('BRIDGE_CREDENTIAL_UNAVAILABLE');
+      }
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      chmodSync(file, 0o644);
+      const loose = await runRuntime(runtimeOpenFrame(), file);
+      expect(loose.code).toBe(2);
+      expect(loose.stdout).toContain('BRIDGE_CREDENTIAL_UNAVAILABLE');
+
+      chmodSync(file, 0o600);
+      symlinkSync(file, link);
+      const symlinked = await runRuntime(runtimeOpenFrame(), link);
+      expect(symlinked.code).toBe(2);
+      expect(symlinked.stdout).toContain('BRIDGE_CREDENTIAL_UNAVAILABLE');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { accessSync, constants, lstatSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LiveServerMessage } from '@google/genai';
 import type { VoiceLanguageT } from 'shared';
@@ -321,6 +322,9 @@ function buildBridgeEnvironment(
   options: NodeGeminiLiveBridgeOptions,
   model: string
 ): NodeJS.ProcessEnv {
+  if (options.adcCredentialFile && !isSafeCredentialFileReference(options.adcCredentialFile)) {
+    throw new Error('Gemini Live Node bridge ADC credential reference is unavailable');
+  }
   return {
     PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
     NODE_ENV: process.env.NODE_ENV ?? 'production',
@@ -333,6 +337,25 @@ function buildBridgeEnvironment(
     ...(options.project ? { SLATE_GEMINI_BRIDGE_PROJECT: options.project } : {}),
     ...(options.location ? { SLATE_GEMINI_BRIDGE_LOCATION: options.location } : {}),
   };
+}
+
+function isSafeCredentialFileReference(filePath: string): boolean {
+  try {
+    if (lstatSync(filePath).isSymbolicLink()) return false;
+    const stats = statSync(filePath);
+    return (
+      stats.isFile() &&
+      stats.size > 0 &&
+      stats.size <= 64 * 1024 &&
+      (stats.mode & 0o077) === 0 &&
+      (() => {
+        accessSync(filePath, constants.R_OK);
+        return true;
+      })()
+    );
+  } catch {
+    return false;
+  }
 }
 
 function errorMessage(code: GeminiLiveBridgeErrorCode): string {

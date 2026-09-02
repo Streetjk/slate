@@ -7,6 +7,38 @@ const MAX_TEXT_BYTES = 16 * 1024;
 const MAX_MODEL_BYTES = 256;
 const MAX_SYSTEM_INSTRUCTION_BYTES = 32 * 1024;
 const MAX_CREDENTIAL_BYTES = 4096;
+const CANONICAL_FUNCTION_DECLARATIONS = [
+  {
+    name: 'propose_google_calendar_event',
+    description:
+      'Propose a Google Calendar event for user confirmation. Never create or modify an event directly.',
+    parametersJsonSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'start', 'end', 'allDay'],
+      properties: {
+        title: { type: 'string', minLength: 1, maxLength: 256 },
+        start: {
+          type: 'string',
+          description: 'ISO 8601 date-time or YYYY-MM-DD for all-day events',
+        },
+        end: { type: 'string', description: 'ISO 8601 date-time or YYYY-MM-DD for all-day events' },
+        allDay: { type: 'boolean' },
+        location: { type: 'string', minLength: 1, maxLength: 256 },
+        timezone: { type: 'string', minLength: 1, maxLength: 64 },
+      },
+    },
+  },
+  {
+    name: 'get_btc_price',
+    description: 'Request a cached BTC/USD series for a supported display period.',
+    parametersJsonSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { period: { type: 'string', enum: ['daily', 'weekly', 'monthly'] } },
+    },
+  },
+];
 const credentialFile = process.env.SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE;
 const authMode = process.env.SLATE_GEMINI_BRIDGE_AUTH_MODE;
 const expectedModel = process.env.SLATE_GEMINI_BRIDGE_MODEL;
@@ -113,6 +145,7 @@ async function openSession(frame) {
           send({ type: 'server_message', version: PROTOCOL_VERSION, message }),
         onerror: () => error('BRIDGE_PROVIDER_ERROR'),
         onclose: () => {
+          session = undefined;
           if (!shuttingDown) send({ type: 'closed', version: PROTOCOL_VERSION });
         },
       },
@@ -207,7 +240,7 @@ function isValidOpen(frame) {
     frame.connectTimeoutMs > 0 &&
     frame.connectTimeoutMs <= 120_000 &&
     typeof frame.enableWebSearch === 'boolean' &&
-    isValidTools(frame.tools)
+    isValidTools(frame.tools, frame.enableWebSearch)
   );
 }
 
@@ -248,36 +281,27 @@ function isValidToolResponse(frame) {
         typeof call.name === 'string' &&
         call.name.length > 0 &&
         call.name.length <= 256 &&
+        (call.name === 'propose_google_calendar_event' || call.name === 'get_btc_price') &&
         isRecord(call.response)
     )
   );
 }
 
-function isValidTools(tools) {
-  if (!Array.isArray(tools) || tools.length > 2) return false;
-  return tools.every((tool) => {
-    if (!isRecord(tool)) return false;
-    if (hasExactKeys(tool, ['googleSearch'])) {
-      return isRecord(tool.googleSearch) && Object.keys(tool.googleSearch).length === 0;
-    }
-    if (!hasExactKeys(tool, ['functionDeclarations'])) return false;
-    return (
-      Array.isArray(tool.functionDeclarations) &&
-      tool.functionDeclarations.length <= 2 &&
-      tool.functionDeclarations.every(isValidFunctionDeclaration)
-    );
-  });
-}
-
-function isValidFunctionDeclaration(declaration) {
+function isValidTools(tools, enableWebSearch) {
+  const expectedFunctions = JSON.stringify(CANONICAL_FUNCTION_DECLARATIONS);
+  const expectedLength = enableWebSearch ? 2 : 1;
+  if (!Array.isArray(tools) || tools.length !== expectedLength) return false;
+  const functionTool = enableWebSearch ? tools[1] : tools[0];
+  if (enableWebSearch) {
+    const searchTool = tools[0];
+    if (!isRecord(searchTool) || !hasExactKeys(searchTool, ['googleSearch'])) return false;
+    if (!isRecord(searchTool.googleSearch) || Object.keys(searchTool.googleSearch).length !== 0)
+      return false;
+  }
   return (
-    isRecord(declaration) &&
-    hasExactKeys(declaration, ['name', 'description', 'parametersJsonSchema']) &&
-    (declaration.name === 'propose_google_calendar_event' ||
-      declaration.name === 'get_btc_price') &&
-    typeof declaration.description === 'string' &&
-    Buffer.byteLength(declaration.description, 'utf8') <= 1024 &&
-    isRecord(declaration.parametersJsonSchema)
+    isRecord(functionTool) &&
+    hasExactKeys(functionTool, ['functionDeclarations']) &&
+    JSON.stringify(functionTool.functionDeclarations) === expectedFunctions
   );
 }
 
