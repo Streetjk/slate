@@ -13,20 +13,24 @@ This campaign authorizes code, tests, documentation, and one bounded synthetic a
 
 ## Controller workflow
 
-Codex remains controller, integrator, validator, adjudicator, sole repository writer, and checkpoint publisher.
+Luna remains the campaign controller and stage-decision authority. Sonnet 4.6 is the bounded implementation/correction worker. Codex remains the repository integrator, deterministic validator, sole repository writer, checkpoint publisher, and remote-state verifier. GLM-5.3-Flash remains the independent read-only reviewer.
 
 Use:
 
-`fetch/reconcile remote -> inspect exact current architecture -> implement minimal backend auth abstraction -> deterministic validation -> Luna bounded work if useful -> Codex adjudication -> GLM-5.3-Flash independent review -> bounded correction -> revalidation -> report/state checkpoint -> selective commit -> push -> remote verification`
+`fetch/reconcile remote -> Luna stage control -> inspect exact current architecture -> Sonnet 4.6 bounded implementation -> Codex deterministic validation/integration -> GLM-5.3-Flash independent review -> Luna adjudication -> bounded Sonnet 4.6 correction if needed -> Codex revalidation -> report/state checkpoint -> selective commit -> push -> remote verification`
 
 Continue automatically through authorized steps until the final human boundary or a hard stop.
 
 Routing:
-- worker: Luna;
+- controller: Luna;
+- worker: Sonnet 4.6;
 - reviewer: GLM-5.3-Flash using the already configured Mac setup;
+- repository writer/integrator/validator: Codex;
 - reviewer is read-only and must receive only the exact implementation diff plus non-secret validation evidence;
-- no silent reviewer substitution; if GLM-5.3-Flash is unavailable or its configured Mac path cannot be used safely, stop and report the blocker;
-- Codex remains sole repository writer and final adjudicator;
+- Sonnet 4.6 is bounded to worker/correction tasks and does not become controller, reviewer, or repository authority;
+- no silent controller, worker, or reviewer substitution;
+- if Sonnet 4.6 is unavailable, stop and report `SONNET46_WORKER_BLOCKED` rather than silently replacing it;
+- if GLM-5.3-Flash is unavailable or its configured Mac path cannot be used safely, stop and report the blocker;
 - Gemini 3.7 family remains excluded from reviewer/shadow work until `2026-09-06T02:00:00+08:00`.
 
 ## Boundaries
@@ -54,7 +58,7 @@ Do not:
    - `docs/campaign-reports/CAMPAIGN-STATE.md`
    - `docs/campaign-reports/08-GEMINI-35-LIVE.md`
    - `docs/campaign-reports/08D1D-GEMINI31-LIVE-API-KEY-FREE-TIER-PROBE.md`
-   - this directive, including the current GLM-5.3-Flash reviewer routing.
+   - this directive, including the current Luna / Sonnet 4.6 / GLM-5.3-Flash routing.
 4. Confirm 8D1D remains the latest accepted proof: exact model auth PASS, Live session PASS, billing unattached, Vertex disabled.
 5. If newer remote work materially conflicts with this directive, stop and report the conflict.
 
@@ -94,6 +98,8 @@ Separate:
 Do not send real user content merely to investigate policy.
 
 ## E3 — Implement a backend-only Developer API auth mode
+
+Under Luna control, dispatch bounded implementation work to Sonnet 4.6. Codex must inspect and integrate the resulting exact changes before they become part of the campaign checkpoint.
 
 Add the minimal backend abstraction needed to support the newly approved Developer API authentication mode while preserving the current/default runtime path.
 
@@ -200,7 +206,7 @@ Review specifically:
 - rollback viability;
 - test sufficiency.
 
-Codex adjudicates every finding. Use Luna only for bounded correction when useful. Re-run affected and full relevant tests after corrections. Stop on unresolved P0 or persistent P1.
+Luna adjudicates every reviewer finding as controller. Sonnet 4.6 handles only bounded corrections when useful. Codex integrates and re-runs affected plus full relevant deterministic tests after corrections. Stop on unresolved P0 or persistent P1.
 
 If GLM-5.3-Flash cannot be reached through the configured Mac setup, do not substitute Grok, Gemini, Claude, or another reviewer silently. Stop with `GLM53_REVIEW_BLOCKED` and the non-secret reason.
 
@@ -217,6 +223,9 @@ CAMPAIGN=8D1E
 STATUS=<...>
 START_SHA=<...>
 END_SHA=<...>
+CONTROLLER=LUNA
+WORKER=SONNET_4_6
+REVIEWER=GLM_5_3_FLASH
 DEVELOPER_API_BACKEND_AUTH_MODE_IMPLEMENTED=<YES/NO>
 CREDENTIAL_SOURCE=RUNTIME_SECRET_BACKEND_ONLY
 CREDENTIAL_COMMITTED=NO
