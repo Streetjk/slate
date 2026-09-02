@@ -2297,3 +2297,134 @@ NEXT_ACTION=HUMAN_REVIEW_GENERIC_ADAPTER_FAILURE_AND_AUTHORIZE_ANY_FURTHER_NONPR
 The production boundary remains closed. No deployment, Gemini model switch,
 billing/API change, firmware flash, or PR merge is authorized by this
 checkpoint.
+
+## Campaign 8D1F–8D1H — Overnight Gemini Live Diagnostic Checkpoint
+
+Date: 2026-09-02 (Australia/Perth)
+
+```text
+CAMPAIGN=8D1F_8D1H_OVERNIGHT
+STATUS=DIAG_BUN_MINIMAL_TIMEOUT_NO_SANITIZED_RESULT
+START_SHA=b46b6da9134ba385d20ad11698e0e33c6e53420b
+END_SHA=dca351adab6d16b26ee0532a3e09258ed5d89d50
+FINAL_IMPLEMENTATION_SHA=4bfce037b2d206dbabca9ab905301c088a0c1f01
+CONTROLLER=LUNA
+WORKER=SONNET_4_6
+REVIEWER=GLM_5_3_FLASH
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_EFFORT=high
+REVIEW_SANDBOX=read-only
+PROVIDER_LIVE_CALLS_USED=2_OF_6
+REST_METADATA_CALLS_USED=0
+NODE_MINIMAL=PASS_MODEL_EVENT_AND_TURN_COMPLETE
+PYTHON_CONTROL=NOT_RUN_NEW_CALL
+BUN_MINIMAL=TIMEOUT_NO_SANITIZED_RESULT
+SLATE_CLIENT_FACTORY_MINIMAL=NOT_RUN
+SLATE_REDUCED_SERVICE=NOT_RUN
+SLATE_FULL_ADAPTER=NOT_RUN
+ROOT_CAUSE_CLASS=BUN_RUNTIME_OR_DISPOSABLE_BUN_LAUNCH_PATH_INCOMPATIBILITY_NOT_ISOLATED
+SOURCE_CORRECTION_MADE=NO
+8D1G_STARTED=NO
+8D1H_RESULT=FAILURE_CHECKPOINT_ONLY
+```
+
+### Diagnostic method and evidence
+
+The exact reviewed implementation remained unchanged at
+`4bfce037b2d206dbabca9ab905301c088a0c1f01`. The diagnostic used synthetic
+input only and a read-only mount of the protected runtime credential. No
+credential value, token, private NOTE4 data, Outlook data, or Calendar data
+was emitted, logged, committed, or sent to the device.
+
+The static differential found `@google/genai` `2.20.0`, Node >=20 as the
+documented Node requirement, and the Slate Developer API model
+`gemini-3.1-flash-live-preview`. The SDK’s Node path uses its Node WebSocket
+transport; the Bun run used the same official SDK implementation through an
+explicit Node entry path because Bun support is not documented. The two
+bounded provider calls produced:
+
+```text
+CALL_1_NODE_MINIMAL=PASS
+CALL_1_MODEL=gemini-3.1-flash-live-preview
+CALL_1_MODEL_EVENT=YES
+CALL_1_TURN_COMPLETE=YES
+CALL_1_PROCESS_RC=0
+
+CALL_2_BUN_MINIMAL=TIMEOUT_NO_SANITIZED_RESULT
+CALL_2_MODEL=gemini-3.1-flash-live-preview
+CALL_2_MODEL_EVENT=NOT_OBSERVED
+CALL_2_TURN_COMPLETE=NOT_OBSERVED
+```
+
+The Bun result does not isolate a source defect or prove provider rejection.
+Per the overnight directive, no blind retry and no Slate-specific client,
+reduced-service, or full-adapter call was made after the prerequisite Bun
+control failed. Therefore 8D1G was not justified and 8D1H could not be an
+exact-adapter pass.
+
+### Deterministic validation and review
+
+No production source was changed during this diagnostic. The previously
+reviewed source remains covered by the following unchanged gates:
+
+```text
+backend tests: 297 passed
+shared tests: 6 passed
+backend/frontend lint: PASS
+backend/frontend typecheck: PASS
+format check: PASS
+frontend production build: PASS
+diff check: PASS
+secret scan: PASS; no credential material in changed files
+```
+
+The exact configured `glm-5.3-flash` / ZAI read-only high-effort review of
+`4bfce037` is retained because no implementation source changed. Its verdict
+was `PASS`, with zero P0/P1/P2 findings. Four P3 observations were adjudicated
+by Luna as deferred or accepted: direct OAuth-failure-after-ticket coverage,
+a runtime file check/use race, provider-error reconnect behavior, and the
+then-stale report SHA.
+
+### Safety and cleanup evidence
+
+```text
+SLATE_CONTAINER=healthy
+MYSQL_CONTAINER=healthy
+PRODUCTION_IMAGE_ID=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROOT_FREE_BYTES=3732217856
+TAILSCALE_BACKEND_STATE=Running
+FUNNEL=ON
+PUBLIC_HEALTH_HTTP=200
+PUBLIC_WEB_UI_HTTP=200
+DISPOSABLE_HARNESS_FILES_REMOVED=YES
+NODE_IMAGE_REMOVED=YES
+PROTECTED_KEY_METADATA_UNCHANGED=YES_MODE_600
+CREDENTIAL_COMMITTED=NO
+CREDENTIAL_LOGGED=NO
+CREDENTIAL_IN_IMAGE=NO
+CREDENTIAL_PRINTED=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_RESTARTED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+```
+
+### Overnight verdict
+
+```text
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=REVIEW_BUN_MINIMAL_TIMEOUT_AND_AUTHORIZE_ANY_FURTHER_NONPRODUCTION_DIAGNOSTICS
+```
+
+This is a genuine diagnostic boundary. The run used two of the six newly
+authorized Live sessions and did not retry the failed Bun shape. Production
+deployment, credential/data-policy changes, billing, Vertex, firmware flash,
+and PR merge remain unauthorized.

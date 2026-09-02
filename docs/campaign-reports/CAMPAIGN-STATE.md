@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 8D1E implementation; deterministic gates and exact GLM-5.3-Flash review pass; one-shot disposable adapter probe failed generically; no production use)
+Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 8D1E implementation; deterministic gates and exact GLM-5.3-Flash review pass; overnight Node control passed and Bun control timed out without a sanitized result; no production use)
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1E Gemini 3.1 Live secure backend integration
-Current status: REVIEW_PASS_ADAPTER_PROBE_FAILED — backend-only runtime auth mode is implemented, deterministic gates pass, and exact GLM-5.3-Flash review passes; the one authorized disposable adapter probe returned a generic connection failure.
+Current stage: 8D1F differential diagnosis / 8D1H failure checkpoint
+Current status: DIAG_BUN_MINIMAL_TIMEOUT_NO_SANITIZED_RESULT — Node minimal control passed, Bun minimal control timed out without a sanitized result, and no Slate-specific adapter call was authorized afterward.
 
 Completed campaigns:
 
@@ -76,7 +76,7 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8D1E secure backend auth implementation plus bounded corrections at `4bfce037b2d206dbabca9ab905301c088a0c1f01`; production deployment and merge remain prohibited.
+- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8D1E secure backend auth implementation plus bounded corrections at `4bfce037b2d206dbabca9ab905301c088a0c1f01`; overnight diagnostics checkpointed at `dca351ad`; production deployment and merge remain prohibited.
 
 Last test status: PASS — 297 backend tests, 6 shared tests, frontend/backend lint, frontend/backend typecheck, format check, frontend production build, and diff check for final 8D1E implementation. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact configured GLM-5.3-Flash/ZAI read-only high-effort review at `4bfce037`; no P0/P1/P2 findings; four non-blocking P3 observations adjudicated by Luna. No Gemini 3.7 review/shadow calls occurred.
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop at the human boundary; review the generic one-shot disposable adapter failure and explicitly authorize any further non-production diagnostics before another provider call.
+Next automatic action: stop at the human boundary; review the Bun minimal timeout and explicitly authorize any further non-production runtime diagnostics before another provider call.
 
-Human action required: YES — decide whether to authorize further non-production adapter diagnostics after the generic connection failure, and separately review/authorize any production credential/data-policy decision. Keep the key and all credential material out of chat and Git.
+Human action required: YES — decide whether to authorize further non-production runtime diagnostics after the Bun minimal timeout, and separately review/authorize any production credential/data-policy decision. Keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -960,4 +960,58 @@ READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
 READY_FOR_HUMAN_PRODUCTION_API_KEY_AND_DATA_POLICY_DECISION=NO
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_REVIEW_GENERIC_ADAPTER_FAILURE_AND_AUTHORIZE_ANY_FURTHER_NONPRODUCTION_DIAGNOSTICS
+```
+
+## Campaign 8D1F–8D1H Overnight Diagnostic Checkpoint
+
+```text
+CAMPAIGN=8D1F_8D1H_OVERNIGHT
+STATUS=DIAG_BUN_MINIMAL_TIMEOUT_NO_SANITIZED_RESULT
+START_SHA=b46b6da9134ba385d20ad11698e0e33c6e53420b
+END_SHA=dca351adab6d16b26ee0532a3e09258ed5d89d50
+FINAL_IMPLEMENTATION_SHA=4bfce037b2d206dbabca9ab905301c088a0c1f01
+CONTROLLER=LUNA
+WORKER=SONNET_4_6
+REVIEWER=GLM_5_3_FLASH
+PROVIDER_LIVE_CALLS_USED=2_OF_6
+REST_METADATA_CALLS_USED=0
+NODE_MINIMAL=PASS_MODEL_EVENT_AND_TURN_COMPLETE
+PYTHON_CONTROL=NOT_RUN_NEW_CALL
+BUN_MINIMAL=TIMEOUT_NO_SANITIZED_RESULT
+SLATE_CLIENT_FACTORY_MINIMAL=NOT_RUN
+SLATE_REDUCED_SERVICE=NOT_RUN
+SLATE_FULL_ADAPTER=NOT_RUN
+ROOT_CAUSE_CLASS=BUN_RUNTIME_OR_DISPOSABLE_BUN_LAUNCH_PATH_INCOMPATIBILITY_NOT_ISOLATED
+SOURCE_CORRECTION_MADE=NO
+8D1G_STARTED=NO
+8D1H_RESULT=FAILURE_CHECKPOINT_ONLY
+SLATE_CONTAINER=healthy
+MYSQL_CONTAINER=healthy
+PRODUCTION_IMAGE_ID=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROOT_FREE_BYTES=3732217856
+TAILSCALE_BACKEND_STATE=Running
+FUNNEL=ON
+PUBLIC_HEALTH_HTTP=200
+PUBLIC_WEB_UI_HTTP=200
+DISPOSABLE_HARNESS_FILES_REMOVED=YES
+NODE_IMAGE_REMOVED=YES
+PROTECTED_KEY_METADATA_UNCHANGED=YES_MODE_600
+CREDENTIAL_COMMITTED=NO
+CREDENTIAL_LOGGED=NO
+CREDENTIAL_IN_IMAGE=NO
+CREDENTIAL_PRINTED=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_RESTARTED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=REVIEW_BUN_MINIMAL_TIMEOUT_AND_AUTHORIZE_ANY_FURTHER_NONPRODUCTION_DIAGNOSTICS
 ```
