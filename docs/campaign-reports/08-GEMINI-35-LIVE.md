@@ -483,3 +483,35 @@ FIRMWARE_FLASHED=NO
 READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
+
+## Campaign 8D0 Recheck — worker-policy continuation
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_VERTEX_ADC_SETUP_REQUIRED — repeated pre-flash check; no firmware write
+
+This recheck was performed after fetching origin and reading `08D-CLAUDE-SONNET5-WORKER-POLICY.md`. No implementation worker was useful for this read-only readiness gate, so no Claude request was dispatched; Codex retained controller and production-write authority. No source, backend image, Gemini setting, credential, or physical device state was changed.
+
+- Orange Pi Docker Server `29.1.3`; `slate-note4` and `slate-note4-mysql` remained healthy.
+- Candidate image remained deployed; preserved rollback image remained present.
+- Local and public `/healthz`: HTTP 200; public Web UI: HTTP 200.
+- Tailscale remained `Running`; Funnel remained mapped to `http://127.0.0.1:3001`.
+- Root filesystem: 14,985,895,936 bytes total, 801,296,384 bytes available, 95% used.
+- Public unauthenticated voice-config: HTTP 401.
+- Public unauthenticated voice WebSocket: close 1008, `device authentication failed`.
+- Legacy `/api/v1/xiaozhi/ota/`: HTTP 404.
+- Last recorded post-deployment authenticated NOTE4 poll remains HTTP 201 at `00:18:55`; no new poll appeared in the later 30-minute log window. This does not invalidate the previously verified pairing, but no newer poll is claimed.
+
+ADC remains unavailable without exposing credential material:
+
+```text
+GOOGLE_CLOUD_PROJECT=UNSET
+GOOGLE_CLOUD_LOCATION=UNSET
+GOOGLE_APPLICATION_CREDENTIALS=UNSET
+GCLOUD=UNAVAILABLE
+ADC_FILE=ABSENT
+VERTEX_ADC_LIVE=BLOCKED_HUMAN_AUTH
+HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
+NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
+```
