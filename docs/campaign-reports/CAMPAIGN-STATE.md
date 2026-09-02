@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1 Vertex ADC readiness check
-Current status: BLOCKED_GCLOUD_UNAVAILABLE — Orange Pi health is good, but gcloud is absent from non-interactive and login-shell PATHs, so ADC/project/API/billing/IAM readiness cannot be verified without installing or restoring the CLI. No configuration or model call was made.
+Current stage: 8D1A gcloud absolute-path Vertex ADC readiness recheck
+Current status: HUMAN_API_ENABLEMENT_AND_BILLING_DECISION_REQUIRED — absolute gcloud 583.0.0, project slate-note4, ADC, and owner IAM are verified; Vertex API is disabled and billing is not attached. No API/billing/model/configuration change was made.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for the human restoration/verification of the official gcloud command path; do not enable APIs, change billing/IAM, make a Vertex call, run apt autoremove, or begin NVMe migration.
+Next automatic action: stop for human API-enable/billing authorization; do not enable APIs, change billing/IAM, make a Vertex call, run apt autoremove, or begin NVMe migration.
 
-Human action required: YES — restore or verify the official gcloud CLI on the Orange Pi, without sharing credential material, then resume the read-only 8D1 check. Do not run apt autoremove or move Slate/MySQL data. Never send credentials in chat or reports.
+Human action required: YES — decide whether to enable Vertex API and attach billing, then issue a separate explicit probe authorization. Do not share credentials, run apt autoremove, or move Slate/MySQL data.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -516,6 +516,43 @@ HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
 GEMINI37_REVIEW_CALLS=0
 GEMINI37_SHADOW_CALLS=0
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
+```
+
+## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck
+
+```text
+CAMPAIGN=8D1A
+STATUS=HUMAN_API_ENABLEMENT_AND_BILLING_DECISION_REQUIRED
+GCLOUD_ABSOLUTE_PATH=PASS
+GCLOUD=PASS
+GCLOUD_VERSION=583.0.0
+GOOGLE_CLOUD_PROJECT=slate-note4
+ACTIVE_GCLOUD_ACCOUNT=streetjk@gmail.com
+ADC=PASS
+ADC_QUOTA_PROJECT=slate-note4_HUMAN_CONFIRMED
+VERTEX_API_ENABLED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_IAM=SUFFICIENT_roles/owner
+ROOT_FREE_BYTES=2159788032
+NVME_FREE_BYTES=228056555520
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+PUBLIC_HEALTH=PASS
+NOTE4_POLLING=PASS
+VERTEX_MODEL_CALLS=0
+BILLING_CHANGED=NO
+API_ENABLEMENT_CHANGED=NO
+IAM_CHANGED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+NVME_CHANGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+VERTEX_READINESS=READY_FOR_API_ENABLEMENT_DECISION
+READY_FOR_BOUNDED_VERTEX_PROBE=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_DECIDE_API_ENABLEMENT_AND_BILLING_THEN_RESUME_READINESS_BOUNDARY
 ```
 
 ## Campaign 8D1 — Vertex ADC readiness check

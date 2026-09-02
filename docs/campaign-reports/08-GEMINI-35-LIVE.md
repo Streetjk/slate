@@ -484,6 +484,68 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8D1A — gcloud absolute-path Vertex ADC readiness recheck
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_API_ENABLEMENT_AND_BILLING_DECISION_REQUIRED
+
+The readiness matrix was executed read-only as user `pi` with the absolute binary
+`/mnt/ssd-tmp/slate-tools/google-cloud-sdk/bin/gcloud`. No re-authentication, API
+enablement, billing change, IAM change, model call, production configuration change,
+firmware flash, or NVMe/data operation was performed.
+
+### Readiness evidence
+
+```text
+GCLOUD_ABSOLUTE_PATH=PASS
+GCLOUD=PASS
+GCLOUD_VERSION=583.0.0
+GOOGLE_CLOUD_PROJECT=slate-note4
+ACTIVE_GCLOUD_ACCOUNT=streetjk@gmail.com
+ADC=PASS
+ADC_QUOTA_PROJECT=slate-note4_HUMAN_CONFIRMED
+ADC_FILE_METADATA=pi:pi mode_600 size_354_bytes
+VERTEX_API_ENABLED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_IAM=SUFFICIENT_roles/owner
+ROOT_FREE_BYTES=2159788032
+NVME_FREE_BYTES=228056555520
+SLATE_HEALTH=PASS_HTTP_200_LOCAL
+MYSQL_HEALTH=PASS_HEALTHY_CONTAINER
+TAILSCALE=PASS_ACTIVE_ENABLED
+PUBLIC_HEALTH=PASS_HTTP_200
+FUNNEL=PASS_HTTPS_TO_127_0_0_1_3001
+NOTE4_POLLING=PASS_HTTP_201_OBSERVED_06_24_39
+VERTEX_MODEL_CALLS=0
+BILLING_CHANGED=NO
+API_ENABLEMENT_CHANGED=NO
+IAM_CHANGED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+NVME_CHANGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+```
+
+The enabled-service listing contained no `aiplatform.googleapis.com` match, so the
+Vertex AI API is recorded as disabled. The read-only billing query returned
+`billingEnabled: false` and an empty `billingAccountName`. The IAM query returned
+`roles/owner` for the active account. The API `services describe` subcommand was
+not available in this gcloud version; the enabled-service name query was used as
+the non-mutating API-state evidence.
+
+### Decision gate and human boundary
+
+```text
+VERTEX_READINESS=READY_FOR_API_ENABLEMENT_DECISION
+STATUS=HUMAN_API_ENABLEMENT_AND_BILLING_DECISION_REQUIRED
+READY_FOR_BOUNDED_VERTEX_PROBE=NO
+```
+
+The project and ADC are ready for a separately authorized human decision, but this
+checkpoint does not authorize enabling `aiplatform.googleapis.com`, attaching billing,
+or making a Vertex/Gemini request. No Gemini 3.7 review/shadow call was made.
+
 ## Campaign 8E0F — libllvm19 post-removal verification
 
 Date: 2026-09-02 (Australia/Perth)
