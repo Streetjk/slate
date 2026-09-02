@@ -20,6 +20,16 @@ describe('Gemini Live bridge protocol', () => {
     expect(frame).not.toContain('apiKey');
   });
 
+  it('rejects oversized outbound frames', () => {
+    expect(() =>
+      encodeGeminiLiveBridgeFrame({
+        type: 'text',
+        version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+        text: 'x'.repeat(2 * 1024 * 1024),
+      })
+    ).toThrow('bridge frame is too large');
+  });
+
   it('accepts only a complete open frame', () => {
     expect(() =>
       assertGeminiLiveBridgeOpen({

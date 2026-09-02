@@ -206,7 +206,9 @@ export class XiaozhiVoiceSession {
   }
 
   private handleLiveFailure(): void {
+    const live = this.live;
     this.live = undefined;
+    live?.close();
     this.speaking = false;
     this.codec.reset();
     this.sendAlert('Voice service error', 'Voice service error');

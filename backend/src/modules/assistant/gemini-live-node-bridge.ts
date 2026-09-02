@@ -56,10 +56,25 @@ type SpawnBridgeProcess = (
 const spawnBridgeProcess: SpawnBridgeProcess = (executable, args, options) =>
   spawn(executable, args, options) as ChildProcessWithoutNullStreams;
 
+export interface BridgeTimerHandle {
+  unref?: () => void;
+}
+
+export interface BridgeTimers {
+  setTimeout(callback: () => void, delayMs: number): BridgeTimerHandle;
+  clearTimeout(handle: BridgeTimerHandle): void;
+}
+
+const bridgeTimers: BridgeTimers = {
+  setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+  clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
+
 export class NodeGeminiLiveBridge {
   constructor(
     private readonly options: NodeGeminiLiveBridgeOptions,
-    private readonly processSpawner: SpawnBridgeProcess = spawnBridgeProcess
+    private readonly processSpawner: SpawnBridgeProcess = spawnBridgeProcess,
+    private readonly timers: BridgeTimers = bridgeTimers
   ) {}
 
   connect(
@@ -80,7 +95,13 @@ export class NodeGeminiLiveBridge {
         shell: false,
       }
     );
-    const connection = new NodeGeminiLiveConnection(process, onEvent, onError, connectTimeoutMs);
+    const connection = new NodeGeminiLiveConnection(
+      process,
+      onEvent,
+      onError,
+      connectTimeoutMs,
+      this.timers
+    );
     return connection.open({
       type: 'open',
       version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
@@ -101,15 +122,16 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   private readyResolve: (() => void) | undefined;
   private readyReject: ((error: Error) => void) | undefined;
   private readyPromise: Promise<void>;
-  private openTimer: ReturnType<typeof setTimeout> | undefined;
-  private closeTimer: ReturnType<typeof setTimeout> | undefined;
-  private killTimer: ReturnType<typeof setTimeout> | undefined;
+  private openTimer: BridgeTimerHandle | undefined;
+  private closeTimer: BridgeTimerHandle | undefined;
+  private killTimer: BridgeTimerHandle | undefined;
 
   constructor(
     private readonly process: BridgeProcess,
     private readonly onEvent: (event: GeminiLiveEvent) => void,
     private readonly onError: (error: Error) => void,
-    private readonly connectTimeoutMs: number
+    private readonly connectTimeoutMs: number,
+    private readonly timers: BridgeTimers
   ) {
     this.readyPromise = new Promise<void>((resolveReady, rejectReady) => {
       this.readyResolve = resolveReady;
@@ -126,7 +148,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   }
 
   async open(frame: GeminiLiveBridgeRequest): Promise<GeminiLiveConnection> {
-    this.openTimer = setTimeout(
+    this.openTimer = this.timers.setTimeout(
       () => this.failBeforeReady('Gemini Live Node bridge connection timed out'),
       this.connectTimeoutMs
     );
@@ -176,7 +198,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
       this.readyResolve = resolveReady;
       this.readyReject = rejectReady;
     });
-    this.openTimer = setTimeout(
+    this.openTimer = this.timers.setTimeout(
       () => this.failBeforeReady('Gemini Live Node bridge reconnect timed out'),
       this.connectTimeoutMs
     );
@@ -197,9 +219,9 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
         })
       );
       this.process.stdin.end();
-      this.closeTimer = setTimeout(() => {
+      this.closeTimer = this.timers.setTimeout(() => {
         this.process.kill('SIGTERM');
-        this.killTimer = setTimeout(() => this.process.kill('SIGKILL'), 2_000);
+        this.killTimer = this.timers.setTimeout(() => this.process.kill('SIGKILL'), 2_000);
         this.killTimer.unref?.();
       }, 2_000);
       this.closeTimer.unref?.();
@@ -310,14 +332,14 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   }
 
   private clearTimer(): void {
-    if (this.openTimer) clearTimeout(this.openTimer);
+    if (this.openTimer) this.timers.clearTimeout(this.openTimer);
     this.openTimer = undefined;
   }
 
   private clearCloseTimer(): void {
-    if (this.closeTimer) clearTimeout(this.closeTimer);
+    if (this.closeTimer) this.timers.clearTimeout(this.closeTimer);
     this.closeTimer = undefined;
-    if (this.killTimer) clearTimeout(this.killTimer);
+    if (this.killTimer) this.timers.clearTimeout(this.killTimer);
     this.killTimer = undefined;
   }
 

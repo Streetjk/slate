@@ -147,6 +147,53 @@ describe('GeminiLiveService', () => {
     expect(closed).toBe(true);
   });
 
+  it('does not let a stale provider close clear a newly reconnected session', async () => {
+    const callbacks: Array<{ onclose: () => void }> = [];
+    const sentTexts: string[] = [];
+    const sessions = [
+      {
+        sendRealtimeInput: () => {},
+        sendClientContent: (input: { turns: Array<{ parts: Array<{ text: string }> }> }) =>
+          sentTexts.push(input.turns[0]?.parts[0]?.text ?? ''),
+        sendToolResponse: () => {},
+        close: () => {},
+      },
+      {
+        sendRealtimeInput: () => {},
+        sendClientContent: (input: { turns: Array<{ parts: Array<{ text: string }> }> }) =>
+          sentTexts.push(input.turns[0]?.parts[0]?.text ?? ''),
+        sendToolResponse: () => {},
+        close: () => {},
+      },
+    ] as unknown as Session[];
+    let connectionCount = 0;
+    const errors: Error[] = [];
+    const client = {
+      live: {
+        connect: async (parameters: Record<string, unknown>) => {
+          callbacks.push(parameters.callbacks as { onclose: () => void });
+          return sessions[connectionCount++];
+        },
+      },
+      models: {},
+    } as unknown as GeminiClient;
+    const service = new GeminiLiveService(config(), () => client);
+    const connection = await service.connect(
+      'en',
+      () => {},
+      (error) => errors.push(error)
+    );
+
+    await connection.reconnect();
+    callbacks[0]?.onclose();
+    connection.sendText('still connected');
+    expect(sentTexts).toEqual(['still connected']);
+    expect(errors).toEqual([]);
+
+    callbacks[1]?.onclose();
+    expect(errors).toEqual([new Error('Gemini Live session closed')]);
+  });
+
   it('fails closed when OAuth/ADC configuration is missing', async () => {
     const service = new GeminiLiveService(
       { ...config(), project: undefined, isConfigured: () => false } as GeminiConfig,

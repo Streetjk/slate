@@ -8,7 +8,7 @@ import {
   GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
   type GeminiLiveBridgeRequest,
 } from './gemini-live-bridge.protocol';
-import { NodeGeminiLiveBridge } from './gemini-live-node-bridge';
+import { NodeGeminiLiveBridge, type BridgeTimers } from './gemini-live-node-bridge';
 
 class FakeStream {
   private readonly listeners: Array<(data: Buffer) => void> = [];
@@ -27,7 +27,10 @@ class FakeProcess {
   readonly stderr = new FakeStream();
   readonly writes: GeminiLiveBridgeRequest[] = [];
   readonly envs: Array<Record<string, string | undefined>> = [];
+  readonly killSignals: Array<NodeJS.Signals | undefined> = [];
   suppressNextReady = false;
+  autoExitOnKill = true;
+  private stdinErrorListener: ((error: Error) => void) | undefined;
   private readonly onceListeners = new Map<string, (...args: unknown[]) => void>();
 
   readonly stdin = {
@@ -44,15 +47,61 @@ class FakeProcess {
       return true;
     },
     end: (): void => undefined,
+    on: (_event: 'error', listener: (error: Error) => void): void => {
+      this.stdinErrorListener = listener;
+    },
   };
 
   once(event: 'error' | 'exit', listener: (...args: unknown[]) => void): void {
     this.onceListeners.set(event, listener);
   }
 
-  kill(): boolean {
-    this.onceListeners.get('exit')?.(0, null);
+  emitStdinError(): void {
+    this.stdinErrorListener?.(new Error('synthetic stdin failure'));
+  }
+
+  emitExit(code: number | null = 0, signal: string | null = null): void {
+    const listener = this.onceListeners.get('exit');
+    this.onceListeners.delete('exit');
+    listener?.(code, signal);
+  }
+
+  kill(signal?: NodeJS.Signals): boolean {
+    this.killSignals.push(signal);
+    if (this.autoExitOnKill) this.emitExit(0, null);
     return true;
+  }
+}
+
+class FakeTimers implements BridgeTimers {
+  private nextId = 1;
+  private readonly scheduled = new Map<number, { callback: () => void; dueAt: number }>();
+  private now = 0;
+
+  setTimeout(callback: () => void, delayMs: number) {
+    const id = this.nextId++;
+    this.scheduled.set(id, { callback, dueAt: this.now + delayMs });
+    return { unref: () => undefined, id };
+  }
+
+  clearTimeout(handle: { id?: number }): void {
+    if (handle.id !== undefined) this.scheduled.delete(handle.id);
+  }
+
+  advanceBy(delayMs: number): void {
+    this.now += delayMs;
+    while (true) {
+      const due = [...this.scheduled.entries()]
+        .filter(([, value]) => value.dueAt <= this.now)
+        .sort(([, left], [, right]) => left.dueAt - right.dueAt)[0];
+      if (!due) return;
+      this.scheduled.delete(due[0]);
+      due[1].callback();
+    }
+  }
+
+  get pendingCount(): number {
+    return this.scheduled.size;
   }
 }
 
@@ -234,6 +283,75 @@ describe('NodeGeminiLiveBridge', () => {
     ).toThrow('synthetic spawn failure');
   });
 
+  it('fails closed and terminates the child when stdin reports an error', async () => {
+    const child = new FakeProcess();
+    const errors: Error[] = [];
+    const bridge = new NodeGeminiLiveBridge(options(), (() => child as never) as never);
+    await bridge.connect(
+      'en',
+      () => undefined,
+      (error) => errors.push(error),
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+
+    child.emitStdinError();
+
+    expect(errors.map((error) => error.message)).toContain('Gemini Live Node bridge write failed');
+    expect(child.killSignals).toEqual(['SIGTERM']);
+  });
+
+  it('escalates a non-exiting child from SIGTERM to SIGKILL on close', async () => {
+    const child = new FakeProcess();
+    child.autoExitOnKill = false;
+    const timers = new FakeTimers();
+    const bridge = new NodeGeminiLiveBridge(options(), (() => child as never) as never, timers);
+    const connection = await bridge.connect(
+      'en',
+      () => undefined,
+      () => undefined,
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+
+    connection.close();
+    timers.advanceBy(1_999);
+    expect(child.killSignals).toEqual([]);
+    timers.advanceBy(1);
+    expect(child.killSignals).toEqual(['SIGTERM']);
+    timers.advanceBy(1_999);
+    expect(child.killSignals).toEqual(['SIGTERM']);
+    timers.advanceBy(1);
+    expect(child.killSignals).toEqual(['SIGTERM', 'SIGKILL']);
+  });
+
+  it('cancels termination timers when the child exits after close', async () => {
+    const child = new FakeProcess();
+    child.autoExitOnKill = false;
+    const timers = new FakeTimers();
+    const bridge = new NodeGeminiLiveBridge(options(), (() => child as never) as never, timers);
+    const connection = await bridge.connect(
+      'en',
+      () => undefined,
+      () => undefined,
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+
+    connection.close();
+    child.emitExit();
+    timers.advanceBy(4_000);
+
+    expect(child.killSignals).toEqual([]);
+    expect(timers.pendingCount).toBe(0);
+  });
+
   it('keeps a bare executable on PATH instead of resolving it against the work directory', async () => {
     const child = new FakeProcess();
     let executable = '';
@@ -322,6 +440,37 @@ describe('NodeGeminiLiveBridge', () => {
     );
     expect(nonCanonicalTools.code).toBe(2);
     expect(nonCanonicalTools.stdout).toContain('BRIDGE_PROTOCOL_REJECTED');
+
+    const oversized = await runRuntime(`${'x'.repeat(2 * 1024 * 1024)}\n`);
+    expect(oversized.code).toBe(2);
+    expect(oversized.stdout).toContain('BRIDGE_PROTOCOL_REJECTED');
+  });
+
+  it('rejects an oversized response frame before delivering it to the caller', async () => {
+    const child = new FakeProcess();
+    const errors: Error[] = [];
+    const bridge = new NodeGeminiLiveBridge(options(), (() => child as never) as never);
+    await bridge.connect(
+      'en',
+      () => undefined,
+      (error) => errors.push(error),
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+
+    child.stdout.emit(
+      JSON.stringify({
+        type: 'server_message',
+        version: 1,
+        message: 'x'.repeat(2 * 1024 * 1024),
+      })
+    );
+
+    expect(errors.map((error) => error.message)).toContain(
+      'Gemini Live Node bridge protocol was rejected'
+    );
   });
 
   it('fails closed for missing, empty, loose, and symlinked credentials', async () => {

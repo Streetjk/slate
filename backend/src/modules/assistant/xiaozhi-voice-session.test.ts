@@ -143,6 +143,7 @@ describe('XiaozhiVoiceSession', () => {
   it('fails the socket when a model event cannot be encoded', async () => {
     const ws = socket() as unknown as FakeSocket;
     let eventHandler: ((event: GeminiLiveEvent) => void) | undefined;
+    let liveClosed = false;
     const session = new XiaozhiVoiceSession(
       ws,
       {
@@ -155,7 +156,9 @@ describe('XiaozhiVoiceSession', () => {
             respondToToolCalls: () => {},
             rejectToolCalls: () => {},
             reconnect: async () => {},
-            close: () => {},
+            close: () => {
+              liveClosed = true;
+            },
           };
         },
       } as never,
@@ -191,11 +194,13 @@ describe('XiaozhiVoiceSession', () => {
       },
     ]);
     expect(JSON.stringify(alerts)).not.toContain('synthetic-secret-value');
+    expect(liveClosed).toBe(true);
   });
 
   it('redacts live-service callback details before sending an alert to the device', async () => {
     const ws = socket() as unknown as FakeSocket;
     let onError: ((error: Error) => void) | undefined;
+    let liveClosed = false;
     const session = new XiaozhiVoiceSession(
       ws,
       {
@@ -212,7 +217,9 @@ describe('XiaozhiVoiceSession', () => {
             respondToToolCalls: () => {},
             rejectToolCalls: () => {},
             reconnect: async () => {},
-            close: () => {},
+            close: () => {
+              liveClosed = true;
+            },
           };
         },
       } as never,
@@ -239,6 +246,7 @@ describe('XiaozhiVoiceSession', () => {
       binary: false,
     });
     expect(String(ws.sent.at(-1)?.data)).not.toContain('synthetic-secret-value');
+    expect(liveClosed).toBe(true);
   });
 
   it('turns a model calendar proposal into a device confirmation flow', async () => {

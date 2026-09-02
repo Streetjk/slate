@@ -81,7 +81,8 @@ export class GeminiLiveService {
     }
     let session: Session | undefined;
     let closed = false;
-    let suppressNextCloseNotification = 0;
+    let activeGeneration = 0;
+    const expectedCloseSessions = new WeakSet<object>();
     let client: ReturnType<GeminiClientFactory>;
     try {
       client = this.clientFactory(this.config.clientOptions());
@@ -95,11 +96,13 @@ export class GeminiLiveService {
     }
 
     const connectSession = async (): Promise<void> => {
+      const generation = ++activeGeneration;
       session = undefined;
       const abortController = new AbortController();
       const timeout = setTimeout(() => abortController.abort(), this.config.liveConnectTimeoutMs);
+      let nextSession: Session | undefined;
       try {
-        const nextSession = await client.live.connect({
+        nextSession = await client.live.connect({
           model: this.config.liveModel,
           config: {
             abortSignal: abortController.signal,
@@ -118,10 +121,13 @@ export class GeminiLiveService {
               onError?.(new Error('Gemini Live connection error'));
             },
             onclose: () => {
+              const isExpectedClose =
+                nextSession !== undefined && expectedCloseSessions.delete(nextSession);
+              if (generation !== activeGeneration) return;
+              if (nextSession !== undefined && session !== undefined && session !== nextSession)
+                return;
               session = undefined;
-              if (suppressNextCloseNotification > 0) {
-                suppressNextCloseNotification -= 1;
-              } else if (!closed) {
+              if (!isExpectedClose && !closed) {
                 this.logger.debug('Gemini Live session closed');
                 onError?.(new Error('Gemini Live session closed'));
               }
@@ -182,8 +188,11 @@ export class GeminiLiveService {
         if (closed) {
           throw new GeminiLiveStateError('Cannot reconnect a closed Gemini Live session');
         }
-        if (session) suppressNextCloseNotification += 1;
-        session?.close();
+        const previousSession = session;
+        if (previousSession) {
+          expectedCloseSessions.add(previousSession);
+          previousSession.close();
+        }
         await connectSession();
       },
       close: () => {

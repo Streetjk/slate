@@ -125,7 +125,6 @@ function createClient() {
 
 async function openSession(frame) {
   if (session) throw new BridgeRuntimeError('BRIDGE_ALREADY_OPEN');
-  openFrame = frame;
   const client = createClient();
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), frame.connectTimeoutMs);
@@ -150,9 +149,11 @@ async function openSession(frame) {
         },
       },
     });
+    openFrame = frame;
     send({ type: 'ready', version: PROTOCOL_VERSION });
   } catch (cause) {
     session = undefined;
+    openFrame = undefined;
     if (cause?.name === 'AbortError')
       throw new BridgeRuntimeError('BRIDGE_PROVIDER_CONNECTION_FAILED');
     if (cause instanceof BridgeRuntimeError) throw cause;
