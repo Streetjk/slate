@@ -159,8 +159,10 @@ describe('NodeGeminiLiveBridge', () => {
     const child = new FakeProcess();
     const events: LiveServerMessage[] = [];
     const errors: Error[] = [];
+    let spawnedExecutable = '';
     let spawnOptions: { env: Record<string, string | undefined>; shell: false } | undefined;
-    const bridge = new NodeGeminiLiveBridge(options(), ((_executable, _args, childOptions) => {
+    const bridge = new NodeGeminiLiveBridge(options(), ((executable, _args, childOptions) => {
+      spawnedExecutable = executable;
       spawnOptions = childOptions as typeof spawnOptions;
       return child as never;
     }) as never);
@@ -176,6 +178,7 @@ describe('NodeGeminiLiveBridge', () => {
     );
 
     expect(spawnOptions?.shell).toBe(false);
+    expect(spawnedExecutable).toBe('/usr/local/bin/node');
     expect(spawnOptions?.env).toEqual({
       PATH: expect.any(String),
       NODE_ENV: expect.any(String),
@@ -229,6 +232,45 @@ describe('NodeGeminiLiveBridge', () => {
         false
       )
     ).toThrow('synthetic spawn failure');
+  });
+
+  it('keeps a bare executable on PATH instead of resolving it against the work directory', async () => {
+    const child = new FakeProcess();
+    let executable = '';
+    const bridge = new NodeGeminiLiveBridge(options(), ((value, _args, _childOptions) => {
+      executable = value;
+      return child as never;
+    }) as never);
+
+    await bridge.connect(
+      'en',
+      () => undefined,
+      () => undefined,
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+    expect(executable).toBe('/usr/local/bin/node');
+
+    const pathBridge = new NodeGeminiLiveBridge({ ...options(), executable: 'node' }, ((
+      value,
+      _args,
+      _childOptions
+    ) => {
+      executable = value;
+      return new FakeProcess() as never;
+    }) as never);
+    await pathBridge.connect(
+      'en',
+      () => undefined,
+      () => undefined,
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+    expect(executable).toBe('node');
   });
 
   it('settles a reconnect when the caller closes during the pending handshake', async () => {
@@ -304,6 +346,109 @@ describe('NodeGeminiLiveBridge', () => {
       const symlinked = await runRuntime(runtimeOpenFrame(), link);
       expect(symlinked.code).toBe(2);
       expect(symlinked.stdout).toContain('BRIDGE_CREDENTIAL_UNAVAILABLE');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('validates ADC references before spawning and passes only the path', async () => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'slate-live-bridge-adc-'));
+    const file = resolve(directory, 'adc.json');
+    const link = resolve(directory, 'adc-link');
+    try {
+      const spawnCalls: Array<Record<string, string | undefined>> = [];
+      const child = new FakeProcess();
+      const bridge = new NodeGeminiLiveBridge(
+        {
+          executable: 'node',
+          script: runtimeScript,
+          authMode: 'vertex_adc',
+          adcCredentialFile: file,
+          project: 'synthetic-project',
+          location: 'synthetic-location',
+        },
+        ((_executable, _args, childOptions) => {
+          spawnCalls.push(childOptions.env);
+          return child as never;
+        }) as never
+      );
+
+      expect(() =>
+        bridge.connect(
+          'en',
+          () => undefined,
+          () => undefined,
+          'model',
+          'test',
+          100,
+          false
+        )
+      ).toThrow('ADC credential reference is unavailable');
+      writeFileSync(file, 'synthetic-adc', { mode: 0o600 });
+      symlinkSync(file, link);
+      expect(() =>
+        new NodeGeminiLiveBridge(
+          {
+            executable: 'node',
+            script: runtimeScript,
+            authMode: 'vertex_adc',
+            adcCredentialFile: link,
+          },
+          (() => child) as never
+        ).connect(
+          'en',
+          () => undefined,
+          () => undefined,
+          'model',
+          'test',
+          100,
+          false
+        )
+      ).toThrow('ADC credential reference is unavailable');
+
+      chmodSync(file, 0o644);
+      expect(() =>
+        new NodeGeminiLiveBridge(
+          {
+            executable: 'node',
+            script: runtimeScript,
+            authMode: 'vertex_adc',
+            adcCredentialFile: file,
+          },
+          (() => child) as never
+        ).connect(
+          'en',
+          () => undefined,
+          () => undefined,
+          'model',
+          'test',
+          100,
+          false
+        )
+      ).toThrow('ADC credential reference is unavailable');
+
+      chmodSync(file, 0o600);
+      writeFileSync(file, Buffer.alloc(64 * 1024 + 1, 'x'), { mode: 0o600 });
+      expect(() =>
+        new NodeGeminiLiveBridge(
+          {
+            executable: 'node',
+            script: runtimeScript,
+            authMode: 'vertex_adc',
+            adcCredentialFile: file,
+          },
+          (() => child) as never
+        ).connect(
+          'en',
+          () => undefined,
+          () => undefined,
+          'model',
+          'test',
+          100,
+          false
+        )
+      ).toThrow('ADC credential reference is unavailable');
+      expect(spawnCalls).toHaveLength(0);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

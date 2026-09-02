@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { LiveServerMessage, Session } from '@google/genai';
 import { GeminiLiveService } from './gemini-live.service';
-import type { GeminiConfig } from './gemini.config';
+import { DEVELOPER_API_LIVE_MODEL, type GeminiConfig } from './gemini.config';
 import { GeminiCredentialError, type GeminiClient } from './gemini.client';
 import type { NodeGeminiLiveBridgeFactory } from './gemini-live-node-bridge';
 
@@ -46,6 +46,9 @@ describe('GeminiLiveService', () => {
     const nodeConfig = {
       ...config(),
       liveRuntime: 'node_bridge',
+      liveModel: DEVELOPER_API_LIVE_MODEL,
+      authMode: 'developer_api_key',
+      developerApiKeyEnabled: true,
       nodeBridgeOptions: () => ({
         executable: 'node',
         script: './bridge.mjs',
@@ -69,7 +72,7 @@ describe('GeminiLiveService', () => {
       'ja',
       expect.any(Function),
       expect.any(Function),
-      'gemini-live-2.5-flash-native-audio',
+      DEVELOPER_API_LIVE_MODEL,
       expect.stringContaining('Slate assistant'),
       15_000,
       false,
@@ -89,6 +92,7 @@ describe('GeminiLiveService', () => {
         closed = true;
       },
     } as unknown as Session;
+    const errors: Error[] = [];
     const client = {
       live: {
         connect: async (parameters: Record<string, unknown>) => {
@@ -105,10 +109,16 @@ describe('GeminiLiveService', () => {
     } as unknown as GeminiClient;
     const service = new GeminiLiveService(config(), () => client);
 
-    const connection = await service.connect('ja', ({ message }) => events.push(message));
+    const connection = await service.connect(
+      'ja',
+      ({ message }) => events.push(message),
+      (error) => errors.push(error)
+    );
     connection.sendAudio(new Uint8Array([1, 2, 3]));
     connection.sendText('こんにちは');
     connection.endAudio();
+    (clientOptions[0]?.callbacks as { onclose: () => void }).onclose();
+    expect(errors).toEqual([new Error('Gemini Live session closed')]);
     await connection.reconnect();
     connection.close();
 

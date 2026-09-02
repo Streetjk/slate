@@ -35,7 +35,11 @@ export const createNodeGeminiLiveBridge: NodeGeminiLiveBridgeFactory = (options)
   new NodeGeminiLiveBridge(options);
 
 interface BridgeProcess {
-  stdin: { write(data: string): boolean; end(): void };
+  stdin: {
+    write(data: string): boolean;
+    end(): void;
+    on?(event: 'error', listener: (error: Error) => void): void;
+  };
   stdout: { on(event: 'data', listener: (data: Buffer | string) => void): void };
   stderr: { on(event: 'data', listener: (data: Buffer | string) => void): void };
   once(event: 'error', listener: (error: Error) => void): void;
@@ -68,7 +72,7 @@ export class NodeGeminiLiveBridge {
     enableWebSearch: boolean
   ): Promise<GeminiLiveConnection> {
     const process = this.processSpawner(
-      resolve(this.options.executable),
+      resolveExecutable(this.options.executable),
       [resolve(this.options.script)],
       {
         env: buildBridgeEnvironment(this.options, model),
@@ -99,6 +103,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   private readyPromise: Promise<void>;
   private openTimer: ReturnType<typeof setTimeout> | undefined;
   private closeTimer: ReturnType<typeof setTimeout> | undefined;
+  private killTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly process: BridgeProcess,
@@ -112,6 +117,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     });
     process.stdout.on('data', (data) => this.handleStdout(data));
     process.stderr.on('data', () => undefined);
+    process.stdin.on?.('error', () => this.failBeforeReady('Gemini Live Node bridge write failed'));
     process.once('error', () => this.failBeforeReady('Gemini Live Node bridge is unavailable'));
     process.once('exit', () => {
       this.clearCloseTimer();
@@ -191,7 +197,11 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
         })
       );
       this.process.stdin.end();
-      this.closeTimer = setTimeout(() => this.process.kill('SIGTERM'), 2_000);
+      this.closeTimer = setTimeout(() => {
+        this.process.kill('SIGTERM');
+        this.killTimer = setTimeout(() => this.process.kill('SIGKILL'), 2_000);
+        this.killTimer.unref?.();
+      }, 2_000);
       this.closeTimer.unref?.();
     } catch {
       this.process.kill('SIGTERM');
@@ -307,6 +317,8 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   private clearCloseTimer(): void {
     if (this.closeTimer) clearTimeout(this.closeTimer);
     this.closeTimer = undefined;
+    if (this.killTimer) clearTimeout(this.killTimer);
+    this.killTimer = undefined;
   }
 
   private terminateProcess(): void {
@@ -337,6 +349,12 @@ function buildBridgeEnvironment(
     ...(options.project ? { SLATE_GEMINI_BRIDGE_PROJECT: options.project } : {}),
     ...(options.location ? { SLATE_GEMINI_BRIDGE_LOCATION: options.location } : {}),
   };
+}
+
+function resolveExecutable(executable: string): string {
+  // Preserve PATH lookup for the documented `node` default. `resolve('node')`
+  // would incorrectly turn it into a path relative to the backend working dir.
+  return executable.includes('/') ? resolve(executable) : executable;
 }
 
 function isSafeCredentialFileReference(filePath: string): boolean {

@@ -198,4 +198,44 @@ describe('GeminiConfig', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it('requires the exact approved model and Developer API mode for the Node bridge', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-node-policy-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const wrongModel = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: 'gemini-live-2.5-flash-native-audio',
+      });
+      expect(wrongModel.isConfigured()).toBe(false);
+      expect(wrongModel.configurationErrorMessage()).toContain(DEVELOPER_API_LIVE_MODEL);
+
+      const wrongAuth = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'vertex_adc',
+        GOOGLE_CLOUD_PROJECT: 'synthetic-project',
+        GOOGLE_CLOUD_LOCATION: 'synthetic-location',
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+      expect(wrongAuth.isConfigured()).toBe(false);
+
+      const approved = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+      expect(approved.isConfigured()).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });

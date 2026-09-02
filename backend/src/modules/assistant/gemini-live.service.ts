@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Modality, type LiveServerMessage, type Session } from '@google/genai';
 import type { VoiceLanguageT } from 'shared';
-import { GeminiConfig } from './gemini.config';
+import { DEVELOPER_API_LIVE_MODEL, GeminiConfig } from './gemini.config';
 import {
   createGeminiClient,
   GEMINI_CLIENT_FACTORY,
@@ -54,6 +54,14 @@ export class GeminiLiveService {
   ): Promise<GeminiLiveConnection> {
     this.assertConfigured();
     if (this.config.liveRuntime === 'node_bridge') {
+      if (
+        this.config.authMode !== 'developer_api_key' ||
+        this.config.liveModel !== DEVELOPER_API_LIVE_MODEL
+      ) {
+        throw new GeminiConfigurationError(
+          `Gemini runtime is not configured: the Node Live bridge requires ${DEVELOPER_API_LIVE_MODEL} in evaluation-only Developer API mode`
+        );
+      }
       try {
         return await this.nodeBridgeFactory(this.config.nodeBridgeOptions()).connect(
           language,
@@ -73,6 +81,7 @@ export class GeminiLiveService {
     }
     let session: Session | undefined;
     let closed = false;
+    let suppressNextCloseNotification = 0;
     let client: ReturnType<GeminiClientFactory>;
     try {
       client = this.clientFactory(this.config.clientOptions());
@@ -108,7 +117,15 @@ export class GeminiLiveService {
               this.logger.warn(`Gemini Live error: ${safeGeminiErrorCategory(error)}`);
               onError?.(new Error('Gemini Live connection error'));
             },
-            onclose: () => this.logger.debug('Gemini Live session closed'),
+            onclose: () => {
+              session = undefined;
+              if (suppressNextCloseNotification > 0) {
+                suppressNextCloseNotification -= 1;
+              } else if (!closed) {
+                this.logger.debug('Gemini Live session closed');
+                onError?.(new Error('Gemini Live session closed'));
+              }
+            },
           },
         });
         if (closed) {
@@ -165,6 +182,7 @@ export class GeminiLiveService {
         if (closed) {
           throw new GeminiLiveStateError('Cannot reconnect a closed Gemini Live session');
         }
+        if (session) suppressNextCloseNotification += 1;
         session?.close();
         await connectSession();
       },

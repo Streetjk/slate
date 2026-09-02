@@ -109,7 +109,7 @@ export class XiaozhiVoiceSession {
     this.live = await this.liveService.connect(
       'en',
       ({ message }) => this.handleGeminiMessage(message),
-      () => this.sendAlert('Voice service error', 'Voice service error')
+      () => this.handleLiveFailure()
     );
   }
 
@@ -203,6 +203,13 @@ export class XiaozhiVoiceSession {
 
   private sendAlert(status: string, message: string): void {
     this.sendJson({ type: 'alert', status, message, emotion: 'neutral' });
+  }
+
+  private handleLiveFailure(): void {
+    this.live = undefined;
+    this.speaking = false;
+    this.codec.reset();
+    this.sendAlert('Voice service error', 'Voice service error');
   }
 
   private sendJson(message: Record<string, unknown>): void {

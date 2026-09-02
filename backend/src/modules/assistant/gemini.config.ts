@@ -67,7 +67,15 @@ export class GeminiConfig {
   }
 
   isConfigured(): boolean {
-    if (this.liveRuntime === 'node_bridge' && this.nodeEnv === 'production') return false;
+    if (this.liveRuntime === 'node_bridge') {
+      return (
+        this.nodeEnv !== 'production' &&
+        this.authMode === 'developer_api_key' &&
+        this.developerApiKeyEnabled &&
+        this.liveModel === DEVELOPER_API_LIVE_MODEL &&
+        this.hasUsableCredentialFile()
+      );
+    }
     return this.authMode === 'developer_api_key'
       ? this.developerApiKeyEnabled &&
           this.nodeEnv !== 'production' &&
@@ -77,10 +85,22 @@ export class GeminiConfig {
   }
 
   configurationErrorMessage(): string {
-    if (this.authMode !== 'developer_api_key') {
-      if (this.liveRuntime === 'node_bridge' && this.nodeEnv === 'production') {
+    if (this.liveRuntime === 'node_bridge') {
+      if (this.nodeEnv === 'production') {
         return 'Gemini runtime is not configured: the Node Live bridge is disabled in production until separately authorized';
       }
+      if (this.authMode !== 'developer_api_key' || !this.developerApiKeyEnabled) {
+        return 'Gemini runtime is not configured: the Node Live bridge requires explicitly enabled evaluation-only Developer API mode';
+      }
+      if (this.liveModel !== DEVELOPER_API_LIVE_MODEL) {
+        return `Gemini runtime is not configured: the Node Live bridge requires GEMINI_LIVE_MODEL=${DEVELOPER_API_LIVE_MODEL}`;
+      }
+      if (!this.hasUsableCredentialFile()) {
+        return 'Gemini runtime is not configured: the Node Live bridge requires a readable GEMINI_API_KEY_FILE';
+      }
+      return 'Gemini runtime is configured';
+    }
+    if (this.authMode !== 'developer_api_key') {
       return 'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode';
     }
     if (
