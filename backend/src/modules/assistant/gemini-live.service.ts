@@ -5,6 +5,7 @@ import { GeminiConfig } from './gemini.config';
 import {
   createGeminiClient,
   GEMINI_CLIENT_FACTORY,
+  safeGeminiErrorCategory,
   type GeminiClientFactory,
 } from './gemini.client';
 import { buildGeminiToolRegistry } from './gemini-tool-registry';
@@ -47,7 +48,17 @@ export class GeminiLiveService {
     this.assertConfigured();
     let session: Session | undefined;
     let closed = false;
-    const client = this.clientFactory(this.config.clientOptions());
+    let client: ReturnType<GeminiClientFactory>;
+    try {
+      client = this.clientFactory(this.config.clientOptions());
+    } catch (error) {
+      const normalized = new GeminiConfigurationError(
+        'Gemini runtime client could not be initialized'
+      );
+      this.logger.warn(`Gemini client initialization failed: ${safeGeminiErrorCategory(error)}`);
+      onError?.(normalized);
+      throw normalized;
+    }
 
     const connectSession = async (): Promise<void> => {
       session = undefined;
@@ -69,7 +80,7 @@ export class GeminiLiveService {
             onerror: (event) => {
               const error =
                 event instanceof Error ? event : new Error('Gemini Live connection error');
-              this.logger.warn(`Gemini Live error: ${error.name}`);
+              this.logger.warn(`Gemini Live error: ${safeGeminiErrorCategory(error)}`);
               onError?.(error);
             },
             onclose: () => this.logger.debug('Gemini Live session closed'),

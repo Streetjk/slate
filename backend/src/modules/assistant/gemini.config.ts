@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { accessSync, constants, statSync } from 'node:fs';
 import type { EnvT } from '../../infra/config/env.schema';
 import type { GeminiClientOptions } from './gemini.client';
 
@@ -25,6 +26,14 @@ export class GeminiConfig {
     return this.cs.get('GEMINI_API_KEY_FILE', { infer: true });
   }
 
+  get developerApiKeyEnabled(): boolean {
+    return this.cs.get('GEMINI_DEVELOPER_API_KEY_ENABLED', { infer: true }) ?? false;
+  }
+
+  get nodeEnv(): string {
+    return this.cs.get('NODE_ENV', { infer: true }) ?? 'development';
+  }
+
   get textModel(): string {
     return this.cs.get('GEMINI_TEXT_MODEL', { infer: true });
   }
@@ -39,13 +48,15 @@ export class GeminiConfig {
 
   isConfigured(): boolean {
     return this.authMode === 'developer_api_key'
-      ? Boolean(this.apiKeyFile)
+      ? this.developerApiKeyEnabled &&
+          this.nodeEnv !== 'production' &&
+          this.hasUsableCredentialFile()
       : Boolean(this.project && this.location);
   }
 
   configurationErrorMessage(): string {
     return this.authMode === 'developer_api_key'
-      ? 'Gemini runtime is not configured: GEMINI_API_KEY_FILE is required for developer_api_key mode'
+      ? 'Gemini runtime is not configured: evaluation-only Developer API mode requires a readable GEMINI_API_KEY_FILE and GEMINI_DEVELOPER_API_KEY_ENABLED=true outside production'
       : 'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode';
   }
 
@@ -60,5 +71,17 @@ export class GeminiConfig {
       throw new Error('Gemini OAuth/ADC project and location are not configured');
     }
     return { vertexai: true, project: this.project, location: this.location };
+  }
+
+  private hasUsableCredentialFile(): boolean {
+    if (!this.apiKeyFile) return false;
+    try {
+      const stats = statSync(this.apiKeyFile);
+      if (!stats.isFile() || stats.size === 0) return false;
+      accessSync(this.apiKeyFile, constants.R_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

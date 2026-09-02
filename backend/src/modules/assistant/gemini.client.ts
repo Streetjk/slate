@@ -45,3 +45,14 @@ export class GeminiCredentialError extends Error {
     this.name = 'GeminiCredentialError';
   }
 }
+
+export function safeGeminiErrorCategory(
+  error: unknown
+): 'credential' | 'timeout' | 'transport' | 'protocol' | 'unknown' {
+  const name = error instanceof Error ? error.name : '';
+  if (name === 'GeminiCredentialError') return 'credential';
+  if (name === 'AbortError') return 'timeout';
+  if (name === 'TypeError') return 'transport';
+  if (name === 'GeminiProtocolError') return 'protocol';
+  return 'unknown';
+}

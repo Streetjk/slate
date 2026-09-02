@@ -41,6 +41,7 @@ describe('EnvSchema', () => {
     const parsed = EnvSchema.parse(baseEnv);
 
     expect(parsed.GEMINI_AUTH_MODE).toBe('vertex_adc');
+    expect(parsed.GEMINI_DEVELOPER_API_KEY_ENABLED).toBe(false);
     expect(parsed.GEMINI_TEXT_MODEL).toBe('gemini-3.7-flash');
     expect(parsed.GEMINI_LIVE_MODEL).toBe('gemini-live-2.5-flash-native-audio');
     expect(parsed.GEMINI_LIVE_CONNECT_TIMEOUT_MS).toBe(15_000);
@@ -52,10 +53,12 @@ describe('EnvSchema', () => {
       ...baseEnv,
       GEMINI_AUTH_MODE: 'developer_api_key',
       GEMINI_API_KEY_FILE: '/run/secrets/gemini_api_key',
+      GEMINI_DEVELOPER_API_KEY_ENABLED: true,
     });
 
     expect(parsed.GEMINI_AUTH_MODE).toBe('developer_api_key');
     expect(parsed.GEMINI_API_KEY_FILE).toBe('/run/secrets/gemini_api_key');
+    expect(parsed.GEMINI_DEVELOPER_API_KEY_ENABLED).toBe(true);
     expect(Object.hasOwn(parsed, 'GEMINI_API_KEY')).toBe(false);
   });
 

@@ -11,6 +11,7 @@ import { GeminiConfig } from './gemini.config';
 import {
   createGeminiClient,
   GEMINI_CLIENT_FACTORY,
+  safeGeminiErrorCategory,
   type GeminiClientFactory,
 } from './gemini.client';
 import { buildGeminiToolRegistry, isGeminiToolName } from './gemini-tool-registry';
@@ -39,7 +40,13 @@ export class GeminiAssistantService {
       throw new GeminiConfigurationError(this.config.configurationErrorMessage());
     }
 
-    const client = this.clientFactory(this.config.clientOptions());
+    let client: ReturnType<GeminiClientFactory>;
+    try {
+      client = this.clientFactory(this.config.clientOptions());
+    } catch (error) {
+      this.logger.warn(`Gemini client initialization failed: ${safeGeminiErrorCategory(error)}`);
+      throw new GeminiConfigurationError('Gemini runtime client could not be initialized');
+    }
     let response: GenerateContentResponse;
     try {
       response = await client.models.generateContent({
@@ -51,8 +58,7 @@ export class GeminiAssistantService {
         },
       });
     } catch (error) {
-      const errorType = error instanceof Error ? error.name : 'UnknownError';
-      this.logger.warn(`Gemini answer failed: ${errorType}`);
+      this.logger.warn(`Gemini answer failed: ${safeGeminiErrorCategory(error)}`);
       throw new GeminiRequestError('Gemini answer request failed');
     }
 

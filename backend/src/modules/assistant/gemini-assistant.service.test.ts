@@ -3,7 +3,7 @@ import type { GenerateContentParameters } from '@google/genai';
 import type { AssistantRequestT } from 'shared';
 import { GeminiAssistantService } from './gemini-assistant.service';
 import type { GeminiConfig } from './gemini.config';
-import type { GeminiClient } from './gemini.client';
+import { GeminiCredentialError, type GeminiClient } from './gemini.client';
 import { buildGeminiToolRegistry, GEMINI_ASSISTANT_TOOL_NAMES } from './gemini-tool-registry';
 
 function config(overrides: Partial<GeminiConfig> = {}): GeminiConfig {
@@ -109,6 +109,29 @@ describe('GeminiAssistantService', () => {
     expect(clientOptions).toEqual([{ apiKeyFile: '/run/secrets/gemini_api_key' }]);
     expect(seen[0]?.model).toBe('gemini-3.7-flash');
     expect(JSON.stringify(clientOptions)).not.toContain('synthetic-test-key');
+  });
+
+  it('maps credential initialization failures to a generic configuration error', async () => {
+    const secret = 'synthetic-secret-value';
+    const service = new GeminiAssistantService(
+      config({
+        authMode: 'developer_api_key',
+        apiKeyFile: '/run/secrets/gemini_api_key',
+      }),
+      () => {
+        throw new GeminiCredentialError(secret);
+      }
+    );
+
+    let message = '';
+    try {
+      await service.answer(request());
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toBe('Gemini runtime client could not be initialized');
+    expect(message).not.toContain(secret);
   });
 
   it('enables only Google Search plus the narrow function declarations', async () => {

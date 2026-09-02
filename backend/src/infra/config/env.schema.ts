@@ -68,6 +68,7 @@ export const EnvSchema = z.object({
   GOOGLE_CLOUD_LOCATION: OptionalEnv(z.string().min(1)),
   GEMINI_AUTH_MODE: z.enum(['vertex_adc', 'developer_api_key']).default('vertex_adc'),
   GEMINI_API_KEY_FILE: OptionalEnv(z.string().min(1)),
+  GEMINI_DEVELOPER_API_KEY_ENABLED: BooleanEnv.default(false),
   GEMINI_TEXT_MODEL: z.string().min(1).default('gemini-3.7-flash'),
   GEMINI_LIVE_MODEL: z.string().min(1).default('gemini-live-2.5-flash-native-audio'),
   GEMINI_LIVE_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(15_000),

@@ -2,7 +2,12 @@ import { describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createGeminiClient, GeminiCredentialError, readGeminiApiKeyFile } from './gemini.client';
+import {
+  createGeminiClient,
+  GeminiCredentialError,
+  readGeminiApiKeyFile,
+  safeGeminiErrorCategory,
+} from './gemini.client';
 
 function withTempDirectory(callback: (directory: string) => void): void {
   const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-'));
@@ -58,5 +63,15 @@ describe('Gemini runtime credential loading', () => {
       expect(message).not.toContain(secret);
       expect(message).not.toContain(path);
     });
+  });
+
+  it('maps runtime failures to an allowlisted non-secret category', () => {
+    expect(safeGeminiErrorCategory(new GeminiCredentialError('synthetic secret'))).toBe(
+      'credential'
+    );
+    expect(
+      safeGeminiErrorCategory(Object.assign(new Error('synthetic timeout'), { name: 'AbortError' }))
+    ).toBe('timeout');
+    expect(safeGeminiErrorCategory(new Error('synthetic provider detail'))).toBe('unknown');
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import type { LiveServerMessage, Session } from '@google/genai';
 import { GeminiLiveService } from './gemini-live.service';
 import type { GeminiConfig } from './gemini.config';
-import type { GeminiClient } from './gemini.client';
+import { GeminiCredentialError, type GeminiClient } from './gemini.client';
 
 function config(): GeminiConfig {
   return {
@@ -127,6 +127,17 @@ describe('GeminiLiveService', () => {
 
     expect(clientOptions).toEqual([{ apiKeyFile: '/run/secrets/gemini_api_key' }]);
     expect(JSON.stringify(clientOptions)).not.toContain('synthetic');
+  });
+
+  it('maps credential initialization failures to a generic configuration error', async () => {
+    const service = new GeminiLiveService(config(), () => {
+      throw new GeminiCredentialError('synthetic-secret-value');
+    });
+
+    await expect(service.connect('en', () => {})).rejects.toMatchObject({
+      name: 'GeminiConfigurationError',
+      message: 'Gemini runtime client could not be initialized',
+    });
   });
 
   it('aborts a connection that exceeds the configured timeout', async () => {
