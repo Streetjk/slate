@@ -726,6 +726,86 @@ The next action remains human restoration/verification of the official gcloud
 command path, followed by another read-only readiness check. Do not enable billing
 or APIs, configure IAM, make a Vertex call, install packages, or alter NVMe/data.
 
+## Campaign 8D1B — Gemini 3.1 Flash Live OAuth / free-tier setup
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_OAUTH_DESKTOP_CLIENT_REQUIRED
+
+O0 completed with the absolute gcloud installation. O1 enabled only the authorized
+Google Generative Language API. O2 created the private OAuth-client directory and
+reached the required human Google Console boundary. No Vertex API, billing, model,
+production, firmware, or Slate/MySQL data operation was performed.
+
+### O0/O1 evidence
+
+```text
+GCLOUD=/mnt/ssd-tmp/slate-tools/google-cloud-sdk/bin/gcloud
+GCLOUD_VERSION=583.0.0
+PROJECT=slate-note4
+ACTIVE_GCLOUD_ACCOUNT=streetjk@gmail.com
+ADC_EXISTING=PASS
+ADC_TOKEN_PROBE=ADC_OK
+ADC_FILE_METADATA=pi:pi mode_600 size_354_bytes
+GENERATIVE_LANGUAGE_API=ENABLED
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+SLATE_HEALTH=PASS_HTTP_200
+MYSQL_HEALTH=PASS_HEALTHY_CONTAINER
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS_HTTP_201
+ROOT_FREE_BYTES=3742515200
+NVME_FREE_BYTES=216502263808
+```
+
+The Generative Language API enable operation completed successfully and the
+read-only enabled-service query returned `generativelanguage.googleapis.com`.
+The read-only Vertex query returned no `aiplatform.googleapis.com` match. Billing
+returned `billingEnabled: false` with no billing account name. No other API was
+intentionally enabled, and no Vertex/Gemini model request was made.
+
+### O2 human OAuth boundary
+
+```text
+OAUTH_DESKTOP_CLIENT=HUMAN_REQUIRED
+CLIENT_SECRET_PATH=/mnt/ssd-tmp/slate-tools/gemini-oauth/client_secret.json
+CLIENT_SECRET_JSON=ABSENT
+OAUTH_CLIENT_DIRECTORY=CREATED_MODE_700
+GEMINI_ADC=PENDING_HUMAN
+GENERATIVE_LANGUAGE_REST_OAUTH=NOT_RUN
+GEMINI31_LIVE_MODEL_VISIBLE=NOT_RUN
+GEMINI31_LIVE_OAUTH=NOT_RUN
+GEMINI31_LIVE_FREE_TIER=NOT_PROVEN
+```
+
+The required client JSON is absent. The operator must create a Desktop OAuth client
+for project `slate-note4` in Google Auth Platform, add the operator as a test user
+if required, download the JSON, and transfer it directly to the exact path above.
+Do not paste the JSON, client secret, authorization URL, verification code, or
+tokens into chat, Git, or reports. After transfer, set mode 600 in the Orange Pi
+terminal and return for the O3 browser-consent boundary. No OAuth client material
+was read or added to the repository.
+
+### Safety and scope
+
+```text
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+PRODUCTION_RESTARTED_FOR_GEMINI=NO
+NOTE4_PRIVATE_DATA_SENT_TO_FREE_TIER=NO
+GOOGLE_SEARCH_LIVE_PROBE=NOT_RUN
+CALENDAR_LIVE_PROBE=NOT_RUN
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+NVME_DATA_MIGRATION=NO
+NVME_CHANGE=EMPTY_OAUTH_DIRECTORY_ONLY
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+NEXT_ACTION=HUMAN_PROVIDE_DESKTOP_OAUTH_CLIENT_JSON_THEN_RESUME_8D1B_O3
+```
+
 ## Campaign 8E0E — OpenVPN and LLVM audit / conditional removal
 
 Date: 2026-09-02 (Australia/Perth)
