@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1D Gemini 3.1 Live API-key free-tier probe
-Current status: PASS_GEMINI31_LIVE_API_KEY_FREE_TIER_OBSERVED — one authorized synthetic Live session succeeded with billing unattached; production API-key migration remains human-gated.
+Current stage: 8D1E Gemini 3.1 Live secure backend integration
+Current status: IMPLEMENTED_TESTED_BLOCKED_EXTERNAL_REVIEW — backend-only runtime auth mode is implemented and deterministic gates pass; exact GLM 5.3 Flash independent review is unavailable.
 
 Completed campaigns:
 
@@ -76,10 +76,10 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8A routing candidate; backend deployment pending Docker daemon recovery.
+- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8D1E secure backend auth implementation at `0899d295fa4d35e3922dad9bac2c6e1b21431e19`; production deployment and merge remain prohibited.
 
-Last test status: PASS for the existing Campaign 8A candidate — 273 backend tests, 6 shared tests, format, lint, typecheck, frontend build, exact ESP-IDF `v5.5.2`/`esp32s3` build, merged firmware artifacts, and AGY high routing review. Backend deployment validation is pending Docker daemon recovery; candidate endpoint tests have not been claimed.
-Last AGY verdict: `BLOCKED_EXTERNAL_REVIEW` — D1 `gemini-3.7-flash-medium` read-only review request timed out without output. Previous Campaign 5 high-effort PASS remains historical and does not review D1.
+Last test status: PASS — 286 backend tests, 6 shared tests, frontend/backend lint, frontend/backend typecheck, format check, frontend production build, and diff check for 8D1E. Firmware was not changed or flashed.
+Last independent review verdict: `BLOCKED_EXTERNAL_REVIEW` — exact GLM 5.3 Flash reviewer transport unavailable; local GLM helper is GLM 5.2 and was not used. No Gemini 3.7 review/shadow calls occurred.
 
 External review gate:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop at human review of secure production key integration and data policy; preserve the current production runtime and do not deploy, move the key, change Gemini settings, flash firmware, or merge PR #2.
+Next automatic action: resume 8D1E only after exact authenticated GLM 5.3 Flash read-only review is available; then adjudicate findings and revalidate before the human production key/data-policy boundary.
 
-Human action required: YES — explicitly review/authorize any production API-key integration and data policy. Keep the key and all credential material out of chat and Git.
+Human action required: YES — provide or enable the exact authenticated GLM 5.3 Flash reviewer transport, then separately review/authorize any production API-key integration and data policy. Keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -866,4 +866,46 @@ READY_FOR_GCLOUD_INSTALL=YES
 HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
+```
+
+## Campaign 8D1E secure backend integration checkpoint
+
+```text
+CAMPAIGN=8D1E
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+START_SHA=dc3d70e29e2cf8dbcd0fe3434889959e3f2da224
+IMPLEMENTATION_SHA=0899d295fa4d35e3922dad9bac2c6e1b21431e19
+STATUS=IMPLEMENTED_TESTED_BLOCKED_EXTERNAL_REVIEW
+DEVELOPER_API_BACKEND_AUTH_MODE_IMPLEMENTED=YES
+CREDENTIAL_SOURCE=RUNTIME_SECRET_BACKEND_ONLY
+CREDENTIAL_COMMITTED=NO
+CREDENTIAL_LOGGED=NO
+CREDENTIAL_IN_IMAGE=NO
+CREDENTIAL_TO_NOTE4=NO
+PRODUCTION_DEFAULT_CHANGED=NO
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+GEMINI31_LIVE_ADAPTER_SYNTHETIC_PROBE=NOT_RUN_SAFE_RUNTIME_UNAVAILABLE
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+CALENDAR_WRITE=NO
+BACKEND_TESTS=286_PASS
+SHARED_TESTS=6_PASS
+LINT=PASS
+TYPECHECK=PASS
+FORMAT=PASS
+FRONTEND_BUILD=PASS
+SECRET_SCAN=PASS
+INDEPENDENT_REVIEWER=GLM_5_3_FLASH
+GLM53_REVIEW=BLOCKED_EXTERNAL_REVIEW
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=PROVIDE_OR_ENABLE_EXACT_AUTHENTICATED_GLM_5_3_FLASH_REVIEWER_THEN_RESUME_8D1E
 ```

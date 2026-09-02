@@ -1940,3 +1940,192 @@ FIRMWARE_FLASHED=NO
 READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
+
+## Campaign 8D1E — Gemini 3.1 Live secure backend integration
+
+Date: 2026-09-02 (Australia/Perth)
+Status: IMPLEMENTED_AND_DETERMINISTICALLY_VALIDATED — blocked at the required
+independent GLM 5.3 Flash review boundary; no production deployment or setting
+change was performed.
+
+### E0/E1 reconciliation
+
+- The branch was fetched and fast-forwarded from `6d30656` to the latest
+  directive-only remote head `dc3d70e` before implementation.
+- PR #2 remains open, draft, unmerged, and based on
+  `integration/note4-custom`.
+- Campaign 8D1D remains the latest prior accepted proof: one bounded
+  `gemini-3.1-flash-live-preview` API-key Live session succeeded with billing
+  unattached; this report does not claim that OAuth/ADC Live is supported.
+- Existing architecture was preserved: `GeminiConfig` selects runtime
+  authentication, `GeminiAssistantService` and `GeminiLiveService` remain the
+  only Gemini service callers, `XiaozhiVoiceGateway` remains the authenticated
+  device bridge, and the existing tool, Calendar confirmation, Outlook
+  isolation, audio codec, reconnect, and cleanup paths were not replaced.
+
+### E2 current official documentation
+
+The current official pages were checked on 2026-09-02:
+
+- [Gemini 3.1 Flash Live Preview model page](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview)
+  identifies the exact model ID `gemini-3.1-flash-live-preview`, Live API,
+  audio generation, Search grounding, and function calling; it also documents
+  synchronous-only function calling and current Live event semantics.
+- [Live API server SDK guide](https://ai.google.dev/gemini-api/docs/live-api/get-started-sdk)
+  documents server WebSocket sessions, 16 kHz PCM input, 24 kHz audio output,
+  transcription events, and function-call responses. Its JavaScript example
+  uses a runtime API-key client.
+- [OAuth quickstart](https://ai.google.dev/gemini-api/docs/oauth) documents
+  OAuth/ADC setup and REST model-list access. The prior project probes found
+  OAuth model visibility but insufficient authorization for the required Live
+  transport, so this implementation keeps Vertex ADC as the default and adds
+  Developer API mode only as an explicit, human-gated alternative.
+
+### E3 implementation
+
+Implementation source commit: `0899d295fa4d35e3922dad9bac2c6e1b21431e19`
+
+The backend now supports:
+
+- `GEMINI_AUTH_MODE=vertex_adc` (default), preserving the existing
+  `GOOGLE_CLOUD_PROJECT`/`GOOGLE_CLOUD_LOCATION` client construction.
+- Explicit `GEMINI_AUTH_MODE=developer_api_key`, which accepts only a
+  `GEMINI_API_KEY_FILE` runtime file reference. The credential value is read
+  inside the backend factory and passed to the Google SDK only in process
+  memory; it is never part of configuration objects, client responses,
+  firmware, image build input, logs, tests, or reports.
+- A narrow `GeminiClientOptions` union that does not permit callers to pass a
+  raw API-key value directly to the factory.
+- Fail-closed handling for missing, empty, whitespace-only, directory, and
+  unreadable runtime credential sources with generic non-secret errors.
+- Generic Gemini request/Live error logging without provider error-message
+  contents, preserving existing user-safe error contracts.
+- Placeholder-only `.env.example` documentation for runtime secret mounting;
+  no production environment, image, or secret was changed.
+
+### Files changed
+
+- `.env.example`, `backend/.env.example` — placeholder runtime auth-mode and
+  secret-file configuration only.
+- `backend/src/infra/config/env.schema.ts` and its test — explicit auth-mode
+  schema/defaults and file-reference validation.
+- `backend/src/modules/assistant/gemini.client.ts` — runtime credential-file
+  loader and narrow client factory.
+- `backend/src/modules/assistant/gemini.config.ts` — mode selection,
+  configuration diagnostics, and provider-specific client options.
+- `backend/src/modules/assistant/gemini-live.service.ts` and
+  `gemini-assistant.service.ts` — use the selected factory path and redact
+  provider error contents.
+- Corresponding service tests plus
+  `gemini.client.test.ts` and `gemini.config.test.ts` — mode, lifecycle,
+  credential, and fail-closed coverage.
+
+### Deterministic validation
+
+All commands ran against source commit `0899d295fa4d35e3922dad9bac2c6e1b21431e19`:
+
+```text
+bun run --cwd backend test
+PASS — 286 tests across 74 files; 0 failed; 879 expect() calls
+
+bun run --cwd shared test
+PASS — 6 tests; 0 failed; 27 expect() calls
+
+bun run lint
+PASS — frontend and backend ESLint, 0 warnings
+
+bun run typecheck
+PASS — frontend and backend TypeScript checks
+
+bun run format:check
+PASS — all checked files formatted
+
+bun run --cwd frontend build
+PASS — Vite production build
+
+git diff --check
+PASS
+```
+
+Tests specifically cover default Vertex/ADC preservation, explicit Developer
+API mode selection, exact file-reference passing, valid synthetic loading,
+missing/empty/whitespace/unreadable sources, non-secret errors, Live model and
+session mapping, audio/tool lifecycle, Calendar proposal-only behavior,
+Outlook isolation, and unauthenticated device-voice rejection.
+
+### E7 bounded adapter probe
+
+The deterministic adapter construction tests passed using synthetic
+credentials. One non-production attempt was made using the protected runtime
+credential through a read-only mount and synthetic text only. The Orange Pi
+host has no Bun/node runtime; the preserved production image lacks the SDK
+dependency, and the disposable official Bun dependency setup stalled with no
+active temporary process. It was stopped; the disposable checkout, temporary
+script, and temporary image were removed. No production container, environment,
+persistent data, key, or model setting changed.
+
+```text
+GEMINI31_LIVE_ADAPTER_SYNTHETIC_PROBE=NOT_RUN_SAFE_RUNTIME_UNAVAILABLE
+PROTECTED_CREDENTIAL_VALUE_PRINTED=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+PRODUCTION_DEPLOYED=NO
+```
+
+### E8 independent review gate
+
+The current user-selected reviewer is GLM 5.3 Flash. No exact authenticated
+GLM 5.3 Flash reviewer transport is available in this environment. The local
+`glm` helper identifies itself as GLM 5.2 through an NVIDIA NIM API-key
+transport, so it was not invoked as a model or authentication substitute.
+The bounded Sonnet 4.6 worker attempt was read-only, did not inspect
+credentials, made no file changes, and returned no result before it was
+stopped; it is not treated as an independent review.
+
+```text
+INDEPENDENT_REVIEWER=GLM_5_3_FLASH
+REVIEW_TRANSPORT=NOT_AVAILABLE_EXACT_MODEL
+GLM53_REVIEW=BLOCKED_EXTERNAL_REVIEW
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+```
+
+There are no accepted or rejected reviewer findings because the required
+independent review did not run. Luna/Codex self-review is not an independent
+gate.
+
+### E9 security and deployment boundary
+
+```text
+CAMPAIGN=8D1E
+STATUS=IMPLEMENTED_TESTED_BLOCKED_EXTERNAL_REVIEW
+START_SHA=dc3d70e29e2cf8dbcd0fe3434889959e3f2da224
+IMPLEMENTATION_SHA=0899d295fa4d35e3922dad9bac2c6e1b21431e19
+DEVELOPER_API_BACKEND_AUTH_MODE_IMPLEMENTED=YES
+CREDENTIAL_SOURCE=RUNTIME_SECRET_BACKEND_ONLY
+CREDENTIAL_COMMITTED=NO
+CREDENTIAL_LOGGED=NO
+CREDENTIAL_IN_IMAGE=NO
+CREDENTIAL_TO_NOTE4=NO
+PRODUCTION_DEFAULT_CHANGED=NO
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+CALENDAR_WRITE=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+SECRET_SCAN=PASS_NO_CREDENTIAL_MATERIAL_IN_CHANGED_FILES
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=PROVIDE_OR_ENABLE_EXACT_AUTHENTICATED_GLM_5_3_FLASH_REVIEWER_THEN_RESUME_8D1E
+```
+
+Rollback is the preceding backend/image path with the default
+`GEMINI_AUTH_MODE=vertex_adc` and existing `GEMINI_LIVE_MODEL`; no production
+rollback action was needed because deployment was not attempted. Production
+use of the Developer API mode remains separately gated on human acceptance of
+the current Gemini data-use/privacy policy and explicit authorization to
+mount the protected runtime credential and select the exact Gemini 3.1 Live
+model.
