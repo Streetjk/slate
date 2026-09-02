@@ -484,6 +484,66 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0A — Orange Pi storage expansion diagnosis
+
+Date: 2026-09-02 (Australia/Perth)
+Status: AVAILABLE_NEEDS_HUMAN_AUTH — diagnostic only; no resize or partition write performed
+
+### Exact physical layout
+
+- Root source: `/dev/mmcblk1p1`, filesystem `ext4`, mounted read-write with `errors=remount-ro,commit=120`.
+- Physical device: `/dev/mmcblk1`, 15,476,981,760 bytes, 30,228,480 sectors, 512-byte sectors.
+- Partition table: GPT, first usable LBA 2048, last usable LBA 30,228,446.
+- Root partition: start LBA 32,768, end LBA 29,917,183, 29,884,416 sectors, 15,300,820,992 bytes.
+- No other partition follows root; `lsblk` reports only `mmcblk1p1` on this device.
+- Contiguous GPT-usable space after root: 311,263 sectors, 159,366,656 bytes (~151.98 MiB). The remaining device tail is GPT-reserved space and is not usable partition capacity.
+- Root filesystem is clean; `resize2fs -P` succeeded read-only and `resize2fs` is installed.
+
+### Supported expansion path
+
+Armbian’s `/usr/lib/armbian/armbian-resize-filesystem` and its systemd unit are installed. The utility is designed to expand the final partition and then run `resize2fs`; its source confirms that partition expansion uses a delete/recreate operation with the original start sector and may request a reboot. The current layout already appears to retain Armbian’s approximately 1% spare area. Extending into the remaining ~152 MiB would therefore require an explicit root-partition policy/partition-table rewrite and must not be inferred as a harmless online filesystem-only resize.
+
+The exact supported utility to evaluate after separate authorization is:
+
+```text
+sudo /usr/lib/armbian/armbian-resize-filesystem start
+```
+
+That command was **not executed**. A later authorized operation must first re-check the partition end, confirm the desired target does not shrink the filesystem, preserve the current/rollback deployment and data, and plan any required reboot. No manual `fdisk`, `parted`, `sfdisk`, `resize2fs`, or Armbian resize command was run.
+
+Current official Armbian documentation states that first-boot rootfs expansion grows the root partition to the media maximum subject to its spare-area policy, and documents the resize markers; this device’s installed utility is the local implementation evidence. See [Armbian partitioning and rootfs resize](https://docs.armbian.com/build-framework/user-configurations/).
+
+### D2 preservation checks
+
+- `slate-note4` candidate and `slate-note4-mysql`: healthy.
+- Candidate image: present at `sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d`.
+- Rollback image: present at `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
+- Local/public `/healthz`: HTTP 200; public Web UI: HTTP 200.
+- Tailscale: `Running`; Funnel remains mapped to `http://127.0.0.1:3001`.
+- Latest naturally observed authenticated NOTE4 poll: HTTP 201 at `02:28:58`.
+- Root free space at final check: 1,944,170,496 bytes; below the 2,000,000,000-byte Google CLI gate by 55,829,504 bytes. The change from the earlier E0 checkpoint is ordinary Docker/storage reclamation; the diagnostic itself performed no write.
+- Production environment, persistent data, device identity, firmware, ADC, billing, and model settings were not changed.
+
+### 8E0A boundary
+
+```text
+STORAGE_EXPANSION_PATH=AVAILABLE_NEEDS_HUMAN_AUTH
+ROOT_DEVICE=/dev/mmcblk1
+ROOT_PARTITION=/dev/mmcblk1p1
+ROOT_FILESYSTEM=ext4
+ROOT_PARTITION_IS_FINAL=YES
+UNALLOCATED_USABLE_BYTES_AFTER_ROOT=159366656
+RESIZE_EXECUTED=NO
+ORANGEPI_STORAGE_GATE=FAIL_BELOW_2GB
+READY_FOR_GCLOUD_INSTALL=NO
+HUMAN_STORAGE_EXPANSION_REQUIRED=YES
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+GEMINI37_BLACKOUT_EXPIRES=2026-09-06T02:00:00+08:00
+FIRMWARE_FLASHED=NO
+NEXT_ACTION=HUMAN_AUTHORIZE_EXPLICIT_PARTITION_FILESYSTEM_EXPANSION_OR_PROVIDE_LARGER_STORAGE
+```
+
 ## Campaign 8E0 — Orange Pi storage recovery checkpoint
 
 Date: 2026-09-02 (Australia/Perth)
