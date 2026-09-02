@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8E0 Orange Pi storage recovery
-Current status: HUMAN_STORAGE_EXPANSION_REQUIRED — safe disposable cleanup recovered free space to 1,697,796,096 bytes, below the 2,000,000,000-byte Google CLI gate. Current/rollback images, persistent data, services, Funnel, and NOTE4 polling remain healthy. No firmware was flashed.
+Current stage: 8E0B Orange Pi service/package inventory
+Current status: INVENTORY_COMPLETE_PENDING_HUMAN_REVIEW — read-only host, service, socket, package, filesystem, Docker, Snap, and health inventory completed. No service or data was changed. Root free space is 1,943,932,928 bytes.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: obtain a returned AGY review for D1 and, only after review PASS plus explicit exact-hash human authorization, perform the physical before/after refresh measurements. Do not flash automatically. Do not begin Airtable/Gantt.
+Next automatic action: stop for human review of the 8E0B inventory; do not remove, disable, resize, prune, or otherwise mutate Orange Pi state without a new explicit directive.
 
-Human action required: YES — provide a genuinely different Internet egress for NOTE4 off-LAN validation and separately complete provider consent/secure environment setup. Never send credentials in chat or reports.
+Human action required: YES — review the complete 8E0B Orange Pi inventory before authorizing any future cleanup or service change. Never send credentials in chat or reports.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -424,4 +424,34 @@ FIRMWARE_FLASHED=NO
 HUMAN_STORAGE_EXPANSION_REQUIRED=YES
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_AUTHORIZE_EXPLICIT_PARTITION_FILESYSTEM_EXPANSION_OR_PROVIDE_LARGER_STORAGE
+```
+
+## Campaign 8E0B — Orange Pi service/package inventory
+
+```text
+CAMPAIGN=8E0B
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=INVENTORY_COMPLETE_PENDING_HUMAN_REVIEW
+ORANGEPI_SERVICE_INVENTORY=COMPLETE
+ROOT_FREE_BYTES=1943932928
+ROOT_FREE_SPACE_SOURCE=df_-B1_/
+PASSWORDLESS_SUDO=NO
+SLATE_CONTAINER_HEALTH=PASS
+MYSQL_CONTAINER_HEALTH=PASS
+TAILSCALE=RUNNING
+FUNNEL=PASS
+PUBLIC_HEALTH=PASS_HTTP_200
+PUBLIC_WEB_UI=PASS_HTTP_200
+NOTE4_AUTHENTICATED_POLL=PASS_HTTP_201_OBSERVED_THROUGH_02_39_01
+SNAP_ACTIVE_REVISIONS_PRESERVED=YES
+REMOVALS=NONE
+DISABLEMENTS=NONE
+PRODUCTION_DATA_CHANGED=NO
+PRODUCTION_ENV_CHANGED=NO
+FIRMWARE_FLASHED=NO
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+NO_REMOVAL_OR_DISABLE=YES
+HUMAN_REVIEW_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_8E0B_INVENTORY_THEN_AUTHORIZE_ANY_FUTURE_ACTION
 ```

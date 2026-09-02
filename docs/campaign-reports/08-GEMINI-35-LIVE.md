@@ -484,6 +484,153 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0B — Orange Pi service/package inventory
+
+Date: 2026-09-02 (Australia/Perth)
+Status: INVENTORY_COMPLETE_PENDING_HUMAN_REVIEW
+
+This was a read-only inventory as required by
+`08E0B-ORANGEPI-SERVICE-INVENTORY-INSTRUCTIONS.md`. No service, container, image,
+package, Snap revision, filesystem, deployment file, secret, Tailscale state, or
+persistent data was removed, disabled, stopped, resized, pruned, or otherwise changed.
+
+### Host and storage evidence
+
+```text
+HOSTNAME=orangepi5
+OS=Armbian 25.5.2 noble / Ubuntu 24.04 LTS
+KERNEL=Linux 6.1.115-vendor-rk35xx
+ARCHITECTURE=aarch64
+ROOT_DEVICE=/dev/mmcblk1p1
+ROOT_CAPACITY_BYTES=14985895936
+ROOT_USED_BYTES=12842020864
+ROOT_FREE_BYTES=1943932928
+ROOT_USED_PERCENT=87%
+PHYSICAL_SYSTEM_DISK=/dev/mmcblk1 15476981760 bytes (~14.4 GiB)
+OTHER_MOUNTS=/mnt/ssd-tmp (238.5G NVMe), /mnt/hdd-archive (9.1T HDD)
+SWAP=/dev/zram0 1.8G
+PASSWORDLESS_SUDO=NO
+```
+
+The root filesystem is the final ext4 partition on the 16 GB-class eMMC/SD device;
+the larger NVMe and HDD are separate mounted devices. The non-root `du` inventory
+could not read protected directories such as `/var/lib/docker`, the MySQL data
+directory, `/var/lib/tailscale`, and private system directories because sudo requires
+an interactive password. Docker's own read-only accounting was available.
+
+### Slate, MySQL, Docker, Funnel, and pairing health
+
+```text
+SLATE_CONTAINER=slate-note4 / slate-note4:campaign8-voice-routing-121622c / healthy
+MYSQL_CONTAINER=slate-note4-mysql / mysql:8 / healthy
+SLATE_IMAGE_ID=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+ROLLBACK_IMAGE=slate-note4:rollback-before-campaign8-948934c
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+MYSQL_IMAGE_ID=sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+SLATE_DATA=/home/pi/slate-note4-deploy/slate-data -> /data (read-write)
+MYSQL_DATA=/home/pi/slate-note4-deploy/mysql-data -> /var/lib/mysql (read-write)
+PUBLIC_HEALTH=HTTP_200
+PUBLIC_WEB_UI=HTTP_200
+TAILSCALE=RUNNING_VERSION_1.102.2
+FUNNEL=https://orangepi5.tail6aabef.ts.net -> http://127.0.0.1:3001
+NOTE4_AUTHENTICATED_POLL=HTTP_201 observed repeatedly through 02:39:01
+```
+
+Docker reported 0 B BuildKit cache, two running containers, the current image, the
+preserved rollback image, MySQL, and one untagged 264.3 MB image. The untagged image
+is recorded for human review only; it was not removed. The deployment directory
+contains `.env` (265 bytes, contents not read), `compose.yml`, and two rollback/reference
+compose files.
+
+### Running/enabled service inventory
+
+| Classification | Observed services/components | Evidence and exposure | Recommendation |
+|---|---|---|---|
+| REQUIRED_SLATE_RUNTIME | `docker.service`, `containerd.service`, healthy Slate and MySQL containers | Slate listens on `0.0.0.0:3001`; MySQL is container-internal | KEEP |
+| REQUIRED_OS_NETWORKING | `NetworkManager.service`, `systemd-resolved.service`, `wpa_supplicant.service`, `chrony.service` | Network, DNS, Wi-Fi, and time synchronization | KEEP |
+| REQUIRED_TAILSCALE_FUNNEL | `tailscaled.service` | Tailscale node online; Funnel maps public HTTPS to local Slate port | KEEP |
+| LIKELY_OS_CORE | `systemd-journald`, `systemd-udevd`, `systemd-logind`, `dbus`, `polkit`, `rsyslog`, `cron`, Armbian hardware/zram/ramlog units, `getty`, `unattended-upgrades`, `apparmor` | OS lifecycle, logging, hardware, security, updates, and console | KEEP |
+| OPTIONAL_ADMIN_TOOL | `ssh.service`, `ufw.service`, `vnstat.service`, `rpcbind.service` | SSH administration; firewall/accounting/RPC services; SSH is active but not enabled | CANDIDATE_FOR_HUMAN_REVIEW |
+| OPTIONAL_APPLICATION | `deluged.service`, `deluge-web.service`, `smbd.service`, `nmbd.service`, `lightdm.service`, `cups` Snap services, `nordvpnd.service`, Bluetooth/OpenVPN units | Deluge ports 52511/58846/8112; Samba 139/445; VNC 5901; CUPS 631; NordVPN is active | CANDIDATE_FOR_HUMAN_REVIEW |
+| UNKNOWN_NEEDS_HUMAN_REVIEW | `samba-ad-dc.service` enabled but not running, `openvpn.service` enabled but not observed running, remaining enabled desktop/peripheral units | Their necessity and ownership were not inferable from a read-only inventory | UNKNOWN_NEEDS_HUMAN_REVIEW |
+
+The complete command output showed 33 running services and 51 enabled service unit
+files. No removal recommendation is made automatically. Notable listening sockets
+were SSH `22`, Slate `3001`, Tailscale Funnel/node sockets, Deluge `8112`/`58846`,
+VNC `5901`, CUPS `631`, Samba `139`/`445`, and RPC bind `111`.
+
+### Snap, Flatpak, package, and filesystem inventory
+
+```text
+SNAP=installed; 10 active revisions listed; no disabled revisions observed
+FLATPAK=not installed (flatpak command unavailable)
+DOCKER_BUILD_CACHE=0B
+TOP_LEVEL_DU_NONROOT=/usr 3.2G; /var 2.4G; /home 215M; /boot 169M; total visible 6.0G
+VAR_DU_NONROOT=/var/lib 2.3G; /var/cache 117M; /var/log.hdd 42M
+USR_DU_NONROOT=/usr/lib 1.9G; /usr/share 421M; /usr/bin 446M
+```
+
+Largest installed Debian packages by `Installed-Size` (KB) were:
+
+```text
+armbian-firmware 283585
+linux-image-vendor-rk35xx 272454
+docker.io 127867
+libllvm20 135750
+libllvm19 121821
+snapd 108956
+containerd 96398
+nordvpn 93741
+libwebkitgtk-6.0-4 87196
+linux-dtb-vendor-rk35xx 83230
+linux-headers-vendor-rk35xx 75046
+mesa-vulkan-drivers 71508
+tailscale 69288
+docker-compose-v2 62101
+gcc-13-aarch64-linux-gnu 54363
+unicode-data 39485
+libicu74 36201
+linux-u-boot-orangepi5-vendor 34854
+runc 34734
+mesa-libgallium 34110
+```
+
+These are inventory facts, not authorization to uninstall packages. The largest
+visible filesystem consumers are `/var` and `/usr`; protected Docker, database,
+Tailscale, and private system subtrees require human-authorized privileged inspection
+if finer attribution is needed.
+
+### Review and security status
+
+```text
+AGY_REVIEW=NOT_REQUESTED_READ_ONLY_INVENTORY
+GROK_REVIEW=NOT_REQUESTED_READ_ONLY_INVENTORY
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+LUNA_WORKER=NOT_USED_READ_ONLY_INVENTORY
+STATIC_CREDENTIALS_READ_OR_ADDED=NO
+PRODUCTION_ENV_READ=NO_CONTENTS_NOT_READ
+REMOVALS=NONE
+DISABLEMENTS=NONE
+PRODUCTION_DEPLOYMENT_CHANGED=NO
+FIRMWARE_FLASHED=NO
+```
+
+### Human review boundary
+
+The inventory is complete and intentionally stops here. Human review is required
+before any optional service, package, untagged image, cache, or filesystem content
+is considered for a later action. The running Slate/MySQL deployment, rollback image,
+persistent data, Tailscale/Funnel state, SSH configuration, and Snap active revisions
+must remain preserved.
+
+```text
+ORANGEPI_SERVICE_INVENTORY=COMPLETE
+NO_REMOVAL_OR_DISABLE=YES
+HUMAN_REVIEW_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_INVENTORY_THEN_AUTHORIZE_ANY_FUTURE_ACTION
+```
+
 ## Campaign 8E0A — Orange Pi storage expansion diagnosis
 
 Date: 2026-09-02 (Australia/Perth)
