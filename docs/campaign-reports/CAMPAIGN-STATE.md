@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8E0E OpenVPN and LLVM audit / conditional removal
-Current status: AUDIT_COMPLETE_LIBLLVM19_SAFE_PENDING_SUDO_OPENVPN_KEPT — OpenVPN standalone removal failed its strict simulation gate; libllvm19 is narrowly safe but requires human sudo. libllvm20 remains required. No NVMe or Slate/MySQL data changed.
+Current stage: 8E0F libllvm19 post-removal verification
+Current status: PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS — libllvm19 removal verified, root free space is 2,164,400,128 bytes, protected graphics packages and libllvm20 remain installed, and no NVMe or Slate/MySQL data changed.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for the minimal human libllvm19 sudo action and review; then recheck health before any separate NVMe decision.
+Next automatic action: stop for the human Google Cloud/Vertex ADC setup boundary; do not run apt autoremove or begin NVMe migration.
 
-Human action required: YES — optionally run the exact libllvm19 removal command with local sudo, then review the 8E0E audit. Do not run apt autoremove or move Slate/MySQL data. Never send credentials in chat or reports.
+Human action required: YES — choose the approved Google Cloud project, confirm billing/API authorization, and complete official ADC login before resuming 8D1. Do not run apt autoremove or move Slate/MySQL data. Never send credentials in chat or reports.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -544,4 +544,33 @@ GEMINI37_REVIEW_CALLS=0
 GEMINI37_SHADOW_CALLS=0
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_RUN_LIBLLVM19_REMOVAL_WITH_LOCAL_SUDO_THEN_RECHECK_HEALTH
+```
+
+## Campaign 8E0F — libllvm19 post-removal verification
+
+```text
+CAMPAIGN=8E0F
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS
+LIBLLVM19_REMOVAL=PASS
+LIBLLVM19_PACKAGE=NOT_INSTALLED
+LIBLLVM20=INSTALLED_AND_RETAINED
+ROOT_FREE_BYTES=2164400128
+ORANGEPI_STORAGE_GATE=PASS
+NVME_MOVE_REQUIRED_FOR_IMMEDIATE_GCLOUD=NO
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS
+APT_AUTOREMOVE_EXECUTED=NO
+SLATE_DATA_MOVE_EXECUTED=NO
+NVME_CHANGED=NO
+FIRMWARE_FLASHED=NO
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+READY_FOR_GCLOUD_INSTALL=YES
+HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
 ```

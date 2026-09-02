@@ -484,6 +484,73 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0F — libllvm19 post-removal verification
+
+Date: 2026-09-02 (Australia/Perth)
+Status: PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS
+
+This was a verification-only checkpoint. No `apt autoremove` was run, no NVMe
+operation was performed, Slate/MySQL data was not moved, and no production,
+firmware, credential, or Gemini setting was changed.
+
+### Verification evidence
+
+```text
+LIBLLVM19_REMOVED=PASS
+LIBLLVM19_PACKAGE=NOT_INSTALLED
+LIBLLVM20=INSTALLED
+LIBLLVM20_VERSION=1:20.1.2-0ubuntu1~24.04.2
+LIBLLVM20_INSTALLED_SIZE_KB=135750
+ROOT_FREE_BYTES=2164400128
+ROOT_TOTAL_BYTES=14985895936
+ROOT_USED_PERCENT=86%
+ORANGEPI_STORAGE_GATE=PASS
+NVME_MOVE_REQUIRED_FOR_IMMEDIATE_GCLOUD=NO
+SLATE_HEALTH=PASS_HTTP_200_LOCAL
+MYSQL_HEALTH=PASS_HEALTHY_CONTAINER
+TAILSCALE=PASS_ACTIVE_ENABLED
+PUBLIC_HEALTH=PASS_HTTP_200
+FUNNEL=PASS_HTTPS_TO_127_0_0_1_3001
+NOTE4_POLLING=PASS_HTTP_201_OBSERVED_03_21_15_THROUGH_03_23_28
+APT_AUTOREMOVE_EXECUTED=NO
+SLATE_DATA_MOVE_EXECUTED=NO
+NVME_CHANGED=NO_BY_THIS_STAGE
+FIRMWARE_FLASHED=NO
+```
+
+The measured root headroom above the 2,000,000,000-byte gate is 164,400,128
+bytes. Slate and MySQL containers remained healthy. The protected packages
+`mesa-vulkan-drivers`, `mesa-libgallium`, `tigervnc-standalone-server`,
+`libwebkitgtk-6.0-4`, `ffmpeg`, and `xserver-xorg-core` all remained installed,
+so no graphics/desktop/WebKit/FFmpeg collateral removal was observed.
+
+Tailscale remained active and enabled, and Funnel continued to map
+`https://orangepi5.tail6aabef.ts.net` to `http://127.0.0.1:3001`. Deluge and
+Deluge Web remained active. The NVMe was only observed read-only at
+`/dev/nvme0n1p1`, ext4, with `228558487552` bytes available; the utilization
+difference from earlier observations is not attributed to this verification
+stage and no NVMe command changed it. Deluge paths remained
+`/mnt/ssd-tmp/incomplete/` and `/mnt/hdd-archive/Downloads/`.
+
+The APT orphan suggestions `libglapi-mesa` and `libxcb-dri2-0` were not removed
+or otherwise changed. OpenVPN remains `KEEP_UNCERTAIN` from 8E0E.
+
+### Human boundary
+
+The storage gate now passes and immediate NVMe migration is not required for the
+Google CLI gate. This does not authorize gcloud installation or Vertex setup;
+the next action remains the separate human-owned Google Cloud project, billing,
+API enablement, and ADC login boundary. No Gemini 3.7 review/shadow call was made
+for this read-only verification.
+
+```text
+LIBLLVM19_REMOVAL=PASS
+ORANGEPI_STORAGE_GATE=PASS
+READY_FOR_GCLOUD_INSTALL=YES
+HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
+NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
+```
+
 ## Campaign 8E0E — OpenVPN and LLVM audit / conditional removal
 
 Date: 2026-09-02 (Australia/Perth)
