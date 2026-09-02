@@ -2129,3 +2129,171 @@ use of the Developer API mode remains separately gated on human acceptance of
 the current Gemini data-use/privacy policy and explicit authorization to
 mount the protected runtime credential and select the exact Gemini 3.1 Live
 model.
+
+## Campaign 8D1E — final GLM review and bounded adapter checkpoint
+
+Date: 2026-09-02 (Australia/Perth)
+Status: REVIEW_PASS_ADAPTER_PROBE_FAILED — stopped at the non-production
+runtime diagnostic boundary. Production deployment, firmware flash, billing,
+Vertex enablement, and PR merge were not performed.
+
+### Review and implementation lineage
+
+The exact final implementation reviewed was `4bfce037b2d206dbabca9ab905301c088a0c1f01`.
+The complete bounded correction lineage is preserved:
+
+```text
+START_SHA=dc3d70e29e2cf8dbcd0fe3434889959e3f2da224
+ORIGINAL_IMPLEMENTATION_SHA=0899d295fa4d35e3922dad9bac2c6e1b21431e19
+CORRECTION_SHA_1=3c8df44d358bafa71fc92b485b1d195c1dc6ac86
+CORRECTION_SHA_2=1b0956af66e4324123d4948e16a04eb1bd8ee712
+CORRECTION_SHA_3=4bfce037b2d206dbabca9ab905301c088a0c1f01
+```
+
+The exact configured independent reviewer was invoked read-only and
+ephemerally through the protected runtime ZAI credential path. No credential
+value was printed or sent in the review prompt.
+
+```text
+REVIEWER=GLM_5_3_FLASH
+PROVIDER=ZAI
+PROFILE=zai-glm53-reviewer
+MODEL=glm-5.3-flash
+REASONING_EFFORT=high
+SANDBOX=read-only
+TARGET_SHA=4bfce037b2d206dbabca9ab905301c088a0c1f01
+TRACKED_FILES_CHANGED=NO
+VERDICT=PASS
+P0_FINDINGS=0
+P1_FINDINGS=0
+P2_FINDINGS=0
+P3_FINDINGS=4
+```
+
+GLM found no credential leakage, unintended production mutation, production
+default change, Outlook exposure, Calendar confirmation bypass, or lifecycle
+security failure. Luna adjudicated the four non-blocking observations as:
+
+- Calendar OAuth failure after ticket consumption not directly tested:
+  `DEFER_NONBLOCKING`; insertion follows atomic consumption, so a failed write
+  burns the ticket safely.
+- Runtime-file validation has an ordinary check/use race:
+  `DEFER_NONBLOCKING`; the protected runtime mount and fail-closed read are
+  sufficient for this bounded evaluation.
+- Provider `onerror` does not itself force reconnect/close:
+  `DEFER_NONBLOCKING`; reconnect policy is separate reliability work.
+- Report/state referenced the original implementation SHA:
+  `ACCEPT`; this checkpoint records the final corrective SHA.
+
+No P0/P1/P2 finding remained unresolved. The review did not edit, commit, push,
+or access production.
+
+### Deterministic validation
+
+All commands passed against `4bfce037...`:
+
+```text
+bun run --cwd backend test
+PASS — 297 tests across 74 files; 0 failed; 906 expect() calls
+bun run --cwd shared test
+PASS — 6 tests; 0 failed; 27 expect() calls
+bun run lint
+PASS — frontend and backend ESLint; 0 warnings
+bun run typecheck
+PASS — frontend and backend TypeScript checks
+bun run format:check
+PASS — all checked files formatted
+bun run --cwd frontend build
+PASS — Vite production build
+git diff --check
+PASS
+```
+
+### E7 one-shot synthetic adapter verification
+
+One bounded attempt ran after deterministic validation and the GLM PASS. A
+disposable ARM64 container executed the actual 8D1E `GeminiConfig`,
+`createGeminiClient`, `GeminiLiveService`, and tool configuration bundled from
+the exact implementation SHA. The protected credential was mounted read-only
+at runtime only. Input was synthetic text `Say exactly TEST.`; no NOTE4,
+Outlook, Calendar, Search, or real audio data was sent, and generated audio was
+not retained. No production entrypoint, migration, container, or environment
+was used or changed.
+
+```text
+GEMINI31_LIVE_ADAPTER_SYNTHETIC_PROBE=FAIL_GEMINI_LIVE_CONNECTION_FAILED
+PROBE_RUNTIME=DISPOSABLE_ARM64_CONTAINER
+PROBE_MODEL=gemini-3.1-flash-live-preview
+PROBE_INPUT=SYNTHETIC_ONLY
+PROBE_TURN_COMPLETE=NO
+PROBE_MODEL_CONTENT=NO
+PROTECTED_CREDENTIAL_VALUE_PRINTED=NO
+PROTECTED_CREDENTIAL_LOGGED=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+PRODUCTION_CONTAINER_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+```
+
+The adapter returned its generic connection-failure outcome before a
+turn-complete/model-content event. This does not prove model or free-tier
+unavailability. E7 is one-shot, so no second provider call is authorized in
+this stage.
+
+### Post-probe invariants and final checkpoint
+
+```text
+PRODUCTION_IMAGE=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+KNOWN_GOOD_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+SLATE_CONTAINER=healthy
+MYSQL_CONTAINER=healthy
+PROTECTED_KEY_METADATA_UNCHANGED=YES
+DISPOSABLE_ARTIFACTS_REMOVED=YES
+CAMPAIGN=8D1E
+STATUS=REVIEW_PASS_ADAPTER_PROBE_FAILED
+END_SHA=4bfce037b2d206dbabca9ab905301c088a0c1f01
+CONTROLLER=LUNA
+WORKER=SONNET_4_6
+REVIEWER=GLM_5_3_FLASH
+DEVELOPER_API_BACKEND_AUTH_MODE_IMPLEMENTED=YES
+CREDENTIAL_SOURCE=RUNTIME_SECRET_BACKEND_ONLY
+CREDENTIAL_COMMITTED=NO
+CREDENTIAL_LOGGED=NO
+CREDENTIAL_IN_IMAGE=NO
+CREDENTIAL_TO_NOTE4=NO
+PRODUCTION_DEFAULT_CHANGED=NO
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+CALENDAR_WRITE=NO
+BACKEND_TESTS=297_PASS
+SHARED_TESTS=6_PASS
+FORMAT=PASS
+LINT=PASS
+TYPECHECK=PASS
+FRONTEND_BUILD=PASS
+SECRET_SCAN=PASS_NO_CREDENTIAL_MATERIAL_IN_CHANGED_FILES
+GLM53_FLASH_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=4_DEFERRED_OR_ACCEPTED
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
+READY_FOR_HUMAN_PRODUCTION_API_KEY_AND_DATA_POLICY_DECISION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_GENERIC_ADAPTER_FAILURE_AND_AUTHORIZE_ANY_FURTHER_NONPRODUCTION_DIAGNOSTICS
+```
+
+The production boundary remains closed. No deployment, Gemini model switch,
+billing/API change, firmware flash, or PR merge is authorized by this
+checkpoint.

@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 8A routing candidate; deterministic gates and AGY routing review pass; firmware not flashed)
+Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 8D1E implementation; deterministic gates and exact GLM-5.3-Flash review pass; one-shot disposable adapter probe failed generically; no production use)
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1E Gemini 3.1 Live secure backend integration
-Current status: IMPLEMENTED_TESTED_BLOCKED_EXTERNAL_REVIEW — backend-only runtime auth mode is implemented and deterministic gates pass; exact GLM 5.3 Flash independent review is unavailable.
+Current status: REVIEW_PASS_ADAPTER_PROBE_FAILED — backend-only runtime auth mode is implemented, deterministic gates pass, and exact GLM-5.3-Flash review passes; the one authorized disposable adapter probe returned a generic connection failure.
 
 Completed campaigns:
 
@@ -76,10 +76,10 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8D1E secure backend auth implementation at `0899d295fa4d35e3922dad9bac2c6e1b21431e19`; production deployment and merge remain prohibited.
+- `feature/gemini-35-live-evaluation` — PR #2 Campaign 8D1E secure backend auth implementation plus bounded corrections at `4bfce037b2d206dbabca9ab905301c088a0c1f01`; production deployment and merge remain prohibited.
 
-Last test status: PASS — 286 backend tests, 6 shared tests, frontend/backend lint, frontend/backend typecheck, format check, frontend production build, and diff check for 8D1E. Firmware was not changed or flashed.
-Last independent review verdict: `BLOCKED_EXTERNAL_REVIEW` — exact GLM 5.3 Flash reviewer transport unavailable; local GLM helper is GLM 5.2 and was not used. No Gemini 3.7 review/shadow calls occurred.
+Last test status: PASS — 297 backend tests, 6 shared tests, frontend/backend lint, frontend/backend typecheck, format check, frontend production build, and diff check for final 8D1E implementation. Firmware was not changed or flashed.
+Last independent review verdict: `PASS` — exact configured GLM-5.3-Flash/ZAI read-only high-effort review at `4bfce037`; no P0/P1/P2 findings; four non-blocking P3 observations adjudicated by Luna. No Gemini 3.7 review/shadow calls occurred.
 
 External review gate:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: resume 8D1E only after exact authenticated GLM 5.3 Flash read-only review is available; then adjudicate findings and revalidate before the human production key/data-policy boundary.
+Next automatic action: stop at the human boundary; review the generic one-shot disposable adapter failure and explicitly authorize any further non-production diagnostics before another provider call.
 
-Human action required: YES — provide or enable the exact authenticated GLM 5.3 Flash reviewer transport, then separately review/authorize any production API-key integration and data policy. Keep the key and all credential material out of chat and Git.
+Human action required: YES — decide whether to authorize further non-production adapter diagnostics after the generic connection failure, and separately review/authorize any production credential/data-policy decision. Keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -908,4 +908,56 @@ PR2_MERGED=NO
 READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=PROVIDE_OR_ENABLE_EXACT_AUTHENTICATED_GLM_5_3_FLASH_REVIEWER_THEN_RESUME_8D1E
+```
+
+## Campaign 8D1E final review and adapter checkpoint
+
+```text
+CAMPAIGN=8D1E
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+START_SHA=dc3d70e29e2cf8dbcd0fe3434889959e3f2da224
+ORIGINAL_IMPLEMENTATION_SHA=0899d295fa4d35e3922dad9bac2c6e1b21431e19
+END_SHA=4bfce037b2d206dbabca9ab905301c088a0c1f01
+STATUS=REVIEW_PASS_ADAPTER_PROBE_FAILED
+CONTROLLER=LUNA
+WORKER=SONNET_4_6
+REVIEWER=GLM_5_3_FLASH
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_EFFORT=high
+REVIEW_SANDBOX=read-only
+DEVELOPER_API_BACKEND_AUTH_MODE_IMPLEMENTED=YES
+CREDENTIAL_SOURCE=RUNTIME_SECRET_BACKEND_ONLY
+CREDENTIAL_COMMITTED=NO
+CREDENTIAL_LOGGED=NO
+CREDENTIAL_IN_IMAGE=NO
+CREDENTIAL_TO_NOTE4=NO
+PRODUCTION_DEFAULT_CHANGED=NO
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+BILLING_ACCOUNT_ATTACHED=NO
+VERTEX_API_ENABLED=NO
+GEMINI31_LIVE_ADAPTER_SYNTHETIC_PROBE=FAIL_GEMINI_LIVE_CONNECTION_FAILED
+PRIVATE_NOTE4_DATA_SENT=NO
+OUTLOOK_DATA_SENT_TO_GEMINI=NO
+CALENDAR_WRITE=NO
+BACKEND_TESTS=297_PASS
+SHARED_TESTS=6_PASS
+FORMAT=PASS
+LINT=PASS
+TYPECHECK=PASS
+FRONTEND_BUILD=PASS
+SECRET_SCAN=PASS_NO_CREDENTIAL_MATERIAL_IN_CHANGED_FILES
+GLM53_FLASH_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=4_DEFERRED_OR_ACCEPTED
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=NO
+READY_FOR_HUMAN_PRODUCTION_API_KEY_AND_DATA_POLICY_DECISION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_GENERIC_ADAPTER_FAILURE_AND_AUTHORIZE_ANY_FURTHER_NONPRODUCTION_DIAGNOSTICS
 ```
