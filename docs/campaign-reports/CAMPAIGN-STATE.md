@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1F differential diagnosis / 8D1H failure checkpoint
-Current status: DIAG_BUN_MINIMAL_TIMEOUT_NO_SANITIZED_RESULT — Node minimal control passed, Bun minimal control timed out without a sanitized result, and no Slate-specific adapter call was authorized afterward.
+Current stage: 8D1K Node Live non-production E2E
+Current status: HARD_STOP_HARNESS_TIMEOUT_NO_SANITIZED_RESULT — the first authorized Node bridge call did not return its sanitized summary, so calls 2 and 3 were not used.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop at the human boundary; review the Bun minimal timeout and explicitly authorize any further non-production runtime diagnostics before another provider call.
+Next automatic action: recover or replace the disposable Node harness, then obtain explicit authorization before using any remaining 8D1K provider-call budget.
 
-Human action required: YES — decide whether to authorize further non-production runtime diagnostics after the Bun minimal timeout, and separately review/authorize any production credential/data-policy decision. Keep the key and all credential material out of chat and Git.
+Human action required: YES — review the sanitized harness-timeout boundary before any remaining non-production provider call, and separately review/authorize any production credential/data-policy decision. Keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
