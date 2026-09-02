@@ -2590,3 +2590,112 @@ HUMAN_PROVIDER_CALL_AUTHORIZATION_REQUIRED=YES
 ```
 
 8D1K was not run. The campaign stops here at the explicit human provider-call authorization boundary.
+
+## Campaign 8D1K — Node Live non-production E2E recovery checkpoint
+
+Date: 2026-09-03 (Australia/Perth)
+Status: HARD_STOP_HARNESS_TIMEOUT_NO_SANITIZED_RESULT — no subsequent provider call was made
+
+This checkpoint recovered the repository from the Mac reboot, fetched `origin`,
+verified PR #2, and re-read the governing instructions and campaign state. The
+accepted 8D1J implementation remained exact at `90ab7cbbff39dfb4dda79cf1260611e5f26cf941`;
+the report/state checkpoint was at `b985e08214fff03d88c6e3ff81a1d85c0a02d470` before
+this report update. The current campaign instruction file was read at commit
+`08501bb3ca75739e43fbf4f54811e0243ca5d193`.
+
+### Pre-call reconciliation
+
+```text
+REMOTE_BRANCH_HEAD=b985e08214fff03d88c6e3ff81a1d85c0a02d470
+PR=2
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+ORANGE_PI_ARCH=aarch64
+DOCKER_SERVER=29.1.3
+SLATE_CONTAINER=healthy
+MYSQL_CONTAINER=healthy
+LOCAL_HEALTH=PASS
+PROTECTED_KEY_METADATA=pi:pi_MODE_600_SIZE_53
+VERTEX_ENABLED_MATCH=NONE_OBSERVED
+BILLING_CHANGED=NO
+PRODUCTION_CONTAINER_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+```
+
+The local Mac Docker daemon was unavailable after reboot. A disposable remote
+container path was used against the already healthy Orange Pi Docker daemon;
+tracked bridge/runtime source only was transferred for the harness. No
+production compose file, image, environment, or container was used. The
+protected key was mounted read-only at `/run/secrets/gemini_api_key` and was
+never printed, copied, passed as an argument, or included in the build context.
+
+### Bounded provider-call result
+
+The first and only authorized call was launched once using Node `22.22.2`, the
+exact `gemini-3.1-flash-live-preview` bridge artifact, the protected read-only
+secret mount, synthetic text `Say exactly TEST.`, and Search disabled. The
+disposable driver/container exited with code `0`, `OOM=false`, and no runtime
+error, but the legacy Docker client/SSH transport timed out before returning the
+driver's sanitized model-event/turn-complete summary. The summary could not be
+recovered from the disposable container before it entered removal.
+
+```text
+CAMPAIGN=8D1K
+CALL_1_NODE_BRIDGE_MINIMAL=HARNESS_TIMEOUT_NO_SANITIZED_RESULT
+CALL_1_PROVIDER_RESULT=NOT_OBSERVABLE
+CALL_1_MODEL=gemini-3.1-flash-live-preview
+CALL_1_INPUT=SYNTHETIC_ONLY
+CALL_1_MODEL_EVENT=NOT_OBSERVED
+CALL_1_TURN_COMPLETE=NOT_OBSERVED
+CALL_1_FAILURE_CLASS=HARNESS_SSH_DOCKER_CLIENT_TIMEOUT
+PROVIDER_CALLS_USED=1_OF_3
+CALL_2_EXACT_SLATE_ADAPTER=NOT_RUN_PREREQUISITE_NOT_PROVEN
+CALL_3_TOOL_REGISTRY=NOT_RUN_PREREQUISITE_NOT_PROVEN
+```
+
+This is not classified as provider rejection or provider success, and no source
+defect was identified. Per the 8D1K sequence, no blind retry and no second or
+third provider call was authorized after the prerequisite result was not
+proven. No Sonnet correction or fresh GLM review was required because no source
+change occurred.
+
+### Safety and cleanup
+
+```text
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+SEARCH_EXECUTED=NO
+REAL_MICROPHONE=NO
+GENERATED_AUDIO_RETAINED=NO
+CREDENTIAL_VALUE_PRINTED=NO
+CREDENTIAL_MOVED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+DISPOSABLE_HARNESS_CLEANED=YES
+SLATE_CONTAINER_AFTER_CLEANUP=healthy
+MYSQL_CONTAINER_AFTER_CLEANUP=healthy
+```
+
+### Final stage verdict
+
+```text
+CAMPAIGN=8D1K
+STATUS=HARD_STOP_HARNESS_TIMEOUT_NO_SANITIZED_RESULT
+PROVIDER_CALLS_USED=1_OF_3
+EXACT_ADAPTER_MODEL_EVENT=NOT_PROVEN
+EXACT_ADAPTER_TURN_COMPLETE=NOT_PROVEN
+READY_FOR_8D1L=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=RECOVER_OR_REPLACE_DISPOSABLE_NODE_HARNESS_AND_REAUTHORIZE_SEQUENCE_BEFORE_ANY_REMAINING_CALL
+```
+
+8D1L was not started. Production deployment/restart, production Gemini
+settings, billing, Vertex, firmware, credential movement, and PR merge remain
+closed.
