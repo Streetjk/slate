@@ -97,7 +97,7 @@ describe('GeminiConfig', () => {
     }
   });
 
-  it('fails closed for whitespace-only and symlinked credential sources', () => {
+  it('defers content validation to the runtime and rejects symlinked sources', () => {
     const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-file-'));
     const file = join(directory, 'gemini-api-key');
     const link = join(directory, 'gemini-api-key-link');
@@ -110,7 +110,7 @@ describe('GeminiConfig', () => {
         GEMINI_DEVELOPER_API_KEY_ENABLED: true,
         GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
       });
-      expect(whitespace.isConfigured()).toBe(false);
+      expect(whitespace.isConfigured()).toBe(true);
 
       writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
       // Replace the disposable file with a symlink using the test runtime API.
@@ -144,6 +144,19 @@ describe('GeminiConfig', () => {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
+  });
+
+  it('fails closed when production selects the Node Live bridge', () => {
+    const value = config({
+      NODE_ENV: 'production',
+      GEMINI_AUTH_MODE: 'vertex_adc',
+      GOOGLE_CLOUD_PROJECT: 'test-project',
+      GOOGLE_CLOUD_LOCATION: 'australia-southeast1',
+      GEMINI_LIVE_RUNTIME: 'node_bridge',
+    });
+
+    expect(value.isConfigured()).toBe(false);
+    expect(value.configurationErrorMessage()).toContain('disabled in production');
   });
 
   it('fails closed when Developer API evaluation mode is not explicitly enabled', () => {

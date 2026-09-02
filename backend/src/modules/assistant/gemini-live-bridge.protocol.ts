@@ -1,6 +1,7 @@
 import type { VoiceLanguageT } from 'shared';
 
 export const GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION = 1 as const;
+export const GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES = 2 * 1024 * 1024;
 
 export type GeminiLiveBridgeOpen = {
   type: 'open';
@@ -58,7 +59,11 @@ export class GeminiLiveBridgeProtocolError extends Error {
 }
 
 export function encodeGeminiLiveBridgeFrame(frame: GeminiLiveBridgeRequest): string {
-  return `${JSON.stringify(frame)}\n`;
+  const encoded = `${JSON.stringify(frame)}\n`;
+  if (Buffer.byteLength(encoded, 'utf8') > GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES) {
+    throw new GeminiLiveBridgeProtocolError('bridge frame is too large');
+  }
+  return encoded;
 }
 
 export function parseGeminiLiveBridgeResponse(line: string): GeminiLiveBridgeResponse {

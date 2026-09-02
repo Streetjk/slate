@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { accessSync, constants, lstatSync, readFileSync, statSync } from 'node:fs';
+import { accessSync, constants, lstatSync, statSync } from 'node:fs';
 import type { EnvT } from '../../infra/config/env.schema';
 import type { GeminiClientOptions } from './gemini.client';
 import type { NodeGeminiLiveBridgeOptions } from './gemini-live-node-bridge';
@@ -28,6 +28,10 @@ export class GeminiConfig {
 
   get apiKeyFile(): string | undefined {
     return this.cs.get('GEMINI_API_KEY_FILE', { infer: true });
+  }
+
+  get adcCredentialFile(): string | undefined {
+    return this.cs.get('GOOGLE_APPLICATION_CREDENTIALS', { infer: true });
   }
 
   get developerApiKeyEnabled(): boolean {
@@ -63,6 +67,7 @@ export class GeminiConfig {
   }
 
   isConfigured(): boolean {
+    if (this.liveRuntime === 'node_bridge' && this.nodeEnv === 'production') return false;
     return this.authMode === 'developer_api_key'
       ? this.developerApiKeyEnabled &&
           this.nodeEnv !== 'production' &&
@@ -73,6 +78,9 @@ export class GeminiConfig {
 
   configurationErrorMessage(): string {
     if (this.authMode !== 'developer_api_key') {
+      if (this.liveRuntime === 'node_bridge' && this.nodeEnv === 'production') {
+        return 'Gemini runtime is not configured: the Node Live bridge is disabled in production until separately authorized';
+      }
       return 'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode';
     }
     if (
@@ -106,6 +114,7 @@ export class GeminiConfig {
       script: this.nodeBridgeScript,
       authMode: this.authMode,
       ...(this.apiKeyFile ? { apiKeyFile: this.apiKeyFile } : {}),
+      ...(this.adcCredentialFile ? { adcCredentialFile: this.adcCredentialFile } : {}),
       ...(this.project ? { project: this.project } : {}),
       ...(this.location ? { location: this.location } : {}),
     };
@@ -116,9 +125,10 @@ export class GeminiConfig {
     try {
       if (lstatSync(this.apiKeyFile).isSymbolicLink()) return false;
       const stats = statSync(this.apiKeyFile);
-      if (!stats.isFile() || stats.size === 0) return false;
+      if (!stats.isFile() || stats.size === 0 || stats.size > 4096) return false;
+      if ((stats.mode & 0o077) !== 0) return false;
       accessSync(this.apiKeyFile, constants.R_OK);
-      return readFileSync(this.apiKeyFile, 'utf8').trim().length > 0;
+      return true;
     } catch {
       return false;
     }

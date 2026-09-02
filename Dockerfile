@@ -78,6 +78,10 @@ COPY backend/scripts ./backend/scripts
 # 9. backend 源码(改动最频繁,~300K,放最后让其他层全部命中缓存)
 COPY backend/src ./backend/src
 
+# Prove the copied Node runtime can load the official Live SDK from the final
+# Alpine image. This performs no network/provider call and opens no listener.
+RUN cd /app/backend && node --input-type=module -e "import('@google/genai/node').then(() => process.stdout.write('node-live-sdk-load-pass\\n'))"
+
 # 10. entrypoint
 COPY entrypoint.sh ./
 RUN chmod +x /app/entrypoint.sh

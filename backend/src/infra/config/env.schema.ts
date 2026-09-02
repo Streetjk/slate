@@ -66,6 +66,7 @@ export const EnvSchema = z.object({
   TTS_DEFAULT_VOICE: TtsVoice.default(DEFAULT_TTS_VOICE),
   GOOGLE_CLOUD_PROJECT: OptionalEnv(z.string().min(1)),
   GOOGLE_CLOUD_LOCATION: OptionalEnv(z.string().min(1)),
+  GOOGLE_APPLICATION_CREDENTIALS: OptionalEnv(z.string().min(1)),
   GEMINI_AUTH_MODE: z.enum(['vertex_adc', 'developer_api_key']).default('vertex_adc'),
   GEMINI_API_KEY_FILE: OptionalEnv(z.string().min(1)),
   GEMINI_DEVELOPER_API_KEY_ENABLED: BooleanEnv.default(false),

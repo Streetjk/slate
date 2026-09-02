@@ -1,10 +1,15 @@
-import { readFileSync, lstatSync, statSync, accessSync, constants } from 'node:fs';
-import { createInterface } from 'node:readline';
+import { closeSync, fstatSync, openSync, readFileSync, constants } from 'node:fs';
 import { GoogleGenAI, Modality } from '@google/genai/node';
 
 const PROTOCOL_VERSION = 1;
+const MAX_FRAME_BYTES = 2 * 1024 * 1024;
+const MAX_TEXT_BYTES = 16 * 1024;
+const MAX_MODEL_BYTES = 256;
+const MAX_SYSTEM_INSTRUCTION_BYTES = 32 * 1024;
+const MAX_CREDENTIAL_BYTES = 4096;
 const credentialFile = process.env.SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE;
 const authMode = process.env.SLATE_GEMINI_BRIDGE_AUTH_MODE;
+const expectedModel = process.env.SLATE_GEMINI_BRIDGE_MODEL;
 let session;
 let openFrame;
 let shuttingDown = false;
@@ -45,16 +50,21 @@ function readCredential() {
   if (authMode !== 'developer_api_key' || typeof credentialFile !== 'string') {
     return undefined;
   }
+  let descriptor;
   try {
-    if (lstatSync(credentialFile).isSymbolicLink()) throw new Error('symlink');
-    const stats = statSync(credentialFile);
-    if (!stats.isFile() || stats.size === 0) throw new Error('file');
-    accessSync(credentialFile, constants.R_OK);
-    const value = readFileSync(credentialFile, 'utf8').trim();
+    if (typeof constants.O_NOFOLLOW !== 'number') throw new Error('nofollow');
+    descriptor = openSync(credentialFile, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const stats = fstatSync(descriptor);
+    if (!stats.isFile() || stats.size === 0 || stats.size > MAX_CREDENTIAL_BYTES)
+      throw new Error('file');
+    if ((stats.mode & 0o077) !== 0) throw new Error('permissions');
+    const value = readFileSync(descriptor, 'utf8').trim();
     if (!value) throw new Error('empty');
     return value;
   } catch {
     throw new BridgeRuntimeError('BRIDGE_CREDENTIAL_UNAVAILABLE');
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
   }
 }
 
@@ -99,7 +109,8 @@ async function openSession(frame) {
         tools: frame.tools,
       },
       callbacks: {
-        onmessage: (message) => send({ type: 'server_message', version: PROTOCOL_VERSION, message }),
+        onmessage: (message) =>
+          send({ type: 'server_message', version: PROTOCOL_VERSION, message }),
         onerror: () => error('BRIDGE_PROVIDER_ERROR'),
         onclose: () => {
           if (!shuttingDown) send({ type: 'closed', version: PROTOCOL_VERSION });
@@ -109,7 +120,8 @@ async function openSession(frame) {
     send({ type: 'ready', version: PROTOCOL_VERSION });
   } catch (cause) {
     session = undefined;
-    if (cause?.name === 'AbortError') throw new BridgeRuntimeError('BRIDGE_PROVIDER_CONNECTION_FAILED');
+    if (cause?.name === 'AbortError')
+      throw new BridgeRuntimeError('BRIDGE_PROVIDER_CONNECTION_FAILED');
     if (cause instanceof BridgeRuntimeError) throw cause;
     throw new BridgeRuntimeError('BRIDGE_PROVIDER_CONNECTION_FAILED');
   } finally {
@@ -185,12 +197,17 @@ function isValidOpen(frame) {
     ]) &&
     typeof frame.model === 'string' &&
     frame.model.length > 0 &&
+    Buffer.byteLength(frame.model, 'utf8') <= MAX_MODEL_BYTES &&
+    typeof expectedModel === 'string' &&
+    frame.model === expectedModel &&
     (frame.language === 'en' || frame.language === 'ja') &&
     typeof frame.systemInstruction === 'string' &&
+    Buffer.byteLength(frame.systemInstruction, 'utf8') <= MAX_SYSTEM_INSTRUCTION_BYTES &&
     Number.isInteger(frame.connectTimeoutMs) &&
     frame.connectTimeoutMs > 0 &&
+    frame.connectTimeoutMs <= 120_000 &&
     typeof frame.enableWebSearch === 'boolean' &&
-    Array.isArray(frame.tools)
+    isValidTools(frame.tools)
   );
 }
 
@@ -201,7 +218,9 @@ function isValidAudio(frame) {
     frame.data.length > 0 &&
     frame.data.length <= 1_048_576 &&
     frame.data.length % 4 === 0 &&
-    /^[A-Za-z0-9+/]*={0,2}$/.test(frame.data)
+    /^[A-Za-z0-9+/]*={0,2}$/.test(frame.data) &&
+    Buffer.from(frame.data, 'base64').toString('base64') === frame.data &&
+    Buffer.from(frame.data, 'base64').byteLength % 2 === 0
   );
 }
 
@@ -210,7 +229,7 @@ function isValidText(frame) {
     hasExactKeys(frame, ['type', 'version', 'text']) &&
     typeof frame.text === 'string' &&
     frame.text.length > 0 &&
-    frame.text.length <= 16_384
+    Buffer.byteLength(frame.text, 'utf8') <= MAX_TEXT_BYTES
   );
 }
 
@@ -234,9 +253,40 @@ function isValidToolResponse(frame) {
   );
 }
 
+function isValidTools(tools) {
+  if (!Array.isArray(tools) || tools.length > 2) return false;
+  return tools.every((tool) => {
+    if (!isRecord(tool)) return false;
+    if (hasExactKeys(tool, ['googleSearch'])) {
+      return isRecord(tool.googleSearch) && Object.keys(tool.googleSearch).length === 0;
+    }
+    if (!hasExactKeys(tool, ['functionDeclarations'])) return false;
+    return (
+      Array.isArray(tool.functionDeclarations) &&
+      tool.functionDeclarations.length <= 2 &&
+      tool.functionDeclarations.every(isValidFunctionDeclaration)
+    );
+  });
+}
+
+function isValidFunctionDeclaration(declaration) {
+  return (
+    isRecord(declaration) &&
+    hasExactKeys(declaration, ['name', 'description', 'parametersJsonSchema']) &&
+    (declaration.name === 'propose_google_calendar_event' ||
+      declaration.name === 'get_btc_price') &&
+    typeof declaration.description === 'string' &&
+    Buffer.byteLength(declaration.description, 'utf8') <= 1024 &&
+    isRecord(declaration.parametersJsonSchema)
+  );
+}
+
 function hasExactKeys(value, keys) {
   const expected = new Set(keys);
-  return Object.keys(value).length === expected.size && Object.keys(value).every((key) => expected.has(key));
+  return (
+    Object.keys(value).length === expected.size &&
+    Object.keys(value).every((key) => expected.has(key))
+  );
 }
 
 function isRecord(value) {
@@ -250,16 +300,34 @@ class BridgeRuntimeError extends Error {
   }
 }
 
-const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
-for await (const line of input) {
+process.stdin.setEncoding('utf8');
+let inputBuffer = '';
+for await (const chunk of process.stdin) {
   if (shuttingDown) break;
-  try {
-    await handle(JSON.parse(line));
-  } catch (cause) {
-    error(cause instanceof BridgeRuntimeError ? cause.code : 'BRIDGE_PROTOCOL_REJECTED');
+  inputBuffer += chunk;
+  if (Buffer.byteLength(inputBuffer, 'utf8') > MAX_FRAME_BYTES) {
+    error('BRIDGE_PROTOCOL_REJECTED');
     shutdown(2);
     break;
   }
+  let newline = inputBuffer.indexOf('\n');
+  while (newline >= 0 && !shuttingDown) {
+    const line = inputBuffer.slice(0, newline).replace(/\r$/, '');
+    inputBuffer = inputBuffer.slice(newline + 1);
+    try {
+      await handle(JSON.parse(line));
+    } catch (cause) {
+      error(cause instanceof BridgeRuntimeError ? cause.code : 'BRIDGE_PROTOCOL_REJECTED');
+      shutdown(2);
+      break;
+    }
+    newline = inputBuffer.indexOf('\n');
+  }
+}
+
+if (!shuttingDown && inputBuffer.length > 0) {
+  error('BRIDGE_PROTOCOL_REJECTED');
+  shutdown(2);
 }
 
 if (!shuttingDown) shutdown(0);

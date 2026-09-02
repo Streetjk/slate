@@ -6,6 +6,7 @@ import { buildGeminiToolRegistry } from './gemini-tool-registry';
 import {
   encodeGeminiLiveBridgeFrame,
   GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+  GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES,
   parseGeminiLiveBridgeResponse,
   type GeminiLiveBridgeErrorCode,
   type GeminiLiveBridgeRequest,
@@ -18,6 +19,7 @@ export interface NodeGeminiLiveBridgeOptions {
   script: string;
   authMode: 'vertex_adc' | 'developer_api_key';
   apiKeyFile?: string;
+  adcCredentialFile?: string;
   project?: string;
   location?: string;
 }
@@ -68,7 +70,7 @@ export class NodeGeminiLiveBridge {
       resolve(this.options.executable),
       [resolve(this.options.script)],
       {
-        env: buildBridgeEnvironment(this.options),
+        env: buildBridgeEnvironment(this.options, model),
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: false,
       }
@@ -88,7 +90,7 @@ export class NodeGeminiLiveBridge {
 }
 
 class NodeGeminiLiveConnection implements GeminiLiveConnection {
-  private state: 'starting' | 'ready' | 'closed' = 'starting';
+  private state: 'starting' | 'ready' | 'disconnected' | 'closed' = 'starting';
   private hasBeenReady = false;
   private lineBuffer = '';
   private readyResolve: (() => void) | undefined;
@@ -159,7 +161,9 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   }
 
   async reconnect(): Promise<void> {
-    this.requireReady();
+    if (this.state !== 'ready' && this.state !== 'disconnected') {
+      throw new Error('Gemini Live Node bridge is not ready');
+    }
     this.state = 'starting';
     this.readyPromise = new Promise<void>((resolveReady, rejectReady) => {
       this.readyResolve = resolveReady;
@@ -177,6 +181,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     if (this.state === 'closed') return;
     this.state = 'closed';
     this.clearTimer();
+    this.rejectPendingReady('Gemini Live Node bridge was closed');
     try {
       this.process.stdin.write(
         encodeGeminiLiveBridgeFrame({
@@ -194,6 +199,10 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
 
   private handleStdout(data: Buffer | string): void {
     this.lineBuffer += data.toString();
+    if (Buffer.byteLength(this.lineBuffer, 'utf8') > GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES) {
+      this.failBeforeReady('Gemini Live Node bridge protocol was rejected');
+      return;
+    }
     let newline = this.lineBuffer.indexOf('\n');
     while (newline >= 0) {
       const line = this.lineBuffer.slice(0, newline).trim();
@@ -224,12 +233,16 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
         this.onEvent({ message: response.message as LiveServerMessage });
         return;
       case 'error':
-        this.failBeforeReady(errorMessage(response.code));
+        if (response.code === 'BRIDGE_PROVIDER_ERROR' && this.state === 'ready') {
+          this.onError(new Error(errorMessage(response.code)));
+        } else {
+          this.failBeforeReady(errorMessage(response.code));
+        }
         return;
       case 'closed':
         if (this.state === 'starting' && this.hasBeenReady) return;
         if (this.state !== 'closed') {
-          this.state = 'closed';
+          this.state = 'disconnected';
           this.clearCloseTimer();
           this.onError(new Error('Gemini Live Node bridge session closed'));
         }
@@ -258,10 +271,6 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     }
   }
 
-  private requireReady(): void {
-    if (this.state !== 'ready') throw new Error('Gemini Live Node bridge is not ready');
-  }
-
   private failBeforeReady(message: string): void {
     this.clearTimer();
     if (this.state === 'starting') {
@@ -277,8 +286,16 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     if (this.state !== 'closed') {
       this.state = 'closed';
       this.clearCloseTimer();
+      this.terminateProcess();
       this.onError(new Error(message));
     }
+  }
+
+  private rejectPendingReady(message: string): void {
+    const reject = this.readyReject;
+    this.readyResolve = undefined;
+    this.readyReject = undefined;
+    reject?.(new Error(message));
   }
 
   private clearTimer(): void {
@@ -300,12 +317,19 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   }
 }
 
-function buildBridgeEnvironment(options: NodeGeminiLiveBridgeOptions): NodeJS.ProcessEnv {
+function buildBridgeEnvironment(
+  options: NodeGeminiLiveBridgeOptions,
+  model: string
+): NodeJS.ProcessEnv {
   return {
     PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
     NODE_ENV: process.env.NODE_ENV ?? 'production',
     SLATE_GEMINI_BRIDGE_AUTH_MODE: options.authMode,
+    SLATE_GEMINI_BRIDGE_MODEL: model,
     ...(options.apiKeyFile ? { SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE: options.apiKeyFile } : {}),
+    ...(options.adcCredentialFile
+      ? { GOOGLE_APPLICATION_CREDENTIALS: options.adcCredentialFile }
+      : {}),
     ...(options.project ? { SLATE_GEMINI_BRIDGE_PROJECT: options.project } : {}),
     ...(options.location ? { SLATE_GEMINI_BRIDGE_LOCATION: options.location } : {}),
   };
