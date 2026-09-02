@@ -2428,3 +2428,165 @@ This is a genuine diagnostic boundary. The run used two of the six newly
 authorized Live sessions and did not retry the failed Bun shape. Production
 deployment, credential/data-policy changes, billing, Vertex, firmware flash,
 and PR merge remain unauthorized.
+
+## Campaign 8D1I–8D1J — Node Live bridge implementation final checkpoint
+
+Stage: 8D1I architecture selection and 8D1J implementation/review
+Date: 2026-09-03 (Australia/Perth)
+Status: PASS — NODE_LIVE_BRIDGE_IMPLEMENTED_AND_REVIEWED
+
+### Repository State
+
+Repository: Streetjk/slate
+Branch: feature/gemini-35-live-evaluation (PR #2)
+Base SHA: ca7ae0bd2276bb4318548ce61fda86cee5af1552
+Implementation head: 90ab7cbbff39dfb4dda79cf1260611e5f26cf941
+Documentation checkpoint head: pending report commit
+Upstream SHA: not changed during this checkpoint
+
+Implementation commits in this correction lineage:
+
+- `a2eba3f` — add the Node Gemini Live bridge boundary;
+- `a5f6319` — harden bridge lifecycle handling;
+- `68c196c` — enforce bridge protocol policy;
+- `004fed8` — resolve the first independent review findings;
+- `2ef807d` — resolve the second independent review findings;
+- `90ab7cb` — isolate bridge reconnect/close epochs and harden ADC references.
+
+### Harness
+
+Codex version: 0.152.0
+AGY version: not invoked for this checkpoint
+AGY model: not invoked for this checkpoint
+AGY authentication: not applicable; no AGY call was required by the current 8D1I/8D1J directive
+Independent reviewer: GLM-5.3-Flash via `zai-glm53-reviewer`
+Reviewer authentication: protected local ZAI reviewer configuration; credential value was not printed or committed
+Orchestration mode: Codex/Luna controller; Sonnet 4.6 bounded worker; GLM-5.3-Flash read-only reviewer
+
+The bounded Sonnet 4.6 read-only worker attempt produced no actionable output and made no tracked or untracked product changes. Codex remained the sole writer and integrator.
+
+### Objective
+
+Select and implement the safest supported Node Live boundary for non-production Gemini 3.1 Live evaluation without changing the production Bun runtime, making a provider call, deploying, changing production settings, or flashing NOTE4.
+
+### Work Completed
+
+The selected architecture is the safe supported Node Live boundary:
+
+- production Bun backend remains the main runtime;
+- an explicitly configured private stdio child process runs the Node 22 Gemini Live adapter for evaluation only;
+- the child has no public listener and exchanges only bounded, versioned JSONL frames over private stdin/stdout;
+- the backend remains the model/tool authority and passes no credential value in bridge frames;
+- the exact evaluation model is `gemini-3.1-flash-live-preview`;
+- Developer API credential access is evaluation-only, file-reference based, and disabled in production; no provider call was made in 8D1I or 8D1J;
+- Vertex/ADC references are accepted only from trusted mounted secret roots and are checked before spawn and again in the Node runtime with `O_NOFOLLOW`;
+- bridge epochs now gate parent responses and runtime provider callbacks so stale reconnect/close events cannot affect a replacement session;
+- the existing Outlook isolation, narrow tool allowlist, Google Calendar proposal/confirmation semantics, and NOTE4 voice session architecture remain unchanged.
+
+The previous GLM review cycles were adjudicated as follows:
+
+- GLM review of `68c196c`: REVISE, P2/P3 protocol/lifecycle findings; valid findings fixed in `004fed8`.
+- GLM review of `004fed8`: REVISE, including a P1 lifecycle issue and P2/P3 race/coverage findings; valid findings fixed in `2ef807d`.
+- GLM review of `2ef807d`: REVISE, with P1 runtime stale-session close race, P2 parent stale-response race, and P3 ADC path check/use concern; valid findings fixed in `90ab7cb`.
+- GLM exact final review of `90ab7cb`: PASS, P0=0, P1=0, P2=0, P3=0. It confirmed monotonic epoch gating, stale-session suppression, reconnect/close safety, and trusted ADC reference validation with no new defect.
+
+The first broad GLM invocation exceeded its execution window without producing a final verdict and was terminated. A correctly targeted `codex exec review --commit 90ab7cb...` run completed independently from the Slate worktree; a final restricted five-file verdict-normalization review also completed with the explicit PASS above. Both were read-only and made no repository changes.
+
+### Files Changed
+
+The implementation correction is limited to the bridge boundary and tests:
+
+- `backend/src/modules/assistant/gemini-live-bridge.protocol.ts` — epoch-bearing request/response protocol validation;
+- `backend/src/modules/assistant/gemini-live-node-bridge.ts` — parent epoch filtering and trusted ADC reference validation;
+- `backend/src/modules/assistant/gemini-live-node-bridge-runtime.mjs` — runtime epoch/session ownership, stale callback suppression, and ADC checks;
+- `backend/src/modules/assistant/gemini-live-node-bridge-session.mjs` — small epoch/session controller;
+- `backend/src/modules/assistant/gemini-live-node-bridge.test.ts` — reconnect/close race, stale callback, protocol, credential, and ADC coverage;
+- `backend/src/modules/assistant/gemini-live-bridge.protocol.test.ts` — epoch-aware protocol fixtures;
+- `backend/eslint.config.js` — explicit handling of the reviewed `.mjs` boundary files.
+
+No production deployment, firmware, PR merge, or unrelated campaign files were changed during 8D1I/8D1J.
+
+### Architecture Decisions
+
+Architecture option B was retained: Bun production runtime plus a private Node child-process adapter for the evaluation boundary. The adapter is not enabled in production, does not open a socket, does not receive Outlook data, and does not have shell, filesystem, arbitrary HTTP, email, Airtable, or calendar-write authority. The provider model remains configuration-selected and is not duplicated in firmware.
+
+The protocol now requires a positive monotonic epoch on `open` and `reconnect`, includes the epoch on all bridge responses, rejects malformed/unknown frames, and ignores responses from prior epochs. Closing invalidates the active epoch before provider cleanup. ADC credential paths are restricted to `/run/secrets/` or `/var/run/secrets/`, with regular-file, size, permission, access, and no-follow checks.
+
+### Tests
+
+Commands executed on the exact implementation head `90ab7cb`:
+
+- `bun run --cwd backend test` — PASS; 320 tests passed, 0 failed, 996 expectations, 76 files;
+- `bun run lint` — PASS; frontend and backend ESLint passed with zero warnings;
+- `bun run typecheck` — PASS; frontend and backend TypeScript checks passed;
+- `bun run format:check` — PASS; all Prettier checks passed;
+- `bun run --cwd frontend build` — PASS; Vite 8.0.11, 2,169 modules transformed;
+- `node --check backend/src/modules/assistant/gemini-live-node-bridge-runtime.mjs` — PASS;
+- `node --check backend/src/modules/assistant/gemini-live-node-bridge-session.mjs` — PASS;
+- `git diff --check` — PASS;
+- secret scan for API-key/bearer/private-key patterns outside campaign reports — PASS; no matches;
+- `docker build --check .` — PASS;
+- `docker build --platform linux/arm64 --tag slate-8d1j-final:local .` — PASS; image ID `sha256:36f51af6a1f8cce03322bee310a305cf2c6b380342e6571bee8d7d97ddab0c31`;
+- image metadata — PASS; `linux/arm64`, Node `v22.22.2`;
+- sanitized container protocol smoke with an unknown frame — PASS; bridge returned `BRIDGE_PROTOCOL_REJECTED` and made no provider call.
+
+The targeted bridge/protocol suite passed 18/18 under the normal Codex environment. GLM's read-only sandbox could not create its temporary directories, so its duplicated targeted run reported 16 pass and 2 environment-limited failures; this did not invalidate the Codex run, which executed both credential/ADC tests successfully.
+
+### AGY Review
+
+Reviewer model: GLM-5.3-Flash
+Effort level: high for the final exact-SHA review
+Verdict: PASS
+
+P0 findings: 0
+P1 findings: 0
+P2 findings: 0
+P3 findings: 0
+
+Findings accepted: prior valid lifecycle, stale-response, stale-session, and ADC path findings were fixed across `004fed8`, `2ef807d`, and `90ab7cb`; the final GLM review found no remaining finding.
+
+Findings rejected: none in the final exact-SHA review. The GLM reviewer recorded only environment restrictions: read-only inspection of the permitted bridge files/tests and no provider, credential, edit, commit, push, or deployment activity.
+
+### Security Checks
+
+OAuth-only requirement: no new provider call or credential integration was exercised; no credential value was exposed. The explicit non-production Developer API evaluation path remains gated by configuration and disabled in production.
+Static AI API keys found: none in tracked implementation files or committed logs/reports; only runtime file references and placeholders remain.
+Outlook read-only: preserved.
+Outlook exposed to Gemini: no; allowlist and dependency boundary remain free of Outlook/Microsoft capabilities.
+Google Calendar confirmation gate: preserved; the bridge only exposes the proposal tool, never a direct write.
+Secrets detected: none; no credential was read, printed, copied, committed, placed in the image, or sent to NOTE4.
+
+### Known Issues
+
+- The two normal-reviewer temporary-directory failures are environment restrictions, not implementation failures; the same tests passed in the Codex environment.
+- 8D1K provider validation has not run. No Gemini provider call was made during 8D1I or 8D1J.
+- Production deployment, production Gemini settings, billing, Vertex, firmware flash, and PR merge remain unauthorized.
+- Physical NOTE4 voice end-to-end validation remains pending the matching backend deployment and explicit flash/provider boundaries.
+
+### Deviations
+
+- No AGY call was made during this checkpoint because the governing 8D1I/8D1J directive specified GLM-5.3-Flash as the independent reviewer and explicitly prohibited provider calls; existing AGY evidence remains preserved in prior campaign sections.
+- No new provider call was made, so the 8D1K readiness state is architectural/deterministic/review-based rather than a provider-success claim.
+- The final Docker image was built for validation and removed as a disposable local image after evidence capture; production images and rollback state were not touched.
+
+### Next Recommended Stage
+
+Human authorization of 8D1K bounded, synthetic, non-production provider validation, with billing OFF and Vertex disabled. Use the reviewed Node bridge boundary and the protected runtime credential path; do not deploy or flash as part of 8D1K.
+
+### Final Stage Verdict
+
+READY
+
+```text
+CAMPAIGN=8D1J
+STATUS=NODE_LIVE_BRIDGE_IMPLEMENTED_AND_REVIEWED
+PROVIDER_CALLS=0
+BUN_BACKEND_RETAINED=YES
+NODE_LIVE_BOUNDARY_IMPLEMENTED=YES
+GLM53_REVIEW=PASS
+PRODUCTION_CHANGED=NO
+READY_FOR_8D1K_PROVIDER_VALIDATION=YES
+HUMAN_PROVIDER_CALL_AUTHORIZATION_REQUIRED=YES
+```
+
+8D1K was not run. The campaign stops here at the explicit human provider-call authorization boundary.
