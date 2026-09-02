@@ -366,3 +366,68 @@ FIRMWARE_FLASHED=NO
 READY_FOR_SLATE_VOICE_FLASH=NO
 NEXT_ACTION=HUMAN_DOCKER_RECOVERY_THEN_RESUME_BACKEND_DEPLOYMENT
 ```
+
+## Campaign 8C — Candidate Backend Deployment PASS
+
+Date: 2026-09-02 (Australia/Perth)
+Status: PASS — backend deployed; stopped at the explicit NOTE4 firmware-flash authorization boundary
+
+### Exact deployed candidate
+
+- Source commit: `121622c3bd1d23587b4aadb3a079ec85d2052278`.
+- Deployed tag: `slate-note4:campaign8-voice-routing-121622c`.
+- Local authorized image ID: `sha256:f24a88f4b91766eba7d2e3a4843bb99226026e27eabda8460fa65f3e36dcf41f`.
+- Orange Pi loaded image ID: `sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d` (`linux/arm64`, `1058736297` bytes). Docker save/load materialized a different local image ID; the deployed controller content was mechanically verified against hash `bdac7b3a68f1e0e28100fdb54b9b8f9f37987952ac9146df4281a1583860e6ac` and the image label revision is the exact source commit above.
+- Runtime delta remains limited to `backend/src/modules/devices/device-firmware.controller.ts`; no production Gemini configuration was changed.
+
+### Deployment and service verification
+
+- `slate-note4`: PASS, running candidate tag, Docker health `healthy`.
+- `slate-note4-mysql`: PASS, running `mysql:8`, Docker health `healthy`.
+- Persistent mounts preserved: `/home/pi/slate-note4-deploy/slate-data -> /data` and `/home/pi/slate-note4-deploy/mysql-data -> /var/lib/mysql`.
+- Local `/healthz`: HTTP 200, `{"status":"ok"}`.
+- Public `https://orangepi5.tail6aabef.ts.net/healthz`: HTTP 200.
+- Public Slate Web UI `/`: HTTP 200, 1451-byte HTML response.
+- Tailscale backend: `Running`; Funnel remains `https://orangepi5.tail6aabef.ts.net/` -> `http://127.0.0.1:3001`.
+- Root filesystem after deployment: `/dev/mmcblk1p1`, 14,985,895,936 bytes total, 801,562,624 bytes free, 95% used.
+- Existing NOTE4 authenticated polling continued after replacement: HTTP 201 at `00:18:55`; group manifest returned HTTP 200 and content requests returned HTTP 200. No pairing reset or identity change occurred.
+
+### Voice route and security verification
+
+- Candidate startup registered `GET /api/v1/devices/current/voice/config`.
+- Public unauthenticated GET to that endpoint: HTTP 401, `device authentication failed`.
+- Public unauthenticated WebSocket to `/api/v1/voice/websocket`: closed with code 1008, `device authentication failed`.
+- Positive authenticated device identity path: PASS through the existing live NOTE4 poll (HTTP 201) and deterministic `DeviceAuthGuard` positive test; the real device secret was not extracted or printed merely to replay the config GET.
+- Voice-config response contract: PASS in deterministic controller test; returns only `{ websocket: { path: "/api/v1/voice/websocket", version: 1 } }`.
+- Legacy vendor route `/api/v1/xiaozhi/ota/`: HTTP 404.
+- Backend source vendor scan: PASS; no Tenclass URL, activation client, or vendor activation route.
+- Gemini tool isolation, Outlook read-only boundary, and Calendar Confirm gate: preserved by the full deterministic suite.
+
+### Deterministic validation
+
+- `bun run --cwd backend test`: PASS, 273 tests / 0 failures / 849 assertions.
+- `bun run --cwd shared test`: PASS, 6 tests / 0 failures / 27 assertions.
+- Targeted controller/auth tests: PASS, 5 tests / 0 failures / 8 assertions.
+- `bun run format:check`: PASS.
+- `bun run lint`: PASS, zero errors/warnings.
+- `bun run typecheck`: PASS.
+- `bash firmware/test/no_vendor_voice_dependency_test.sh`: PASS.
+- Existing reviewed exact ESP-IDF `5.5.2` / `esp32s3` firmware build and merged artifacts remain unchanged and verified in the preceding Campaign 8A gate.
+
+### Rollback and firmware boundary
+
+```text
+CURRENT_DEPLOYED_BACKEND_SOURCE=121622c3bd1d23587b4aadb3a079ec85d2052278
+CURRENT_DEPLOYED_BACKEND_IMAGE=slate-note4:campaign8-voice-routing-121622c
+CURRENT_DEPLOYED_BACKEND_IMAGE_ID=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+ROLLBACK_IMAGE=slate-note4:rollback-before-campaign8-948934c
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+FIRMWARE_SOURCE_SHA=121622c3bd1d23587b4aadb3a079ec85d2052278
+CUSTOM_FULL_IMAGE_SHA256=eba9427558bf08eb387894bb1feac2da5ec1d0b2ab8c8785285251d65afe33
+CUSTOM_APP_IMAGE_SHA256=95ddf7e41c3dbb3aafb7d983708ccf39c131d68a89eac7f000c48adb5e99c9d4
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=true
+NEXT_ACTION=HUMAN_AUTHORIZE_FLASH_THEN_PHYSICAL_SLATE_VOICE_E2E
+```
+
+No firmware flash, PR merge, Campaign 6D change, PR #1 change, PR #3 change, billing change, credential change, or production model change was performed.

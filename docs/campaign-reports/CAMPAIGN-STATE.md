@@ -7,7 +7,7 @@ Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8B backend candidate deployment
-Current status: BLOCKED_HUMAN_DOCKER_RECOVERY — candidate image is built and the known-good rollback is preserved, but Orange Pi Docker operations hang on a stale builder snapshot. Current production containers remain healthy and compose was restored to the known-good image. No firmware was flashed.
+Current status: READY_FOR_SLATE_VOICE_FLASH — Campaign 8B candidate source `121622c3bd1d23587b4aadb3a079ec85d2052278` is deployed and healthy on Orange Pi; public/Funnel checks and existing authenticated NOTE4 polling pass. The exact reviewed firmware candidate remains unflashed pending explicit human authorization.
 
 Completed campaigns:
 
@@ -134,6 +134,39 @@ READY_FOR_SLATE_VOICE_FLASH=NO
 HUMAN_ACTION_REQUIRED=YES
 HUMAN_ACTION=ssh note4-orangepi; sudo systemctl restart docker
 NEXT_ACTION=RESUME_BACKEND_DEPLOYMENT_AFTER_DOCKER_RECOVERY
+```
+
+## Campaign 8C — Candidate Backend Deployment PASS
+
+```text
+CAMPAIGN=8C
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=READY_FOR_SLATE_VOICE_FLASH
+DEPLOYED_BACKEND_SOURCE=121622c3bd1d23587b4aadb3a079ec85d2052278
+DEPLOYED_BACKEND_IMAGE=slate-note4:campaign8-voice-routing-121622c
+DEPLOYED_BACKEND_IMAGE_ID=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+LOCAL_AUTHORIZED_IMAGE_ID=sha256:f24a88f4b91766eba7d2e3a4843bb99226026e27eabda8460fa65f3e36dcf41f
+ROLLBACK_IMAGE=slate-note4:rollback-before-campaign8-948934c
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+FUNNEL_PUBLIC_HEALTH=PASS
+PUBLIC_WEB_UI=PASS
+NOTE4_AUTHENTICATED_POLL=PASS_HTTP_201
+VOICE_CONFIG_UNAUTHENTICATED=REJECTED_HTTP_401
+VOICE_WEBSOCKET_UNAUTHENTICATED=CLOSED_1008
+VOICE_CONFIG_POSITIVE_CONTRACT_TEST=PASS
+LEGACY_VENDOR_ROUTE=404
+PERSISTENT_DATA_CHANGED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_SOURCE_SHA=121622c3bd1d23587b4aadb3a079ec85d2052278
+CUSTOM_FULL_IMAGE_SHA256=eba9427558bf08eb387894bb1feac2da5ec1d0b2ab8c8785285251d65afe33
+CUSTOM_APP_IMAGE_SHA256=95ddf7e41c3dbb3aafb7d983708ccf39c131d68a89eac7f000c48adb5e99c9d4
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=YES
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION=AUTHORIZE_FLASH_OF_EXACT_REVIEWED_CAMPAIGN8_FIRMWARE
+NEXT_ACTION=PHYSICAL_FLASH_AND_SLATE_VOICE_E2E_AFTER_AUTHORIZATION
 ```
 
 ## Campaign 6D D0 Reconciliation
