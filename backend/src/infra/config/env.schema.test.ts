@@ -42,6 +42,11 @@ describe('EnvSchema', () => {
 
     expect(parsed.GEMINI_AUTH_MODE).toBe('vertex_adc');
     expect(parsed.GEMINI_DEVELOPER_API_KEY_ENABLED).toBe(false);
+    expect(parsed.GEMINI_LIVE_RUNTIME).toBe('bun_sdk');
+    expect(parsed.GEMINI_NODE_EXECUTABLE).toBe('node');
+    expect(parsed.GEMINI_NODE_BRIDGE_SCRIPT).toBe(
+      './src/modules/assistant/gemini-live-node-bridge-runtime.mjs'
+    );
     expect(parsed.GEMINI_TEXT_MODEL).toBe('gemini-3.7-flash');
     expect(parsed.GEMINI_LIVE_MODEL).toBe('gemini-live-2.5-flash-native-audio');
     expect(parsed.GEMINI_LIVE_CONNECT_TIMEOUT_MS).toBe(15_000);

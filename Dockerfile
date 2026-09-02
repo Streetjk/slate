@@ -18,6 +18,11 @@ COPY frontend ./frontend
 COPY shared ./shared
 RUN bun run --cwd frontend build
 
+# The official Gen AI JavaScript SDK documents Node.js 20+ for its Node
+# transport. Keep this runtime isolated to the optional local Live bridge;
+# Slate itself continues to run under Bun.
+FROM node:22.22.2-alpine3.22@sha256:b77017c37f430e4466ff497058948a2f16e8b59779600d53711eeb7b999b0f4e AS gemini-live-node
+
 # ---------- runner ----------
 FROM oven/bun:1-alpine AS runner
 
@@ -32,6 +37,10 @@ ENV NODE_ENV=production \
 # HEALTHCHECK 复用 alpine 自带的 busybox wget,无需额外装包
 # 字体和位图字库由 backend/assets/ 目录随代码库入库，不依赖系统 fontconfig。
 RUN apk add --no-cache ffmpeg
+
+# Copy only the Node executable needed by the optional stdio bridge. The
+# bridge has no listener and remains disabled by the default configuration.
+COPY --from=gemini-live-node /usr/local/bin/node /usr/local/bin/node
 
 # === 按变更频率从低到高分层,客户端 docker pull 增量最小 ===
 

@@ -3,6 +3,7 @@ import type { LiveServerMessage, Session } from '@google/genai';
 import { GeminiLiveService } from './gemini-live.service';
 import type { GeminiConfig } from './gemini.config';
 import { GeminiCredentialError, type GeminiClient } from './gemini.client';
+import type { NodeGeminiLiveBridgeFactory } from './gemini-live-node-bridge';
 
 function config(): GeminiConfig {
   return {
@@ -25,6 +26,56 @@ function config(): GeminiConfig {
 }
 
 describe('GeminiLiveService', () => {
+  it('routes only explicitly selected Live sessions through the Node bridge', async () => {
+    const bridgeCalls: unknown[] = [];
+    const bridgeConnection = {
+      sendAudio: () => undefined,
+      sendText: () => undefined,
+      endAudio: () => undefined,
+      respondToToolCalls: () => undefined,
+      rejectToolCalls: () => undefined,
+      reconnect: async () => undefined,
+      close: () => undefined,
+    };
+    const bridgeFactory: NodeGeminiLiveBridgeFactory = (() => ({
+      connect: async (...args: unknown[]) => {
+        bridgeCalls.push(args);
+        return bridgeConnection;
+      },
+    })) as never;
+    const nodeConfig = {
+      ...config(),
+      liveRuntime: 'node_bridge',
+      nodeBridgeOptions: () => ({
+        executable: 'node',
+        script: './bridge.mjs',
+        authMode: 'developer_api_key' as const,
+        apiKeyFile: '/run/secrets/gemini_api_key',
+      }),
+    } as GeminiConfig;
+
+    const service = new GeminiLiveService(
+      nodeConfig,
+      () => {
+        throw new Error('Bun client must not be selected');
+      },
+      bridgeFactory
+    );
+    const connection = await service.connect('ja', () => undefined, undefined, false);
+
+    expect(connection).toBe(bridgeConnection);
+    expect(bridgeCalls).toHaveLength(1);
+    expect(bridgeCalls[0]).toEqual([
+      'ja',
+      expect.any(Function),
+      expect.any(Function),
+      'gemini-live-2.5-flash-native-audio',
+      expect.stringContaining('Slate assistant'),
+      15_000,
+      false,
+    ]);
+  });
+
   it('configures the approved live model and manages PCM session lifecycle', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const clientOptions: Record<string, unknown>[] = [];

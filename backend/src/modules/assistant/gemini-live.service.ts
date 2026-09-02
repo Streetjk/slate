@@ -9,6 +9,11 @@ import {
   type GeminiClientFactory,
 } from './gemini.client';
 import { buildGeminiToolRegistry } from './gemini-tool-registry';
+import {
+  createNodeGeminiLiveBridge,
+  NODE_GEMINI_LIVE_BRIDGE_FACTORY,
+  type NodeGeminiLiveBridgeFactory,
+} from './gemini-live-node-bridge';
 
 export interface GeminiLiveEvent {
   message: LiveServerMessage;
@@ -36,7 +41,9 @@ export class GeminiLiveService {
   constructor(
     private readonly config: GeminiConfig,
     @Inject(GEMINI_CLIENT_FACTORY)
-    private readonly clientFactory: GeminiClientFactory = createGeminiClient
+    private readonly clientFactory: GeminiClientFactory = createGeminiClient,
+    @Inject(NODE_GEMINI_LIVE_BRIDGE_FACTORY)
+    private readonly nodeBridgeFactory: NodeGeminiLiveBridgeFactory = createNodeGeminiLiveBridge
   ) {}
 
   async connect(
@@ -46,6 +53,24 @@ export class GeminiLiveService {
     enableWebSearch = true
   ): Promise<GeminiLiveConnection> {
     this.assertConfigured();
+    if (this.config.liveRuntime === 'node_bridge') {
+      try {
+        return await this.nodeBridgeFactory(this.config.nodeBridgeOptions()).connect(
+          language,
+          onEvent,
+          onError ?? (() => undefined),
+          this.config.liveModel,
+          `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
+          this.config.liveConnectTimeoutMs,
+          enableWebSearch
+        );
+      } catch (error) {
+        const normalized = normalizeError(error, 'Gemini Live connection failed');
+        this.logger.warn(normalized.message);
+        onError?.(normalized);
+        throw normalized;
+      }
+    }
     let session: Session | undefined;
     let closed = false;
     let client: ReturnType<GeminiClientFactory>;

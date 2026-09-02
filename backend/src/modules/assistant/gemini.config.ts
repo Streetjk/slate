@@ -3,8 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { accessSync, constants, lstatSync, readFileSync, statSync } from 'node:fs';
 import type { EnvT } from '../../infra/config/env.schema';
 import type { GeminiClientOptions } from './gemini.client';
+import type { NodeGeminiLiveBridgeOptions } from './gemini-live-node-bridge';
 
 export type GeminiAuthMode = 'vertex_adc' | 'developer_api_key';
+export type GeminiLiveRuntime = 'bun_sdk' | 'node_bridge';
 
 export const DEVELOPER_API_LIVE_MODEL = 'gemini-3.1-flash-live-preview';
 
@@ -30,6 +32,18 @@ export class GeminiConfig {
 
   get developerApiKeyEnabled(): boolean {
     return this.cs.get('GEMINI_DEVELOPER_API_KEY_ENABLED', { infer: true }) ?? false;
+  }
+
+  get liveRuntime(): GeminiLiveRuntime {
+    return this.cs.get('GEMINI_LIVE_RUNTIME', { infer: true });
+  }
+
+  get nodeExecutable(): string {
+    return this.cs.get('GEMINI_NODE_EXECUTABLE', { infer: true });
+  }
+
+  get nodeBridgeScript(): string {
+    return this.cs.get('GEMINI_NODE_BRIDGE_SCRIPT', { infer: true });
   }
 
   get nodeEnv(): string {
@@ -83,6 +97,18 @@ export class GeminiConfig {
       throw new Error('Gemini OAuth/ADC project and location are not configured');
     }
     return { vertexai: true, project: this.project, location: this.location };
+  }
+
+  nodeBridgeOptions(): NodeGeminiLiveBridgeOptions {
+    if (!this.isConfigured()) throw new Error(this.configurationErrorMessage());
+    return {
+      executable: this.nodeExecutable,
+      script: this.nodeBridgeScript,
+      authMode: this.authMode,
+      ...(this.apiKeyFile ? { apiKeyFile: this.apiKeyFile } : {}),
+      ...(this.project ? { project: this.project } : {}),
+      ...(this.location ? { location: this.location } : {}),
+    };
   }
 
   private hasUsableCredentialFile(): boolean {

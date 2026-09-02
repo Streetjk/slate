@@ -156,4 +156,33 @@ describe('GeminiConfig', () => {
     expect(value.isConfigured()).toBe(false);
     expect(value.configurationErrorMessage()).toContain('evaluation-only');
   });
+
+  it('exposes only non-secret Node bridge options', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-node-bridge-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'test',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_NODE_EXECUTABLE: '/usr/local/bin/node',
+        GEMINI_NODE_BRIDGE_SCRIPT: './bridge.mjs',
+      });
+
+      expect(value.liveRuntime).toBe('node_bridge');
+      expect(value.nodeBridgeOptions()).toEqual({
+        executable: '/usr/local/bin/node',
+        script: './bridge.mjs',
+        authMode: 'developer_api_key',
+        apiKeyFile: file,
+      });
+      expect(JSON.stringify(value.nodeBridgeOptions())).not.toContain('synthetic-key');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });
