@@ -619,6 +619,51 @@ Orange Pi (without sharing credentials), then rerun this read-only check. Do not
 enable `aiplatform.googleapis.com`, change billing/IAM, or make a Vertex model call
 until the readiness gate returns a valid project, ADC probe, billing, and IAM result.
 
+## Campaign 8D1 — Vertex ADC readiness recheck
+
+Date: 2026-09-02 (Australia/Perth)
+Status: BLOCKED_GCLOUD_UNAVAILABLE_RECHECK
+
+The 8D1 read-only matrix was rerun after fetching origin. `gcloud` remains
+unavailable to the Orange Pi SSH user, so no ADC token probe, project/account
+verification, API-state query, billing query, or IAM query was attempted through
+that CLI. No Vertex/Gemini model call was made.
+
+```text
+CAMPAIGN=8D1
+GCLOUD=FAIL
+GCLOUD_VERSION=UNAVAILABLE_COMMAND_NOT_FOUND
+GOOGLE_CLOUD_PROJECT=UNKNOWN_NOT_VERIFIABLE_WITHOUT_GCLOUD
+ACTIVE_GCLOUD_ACCOUNT=UNKNOWN
+ADC=FAIL_TOKEN_PROBE_NOT_RUN_GCLOUD_UNAVAILABLE
+ADC_QUOTA_PROJECT=UNKNOWN
+VERTEX_API_ENABLED=UNKNOWN
+BILLING_ENABLED=UNKNOWN
+BILLING_ACCOUNT_ATTACHED=UNKNOWN
+VERTEX_IAM=UNKNOWN
+ROOT_FREE_BYTES=2160336896
+NVME_FREE_BYTES=228057837568
+SLATE_HEALTH=PASS_HTTP_200_LOCAL
+MYSQL_HEALTH=PASS_HEALTHY_CONTAINER
+TAILSCALE=PASS_ACTIVE_ENABLED
+PUBLIC_HEALTH=PASS_HTTP_200
+FUNNEL=PASS_HTTPS_TO_127_0_0_1_3001
+NOTE4_POLLING=PASS_HTTP_201_OBSERVED_05_58_04_THROUGH_06_00_23
+VERTEX_MODEL_CALLS=0
+BILLING_CHANGED=NO
+API_ENABLEMENT_CHANGED=NO
+IAM_CHANGED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+NVME_CHANGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+VERTEX_READINESS=BLOCKED_GCLOUD_UNAVAILABLE
+```
+
+The next action remains human restoration/verification of the official gcloud
+command path, followed by another read-only readiness check. Do not enable billing
+or APIs, configure IAM, make a Vertex call, install packages, or alter NVMe/data.
+
 ## Campaign 8E0E — OpenVPN and LLVM audit / conditional removal
 
 Date: 2026-09-02 (Australia/Perth)
