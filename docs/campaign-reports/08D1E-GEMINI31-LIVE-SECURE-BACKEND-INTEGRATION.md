@@ -17,14 +17,16 @@ Codex remains controller, integrator, validator, adjudicator, sole repository wr
 
 Use:
 
-`fetch/reconcile remote -> inspect exact current architecture -> implement minimal backend auth abstraction -> deterministic validation -> Luna bounded work if useful -> Codex adjudication -> Grok 4.6 independent review -> bounded correction -> revalidation -> report/state checkpoint -> selective commit -> push -> remote verification`
+`fetch/reconcile remote -> inspect exact current architecture -> implement minimal backend auth abstraction -> deterministic validation -> Luna bounded work if useful -> Codex adjudication -> GLM-5.3-Flash independent review -> bounded correction -> revalidation -> report/state checkpoint -> selective commit -> push -> remote verification`
 
 Continue automatically through authorized steps until the final human boundary or a hard stop.
 
 Routing:
 - worker: Luna;
-- reviewer: Grok 4.6 using the existing authenticated session;
-- no silent reviewer substitution;
+- reviewer: GLM-5.3-Flash using the already configured Mac setup;
+- reviewer is read-only and must receive only the exact implementation diff plus non-secret validation evidence;
+- no silent reviewer substitution; if GLM-5.3-Flash is unavailable or its configured Mac path cannot be used safely, stop and report the blocker;
+- Codex remains sole repository writer and final adjudicator;
 - Gemini 3.7 family remains excluded from reviewer/shadow work until `2026-09-06T02:00:00+08:00`.
 
 ## Boundaries
@@ -52,7 +54,7 @@ Do not:
    - `docs/campaign-reports/CAMPAIGN-STATE.md`
    - `docs/campaign-reports/08-GEMINI-35-LIVE.md`
    - `docs/campaign-reports/08D1D-GEMINI31-LIVE-API-KEY-FREE-TIER-PROBE.md`
-   - `docs/campaign-reports/08E-TEMPORARY-LUNA-WORKER-GROK46-REVIEWER.md`
+   - this directive, including the current GLM-5.3-Flash reviewer routing.
 4. Confirm 8D1D remains the latest accepted proof: exact model auth PASS, Live session PASS, billing unattached, Vertex disabled.
 5. If newer remote work materially conflicts with this directive, stop and report the conflict.
 
@@ -182,7 +184,9 @@ This verifies the Slate adapter rather than repeating only the standalone SDK pr
 
 ## E8 — Independent review
 
-Give Grok 4.6 the exact implementation diff and validation evidence for read-only review.
+Give GLM-5.3-Flash, through the already configured Mac reviewer path, the exact implementation diff and non-secret validation evidence for read-only review.
+
+Do not send the Gemini API key, secret-file contents, OAuth tokens, private NOTE4 data, Outlook data, Calendar content, or other credentials to the reviewer.
 
 Review specifically:
 - credential handling and possible leakage;
@@ -197,6 +201,8 @@ Review specifically:
 - test sufficiency.
 
 Codex adjudicates every finding. Use Luna only for bounded correction when useful. Re-run affected and full relevant tests after corrections. Stop on unresolved P0 or persistent P1.
+
+If GLM-5.3-Flash cannot be reached through the configured Mac setup, do not substitute Grok, Gemini, Claude, or another reviewer silently. Stop with `GLM53_REVIEW_BLOCKED` and the non-secret reason.
 
 ## E9 — Durable checkpoint
 
@@ -233,7 +239,7 @@ FORMAT=<...>
 LINT=<...>
 TYPECHECK=<...>
 SECRET_SCAN=<...>
-GROK46_REVIEW=<PASS/REVISE/BLOCKED>
+GLM53_FLASH_REVIEW=<PASS/REVISE/BLOCKED>
 FIRMWARE_FLASHED=NO
 PR2_MERGED=NO
 READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=<YES/NO>
@@ -245,7 +251,7 @@ Commit only intended files, push the branch, verify remote SHA, and post a conci
 
 ## Expected successful verdict
 
-If implementation, deterministic tests, secret scan, bounded synthetic adapter probe, and Grok 4.6 review all pass:
+If implementation, deterministic tests, secret scan, bounded synthetic adapter probe, and GLM-5.3-Flash review all pass:
 
 ```text
 STATUS=READY_FOR_HUMAN_PRODUCTION_API_KEY_AND_DATA_POLICY_DECISION
