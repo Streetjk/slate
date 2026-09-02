@@ -484,6 +484,69 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0 — Orange Pi storage recovery checkpoint
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_STORAGE_EXPANSION_REQUIRED — safe cleanup exhausted; Google Cloud CLI installation not started
+
+The newest 8E worker policy was followed. Codex remained controller and production writer. No Luna worker was needed for this bounded storage audit; no Gemini 3.7 Flash review/shadow call, Claude fallback, or Grok review was made.
+
+### S0 audit
+
+- Root filesystem before cleanup: `/dev/mmcblk1p1`, 14,985,895,936 bytes total, 798,515,200 bytes free, 95% used.
+- Running required containers: `slate-note4` candidate and `slate-note4-mysql`; both healthy.
+- Required current/rollback images were retained.
+- Docker build cache: 0 bytes.
+- Deployment archives under `/home/pi`, `/tmp`, and `/var/tmp`: none found.
+- Journal usage: 16.9 MB.
+- APT archive cache: 24 KB; the broader `/var/cache/apt` was 108 MB but contained no material package archive payload.
+- One created staging container and two untagged failed-build layers were verified as disposable; no volumes were attached.
+
+### S1/S2 exact cleanup
+
+Removed only individually verified unreferenced objects:
+
+- Container `2d8f657a886d086343f1d3463e435971ddb35d1de9a505923a2362a09b6d0204` (`slate-note4-campaign8-staging`, created/stopped, no mounts).
+- Untagged image `sha256:9ee149710e71898cad37e65fad9d6a230980d5b6978f63059c72d89182699db6` (no tags, no container references).
+- Untagged image `sha256:dfdd39f6c343d3c5b4706c4f1feea3e07f9309c0ae6c94595e1a60fe6cf7cb52` (no tags, no container references).
+- Historical unreferenced image `slate-note4:campaign5-bca0581` (`sha256:52ee3c48f993e7e562665d79f8b0de495a22d2dc49ebc69a9a0fd7a3eb564398`), distinct from the preserved rollback image.
+- Unreferenced image `oven/bun:1-slim` (`sha256:e0ee68d16ccb9927bf02aa7dd8fd4bf3369ee6d46da04faa72b05ce8bfd135f6`).
+
+`sudo -n apt-get clean` was attempted but not run because sudo requires the operator password; the package archive payload was only 24 KB. No Docker broad prune, volume removal, system-file deletion, Snap change, journal vacuum, or unknown-file deletion was performed.
+
+### S3 post-cleanup verification
+
+- Root filesystem after cleanup: 14,985,895,936 bytes total, 1,697,796,096 bytes free, 89% used.
+- Required gate: **FAIL**; free space is 302,203,904 bytes below the 2,000,000,000-byte minimum.
+- `slate-note4:campaign8-voice-routing-121622c`: present, running, healthy.
+- `slate-note4:rollback-before-campaign8-948934c`: present at `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
+- `slate-note4-mysql`: running, healthy.
+- Persistent mounts unchanged: Slate data -> `/data`; MySQL data -> `/var/lib/mysql`.
+- Local and public `/healthz`: HTTP 200.
+- Public Web UI: HTTP 200.
+- Tailscale: `Running`; Funnel remains `https://orangepi5.tail6aabef.ts.net/` -> `http://127.0.0.1:3001`.
+- NOTE4 authenticated polling: PASS; latest observed post-cleanup poll HTTP 201 at `02:16:41`.
+- Production `.env`, Gemini settings, OAuth state, device pairing/server address/secret, firmware artifacts, and rollback evidence were not changed.
+
+### 8E0 boundary
+
+```text
+ORANGEPI_STORAGE_GATE=FAIL_BELOW_2GB
+READY_FOR_GCLOUD_INSTALL=NO
+HUMAN_STORAGE_EXPANSION_REQUIRED=YES
+FREE_SPACE_BYTES=1697796096
+MINIMUM_FREE_SPACE_BYTES=2000000000
+FREE_SPACE_DEFICIT_BYTES=302203904
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+GEMINI37_BLACKOUT_EXPIRES=2026-09-06T02:00:00+08:00
+LUNA_WORKER=NOT_USED_TARGETED_STORAGE_AUDIT
+FIRMWARE_FLASHED=NO
+NEXT_ACTION=HUMAN_PROVIDE_STORAGE_EXPANSION_OR_APPROVED_SAFE_SPACE_THEN_RESUME_8E0
+```
+
+Do not install Google Cloud CLI or begin interactive ADC setup until at least 2.0 GB free space is available. Do not delete current/rollback images, MySQL/Slate data, Tailscale state, production environment, or unknown filesystem data to bridge the deficit.
+
 ## Campaign 8D1 — Vertex/ADC human setup boundary
 
 Date: 2026-09-02 (Australia/Perth)
