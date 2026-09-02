@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8E0F libllvm19 post-removal verification
-Current status: PASS_STORAGE_GATE_HUMAN_VERTEX_ADC_SETUP_REMAINS — libllvm19 removal verified, root free space is 2,164,400,128 bytes, protected graphics packages and libllvm20 remain installed, and no NVMe or Slate/MySQL data changed.
+Current stage: 8D1 Vertex ADC readiness check
+Current status: BLOCKED_GCLOUD_UNAVAILABLE — Orange Pi health is good, but gcloud is absent from non-interactive and login-shell PATHs, so ADC/project/API/billing/IAM readiness cannot be verified without installing or restoring the CLI. No configuration or model call was made.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for the human Google Cloud/Vertex ADC setup boundary; do not run apt autoremove or begin NVMe migration.
+Next automatic action: stop for the human restoration/verification of the official gcloud command path; do not enable APIs, change billing/IAM, make a Vertex call, run apt autoremove, or begin NVMe migration.
 
-Human action required: YES — choose the approved Google Cloud project, confirm billing/API authorization, and complete official ADC login before resuming 8D1. Do not run apt autoremove or move Slate/MySQL data. Never send credentials in chat or reports.
+Human action required: YES — restore or verify the official gcloud CLI on the Orange Pi, without sharing credential material, then resume the read-only 8D1 check. Do not run apt autoremove or move Slate/MySQL data. Never send credentials in chat or reports.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -516,6 +516,42 @@ HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES
 GEMINI37_REVIEW_CALLS=0
 GEMINI37_SHADOW_CALLS=0
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D1
+```
+
+## Campaign 8D1 — Vertex ADC readiness check
+
+```text
+CAMPAIGN=8D1
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=BLOCKED_GCLOUD_UNAVAILABLE
+GCLOUD=FAIL
+GCLOUD_VERSION=UNAVAILABLE_COMMAND_NOT_FOUND
+GOOGLE_CLOUD_PROJECT=UNKNOWN
+ACTIVE_GCLOUD_ACCOUNT=UNKNOWN
+ADC=FAIL_TOKEN_PROBE_NOT_RUN_GCLOUD_UNAVAILABLE
+ADC_QUOTA_PROJECT=UNKNOWN
+VERTEX_API_ENABLED=UNKNOWN
+BILLING_ENABLED=UNKNOWN
+BILLING_ACCOUNT_ATTACHED=UNKNOWN
+VERTEX_IAM=UNKNOWN
+ROOT_FREE_BYTES=2161053696
+NVME_FREE_BYTES=228058820608
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+PUBLIC_HEALTH=PASS
+NOTE4_POLLING=PASS
+VERTEX_MODEL_CALLS=0
+BILLING_CHANGED=NO
+API_ENABLEMENT_CHANGED=NO
+IAM_CHANGED=NO
+PRODUCTION_GEMINI_SETTINGS_CHANGED=NO
+FIRMWARE_FLASHED=NO
+NVME_CHANGED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+VERTEX_READINESS=BLOCKED_GCLOUD_UNAVAILABLE
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_RESTORE_OFFICIAL_GCLOUD_COMMAND_PATH_THEN_RESUME_READINESS_CHECK
 ```
 
 ## Campaign 8E0E — OpenVPN and LLVM audit / conditional removal
