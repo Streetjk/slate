@@ -484,6 +484,190 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0C — NordVPN removal and bounded NVMe Slate assessment
+
+Date: 2026-09-02 (Australia/Perth)
+Status: NVME_ASSESSMENT_COMPLETE_NORDVPN_REMOVAL_BLOCKED_SUDO
+
+This stage performed the authorized ownership check, a no-write NVMe/Deluge/Slate
+assessment, and post-check health observation. Slate/MySQL data was not moved. The
+NVMe was not repartitioned, formatted, remounted, or otherwise changed. Deluge,
+Deluge Web, Tailscale, Funnel, Docker, MySQL, and persistent deployment data were
+preserved.
+
+### N0/N1 NordVPN evidence
+
+Ownership is unambiguous: `nordvpnd.service` is supplied by the installed `nordvpn`
+package (`4.0.0`, `93,741 KB` installed size). The reverse systemd dependency output
+showed only the service/graphical-target relationship; no Slate or Tailscale unit
+depends on NordVPN. NordVPN was active and enabled at inspection time, and
+`/usr/bin/nordvpn` was present.
+
+The narrow removal could not be executed because passwordless sudo is unavailable:
+
+```text
+PASSWORDLESS_SUDO=NO
+NORDVPN_REMOVED=BLOCKED
+NORDVPN_BYTES_RECLAIMED=0
+```
+
+No stop, disable, purge, or residual-file deletion was attempted. The human command
+to execute locally on the Orange Pi, if removal is still desired, is:
+
+```bash
+sudo systemctl stop nordvpnd.service || true
+sudo systemctl disable nordvpnd.service || true
+sudo apt-get remove --purge -y nordvpn
+```
+
+The dry-run showed only `nordvpn*` would be removed; `apt autoremove` was not run and
+no shared networking package was selected. A post-removal health check remains
+pending the human sudo action.
+
+### Post-check health before any mutation
+
+```text
+SLATE_LOCAL_HEALTH=HTTP_200
+SLATE_PUBLIC_HEALTH=HTTP_200
+SLATE_CONTAINER=healthy
+MYSQL_CONTAINER=healthy
+TAILSCALE=RUNNING
+FUNNEL=https://orangepi5.tail6aabef.ts.net -> http://127.0.0.1:3001
+NOTE4_AUTHENTICATED_POLL=previously healthy; no pairing or backend data changed
+ROOT_FREE_BYTES_BEFORE_REMOVAL=1943691264
+```
+
+### V0 NVMe and Deluge evidence
+
+```text
+NVME_SOURCE=/dev/nvme0n1p1
+NVME_PARENT=/dev/nvme0n1
+NVME_FILESYSTEM=ext4
+NVME_UUID=50ae719d-2641-4ea5-9d72-8795dbfd0ea3
+NVME_MOUNT=/mnt/ssd-tmp
+NVME_MOUNT_OPTIONS=rw,noatime,nodiratime,stripe=32
+NVME_TOTAL_BYTES=250903556096
+NVME_USED_BYTES=19356737536
+NVME_FREE_BYTES=218727120896
+NVME_USE_PERCENT=9%
+HDD_ARCHIVE=/mnt/hdd-archive
+HDD_ARCHIVE_FREE_BYTES=1695924580352
+```
+
+`/etc/fstab` mounts the NVMe and HDD by UUID with `nofail`; no repartition or
+filesystem operation was performed. The NVMe is ext4. No quota/project-quota
+mount option was present; `xfs_quota` and `zfs` were unavailable. The presence of
+the `btrfs` utility does not change the ext4 filesystem type and no btrfs mechanism
+was applicable.
+
+Deluge's active configuration was read without printing credentials:
+
+```text
+DELUGE_SERVICE_USER=pi
+DELUGE_CONFIG=/home/pi/.config/deluge
+DELUGE_DOWNLOAD_PATH=/mnt/ssd-tmp/incomplete/
+DELUGE_COMPLETED_PATH=/mnt/hdd-archive/Downloads/
+DELUGE_TORRENT_FILES_PATH=/home/pi/Downloads
+DELUGE_MAX_ACTIVE_DOWNLOADING=10
+DELUGE_MAX_ACTIVE_SEEDING=4
+DELUGE_MAX_CONNECTIONS_GLOBAL=200
+DELUGE_DOWNLOAD_LIMIT=-1
+DELUGE_UPLOAD_LIMIT=-1
+DELUGE_WEB_PORT=8112
+DELUGE_WEB_HTTPS=false
+DELUGE_BUFFER_ROLE=CONFIRMED
+DELUGE_BUFFER_CURRENT_USAGE_BYTES=20653214069
+DELUGE_BUFFER_CURRENT_FILE_COUNT=12
+```
+
+The current NVMe footprint is concentrated in the Deluge incomplete buffer:
+approximately 20.65 GB across 12 files. No torrent names or private torrent
+metadata are included in this report. The top-level `lost+found` directory was
+negligible.
+
+### Slate/MySQL sizing evidence
+
+The existing bind mounts remain on the root filesystem:
+
+```text
+SLATE_DATA=/home/pi/slate-note4-deploy/slate-data -> /data
+SLATE_DATA_FILE_BYTES=0
+SLATE_DATA_DIRECTORY_USAGE=116KB
+MYSQL_DATA=/home/pi/slate-note4-deploy/mysql-data -> /var/lib/mysql
+MYSQL_DATA_DIRECTORY_USAGE=239697920
+SLATE_DATA_MOVE_EXECUTED=NO
+```
+
+The current data footprint is therefore approximately 229 MiB for MySQL plus
+negligible Slate blob data. This does not justify moving Docker's entire data-root,
+which remains explicitly out of scope.
+
+### V1/V2 bounded allocation assessment
+
+| Option | Root bytes potentially reclaimed | NVMe footprint | Deluge impact | Rollback/downtime | Assessment |
+|---|---:|---:|---|---|---|
+| 1. Dedicated `/mnt/ssd-tmp/slate-note4/` with an application cap and free-space guard | ~240 MB currently; more future growth headroom | Bounded, recommended cap 10 GB | Preserve current incomplete path and reserve at least 180 GB free | Planned bind-mount migration; downtime and verified backup required | Preferred future migration if root pressure warrants it |
+| 2. Keep Slate/MySQL on root; use NVMe only for backups/staging | 0 MB | None for runtime data | No impact | Simplest; no downtime | Safest current choice because current Slate/MySQL footprint is small |
+| 3. Enable filesystem-native quota/subvolume | Potentially similar to option 1 | Bounded if supported | No path change, but requires filesystem/config validation | Remount or service maintenance may be required | Not applicable now: filesystem is ext4 and quota is not enabled |
+
+Recommendation is a future **directory-policy** model, not a partition or Docker
+data-root migration:
+
+```text
+RECOMMENDED_SLATE_NVME_MODEL=directory_policy
+RECOMMENDED_SLATE_NVME_CAP_GB=10
+RECOMMENDED_DELUGE_RESERVED_FREE_GB=180
+DELUGE_CURRENT_BUFFER_BYTES=20653214069
+```
+
+The 10 GB cap is an explicit future policy target derived from the observed
+approximately 229 MiB MySQL footprint and negligible Slate blob footprint, with
+substantial room for growth. The 180 GB Deluge reserve is well above the current
+20.65 GB buffer and leaves a large safety margin on the 218.7 GB currently free
+NVMe. These are recommendations only; no directory, quota, bind mount, monitor,
+or application policy was created in this stage.
+
+If later authorized, the smallest migration would be a verified MySQL logical
+backup, clean service shutdown, migration of only the two Slate bind-mounted data
+directories into the bounded Slate directory, bind-mount/config update, restore or
+file validation, and rollback-tested restart. Moving only the MySQL directory could
+reclaim about 229 MiB but introduces database downtime and recovery risk; option 2
+is preferable until root pressure materially increases.
+
+### V3 checkpoint
+
+```text
+NORDVPN_REMOVED=BLOCKED
+NORDVPN_BYTES_RECLAIMED=0
+TAILSCALE_AFTER_NORDVPN=NOT_RUN_REMOVAL_BLOCKED
+SLATE_HEALTH_AFTER_NORDVPN=NOT_RUN_REMOVAL_BLOCKED
+PUBLIC_HEALTH_AFTER_NORDVPN=NOT_RUN_REMOVAL_BLOCKED
+ROOT_FREE_BYTES_AFTER_NORDVPN=NOT_APPLICABLE
+NVME_SOURCE=/dev/nvme0n1p1
+NVME_FILESYSTEM=ext4
+NVME_TOTAL_BYTES=250903556096
+NVME_USED_BYTES=19356737536
+NVME_FREE_BYTES=218727120896
+DELUGE_BUFFER_ROLE=CONFIRMED
+DELUGE_BUFFER_CURRENT_USAGE_BYTES=20653214069
+RECOMMENDED_SLATE_NVME_MODEL=directory_policy
+RECOMMENDED_SLATE_NVME_CAP_GB=10
+RECOMMENDED_DELUGE_RESERVED_FREE_GB=180
+SLATE_DATA_MOVE_EXECUTED=NO
+NVME_REPARTITIONED=NO
+DOCKER_DATA_ROOT_MOVED=NO
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+FIRMWARE_FLASHED=NO
+```
+
+### Human boundary
+
+This stage stops for the sudo action and review. Do not move Slate/MySQL data,
+change Deluge paths, enable quotas, move Docker data-root, repartition/format the
+NVMe, install gcloud, change production Gemini settings, or flash NOTE4 until a
+separate explicit authorization is provided.
+
 ## Campaign 8E0B — Orange Pi service/package inventory
 
 Date: 2026-09-02 (Australia/Perth)

@@ -6,8 +6,8 @@ Last known good SHA: `76d32460a4c5d6d6a3319af4b8c4b30abfc652bf` (PR #2 Campaign 
 Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8E0B Orange Pi service/package inventory
-Current status: INVENTORY_COMPLETE_PENDING_HUMAN_REVIEW — read-only host, service, socket, package, filesystem, Docker, Snap, and health inventory completed. No service or data was changed. Root free space is 1,943,932,928 bytes.
+Current stage: 8E0C NordVPN removal and bounded NVMe Slate assessment
+Current status: NVME_ASSESSMENT_COMPLETE_NORDVPN_REMOVAL_BLOCKED_SUDO — NordVPN ownership was confirmed but removal requires the Orange Pi sudo password. NVMe/Deluge/Slate sizing is complete; no Slate/MySQL data was moved.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop for human review of the 8E0B inventory; do not remove, disable, resize, prune, or otherwise mutate Orange Pi state without a new explicit directive.
+Next automatic action: stop for human review and the minimal authorized NordVPN sudo action; do not move Slate/MySQL data or alter NVMe/Deluge configuration.
 
-Human action required: YES — review the complete 8E0B Orange Pi inventory before authorizing any future cleanup or service change. Never send credentials in chat or reports.
+Human action required: YES — run the authorized NordVPN removal command with local sudo if desired, then review the 8E0C assessment before any future data move. Never send credentials in chat or reports.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -454,4 +454,38 @@ GEMINI37_SHADOW_CALLS=0
 NO_REMOVAL_OR_DISABLE=YES
 HUMAN_REVIEW_REQUIRED=YES
 NEXT_ACTION=HUMAN_REVIEW_8E0B_INVENTORY_THEN_AUTHORIZE_ANY_FUTURE_ACTION
+```
+
+## Campaign 8E0C — NordVPN removal and bounded NVMe Slate assessment
+
+```text
+CAMPAIGN=8E0C
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+STATUS=NVME_ASSESSMENT_COMPLETE_NORDVPN_REMOVAL_BLOCKED_SUDO
+NORDVPN_REMOVED=BLOCKED
+NORDVPN_BYTES_RECLAIMED=0
+NORDVPN_OWNERSHIP=CONFIRMED_PACKAGE_AND_SERVICE
+TAILSCALE_AFTER_NORDVPN=NOT_RUN_REMOVAL_BLOCKED
+SLATE_HEALTH_AFTER_NORDVPN=NOT_RUN_REMOVAL_BLOCKED
+PUBLIC_HEALTH_AFTER_NORDVPN=NOT_RUN_REMOVAL_BLOCKED
+ROOT_FREE_BYTES_BEFORE_REMOVAL=1943691264
+ROOT_FREE_BYTES_AFTER_NORDVPN=NOT_APPLICABLE
+NVME_SOURCE=/dev/nvme0n1p1
+NVME_FILESYSTEM=ext4
+NVME_TOTAL_BYTES=250903556096
+NVME_USED_BYTES=19356737536
+NVME_FREE_BYTES=218727120896
+DELUGE_BUFFER_ROLE=CONFIRMED
+DELUGE_BUFFER_CURRENT_USAGE_BYTES=20653214069
+RECOMMENDED_SLATE_NVME_MODEL=directory_policy
+RECOMMENDED_SLATE_NVME_CAP_GB=10
+RECOMMENDED_DELUGE_RESERVED_FREE_GB=180
+SLATE_DATA_MOVE_EXECUTED=NO
+NVME_REPARTITIONED=NO
+DOCKER_DATA_ROOT_MOVED=NO
+FIRMWARE_FLASHED=NO
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_RUN_AUTHORIZED_NORDVPN_REMOVAL_WITH_LOCAL_SUDO_THEN_REVIEW_BEFORE_ANY_DATA_MOVE
 ```
