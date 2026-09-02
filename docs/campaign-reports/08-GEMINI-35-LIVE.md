@@ -484,6 +484,138 @@ READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
 NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
 ```
 
+## Campaign 8E0E — OpenVPN and LLVM audit / conditional removal
+
+Date: 2026-09-02 (Australia/Perth)
+Status: AUDIT_COMPLETE_LIBLLVM19_SAFE_PENDING_SUDO_OPENVPN_KEPT
+
+This stage was limited to the OpenVPN/LLVM audit and conditional package-removal
+decision. No NVMe operation, Slate/MySQL data move, Docker data-root change, service
+disablement, firmware flash, gcloud installation, or production configuration change
+was performed.
+
+### A0 baseline
+
+```text
+ROOT_FREE_BYTES=2039873536
+ROOT_TOTAL_BYTES=14985895936
+SLATE_CONTAINER=healthy
+MYSQL_CONTAINER=healthy
+SLATE_LOCAL_HEALTH=HTTP_200
+SLATE_PUBLIC_HEALTH=HTTP_200
+TAILSCALE=active
+FUNNEL=active_https_to_127_0_0_1_3001
+NOTE4_POLLING=HTTP_201 observed at 03:11:09, 03:12:20, and 03:13:23
+NVME_CHANGED=NO
+```
+
+### A1 OpenVPN audit
+
+OpenVPN ownership and usage evidence:
+
+```text
+OPENVPN_PACKAGE=openvpn 2.6.14-0ubuntu0.24.04.1 / 1844 KB
+NETWORK_MANAGER_OPENVPN=installed 1.10.2-4build2 / 320 KB
+OPENVPN_SERVICE=active exited target; enabled
+OPENVPN_CLIENT_SERVER_UNITS=none active or loaded
+OPENVPN_PROCESSES=none
+OPENVPN_PROFILES=/etc/openvpn/update-resolv-conf only (package helper; no user profile)
+NETWORK_MANAGER_VPN_CONNECTIONS=none reported
+OPENVPN_SOCKETS=none
+SLATE_OR_TAILSCALE_DEPENDENCY=none observed
+```
+
+The strict standalone removal simulation was:
+
+```text
+apt-get -s remove --purge openvpn
+would remove: network-manager-openvpn*, openvpn*
+```
+
+Because the simulation selects the additional installed `network-manager-openvpn`
+package, the exact 8E0E safe-removal gate does not pass for standalone OpenVPN.
+OpenVPN is therefore retained rather than broadening the removal scope:
+
+```text
+OPENVPN=KEEP_UNCERTAIN
+OPENVPN_REMOVED=NO
+```
+
+No OpenVPN or NetworkManager package was changed. No `apt autoremove` was run.
+
+### A2 LLVM audit
+
+`libllvm19` and `libllvm20` were evaluated independently. Both are marked automatic,
+but only `libllvm19` is orphaned under the strict simulation:
+
+```text
+LIBLLVM19=SAFE_TO_REMOVE
+LIBLLVM19_INSTALLED_SIZE_KB=121821
+LIBLLVM19_REVERSE_DEPENDENTS=none reported
+LIBLLVM19_REMOVE_SIMULATION=only libllvm19
+LIBLLVM19_ACTIVE_PROCESS_MAPPING=none observed
+LIBLLVM19_DIRECT_INSTALLED_DEPENDENTS=none reported
+
+LIBLLVM20=KEEP_REQUIRED
+LIBLLVM20_INSTALLED_SIZE_KB=135750
+LIBLLVM20_REVERSE_DEPENDENTS=mesa-vulkan-drivers, mesa-libgallium
+LIBLLVM20_REMOVE_SIMULATION=removes Mesa, X/desktop/VNC, WebKit, FFmpeg and other installed packages
+LIBLLVM20_ACTIVE_PROCESS_MAPPING=none observed, but dependency gate fails
+LIBLLVM20_DIRECT_INSTALLED_DEPENDENTS=mesa-libgallium, mesa-vulkan-drivers
+```
+
+`apt-get -s autoremove` proposed `libglapi-mesa`, `libllvm19`, and
+`libxcb-dri2-0`; that broader operation was not executed. `libglapi-mesa` and
+`libxcb-dri2-0` were not independently authorized targets in this stage and remain
+installed. `libllvm20` was not removed because its simulation would damage protected
+graphics/desktop dependencies.
+
+`libllvm19` passes the narrow removal gate, but `sudo -n true` is unavailable. The
+minimal human command is:
+
+```bash
+sudo apt-get remove --purge -y libllvm19
+```
+
+It must be followed by a fresh health check; do not append `apt autoremove`.
+Until that human sudo action occurs:
+
+```text
+LIBLLVM19_REMOVAL_EXECUTED=NO_SUDO_REQUIRED
+LIBLLVM20_REMOVED=NO
+```
+
+### A3/A4 checkpoint
+
+```text
+OPENVPN=KEEP_UNCERTAIN
+LIBLLVM19=SAFE_TO_REMOVE
+LIBLLVM20=KEEP_REQUIRED
+ROOT_FREE_BYTES=2039873536
+SLATE_HEALTH=PASS
+MYSQL_HEALTH=PASS
+TAILSCALE=PASS
+FUNNEL=PASS
+NOTE4_POLLING=PASS
+NVME_CHANGED=NO
+SLATE_DATA_MOVE_EXECUTED=NO
+DOCKER_DATA_ROOT_MOVED=NO
+APT_AUTOREMOVE_EXECUTED=NO
+FIRMWARE_FLASHED=NO
+```
+
+The root storage gate remains above 2 GB but with limited headroom. After the
+separate `libllvm19` human action and recheck, reassess whether the remaining headroom
+is sufficient. Do not begin NVMe migration automatically from this stage; preserve
+the existing bounded directory-policy recommendation if future growth requires it.
+
+### Human boundary
+
+This audit stops for the minimal `libllvm19` sudo action and review. OpenVPN remains
+installed because its standalone removal simulation failed the strict gate. No NVMe,
+Slate/MySQL data, Deluge paths, Tailscale state, or protected graphics packages were
+changed.
+
 ## Campaign 8E0D — NordVPN post-removal verification
 
 Date: 2026-09-02 (Australia/Perth)
