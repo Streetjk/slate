@@ -431,3 +431,55 @@ NEXT_ACTION=HUMAN_AUTHORIZE_FLASH_THEN_PHYSICAL_SLATE_VOICE_E2E
 ```
 
 No firmware flash, PR merge, Campaign 6D change, PR #1 change, PR #3 change, billing change, credential change, or production model change was performed.
+
+## Campaign 8D0 — Pre-flash readiness checkpoint
+
+Date: 2026-09-02 (Australia/Perth)
+Status: HUMAN_VERTEX_ADC_SETUP_REQUIRED — pre-flash checks passed; firmware was not flashed
+
+### Live backend checks
+
+- Docker Server `29.1.3`, `overlayfs`: PASS.
+- `slate-note4` candidate container: `healthy`.
+- `slate-note4-mysql`: `healthy`.
+- Persistent mounts remained `/home/pi/slate-note4-deploy/slate-data -> /data` and `/home/pi/slate-note4-deploy/mysql-data -> /var/lib/mysql`.
+- Public `https://orangepi5.tail6aabef.ts.net/healthz`: HTTP 200.
+- Public Slate Web UI `/`: HTTP 200.
+- Tailscale backend: `Running`.
+- Funnel: `https://orangepi5.tail6aabef.ts.net/` -> `http://127.0.0.1:3001`.
+- Latest post-deployment authenticated NOTE4 poll observed: HTTP 201 at `00:18:55`; no new poll was observed during the final 20-minute idle observation window. No pairing reset or identity change was performed.
+- Candidate voice-config route remains registered; unauthenticated GET returns HTTP 401.
+- Unauthenticated voice WebSocket closes with code 1008, `device authentication failed`.
+- Preserved rollback image remains present: `slate-note4:rollback-before-campaign8-948934c`, ID `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
+- Root filesystem: 14,985,895,936 bytes total; 801,316,864 bytes available; 95% used. No broad cleanup was performed.
+
+### Vertex/ADC readiness
+
+The Orange Pi candidate container has `GOOGLE_CLOUD_PROJECT=UNSET`, `GOOGLE_CLOUD_LOCATION=UNSET`, and `GOOGLE_APPLICATION_CREDENTIALS=UNSET`. The host has no `gcloud` executable and no checked ADC file at the standard user locations. No token, credential file, key, or secret was printed or modified. No Gemini Live probe was attempted because approved ADC is unavailable.
+
+`HUMAN_VERTEX_ADC_SETUP_REQUIRED=YES`.
+
+Minimal operator action on the approved workstation/Orange Pi is to install the official Google Cloud CLI if absent, then complete its interactive browser flow:
+
+```text
+gcloud auth application-default login
+```
+
+The command creates local ADC for client libraries; the operator must configure the approved project/location through the normal deployment process without pasting credentials into chat, Git, logs, or reports. See the [official ADC command reference](https://docs.cloud.google.com/sdk/gcloud/reference/auth/application-default) and [official ADC setup guidance](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc). Do not use a Gemini API key or service-account key file as a workaround.
+
+### 8D0 state boundary
+
+```text
+SLATE_VOICE_ROUTING_PHYSICAL=NOT_RUN
+TENCLASS_ACTIVATION_PHYSICAL=NOT_RUN
+VERTEX_ADC_LIVE=BLOCKED_HUMAN_AUTH
+EN_VOICE_E2E=NOT_RUN
+JP_VOICE_E2E=NOT_RUN
+SEARCH_E2E=NOT_RUN
+CALENDAR_PROPOSAL_E2E=NOT_RUN
+CALENDAR_CONFIRM_WRITE_E2E=NOT_RUN
+FIRMWARE_ROLLBACK_REQUIRED=NO
+FIRMWARE_FLASHED=NO
+READY_FOR_SLATE_VOICE_FLASH=NO_PENDING_VERTEX_ADC
+NEXT_ACTION=HUMAN_COMPLETE_APPROVED_VERTEX_ADC_SETUP_THEN_RESUME_8D0
+```
