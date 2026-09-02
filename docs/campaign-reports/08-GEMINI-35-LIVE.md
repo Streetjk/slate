@@ -2786,3 +2786,18 @@ NEXT_ACTION=HUMAN_REAUTHORIZE_REMAINING_8D1K_PROVIDER_CALLS
 The remaining two 8D1K provider calls are intentionally unused. This stage
 stops at the explicit human reauthorization boundary; 8D1L and 8D1M were not
 started.
+
+### Fresh-fetch revalidation
+
+Following a fresh `git fetch origin --prune`, the provider-disabled proof was
+rerun with new uniquely named containers
+`slate-8d1kr-success-1788393411039268000` and
+`slate-8d1kr-failure-1788393413112053000`. The success record recovered as
+`PASS`, exit `0`; the deterministic failure record recovered as `FAIL`, exit
+`23`, with `MOCK_PROVIDER_DISABLED`. Both had `OOM=false`, provider event
+fields `NOT_APPLICABLE`, and
+`RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES` after deliberate termination
+of their `docker wait` launcher. Separate polling, wait, inspect, result-copy,
+and log commands verified the records before cleanup. No provider call or
+credential mount/read occurred, the reviewed bridge remained unchanged, and
+production Slate/MySQL remained healthy and untouched.

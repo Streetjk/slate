@@ -3,7 +3,7 @@
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
 Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 8D1E implementation; deterministic gates and exact GLM-5.3-Flash review pass; overnight Node control passed and Bun control timed out without a sanitized result; no production use)
-Campaign instructions SHA: `3446979b695afd40c920af1610f7c0659df4dbee`
+Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-R disposable Node harness recovery
@@ -1161,3 +1161,16 @@ and healthy, each had zero restarts, and local `/healthz` returned
 `{"status":"ok"}`. The reviewed bridge source remained unchanged. No Gemini
 provider call, credential read/mount, production mutation, billing/Vertex
 change, firmware flash, or PR merge occurred in this stage.
+
+### Fresh-fetch revalidation
+
+After a new `git fetch origin --prune`, the same zero-provider recovery proof
+was rerun with new containers `slate-8d1kr-success-1788393411039268000` and
+`slate-8d1kr-failure-1788393413112053000`. Both containers used the isolated
+mock shape, had no secret mount, survived an intentionally interrupted
+`docker wait` launcher, and passed separate polling, wait, inspect, result,
+and log verification. The success result was exit `0`/`PASS`; the deterministic
+failure result was exit `23`/`FAIL` with `MOCK_PROVIDER_DISABLED`. Both reported
+`RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES`. Cleanup occurred after
+verification, and the postcheck again found production Slate/MySQL healthy
+with zero restarts and `/healthz` status `ok`.
