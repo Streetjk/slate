@@ -565,3 +565,41 @@ The only intended normal human boundaries are:
 2. after successful campaign completion, decide whether to authorize a new bounded exact-adapter real-provider validation.
 
 No real Gemini provider call is authorized by this directive.
+
+## 20. E1 reviewer-authentication hard stop
+
+After fetching origin, the exact active branch reconciled cleanly at
+`6e23d88d8a3fcd51efffcbf23c0a8c360bbf2b1d`; PR #2 remained open, draft, and
+unmerged. The required E1 preflight used the configured read-only
+`zai-glm53-reviewer` profile and observed provider `ZAI` with model
+`glm-5.3-flash`. It failed before review because the required environment
+authentication was unavailable:
+
+```text
+CAMPAIGN=8D1K_E
+STATUS=HARD_STOP_GLM53_REVIEW_AUTH_REQUIRED
+GLM53_PROFILE=zai-glm53-reviewer
+GLM53_PROVIDER=ZAI
+GLM53_MODEL=glm-5.3-flash
+GLM53_REVIEW_MODE=READ_ONLY
+GLM53_REVIEW_AUTH_AVAILABLE=NO
+GLM53_FAILURE_CLASS=MISSING_ZAI_API_KEY_ENVIRONMENT
+PROVIDER_CALLS_AUTHORIZED=0
+8D1K_PRIOR_PROVIDER_CALLS_USED=3_OF_3
+PRODUCT_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=RESTORE_EXISTING_ZAI_REVIEW_AUTH_IN_SECURE_LOCAL_ENVIRONMENT_AND_RESUME_8D1K_E
+```
+
+No repository content was sent to the reviewer preflight. The installed
+GLM-5.2 helper was not substituted, no credential was read or exposed, and no
+Gemini provider call or production mutation occurred. E2 onward is blocked
+until the exact reviewer route is restored.

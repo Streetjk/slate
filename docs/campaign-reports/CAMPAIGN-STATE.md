@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-D long-run Slate adapter differential recovery
-Current status: HARD_STOP_GLM53_REVIEW_BLOCKED — deterministic adapter differential passes with a narrow credential-reference correction, but the exact GLM-5.3-Flash review route lacks its configured authentication in this environment.
+Current stage: 8D1K-E long-run review closure and deterministic revalidation
+Current status: HARD_STOP_GLM53_REVIEW_AUTH_REQUIRED — the exact configured GLM-5.3-Flash reviewer route still lacks ZAI authentication; no source re-review or provider call is permitted until restored.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: human restore the exact GLM-5.3-Flash reviewer route and review the bounded correction; do not make provider calls or start 8D1L.
+Next automatic action: human restore the existing exact GLM-5.3-Flash reviewer authentication, then resume 8D1K-E; do not make provider calls or start 8D1L.
 
-Human action required: YES — restore exact GLM-5.3-Flash review authentication and review the D-stage checkpoint. No provider-call budget remains; keep all credential material out of chat and Git.
+Human action required: YES — restore exact GLM-5.3-Flash review authentication in the secure local environment. No provider-call budget remains; keep all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
