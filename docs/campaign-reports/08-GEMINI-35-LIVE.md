@@ -3223,3 +3223,67 @@ NEXT_ACTION=RUN_ONE_DURABLE_CORRECTED_EXACT_FULL_SLATE_ADAPTER_PROVIDER_CALL
 
 F1 used safe metadata only. The exact reviewed ARM64 candidate image ID was
 `sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d`.
+
+## Campaign 8D1K-G corrected exact-adapter provider revalidation result
+
+The single newly authorized corrected provider call ran exactly once through
+the full Slate Bun adapter and private Node bridge. Its durable sanitized
+result was independently recovered after a deliberate wait-launcher timeout.
+
+```text
+CAMPAIGN=8D1K_G_CORRECTED_PROVIDER_REVALIDATION
+STATUS=HARD_STOP_CORRECTED_EXACT_FULL_SLATE_ADAPTER_PROVIDER_FAILURE
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+MODEL=gemini-3.1-flash-live-preview
+PROVIDER_CALL_EXIT=21
+MODEL_EVENT=NO
+TURN_COMPLETE=NO
+SLATE_ADAPTER_ERROR=YES
+FAILURE_CLASS=CHILD_SPAWN_FAILED
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+OOM=NO
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+RAW_PROVIDER_ERROR_READ=NO
+CREDENTIAL_VALUE_READ=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_FAILURE_AND_DECIDE_FUTURE_SCOPE
+```
+
+The sanitized failure is a pre-readiness `CHILD_SPAWN_FAILED` boundary. No
+source defect or causal correction is claimed. Cleanup of exact disposable
+records was attempted after evidence verification; the remote Docker daemon
+reported removal already in progress for dead disposable records. Production
+Slate and MySQL remained healthy and untouched with zero restarts. No second
+provider call was made.
+
+## Corrected provider revalidation report-push checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=PENDING
+REPORT_PUSHED=PENDING
+REMOTE_SHA_VERIFIED=PENDING
+PR_STATE_VERIFIED=PENDING
+```

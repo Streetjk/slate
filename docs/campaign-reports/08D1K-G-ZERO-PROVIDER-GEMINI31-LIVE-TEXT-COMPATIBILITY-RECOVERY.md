@@ -687,6 +687,64 @@ read-only application and credential mount, a writable sanitized result
 directory, separate wait/status/result/log retrieval, and cleanup only after
 result verification. No production container or image will be touched.
 
+## G10 — Corrected exact-adapter provider revalidation hard stop
+
+The one separately authorized corrected provider call was spent exactly once
+through the full Slate Bun adapter and private Node bridge. The durable
+result survived a deliberate `docker wait` launcher timeout (`rc=124`) and
+was recovered independently after the container exited. Only sanitized
+fields were inspected; no raw provider error body or credential value was
+read.
+
+```text
+CAMPAIGN=8D1K_G_CORRECTED_PROVIDER_REVALIDATION
+STATUS=HARD_STOP_CORRECTED_EXACT_FULL_SLATE_ADAPTER_PROVIDER_FAILURE
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+MODEL=gemini-3.1-flash-live-preview
+PROVIDER_CALL_EXIT=21
+MODEL_EVENT=NO
+TURN_COMPLETE=NO
+SLATE_ADAPTER_ERROR=YES
+FAILURE_CLASS=CHILD_SPAWN_FAILED
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+OOM=NO
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+LOG_RETRIEVAL=COMPLETED_WITHOUT_RAW_LOG_INSPECTION
+RAW_PROVIDER_ERROR_READ=NO
+CREDENTIAL_VALUE_READ=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_FAILURE_AND_DECIDE_FUTURE_SCOPE
+```
+
+The failure was classified from the durable sanitized result as a
+pre-readiness `CHILD_SPAWN_FAILED` boundary. No source correction is claimed
+from this result. Exact disposable-container cleanup was attempted after
+result verification, but the remote Docker daemon reported removal already
+in progress for dead disposable records; production Slate/MySQL remained
+running and healthy with zero restarts. No further provider call is
+authorized or permitted by this checkpoint.
+
 ## G8 report-push invariant checkpoint
 
 ```text
