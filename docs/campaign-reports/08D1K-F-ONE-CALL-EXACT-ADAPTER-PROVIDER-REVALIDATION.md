@@ -398,3 +398,49 @@ Normal human boundaries are:
 3. after 8D1L, the production API-key/data-policy/billing/deployment decision.
 
 No production deployment, restart, firmware flash, billing change, Vertex enablement, or PR merge is authorized by this directive.
+
+## 16. F1 credential preflight hard stop
+
+After fetching origin and fast-forwarding to authorization checkpoint
+`82c05b208f1306cf83553834762c88dc6deb9274`, PR #2 was verified open, draft,
+and unmerged. The local environment and standard trusted secret roots contained
+no protected Gemini credential reference. The active production Slate container
+was verified healthy but has no Gemini credential mount, preserving the
+production fail-closed boundary. The remote deployment directory contains a
+mode-600 production `.env`; it was not read or loaded into a disposable
+process, because doing so would expose unrelated production secret material and
+would not be a protected isolated runtime mount.
+
+No provider call was made. No credential value was read, printed, moved, or
+mounted. The one-call budget remains available but cannot be spent until a
+human supplies an approved host-local protected runtime secret reference through
+the existing secure mechanism.
+
+```text
+CAMPAIGN=8D1K_F
+STATUS=HARD_STOP_PROVIDER_AUTH_OR_CREDENTIAL_BOUNDARY
+F1=FAIL
+F1_FAILURE_CLASS=PROTECTED_RUNTIME_CREDENTIAL_UNAVAILABLE
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=0_OF_1
+PROVIDER_CALLS_REMAINING=1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+MODEL=gemini-3.1-flash-live-preview
+NODE_ENV=NOT_STARTED_EXPLICIT_NONPRODUCTION
+SEARCH_ENABLED=NO
+TOOLS_ENABLED=NO
+PRIVATE_DATA_INCLUDED=NO
+MICROPHONE_INCLUDED=NO
+GENERATED_AUDIO_RETAINED=NO
+CREDENTIAL_VALUE_EXPOSED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_PROVIDE_APPROVED_HOST_LOCAL_PROTECTED_RUNTIME_CREDENTIAL_REFERENCE_THEN_RESUME_F1
+```

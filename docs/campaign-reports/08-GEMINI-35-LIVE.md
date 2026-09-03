@@ -2932,3 +2932,42 @@ NEXT_ACTION=HUMAN_DECIDE_API_KEY_AND_DATA_POLICY_AND_AUTHORIZE_OR_REJECT_ONE_NEW
 
 The future provider plan is prepared only; no Gemini provider call was made in
 8D1K-E. 8D1L and 8D1M remain unstarted, and PR #2 remains unmerged.
+
+## Campaign 8D1K-F — F1 credential preflight hard stop
+
+Date: 2026-09-03 (Australia/Perth)
+
+Origin was fetched and the branch was reconciled to authorization checkpoint
+`82c05b208f1306cf83553834762c88dc6deb9274`. PR #2 remains open, draft, and
+unmerged. The local and standard trusted secret roots had no protected Gemini
+credential reference. Production Slate/MySQL remained healthy and the active
+production Slate container had no Gemini credential mount. The remote
+production `.env` was intentionally not read or loaded into a disposable
+process.
+
+```text
+CAMPAIGN=8D1K_F
+STATUS=HARD_STOP_PROVIDER_AUTH_OR_CREDENTIAL_BOUNDARY
+F1=FAIL
+F1_FAILURE_CLASS=PROTECTED_RUNTIME_CREDENTIAL_UNAVAILABLE
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=0_OF_1
+PROVIDER_CALLS_REMAINING=1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+MODEL=gemini-3.1-flash-live-preview
+CREDENTIAL_VALUE_EXPOSED=NO
+PRIVATE_DATA_SENT=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_PROVIDE_APPROVED_HOST_LOCAL_PROTECTED_RUNTIME_CREDENTIAL_REFERENCE_THEN_RESUME_F1
+```
+
+The exact full-Slate-adapter provider call was not attempted. No retry or
+second call is authorized by this campaign.

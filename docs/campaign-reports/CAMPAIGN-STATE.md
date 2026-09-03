@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-F one-call exact full-Slate-adapter real-provider revalidation
-Current status: AUTHORIZED_NOT_STARTED — one separately budgeted exact full-Slate-adapter Gemini Live provider call is authorized; historical 8D1K accounting remains 3_OF_3 and is not reset.
+Current status: HARD_STOP_PROVIDER_AUTH_OR_CREDENTIAL_BOUNDARY — F1 found no approved protected Gemini credential reference without reading production secret material; the single 8D1K-F provider call was not spent.
 
 Completed campaigns:
 
@@ -89,9 +89,31 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: execute `docs/campaign-reports/08D1K-F-ONE-CALL-EXACT-ADAPTER-PROVIDER-REVALIDATION.md` using exactly one separately authorized Gemini provider call. If it passes and the durable checkpoint is pushed/verified, begin the existing 8D1L non-production production-readiness audit only if its prerequisites are satisfied. Do not start 8D1M.
+Next automatic action: human provide an approved host-local protected runtime credential reference, then resume F1. Do not make a provider call, start 8D1L/8D1M, or load production `.env` material into a disposable process.
 
-Human action required: NO for 8D1K-F execution — the single new exact-adapter provider validation call is explicitly authorized. A new human decision is required for any second provider call and later for production API-key/data-policy/billing/deployment decisions.
+Human action required: YES — provide the approved protected runtime credential mechanism. The one-call F budget remains `0_OF_1`; historical 8D1K remains `3_OF_3`.
+
+## Campaign 8D1K-F F1 Hard Stop Checkpoint
+
+```text
+CAMPAIGN=8D1K_F
+STATUS=HARD_STOP_PROVIDER_AUTH_OR_CREDENTIAL_BOUNDARY
+F1_FAILURE_CLASS=PROTECTED_RUNTIME_CREDENTIAL_UNAVAILABLE
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=0_OF_1
+PROVIDER_CALLS_REMAINING=1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_PROVIDE_APPROVED_HOST_LOCAL_PROTECTED_RUNTIME_CREDENTIAL_REFERENCE_THEN_RESUME_F1
+```
 
 ## Campaign 8D1K-E Final Checkpoint
 
