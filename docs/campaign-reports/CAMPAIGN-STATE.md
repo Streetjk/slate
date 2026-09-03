@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-G zero-provider Gemini 3.1 Live text-transport compatibility recovery
-Current status: G1_F2_FORENSICS_PRESERVED_CONTAINER_METADATA_UNAVAILABLE — the exact disposable container is no longer present; pushed sanitized F2 evidence is preserved and no provider call is authorized.
+Current status: READY_FOR_HUMAN_DECISION_ON_ONE_CORRECTED_EXACT_ADAPTER_PROVIDER_REVALIDATION — 8D1K-G zero-provider correction, deterministic validation, image-boundary checks and exact GLM-5.3-Flash review passed; no provider call is authorized by G.
 
 Completed campaigns:
 
@@ -78,8 +78,8 @@ Active feature branches:
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 - `feature/gemini-35-live-evaluation` — PR #2; Campaign 8D1K-E complete; Campaign 8D1K-F one-call exact full-adapter provider revalidation authorized and not yet executed; production deployment and merge remain prohibited.
 
-Last test status: PASS — 8D1K-E full deterministic gates, ARM64 build, secret scan, and exact full-adapter provider-disabled E2E all passed. Firmware was not changed or flashed.
-Last independent review verdict: `PASS` — exact configured GLM-5.3-Flash/ZAI read-only review for the 8D1K-E product/runtime artifact; no P0/P1/P2 findings; four non-blocking P3 observations adjudicated by Luna.
+Last test status: PASS — 8D1K-G corrected Node text transport, full deterministic gates, ARM64 build, image boundary checks and provider-disabled full-adapter E2E all passed. Firmware was not changed or flashed.
+Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: human provide an approved host-local protected runtime credential reference, then resume F1. Do not make a provider call, start 8D1L/8D1M, or load production `.env` material into a disposable process.
+Next automatic action: human authorize or reject one new corrected exact-adapter Gemini provider call. Do not start 8D1L/8D1M, load production `.env` material, or use the historical credential without the separate provider authorization.
 
-Human action required: YES — provide the approved protected runtime credential mechanism. The one-call F budget remains `0_OF_1`; historical 8D1K remains `3_OF_3`.
+Human action required: YES — decide whether to authorize one separately budgeted corrected exact-adapter provider validation. 8D1K historical accounting remains `3_OF_3`; G provider calls remain `0`.
 
 ## Campaign 8D1K-F F1 Hard Stop Checkpoint
 
@@ -313,4 +313,38 @@ READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
 HUMAN_ACTION_REQUIRED=NO_FOR_G6
 NEXT_ACTION=COMMIT_EXACT_CORRECTED_ARTIFACT_THEN_OBTAIN_GLM53_REVIEW
+```
+
+## Campaign 8D1K-G G7/G8 Final Checkpoint
+
+```text
+CAMPAIGN=8D1K_G
+STATUS=READY_FOR_HUMAN_DECISION_ON_ONE_CORRECTED_EXACT_ADAPTER_PROVIDER_REVALIDATION
+FINAL_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+GLM53_REVIEW=PASS
+GLM53_PROFILE=zai-glm53-reviewer
+GLM53_PROVIDER=ZAI
+GLM53_MODEL=glm-5.3-flash
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=2
+FULL_TESTS=PASS
+ARM64_BUILD=PASS
+PROVIDER_DISABLED_FULL_ADAPTER_E2E=PASS
+PROVIDER_CALLS_AUTHORIZED=0
+PROVIDER_CALLS_USED=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_ONE_NEW_CORRECTED_EXACT_ADAPTER_PROVIDER_CALL
 ```

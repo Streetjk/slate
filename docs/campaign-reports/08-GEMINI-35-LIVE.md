@@ -3111,3 +3111,66 @@ PRODUCTION_CHANGED=NO
 This correction does not claim that the historical F2 failure was caused by
 text transport; that attribution remains unproven until a future separately
 authorized real-provider revalidation.
+
+## Campaign 8D1K-G — G7 exact GLM-5.3-Flash review and G8 final checkpoint
+
+The exact `zai-glm53-reviewer` route was preflighted successfully with
+`REVIEW_PROVIDER=ZAI` and `REVIEW_MODEL=glm-5.3-flash`. A broad first review
+attempt timed out at the bounded wall clock (`REVIEW_EXIT=124`); after that
+sanitized failure classification, one scope-limited read-only review of the
+exact corrected diff completed successfully.
+
+```text
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_PROVIDER=ZAI
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_MODE=READ_ONLY
+REVIEWED_SHA=7a724488a9ed20093469caefc03addc764185be5
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=2
+REVIEW_REQUIRED_ACTION=NONE
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+SECRET_EXPOSED=NO
+```
+
+Luna accepted both P3 observations as non-blocking and deferred: conservative
+startup stdin classification and the static nature of the compatibility
+contract test. No bounded source correction was required.
+
+```text
+CAMPAIGN=8D1K_G
+STATUS=READY_FOR_HUMAN_DECISION_ON_ONE_CORRECTED_EXACT_ADAPTER_PROVIDER_REVALIDATION
+FINAL_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+FULL_TESTS=PASS
+ARM64_BUILD=PASS
+PROVIDER_DISABLED_FULL_ADAPTER_E2E=PASS
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+G31_TEXT_TRANSPORT_DEFECT=CONFIRMED_BY_CURRENT_OFFICIAL_API_CONTRACT
+F2_FAILURE_ATTRIBUTION_TO_TEXT_TRANSPORT=PLAUSIBLE_NOT_LIVE_PROVEN
+TEXT_TRANSPORT_CORRECTED=YES
+SAFE_FAILURE_STAGE_OBSERVABILITY=IMPROVED
+SEARCH_DECLARED=NO
+CUSTOM_FUNCTIONS_DECLARED=YES
+TOOL_INVOCATIONS=0_IN_PROVIDER_DISABLED_FIXTURES
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_ONE_NEW_CORRECTED_EXACT_ADAPTER_PROVIDER_CALL
+```
+
+The exact ARM64 candidate image boundary was also checked without provider
+access: no Gemini/API-key/Vertex/Google image environment or history match,
+no runtime credential destination, and no `/app/.env` were present; no public
+bridge listener was found. No production state changed.

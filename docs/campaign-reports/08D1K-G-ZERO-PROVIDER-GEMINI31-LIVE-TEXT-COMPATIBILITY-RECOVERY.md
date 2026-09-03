@@ -475,7 +475,7 @@ If the corrected artifact passes all deterministic/reviewer gates, stop at:
 ```text
 CAMPAIGN=8D1K_G
 STATUS=READY_FOR_HUMAN_DECISION_ON_ONE_CORRECTED_EXACT_ADAPTER_PROVIDER_REVALIDATION
-FINAL_SOURCE_SHA=<exact sha>
+FINAL_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
 GLM53_REVIEW=PASS
 GLM53_P0=0
 GLM53_P1=0
@@ -553,3 +553,96 @@ Do not return control merely because:
 Normal intended human boundary is the final decision whether to authorize **one new corrected exact full-Slate-adapter provider call**.
 
 No Gemini provider call is authorized by 8D1K-G.
+
+## G7 — Exact GLM-5.3-Flash review and Luna adjudication
+
+The exact reviewer route was preflighted without repository content and
+returned `REVIEW_ROUTE_PREFLIGHT_OK PROVIDER=ZAI MODEL=glm-5.3-flash`.
+An initial broad read-only review attempt exceeded the bounded 300-second
+wall clock (`REVIEW_EXIT=124`) while inspecting the repository; this was
+classified as `REVIEWER_ROUTE_EXECUTION_TIMEOUT`, not as a source finding.
+A scope-limited retry supplied only the exact source diff and sanitized
+deterministic evidence, and completed successfully.
+
+```text
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_PROVIDER=ZAI
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_MODE=READ_ONLY
+REVIEWED_SHA=7a724488a9ed20093469caefc03addc764185be5
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=2
+REVIEW_REQUIRED_ACTION=NONE
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+SECRET_EXPOSED=NO
+```
+
+Luna adjudicated both P3 observations as non-blocking and deferred without
+source correction: (1) a startup stdin failure is conservatively classified
+as `CHILD_SPAWN_FAILED`; and (2) the runtime compatibility assertion is a
+static contract test, with live-provider event testing intentionally outside
+this zero-provider authorization. Neither observation is P0/P1/P2, and the
+existing deterministic tests cover the bounded behavior and secret boundary.
+
+## G8 — Final zero-provider dossier and human boundary
+
+```text
+CAMPAIGN=8D1K_G
+STATUS=READY_FOR_HUMAN_DECISION_ON_ONE_CORRECTED_EXACT_ADAPTER_PROVIDER_REVALIDATION
+FINAL_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+FULL_TESTS=PASS
+ARM64_BUILD=PASS
+PROVIDER_DISABLED_FULL_ADAPTER_E2E=PASS
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+REPEATED_REAL_PROVIDER_SYMPTOM=full_Slate_adapter_failed_before_model_event_with_sanitized_SLATE_ADAPTER_ERROR
+G31_TEXT_TRANSPORT_DEFECT=CONFIRMED_BY_CURRENT_OFFICIAL_API_CONTRACT
+F2_FAILURE_ATTRIBUTION_TO_TEXT_TRANSPORT=PLAUSIBLE_NOT_LIVE_PROVEN
+TEXT_TRANSPORT_CORRECTED=YES
+SAFE_FAILURE_STAGE_OBSERVABILITY=IMPROVED
+SERVER_MULTIPART_EVENT_AUDIT=PASS_NO_CHANGE
+SEARCH_DECLARED=NO
+CUSTOM_FUNCTIONS_DECLARED=YES
+TOOL_INVOCATIONS=0_IN_PROVIDER_DISABLED_FIXTURES
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_ONE_NEW_CORRECTED_EXACT_ADAPTER_PROVIDER_CALL
+```
+
+The image-boundary checks completed without provider access: the candidate
+image is `linux/arm64`, its image ID is
+`sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d`,
+no Gemini/API-key/Vertex/Google environment or history match was found, the
+runtime credential destination and `/app/.env` are absent, and no public
+bridge listener exists. No production command, credential, private fixture,
+or generated audio was used. 8D1L and 8D1M remain prohibited until a later
+human authorization, and this report is the final G human-boundary record.
+
+## G8 report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=<filled after final commit>
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
