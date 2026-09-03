@@ -3561,3 +3561,161 @@ PUSHED_SHA=857103bfe718656f5a32524b6d0392ea28819ef9
 PR_STATE_VERIFIED=YES
 PR_STATE=open_draft_unmerged
 ```
+## Campaign 8D1K-G14 → G16 zero-provider closure
+
+The G13 hard stop remains immutable: exactly one authorized provider session
+was consumed and reached `BRIDGE_READY`, but no model event or turn completion
+was observed before the bounded model-event result deadline. G14 reconstructed
+the evidence without claiming that the provider received or rejected the text.
+
+### G14 post-ready forensic reconstruction
+
+```text
+CAMPAIGN=8D1K_G14
+STATUS=G13_POST_READY_FORENSICS_RECONSTRUCTED_ZERO_PROVIDER
+G13_CONTAINER_IMAGE_ID=sha256:d2af1d0dc48f40d4b53324e4a31531b26ce611c5851d33df93c23956b0209e48
+G13_CONTAINER_START_T0=SANITIZED_RELATIVE_TIMELINE_ONLY
+G13_BUN_PARENT_START=PROVEN_YES
+G13_NODE_CHILD_SPAWN=PROVEN_YES
+G13_BRIDGE_READY=PROVEN_YES
+G13_TEXT_FRAME_CREATED=UNKNOWN
+G13_TEXT_FRAME_WRITTEN_TO_CHILD_STDIN=UNKNOWN
+G13_RUNTIME_TEXT_HANDLER_REACHED=UNKNOWN
+G13_SDK_SEND_REALTIME_INPUT_CALLED=UNKNOWN
+G13_FIRST_PROVIDER_CALLBACK=unknown
+G13_CONNECT_TIMEOUT_MS=15000
+G13_MODEL_EVENT_DEADLINE_MS=25000
+G13_READY_TO_DEADLINE_MS=UNKNOWN
+G13_OUTER_LAUNCHER_TIMEOUT=1s
+G13_WAIT_LAUNCHER_RC=124
+G13_CONTAINER_EXIT=137_CONTROLLED_STOP_AFTER_EVIDENCE
+G13_OOM=NO
+G13_TEXT_DISPATCH_STAGE=UNKNOWN_AFTER_BRIDGE_READY
+G13_PROVIDER_CALLBACK_STAGE=NO_SANITIZED_CALLBACK_OBSERVED_NOT_PROVIDER_ABSENCE
+G13_TIMEOUT_BUDGET_RECONSTRUCTED=PARTIAL_EXACT_CONSTANTS_NO_PERSISTED_TIMESTAMPS
+G13_FAILURE_CLASS=MODEL_EVENT_TIMEOUT_AFTER_BRIDGE_READY
+RAW_PROVIDER_BODY_READ=NO
+CREDENTIAL_VALUE_READ=NO
+PROVIDER_CALLS_G14=0
+PRODUCTION_CHANGED=NO
+READY_FOR_G15=YES
+```
+
+The clocks are distinct: provider connect timeout, bridge-ready transition,
+text dispatch, first-message/model deadline, turn completion, and outer
+launcher wait. The G13 runner did not persist timestamps for the intermediate
+text-dispatch stages, so those fields remain `UNKNOWN`; the launcher timeout
+is not classified as a provider timeout.
+
+### G15 exact SDK and protocol audit
+
+```text
+CAMPAIGN=8D1K_G15
+STATUS=SDK_PROTOCOL_AUDIT_PASS_ZERO_PROVIDER
+SDK_PACKAGE=@google/genai
+SDK_EXACT_VERSION=2.20.0
+SDK_LOCKFILE_INTEGRITY=sha512-kFEzARfA064oCNAmYTyOaAeJ9KSkbZ2Upxz36oO5eVNlcxAXsixLlGbwY1oy+Ab8HJ6nMWMD9hg+NdIron6wJw==
+SDK_NODE_IMPORT=PASS
+NODE_EXECUTABLE=/usr/local/bin/node
+NODE_VERSION=26.3.0_ARM64_CANDIDATE
+SDK_CONNECT_SETUP_SERIALIZATION=PASS_SOURCE_AND_EXISTING_TESTS
+SDK_MODEL_ID=gemini-3.1-flash-live-preview
+SDK_RESPONSE_MODALITY=AUDIO
+SDK_SEARCH_DECLARED=NO_IN_G13_CONTROL
+SDK_FUNCTION_DECLARATIONS=SLATE_CALENDAR_AND_BTC_CUSTOM_DECLARATIONS_EXPECTED
+SDK_REALTIME_TEXT_SERIALIZED=YES
+SDK_REALTIME_TEXT_VALUE=SYNTHETIC_FIXTURE_ONLY
+SDK_CREDENTIAL_NOT_CAPTURED=YES
+SDK_PROVIDER_NETWORK=NO
+SDK_WIRE_CAPTURE=PASS
+```
+
+The exact installed Node SDK serializes `Session.sendRealtimeInput({text})`
+synchronously as `{"realtimeInput":{"text":"..."}}`; it does not add a
+turn-complete or activity signal. The installed types distinguish
+`modelTurn`, `outputTranscription`, `generationComplete`, `waitingForInput`,
+and `turnComplete`. The exact source locations are the installed package’s
+`dist/node/index.mjs` realtime-input converter at line 8893 and session method
+at line 14971, with the server-content type declarations at
+`dist/node/node.d.ts` lines 10299–10331.
+
+The current official model guidance was refreshed 2026-09-04 from:
+[Gemini 3.1 Flash Live model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview),
+[Live API capabilities](https://ai.google.dev/gemini-api/docs/live-api/capabilities),
+and [Live API WebSocket guidance](https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket).
+The model-specific guidance says client content is for initial history and
+realtime input is used for subsequent text updates; generic VAD/activity
+rules do not justify adding an unverified activity boundary to this text path.
+
+The deterministic turn matrix classified the current realtime-text path as
+the product-preserving candidate. Client-content is a distinct initial-history
+mechanism; explicit activity signals and generated audio are not introduced
+into this future text-only validation. Mock fixtures covered ordinary model
+content, function-call shape, waiting-for-input, generation-complete without
+turn-complete, output transcription, turn-complete without model content,
+provider error, and provider close. No provider call or credential value was
+used.
+
+Luna adjudication: the supported leading class is
+`G_RUNNER_OBSERVABILITY_AND_TIMEOUT_CLASSIFICATION_GAP`; the evidence does not
+prove an SDK serialization defect, child-spawn failure, provider outage, or
+product turn-boundary defect. Future live validation is still required to
+resolve provider-side behavior.
+
+## Campaign 8D1K-G16 zero-provider post-ready closure
+
+```text
+CAMPAIGN=8D1K_G16
+STATUS=ZERO_PROVIDER_POST_READY_BOUNDARY_CLOSED_READY_FOR_HUMAN_G17_DECISION
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PRODUCT_SOURCE_CHANGED=NO
+BRIDGE_READY=YES
+TEXT_FRAME_ACCEPTED_BY_BUN_PARENT=YES
+TEXT_FRAME_WRITTEN_TO_CHILD=YES
+RUNTIME_TEXT_HANDLER_REACHED=YES
+SDK_REALTIME_TEXT_DISPATCH_ATTEMPTED=NOT_APPLICABLE_PROVIDER_DISABLED_MOCK
+SDK_REALTIME_TEXT_RETURNED=NOT_APPLICABLE_PROVIDER_DISABLED_MOCK
+FIRST_PROVIDER_MESSAGE_OBSERVED=NOT_APPLICABLE_PROVIDER_DISABLED_MOCK
+PROVIDER_ERROR_CALLBACK_OBSERVED=NO
+PROVIDER_CLOSE_CALLBACK_OBSERVED=NO
+MODEL_TURN_OBSERVED=YES_MOCK_ONLY
+OUTPUT_TRANSCRIPTION_OBSERVED=NO
+WAITING_FOR_INPUT_OBSERVED=NO
+GENERATION_COMPLETE_OBSERVED=YES_MOCK_ONLY
+TURN_COMPLETE_OBSERVED=YES_MOCK_ONLY
+POST_READY_TIMEOUT_STAGE=NONE
+INNER_TURN_DEADLINE_MS=1500
+OUTER_LAUNCHER_TIMEOUT_MS=5000
+EXACT_FULL_ADAPTER_PROVIDER_DISABLED_E2E=PASS
+ARM64_IMAGE=slate:campaign-8d1kg-7a72448
+ARM64_IMAGE_DIGEST=sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d
+ARM64_RUNTIME=Bun_1.4.0_plus_Node_26.3.0
+RESULT_DURABLE_WRITER=ATOMIC_RENAME
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+LAUNCHER_WAIT_RC=124
+CONTAINER_READ_ONLY_ROOT=YES
+CONTAINER_NETWORK=NONE
+CONTAINER_OOM=NO
+FULL_BACKEND_TESTS=PASS_331
+SHARED_TESTS=PASS_PRIOR_ACCEPTED_ARTIFACT
+GLM53_REVIEW=NOT_REQUIRED_NO_TRACKED_PRODUCT_RUNTIME_CHANGE
+PROVIDER_CALLS_G14_G16=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_G17_AUTHORIZATION=YES
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_FUTURE_G17_PROVIDER_VALIDATION
+```
+
+The disposable ARM64 replay used only a synthetic credential reference and a
+provider-disabled mock child, with no network and no retained audio. The
+result was retrieved from the mounted result directory after deliberate
+launcher timeout, independently of `docker wait`; the container and result
+artifacts were inspected and then removed only after verification. No tracked
+product/runtime source changed, so no new GLM review was required.
