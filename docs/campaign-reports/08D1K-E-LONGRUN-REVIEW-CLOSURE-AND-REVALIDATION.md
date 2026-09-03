@@ -526,6 +526,55 @@ E6_REAL_CREDENTIAL_MOUNTED=NO
 E6_NEXT_ACTION=RETRY_WITH_HOST_VISIBLE_SYNTHETIC_FIXTURE_PATH
 ```
 
+## 23. E5–E6 deterministic validation complete
+
+The bounded correction was revalidated with the complete deterministic host
+gate set:
+
+```text
+E5_HOST_BACKEND_TESTS=322_PASS_4_INTENTIONAL_SKIP_0_FAIL
+E5_SHARED_TESTS=6_PASS_0_FAIL
+E5_LINT=PASS
+E5_TYPECHECK=PASS
+E5_FORMAT=PASS
+E5_FRONTEND_BUILD=PASS
+E5_NODE_SYNTAX=PASS
+E5_DIFF_CHECK=PASS
+E5_PROVIDER_CALLS=0
+```
+
+The exact current artifact was built as a reproducible architecture-matched
+candidate without credentials in the build context. The image was run with
+network disabled, a synthetic-only credential fixture mounted read-only at the
+trusted runtime path, and the provider-disabled Node mock. All five actual
+Bun-parent/Node-child adapter cases passed: production guard, synthetic turn
+completion, protocol/crash/timeout failures, post-ready provider-loss/close
+sanitization, and unsafe credential-reference rejection.
+
+```text
+E6_IMAGE_TAG=slate-8d1k-e-final:daafe6b
+E6_IMAGE_ID=sha256:9828e43286314a3cb125ed1a9a756ab584814c0c62827e4af4d5d2c15f554fad
+E6_IMAGE_OS=linux
+E6_IMAGE_ARCH=arm64
+E6_NODE_RUNTIME=v22.22.2
+E6_NODE_SDK_LOAD=PASS
+E6_PROVIDER_DISABLED_ADAPTER_E2E=5_PASS_0_FAIL
+E6_PRODUCTION_GUARD=FAIL_CLOSED_BEFORE_CHILD_SPAWN
+E6_CREDENTIAL_NEGATIVE_CASES=PASS
+E6_IMAGE_CONFIG_SECRET_SCAN=PASS
+E6_IMAGE_HISTORY_SECRET_SCAN=PASS
+E6_NODE_BRIDGE_PUBLIC_LISTENER=ABSENT
+E6_PROVIDER_CALLS=0
+PRODUCTION_HEALTH_READ_ONLY=PASS
+PRODUCTION_CONTAINERS_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+```
+
+The candidate image and synthetic fixture are disposable validation artifacts
+only and are removed after this evidence is durably checkpointed. No Gemini
+credential was mounted, read, copied, or exposed; the only mounted file was the
+synthetic test fixture.
+
 ### Reviewer finds unresolved P0/P1
 
 ```text

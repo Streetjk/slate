@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-E long-run review closure and deterministic revalidation
-Current status: 8D1K-E E1–E3 PASS — exact ZAI GLM-5.3-Flash authentication is restored, the exact current artifact review passed with P0/P1/P2=0, all findings are adjudicated, and deterministic E5 validation is in progress; zero Gemini provider calls are authorized.
+Current status: 8D1K-E E1–E6 PASS — exact ZAI GLM-5.3-Flash review passed, bounded test correction and full deterministic validation passed, the exact ARM64 provider-disabled adapter passed, and E7–E9 evidence closure is in progress; zero Gemini provider calls are authorized.
 
 Completed campaigns:
 
@@ -89,7 +89,7 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: complete 8D1K-E E5–E9 deterministic validation and publish the human provider-revalidation boundary; do not make Gemini provider calls or start 8D1L.
+Next automatic action: complete 8D1K-E E7–E9 evidence closure and publish the human provider-revalidation boundary; do not make Gemini provider calls or start 8D1L.
 
 Human action required: NO — exact reviewer authentication is available for this deterministic campaign. No provider-call budget remains; keep all credential material out of chat and Git.
 
