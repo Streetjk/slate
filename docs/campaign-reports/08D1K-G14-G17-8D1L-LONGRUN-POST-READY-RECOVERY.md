@@ -634,6 +634,19 @@ HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_FUTURE_G17_PROVIDER_VALIDATION
 ```
 
+## G16 report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=588584f6f504b268ebc35b0bd682437588a98b09
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
+
 At successful G16 closure, publish/push/verify and return control exactly once for the G17 provider decision.
 
 Do not create a G17 live budget automatically.

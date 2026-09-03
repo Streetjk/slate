@@ -3713,6 +3713,19 @@ HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_FUTURE_G17_PROVIDER_VALIDATION
 ```
 
+## Campaign 8D1K-G16 report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=588584f6f504b268ebc35b0bd682437588a98b09
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
+
 The disposable ARM64 replay used only a synthetic credential reference and a
 provider-disabled mock child, with no network and no retained audio. The
 result was retrieved from the mounted result directory after deliberate
