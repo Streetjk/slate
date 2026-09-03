@@ -24,7 +24,7 @@ Completed campaigns:
   - AGY medium/high-effort review loop closed with final PASS and no findings.
   - Independent external review later raised XR-005 regarding remaining user-visible Chinese voice/default labels; recheck required.
 - Campaign 1 — BTC/USD: PASS, pending external-review hardening recheck
-  - BTC current, daily, weekly, and monthly dynamic content integrated with cached backend data, English configuration controls, and deterministic 1bpp renderer tests.
+  - BTC current, daily, weekly and monthly dynamic content integrated with cached backend data, English configuration controls, and deterministic 1bpp renderer tests.
   - Deterministic gates and exact ESP-IDF `v5.5.2` firmware regression passed.
   - AGY medium review returned PASS with two accepted P3 hardening observations; fixes were re-reviewed with final PASS and no findings.
   - Independent external review later raised XR-001, XR-002 and XR-003; see `CAMPAIGN-INSTRUCTIONS.md`.
@@ -32,7 +32,7 @@ Completed campaigns:
   - User-owned Microsoft OAuth/MSAL + PKCE, encrypted token cache, Graph calendarView normalization, Perth agenda rendering, offline fallback, and English connect UI integrated.
   - Deterministic gates passed: 226 backend tests, lint, typecheck, format, Prisma validation, and frontend build.
   - AGY high-effort review passed with no P0-P3 findings. Live Microsoft consent/account smoke test is deferred to the human OAuth boundary.
-- Campaign 3A — Gemini OAuth/ADC feasibility: PASS; report published in `03A-GEMINI-OAUTH-FEASIBILITY.md`
+- Campaign 3A — Gemini OAuth feasibility: PASS; report published in `03A-GEMINI-OAUTH-FEASIBILITY.md`
   - Official Google documentation verified ADC/OAuth authentication and the required capability split.
   - `gemini-3.7-flash` is selected for text reasoning, Search grounding, structured output, and function calling.
   - `gemini-live-2.5-flash-native-audio` is selected for live audio, transcription, multilingual interaction, Search, and function calling because Gemini 3.7 Flash does not support Live API.
