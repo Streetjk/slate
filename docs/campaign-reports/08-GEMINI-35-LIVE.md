@@ -3174,3 +3174,52 @@ The exact ARM64 candidate image boundary was also checked without provider
 access: no Gemini/API-key/Vertex/Google image environment or history match,
 no runtime credential destination, and no `/app/.env` were present; no public
 bridge listener was found. No production state changed.
+
+## Campaign 8D1K-G corrected provider revalidation authorization / F1 checkpoint
+
+Following the published G8 human boundary, the human authorized exactly one
+new corrected full-Slate-adapter Gemini validation. This separate budget is
+not a reset of historical 8D1K or 8D1K-F accounting.
+
+```text
+CAMPAIGN=8D1K_G_CORRECTED_PROVIDER_REVALIDATION
+STATUS=F1_PASS_READY_TO_SPEND_ONE_AUTHORIZED_CALL
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=0_OF_1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+MODEL=gemini-3.1-flash-live-preview
+AUTH_MODE=developer_api_key
+LIVE_RUNTIME=node_bridge
+NODE_ENV=test
+CREDENTIAL_SOURCE_HOST=note4-orangepi
+CREDENTIAL_SOURCE_PATH=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+CREDENTIAL_SOURCE_OWNER=pi
+CREDENTIAL_SOURCE_GROUP=pi
+CREDENTIAL_SOURCE_MODE=600
+CREDENTIAL_SOURCE_TYPE=REGULAR_NON_SYMLINK_FILE
+CREDENTIAL_SOURCE_SIZE_BYTES=53
+CREDENTIAL_SOURCE_NONEMPTY=YES
+CREDENTIAL_CONTAINER_DESTINATION=/run/secrets/gemini_api_key
+CREDENTIAL_READ_ONLY_BIND=YES
+CREDENTIAL_VALUE_READ=NO
+CREDENTIAL_VALUE_PRINTED=NO
+CREDENTIAL_VALUE_COPIED_OR_MOVED=NO
+PRODUCTION_ENV_USED=NO
+SEARCH_ENABLED=NO
+TOOLS_ENABLED=NO
+PRIVATE_DATA_INCLUDED=NO
+MICROPHONE_INCLUDED=NO
+GENERATED_AUDIO_RETAINED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+NEXT_ACTION=RUN_ONE_DURABLE_CORRECTED_EXACT_FULL_SLATE_ADAPTER_PROVIDER_CALL
+```
+
+F1 used safe metadata only. The exact reviewed ARM64 candidate image ID was
+`sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d`.

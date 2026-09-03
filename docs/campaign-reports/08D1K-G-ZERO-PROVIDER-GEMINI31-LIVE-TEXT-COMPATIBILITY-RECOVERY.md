@@ -634,6 +634,59 @@ bridge listener exists. No production command, credential, private fixture,
 or generated audio was used. 8D1L and 8D1M remain prohibited until a later
 human authorization, and this report is the final G human-boundary record.
 
+## G9 — One separately authorized corrected exact-adapter revalidation: F1 pre-call checkpoint
+
+The human explicitly authorized one new corrected full-Slate-adapter Gemini
+provider validation after the G8 boundary. This is a new budget and does not
+alter historical accounting or the already-consumed 8D1K-F budget.
+
+```text
+CAMPAIGN=8D1K_G_CORRECTED_PROVIDER_REVALIDATION
+STATUS=F1_PASS_READY_TO_SPEND_ONE_AUTHORIZED_CALL
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=0_OF_1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+MODEL=gemini-3.1-flash-live-preview
+AUTH_MODE=developer_api_key
+LIVE_RUNTIME=node_bridge
+NODE_ENV=test
+CREDENTIAL_SOURCE_HOST=note4-orangepi
+CREDENTIAL_SOURCE_PATH=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+CREDENTIAL_SOURCE_OWNER=pi
+CREDENTIAL_SOURCE_GROUP=pi
+CREDENTIAL_SOURCE_MODE=600
+CREDENTIAL_SOURCE_TYPE=REGULAR_NON_SYMLINK_FILE
+CREDENTIAL_SOURCE_SIZE_BYTES=53
+CREDENTIAL_SOURCE_NONEMPTY=YES
+CREDENTIAL_CONTAINER_DESTINATION=/run/secrets/gemini_api_key
+CREDENTIAL_READ_ONLY_BIND=YES
+CREDENTIAL_VALUE_READ=NO
+CREDENTIAL_VALUE_PRINTED=NO
+CREDENTIAL_VALUE_COPIED_OR_MOVED=NO
+PRODUCTION_ENV_USED=NO
+SEARCH_ENABLED=NO
+TOOLS_ENABLED=NO
+PRIVATE_DATA_INCLUDED=NO
+MICROPHONE_INCLUDED=NO
+GENERATED_AUDIO_RETAINED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+NEXT_ACTION=RUN_ONE_DURABLE_CORRECTED_EXACT_FULL_SLATE_ADAPTER_PROVIDER_CALL
+```
+
+The exact candidate is the previously reviewed `linux/arm64` artifact with
+image ID `sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d`.
+The disposable harness will use a uniquely named non-`--rm` container, a
+read-only application and credential mount, a writable sanitized result
+directory, separate wait/status/result/log retrieval, and cleanup only after
+result verification. No production container or image will be touched.
+
 ## G8 report-push invariant checkpoint
 
 ```text
