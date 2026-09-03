@@ -29,6 +29,8 @@ export function defaultDynamicFrameName(type: DynamicTypeT, config: DynamicConfi
       return 'BTC/USD';
     case 'outlook_calendar':
       return 'Outlook calendar';
+    case 'google_news':
+      return 'Google News';
     case 'dashboard':
       return config.type === 'dashboard' ? dashboardStatusTitle(config) : 'External data';
     case 'font_test':
@@ -108,6 +110,8 @@ export function dynamicStatusTitle(config: DynamicConfigT | null | undefined): s
       return 'BTC/USD';
     case 'outlook_calendar':
       return 'Outlook calendar';
+    case 'google_news':
+      return 'Google News';
     case 'dashboard':
       return dashboardStatusTitle(config);
     case 'font_test':

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Solar } from 'lunar-typescript';
 import { pickTraditionalFestival } from './traditional-festivals';
 import { datePartsInTz, daysInMonth, utcOffsetMin } from './timezone';
+import { waPublicHolidayOn } from './wa-public-holidays';
 
 export interface CalendarDayData {
   lunar: string;
@@ -16,6 +17,7 @@ export interface CalendarDayData {
   yi: string[];
   ji: string[];
   is_workday: boolean;
+  public_holiday: string | null;
 }
 
 export interface CalendarServerData {
@@ -90,6 +92,7 @@ export class CalendarDataService {
         yi: lunar.getDayYi().slice(0, 5),
         ji: lunar.getDayJi().slice(0, 5),
         is_workday: solar.getWeek() >= 1 && solar.getWeek() <= 5,
+        public_holiday: waPublicHolidayOn(year, month, day)?.name ?? null,
       };
     }
     return days;

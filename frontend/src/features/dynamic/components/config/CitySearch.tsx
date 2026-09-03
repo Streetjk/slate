@@ -14,13 +14,20 @@ export function CitySearch({
   onSelect,
 }: {
   value: string;
-  onSelect: (result: { locationId: string; label: string }) => void;
+  onSelect: (result: {
+    locationId: string;
+    label: string;
+    provider?: 'qweather' | 'open_meteo';
+    latitude?: number;
+    longitude?: number;
+    timezone?: string;
+  }) => void;
 }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const trimmedQuery = query.trim();
-  const citySearch = useWeatherCitySearch(trimmedQuery, dirty);
+  const citySearch = useWeatherCitySearch(trimmedQuery, dirty, 'open_meteo');
   const shouldUseLocalFallback =
     citySearch.isError ||
     (!citySearch.isFetching && (!citySearch.data || citySearch.data.length === 0));
@@ -79,7 +86,14 @@ export function CitySearch({
       getKey={cityResultKey}
       onSelect={(result) => {
         const city = cityResultValue(result);
-        onSelect({ locationId: city.locationId, label: city.label });
+        onSelect({
+          locationId: city.locationId,
+          label: city.label,
+          provider: city.provider,
+          latitude: city.latitude,
+          longitude: city.longitude,
+          timezone: city.timezone,
+        });
         setQuery(city.label);
         setDirty(false);
       }}
@@ -110,11 +124,27 @@ function cityResultKey(result: CityResult): string {
   return `${result.city.name}-${result.city.province}`;
 }
 
-function cityResultValue(result: CityResult): { locationId: string; label: string; hint: string } {
+function cityResultValue(result: CityResult): {
+  locationId: string;
+  label: string;
+  hint: string;
+  provider?: 'qweather' | 'open_meteo';
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+} {
   if (result.source === 'remote') {
     const city = result.city;
     const hint = [city.adm1, city.adm2].filter((part) => part && part !== city.name).join(' · ');
-    return { locationId: city.id, label: city.name, hint };
+    return {
+      locationId: city.id,
+      label: city.name,
+      hint,
+      provider: city.provider,
+      latitude: city.latitude,
+      longitude: city.longitude,
+      timezone: city.timezone,
+    };
   }
   const city = result.city;
   return {

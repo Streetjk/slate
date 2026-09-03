@@ -1,4 +1,3 @@
-import { traditionalFestivalShortName } from '../../traditional-festivals';
 import { parseHistoryTodayData } from '../../history-today.data';
 import { isRecord, limitChars, pickText } from './frame-value-utils';
 
@@ -12,20 +11,5 @@ export function readHistoryItems(
 
 export function monthCellSubtitle(dayData: unknown): string {
   if (!isRecord(dayData)) return '';
-  const term = pickText(dayData.solar_term, '');
-  if (term) return limitChars(term, 3);
-  const festival = traditionalFestivalShortName(pickText(dayData.festival, ''));
-  if (festival) return festival;
-  return simplifyLunar(pickText(dayData.lunar_date, pickText(dayData.lunar, '')));
-}
-
-function simplifyLunar(value: string): string {
-  const cleaned = value
-    .replace(/^农历/, '')
-    .replace(/^[甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥]+年\s*/, '');
-  const m = cleaned.match(/^(闰?[正一二三四五六七八九十冬腊]+)月(.+)$/);
-  if (!m) return limitChars(cleaned, 3);
-  const month = m[1]!;
-  const day = m[2]!;
-  return day === '初一' ? `${month}月` : day;
+  return limitChars(pickText(dayData.public_holiday, ''), 12);
 }
