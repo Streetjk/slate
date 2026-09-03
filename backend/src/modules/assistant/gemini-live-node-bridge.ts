@@ -368,6 +368,9 @@ function buildBridgeEnvironment(
   options: NodeGeminiLiveBridgeOptions,
   model: string
 ): NodeJS.ProcessEnv {
+  if (options.apiKeyFile && !isTrustedCredentialPath(options.apiKeyFile)) {
+    throw new Error('Gemini Live Node bridge API-key credential reference is unavailable');
+  }
   if (options.adcCredentialFile && !isSafeCredentialFileReference(options.adcCredentialFile)) {
     throw new Error('Gemini Live Node bridge ADC credential reference is unavailable');
   }

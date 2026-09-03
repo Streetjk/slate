@@ -710,3 +710,83 @@ Automatically continue while:
 If a deterministic finding identifies a bounded source defect, adjudicate it, correct it, validate it, review it, checkpoint it, and continue.
 
 Stop only at the final human provider-revalidation decision boundary or a genuine hard stop.
+
+## 22. Campaign 8D1K-D execution checkpoint
+
+Date: 2026-09-03 (Australia/Perth)
+
+D0/D1 reconciliation confirmed the exact remote starting state at
+`82e8c6737ceecbf56fac0f91469b4e0782f16002`, PR #2 open/draft/unmerged, a clean
+worktree, and healthy untouched production Slate/MySQL. The original Call 3
+disposable artifacts and targeted history entries were absent, so its exact
+`NODE_ENV` override is `UNKNOWN`; the final Docker image default is
+`NODE_ENV=production`.
+
+D2/D3 deterministic evidence used only synthetic child scripts and a synthetic
+secret mounted read-only. In the architecture-matched `linux/arm64` candidate,
+the actual Bun parent spawned the actual Node `v22.22.2` child over private
+JSONL stdio. The production matrix failed closed before child spawn. The
+explicit test-mode matrix passed ready, synthetic text, server event, and clean
+close. Protocol rejection, child crash, connect timeout, missing executable,
+missing script, unsafe credential reference, post-ready provider error, and
+unexpected close were all exercised with sanitized outcomes. The image loaded
+`@google/genai/node`, and its history contained no credential material.
+
+Luna adjudication:
+
+```text
+ROOT_CAUSE_CLASS=B_PARENT_CONFIG_GUARD_BEHAVIOR_AS_DESIGNED
+ORIGINAL_CALL3_ENV_PROVEN=NO
+HISTORICAL_CALL3_ATTRIBUTION=UNRESOLVED_BECAUSE_DISPOSABLE_INVOCATION_WAS_NOT_RECOVERABLE
+PRODUCTION_GUARD_PRESERVED=YES
+SECONDARY_DEFECT=E_CREDENTIAL_REFERENCE_PERMISSION_DEFECT
+```
+
+The guard explains the observed production-image versus explicit evaluation-mode
+differential without weakening production behavior. The secondary defect was a
+real Bun-side Developer API reference-boundary gap: non-runtime paths could
+reach the bridge factory. The bounded correction now rejects API-key references
+outside `/run/secrets/` and `/var/run/secrets/`; it does not read the value or
+alter the production guard.
+
+Validation checkpoint:
+
+```text
+CAMPAIGN=8D1K_D
+STATUS=HARD_STOP_GLM53_REVIEW_BLOCKED
+HEAD_BEFORE_COMMIT=82e8c6737ceecbf56fac0f91469b4e0782f16002
+REVIEWED_IMPLEMENTATION_BASE=90ab7cbbff39dfb4dda79cf1260611e5f26cf941
+PRODUCT_SOURCE_CHANGED=YES
+TARGETED_TESTS=PASS
+BACKEND_TESTS=322_PASS_4_SKIPPED_NO_LOCAL_SECRET_0_FAIL
+SHARED_TESTS=6_PASS
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+NODE_SYNTAX_CHECK=PASS
+ARM64_BUILD=PASS
+ARM64_FULL_ADAPTER_MOCK_E2E=5_PASS
+SAFE_ERROR_CLASSIFICATION=PASS
+SECRET_SCAN=PASS
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_PRIOR_PROVIDER_CALLS_USED=3_OF_3
+GLM53_REVIEW=BLOCKED
+GLM53_BLOCKER=EXACT_ZAI_ROUTE_MISSING_ZAI_API_KEY
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=RESTORE_EXACT_GLM53_REVIEW_AUTH_AND_REVIEW_BOUNDED_CORRECTION
+```
+
+The installed `glm` helper was not used because it identifies as GLM-5.2 and
+uses a different provider. No Gemini provider call, credential read, production
+mutation, deployment, restart, firmware flash, or PR merge occurred. The exact
+provider-revalidation decision remains blocked until the corrected artifact
+receives the required GLM-5.3-Flash review.

@@ -659,4 +659,25 @@ describe('NodeGeminiLiveBridge', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it('rejects Developer API credential references outside trusted runtime mounts', () => {
+    const child = new FakeProcess();
+    const bridge = new NodeGeminiLiveBridge(
+      { ...options(), apiKeyFile: '/tmp/synthetic-gemini-api-key' },
+      (() => child as never) as never
+    );
+
+    expect(() =>
+      bridge.connect(
+        'en',
+        () => undefined,
+        () => undefined,
+        'gemini-3.1-flash-live-preview',
+        'synthetic instruction',
+        100,
+        false
+      )
+    ).toThrow('API-key credential reference is unavailable');
+    expect(child.writes).toHaveLength(0);
+  });
 });
