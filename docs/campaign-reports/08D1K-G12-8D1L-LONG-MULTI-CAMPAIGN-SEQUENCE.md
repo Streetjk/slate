@@ -574,3 +574,34 @@ startup/JSONL exchange, production fail-closed configuration, synthetic text,
 and sanitized failure handling. No product/runtime source correction is
 indicated by the accepted G11 evidence, so this stage continues with a
 provider-disabled harness-only replay.
+
+## G12 first replay failure and bounded harness correction
+
+```text
+CAMPAIGN=8D1K_G12
+STATUS=G12_HARNESS_CORRECTION_IN_PROGRESS_ZERO_PROVIDER
+G12_PROVIDER_CALLS_USED=0
+G12_EXACT_SHAPE_PROVIDER_DISABLED_E2E=FAIL_HARNESS_ONLY
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+CONTAINER_EXIT=1
+OOM=NO
+NODE_CONFIGURED=node
+NODE_EXECUTABLE_PATH_USED=/usr/local/bun-node-fallback-bin/node
+NODE_EXECUTABLE_FOUND=YES
+NODE_VERSION_PROBE=node_--version_UNSUPPORTED_BY_IMAGE_WRAPPER
+NODE_VERSION_PROBE_EXIT=1
+NODE_IMPORT_PROBE=NOT_REACHED_IN_RUNNER
+FAILURE_CLASS=HARNESS_NODE_VERSION_FLAG_INCOMPATIBLE
+PRODUCT_SOURCE_CHANGED=NO
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+```
+
+The first replay used the correct PATH-based executable, but the disposable
+runner used `node --version`, which the image’s Node-compatible wrapper rejects.
+An independent provider-disabled image probe confirmed the supported
+`process.versions.node` version check. This is a bounded harness-only defect;
+the reviewed Slate source remains unchanged. The failed container was removed
+after independent status/result evidence was captured.

@@ -3332,6 +3332,38 @@ NEXT_ACTION=HUMAN_DECIDE_FUTURE_PROVIDER_REVALIDATION_ONLY_AFTER_REVIEWING_G11_R
 G11 changed no tracked product/runtime source; no GLM review or provider call
 was required.
 
+## Campaign 8D1K-G12 first replay failure preserved
+
+```text
+CAMPAIGN=8D1K_G12
+STATUS=G12_HARNESS_CORRECTION_IN_PROGRESS_ZERO_PROVIDER
+G12_PROVIDER_CALLS_USED=0
+G12_EXACT_SHAPE_PROVIDER_DISABLED_E2E=FAIL_HARNESS_ONLY
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+CONTAINER_EXIT=1
+OOM=NO
+NODE_CONFIGURED=node
+NODE_EXECUTABLE_PATH_USED=/usr/local/bun-node-fallback-bin/node
+NODE_EXECUTABLE_FOUND=YES
+NODE_VERSION_PROBE=node_--version_UNSUPPORTED_BY_IMAGE_WRAPPER
+NODE_VERSION_PROBE_EXIT=1
+NODE_IMPORT_PROBE=NOT_REACHED_IN_RUNNER
+FAILURE_CLASS=HARNESS_NODE_VERSION_FLAG_INCOMPATIBLE
+PRODUCT_SOURCE_CHANGED=NO
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+```
+
+The first G12 exact-shape replay used the correct PATH-based executable and
+persisted its sanitized result independently of the launcher, but the runner
+incorrectly treated `node --version` as the version probe. The image’s
+Node-compatible wrapper rejects that flag; an independent image probe verified
+the supported `process.versions.node` method. This is a harness-only defect,
+not a Slate bridge or provider failure. The exact failed container was removed
+only after result and status evidence were captured.
+
 ## Campaign 8D1K-G12 preflight
 
 ```text

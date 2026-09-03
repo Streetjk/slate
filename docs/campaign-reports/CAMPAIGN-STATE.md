@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-G12 zero-provider harness/runtime normalization
-Current status: G12_PREFLIGHT_EXECUTING_ZERO_PROVIDER — origin reconciled at `26bf1409648fc36c37569330760f12bb1685b76a`; G11 root cause is preserved exactly; G12 authorizes zero provider calls and is validating the durable exact-shape ARM64 mock replay before the G13 human authorization boundary.
+Current status: G12_HARNESS_CORRECTION_IN_PROGRESS_ZERO_PROVIDER — the first exact-shape ARM64 replay persisted and independently recovered a sanitized failure; the disposable runner used unsupported `node --version` probing against the image’s Node-compatible PATH wrapper. No product/runtime defect or provider call was identified.
 
 Completed campaigns:
 
@@ -78,7 +78,7 @@ Active feature branches:
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 - `feature/gemini-35-live-evaluation` — PR #2; Campaign 8D1K-E complete; Campaign 8D1K-F one-call exact full-adapter provider revalidation authorized and not yet executed; production deployment and merge remain prohibited.
 
-Last test status: G12 preflight — PASS — G11 corrected Node text transport and child-spawn root cause preserved; G12 provider-disabled validation is in progress with zero provider calls. Firmware was not changed or flashed.
+Last test status: G12 first replay — SANITIZED_HARNESS_FAILURE — durable result recovered after launcher timeout; failure is bounded to the disposable version probe, with zero provider calls. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -433,7 +433,32 @@ PR2_MERGED=NO
 READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
 HUMAN_ACTION_REQUIRED=NO_DURING_G12
-NEXT_ACTION=RUN_G12_ZERO_PROVIDER_EXACT_SHAPE_ARM64_REPLAY_AND_DETERMINISTIC_GATES
+NEXT_ACTION=REPLACE_NODE_VERSION_FLAG_WITH_PROCESS_VERSIONS_PROBE_AND_RERUN_G12_ZERO_PROVIDER_REPLAY
+
+## Campaign 8D1K-G12 first replay failure preserved
+
+```text
+CAMPAIGN=8D1K_G12
+STATUS=G12_HARNESS_CORRECTION_IN_PROGRESS_ZERO_PROVIDER
+G12_PROVIDER_CALLS_USED=0
+G12_EXACT_SHAPE_PROVIDER_DISABLED_E2E=FAIL_HARNESS_ONLY
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+CONTAINER_EXIT=1
+OOM=NO
+NODE_CONFIGURED=node
+NODE_EXECUTABLE_PATH_USED=/usr/local/bun-node-fallback-bin/node
+NODE_EXECUTABLE_FOUND=YES
+NODE_VERSION_PROBE=node_--version_UNSUPPORTED_BY_IMAGE_WRAPPER
+NODE_VERSION_PROBE_EXIT=1
+NODE_IMPORT_PROBE=NOT_REACHED_IN_RUNNER
+FAILURE_CLASS=HARNESS_NODE_VERSION_FLAG_INCOMPATIBLE
+PRODUCT_SOURCE_CHANGED=NO
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+NEXT_ACTION=REPLACE_NODE_VERSION_FLAG_WITH_PROCESS_VERSIONS_PROBE_AND_RERUN_G12_ZERO_PROVIDER_REPLAY
+```
 
 ## Campaign 8D1K-G12 preflight
 
