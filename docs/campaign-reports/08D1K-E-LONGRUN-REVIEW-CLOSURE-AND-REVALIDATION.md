@@ -501,6 +501,31 @@ STATUS=HARD_STOP_GLM53_REVIEW_AUTH_REQUIRED
 READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=NO
 ```
 
+## 22. E5 correction and E6 disposable mount-path recovery
+
+The first E5 host gate run exposed a test-only defect in the newly added
+integration test (unused import and formatting); Luna adjudicated it as a
+bounded harness correction, the import was removed, Prettier was applied, and
+the complete host gates were rerun successfully. No product/runtime source was
+changed and no GLM follow-up was required.
+
+The E6 ARM64 candidate image then built successfully and the Docker build-time
+Node Live SDK load passed. Its first provider-disabled integration launch did
+not start because the Colima Docker daemon could not see a `/tmp` host bind
+source. This is recorded as a disposable launcher/mount-path failure only; no
+credential was mounted or read and no provider call occurred. The retry uses a
+host-visible path under the Slate workspace containing only a synthetic test
+fixture, with the same read-only mount and network-disabled mock run.
+
+```text
+E5_TEST_HARNESS_CORRECTION=BOUNDED_TEST_ONLY
+E5_HOST_GATES=PASS
+E6_FIRST_LAUNCH=BLOCKED_DISPOSABLE_HOST_TMP_BIND_PATH
+E6_PROVIDER_CALLS=0
+E6_REAL_CREDENTIAL_MOUNTED=NO
+E6_NEXT_ACTION=RETRY_WITH_HOST_VISIBLE_SYNTHETIC_FIXTURE_PATH
+```
+
 ### Reviewer finds unresolved P0/P1
 
 ```text
