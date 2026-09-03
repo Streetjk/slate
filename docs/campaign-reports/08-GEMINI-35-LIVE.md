@@ -2971,3 +2971,67 @@ NEXT_ACTION=HUMAN_PROVIDE_APPROVED_HOST_LOCAL_PROTECTED_RUNTIME_CREDENTIAL_REFER
 
 The exact full-Slate-adapter provider call was not attempted. No retry or
 second call is authorized by this campaign.
+
+## Campaign 8D1K-F — recovered F1 and single-call F2 boundary
+
+Date: 2026-09-03 (Australia/Perth)
+
+The historical protected host source was recovered from prior provider-harness
+evidence and verified on `note4-orangepi` using metadata only:
+
+```text
+F1=PASS
+F1_SOURCE_HOST=note4-orangepi
+F1_SOURCE_PATH=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+F1_SOURCE_OWNER=pi
+F1_SOURCE_GROUP=pi
+F1_SOURCE_MODE=600
+F1_SOURCE_SIZE_BYTES=53
+F1_SOURCE_NONEMPTY=YES
+F1_SOURCE_TYPE=REGULAR_NON_SYMLINK_FILE
+F1_CONTAINER_DESTINATION=/run/secrets/gemini_api_key
+F1_READ_ONLY_BIND=YES
+F1_DOCKER_MOUNT_RW=false
+F1_CREDENTIAL_VALUE_READ=NO
+F1_PRODUCTION_ENV_USED=NO
+```
+
+The one separately authorized F2 provider call then ran exactly once through
+the full Slate Bun adapter and private Node bridge. Its sanitized result was
+persisted independently and recovered after the launcher command returned.
+The call failed quickly, so a deliberate wait-launcher timeout was not
+observed and is not claimed as evidence.
+
+```text
+CAMPAIGN=8D1K_F
+STATUS=HARD_STOP_EXACT_FULL_ADAPTER_REAL_PROVIDER_REVALIDATION_FAILURE
+F2=FAIL
+F2_FAILURE_CLASS=SLATE_ADAPTER_ERROR
+F2_MODEL=gemini-3.1-flash-live-preview
+F2_MODEL_EVENT=NO
+F2_TURN_COMPLETE=NO
+F2_TOOL_INVOCATIONS=0
+F2_SEARCH_EXECUTED=NO
+F2_PRIVATE_DATA_SENT=NO
+F2_GENERATED_AUDIO_RETAINED=NO
+F2_OOM=NO
+F2_EXIT=21
+F2_RESULT_RECOVERED_INDEPENDENTLY=YES
+F2_CONTAINER_CLEANUP=ATTEMPTED_DEAD_CONTAINER_REMAINS_IN_DOCKER_METADATA
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+SOURCE_DEFECT_PROVEN=NO
+SOURCE_CORRECTION_MADE=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SINGLE_CALL_FAILURE_AND_DECIDE_ANY_FUTURE_CAMPAIGN
+```

@@ -486,3 +486,54 @@ READY_FOR_F2=YES
 Future runs must use this host-local source mechanism and exact destination
 with a read-only bind only. Never log, copy, move, or persist the credential
 value; never load production `.env` material.
+
+## 18. F2 single-call result and human boundary
+
+The one authorized F2 call was started exactly once in a disposable ARM64
+Bun-parent container using the recovered protected source, the exact Node Live
+bridge, model `gemini-3.1-flash-live-preview`, and synthetic input only. The
+container had no published ports; Search and tools were disabled. The
+sanitized result was persisted in the independently mounted result directory
+and retrieved through a separate Docker copy operation. The provider process
+failed quickly, before the deliberate wait-launcher timeout could fire; this
+is recorded rather than inferred as a timeout-survival pass.
+
+```text
+F2=FAIL
+F2_FAILURE_CLASS=SLATE_ADAPTER_ERROR
+F2_PROVIDER_RESULT=FAIL
+F2_MODEL=gemini-3.1-flash-live-preview
+F2_INPUT=SYNTHETIC_ONLY
+F2_MODEL_EVENT=NO
+F2_TURN_COMPLETE=NO
+F2_SLATE_ADAPTER_ERROR=YES
+F2_TOOL_INVOCATIONS=0
+F2_SEARCH_EXECUTED=NO
+F2_PRIVATE_DATA_SENT=NO
+F2_OUTLOOK_DATA_SENT=NO
+F2_CALENDAR_DATA_SENT=NO
+F2_MICROPHONE_SENT=NO
+F2_GENERATED_AUDIO_RETAINED=NO
+F2_OOM=NO
+F2_EXIT=21
+F2_SANITIZED_RESULT_DURABLY_PERSISTED=YES
+F2_RESULT_RECOVERED_INDEPENDENTLY=YES
+F2_WAIT_LAUNCHER_TIMEOUT=NOT_OBSERVED_FAST_FAILURE
+F2_CONTAINER_CLEANUP=ATTEMPTED_DEAD_CONTAINER_REMAINS_IN_DOCKER_METADATA
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+SOURCE_DEFECT_PROVEN=NO
+SOURCE_CORRECTION_MADE=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SINGLE_CALL_FAILURE_AND_DECIDE_ANY_FUTURE_CAMPAIGN
+```
+
+No second provider call is authorized or permitted by this checkpoint. The
+failure does not establish a deterministic product-source defect, so the
+reviewed bridge was not changed. Production Slate/MySQL remained healthy and
+untouched; billing, Vertex, deployment, restart, firmware, and PR merge remain
+closed.
