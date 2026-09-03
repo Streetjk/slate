@@ -745,6 +745,19 @@ in progress for dead disposable records; production Slate/MySQL remained
 running and healthy with zero restarts. No further provider call is
 authorized or permitted by this checkpoint.
 
+## G10 report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=e7e7c75245253fdbb004303ae15a9a61abf6e1d4
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
+
 ## G8 report-push invariant checkpoint
 
 ```text
