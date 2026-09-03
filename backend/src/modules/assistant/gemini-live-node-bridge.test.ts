@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { LiveServerMessage } from '@google/genai';
 import {
+  GEMINI_LIVE_FAILURE_STAGES,
+  GeminiLiveBridgeFailure,
   GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
   type GeminiLiveBridgeRequest,
 } from './gemini-live-bridge.protocol';
@@ -118,6 +120,35 @@ function options() {
 
 const runtimeScript = resolve(import.meta.dir, 'gemini-live-node-bridge-runtime.mjs');
 const runtimeCwd = resolve(import.meta.dir, '../../../../');
+
+describe('Gemini 3.1 Node runtime compatibility contract', () => {
+  it('uses realtime text input and preserves the distinct audio/tool paths', () => {
+    const source = readFileSync(runtimeScript, 'utf8');
+    const textStart = source.indexOf("case 'text':");
+    const audioEnd = source.indexOf("case 'audio_end':", textStart);
+    const textCase = source.slice(textStart, audioEnd);
+
+    expect(textCase).toContain('sendRealtimeInput({ text: frame.text })');
+    expect(textCase).not.toContain('sendClientContent');
+    expect(source).toContain('sendRealtimeInput({ audioStreamEnd: true })');
+    expect(source).toContain('sendToolResponse({ functionResponses: frame.calls })');
+  });
+
+  it('defines only the sanitized failure stages used by the bridge', () => {
+    expect(GEMINI_LIVE_FAILURE_STAGES).toEqual([
+      'CONFIG_REJECTED_BEFORE_CHILD',
+      'CHILD_SPAWN_FAILED',
+      'BRIDGE_CREDENTIAL_UNAVAILABLE',
+      'BRIDGE_PROTOCOL_REJECTED',
+      'PROVIDER_CONNECT_FAILED_BEFORE_READY',
+      'READY_THEN_PROVIDER_ERROR',
+      'READY_THEN_TEXT_SEND_ERROR',
+      'SESSION_CLOSED_UNEXPECTEDLY',
+      'CONNECT_TIMEOUT',
+      'UNKNOWN_SAFE_FAILURE',
+    ]);
+  });
+});
 
 function runtimeOpenFrame(overrides: Record<string, unknown> = {}): string {
   return `${JSON.stringify({
@@ -336,7 +367,48 @@ describe('NodeGeminiLiveBridge', () => {
         100,
         false
       )
-    ).toThrow('synthetic spawn failure');
+    ).toThrow('Gemini Live Node bridge is unavailable');
+  });
+
+  it('classifies child spawn and configuration failures without raw details', () => {
+    const spawnFailure = new NodeGeminiLiveBridge(options(), (() => {
+      throw new Error('synthetic provider detail');
+    }) as never);
+
+    try {
+      spawnFailure.connect(
+        'en',
+        () => undefined,
+        () => undefined,
+        'gemini-3.1-flash-live-preview',
+        'synthetic instruction',
+        100,
+        false
+      );
+      throw new Error('expected spawn failure');
+    } catch (error) {
+      expect(error).toBeInstanceOf(GeminiLiveBridgeFailure);
+      expect((error as GeminiLiveBridgeFailure).failureStage).toBe('CHILD_SPAWN_FAILED');
+      expect((error as Error).message).not.toContain('synthetic provider detail');
+    }
+
+    const configFailure = new NodeGeminiLiveBridge(
+      { ...options(), apiKeyFile: '/tmp/synthetic-gemini-api-key' },
+      (() => {
+        throw new Error('child must not spawn');
+      }) as never
+    );
+    expect(() =>
+      configFailure.connect(
+        'en',
+        () => undefined,
+        () => undefined,
+        'gemini-3.1-flash-live-preview',
+        'synthetic instruction',
+        100,
+        false
+      )
+    ).toThrow('Gemini Live Node bridge API-key credential reference is unavailable');
   });
 
   it('fails closed and terminates the child when stdin reports an error', async () => {
@@ -357,6 +429,27 @@ describe('NodeGeminiLiveBridge', () => {
 
     expect(errors.map((error) => error.message)).toContain('Gemini Live Node bridge write failed');
     expect(child.killSignals).toEqual(['SIGTERM']);
+  });
+
+  it('classifies a provider error after ready without exposing provider text', async () => {
+    const child = new FakeProcess();
+    const errors: Error[] = [];
+    const bridge = new NodeGeminiLiveBridge(options(), (() => child as never) as never);
+    await bridge.connect(
+      'en',
+      () => undefined,
+      (error) => errors.push(error),
+      'gemini-3.1-flash-live-preview',
+      'synthetic instruction',
+      100,
+      false
+    );
+
+    child.stdout.emit('{"type":"error","version":1,"epoch":1,"code":"BRIDGE_PROVIDER_ERROR"}');
+
+    expect(errors[0]).toBeInstanceOf(GeminiLiveBridgeFailure);
+    expect((errors[0] as GeminiLiveBridgeFailure).failureStage).toBe('READY_THEN_PROVIDER_ERROR');
+    expect(errors[0]?.message).not.toContain('provider');
   });
 
   it('escalates a non-exiting child from SIGTERM to SIGKILL on close', async () => {

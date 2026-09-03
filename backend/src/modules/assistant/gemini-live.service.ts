@@ -9,6 +9,7 @@ import {
   type GeminiClientFactory,
 } from './gemini.client';
 import { buildGeminiToolRegistry } from './gemini-tool-registry';
+import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
 import {
   createNodeGeminiLiveBridge,
   NODE_GEMINI_LIVE_BRIDGE_FACTORY,
@@ -74,7 +75,11 @@ export class GeminiLiveService {
         );
       } catch (error) {
         const normalized = normalizeError(error, 'Gemini Live connection failed');
-        this.logger.warn(normalized.message);
+        this.logger.warn(
+          normalized instanceof GeminiLiveBridgeFailure
+            ? `Gemini Live bridge failure: ${normalized.failureStage}`
+            : normalized.message
+        );
         onError?.(normalized);
         throw normalized;
       }
@@ -227,6 +232,9 @@ export class GeminiLiveStateError extends Error {
 function normalizeError(error: unknown, fallback: string): Error {
   if (error instanceof GeminiConfigurationError || error instanceof GeminiLiveStateError) {
     return error;
+  }
+  if (error instanceof GeminiLiveBridgeFailure) {
+    return new GeminiLiveBridgeFailure(error.failureStage, fallback);
   }
   return new Error(fallback);
 }

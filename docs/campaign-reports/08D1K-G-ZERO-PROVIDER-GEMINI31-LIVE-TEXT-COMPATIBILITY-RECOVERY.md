@@ -218,6 +218,69 @@ F2_TEXT_FRAME_SENT=<YES|NO|UNKNOWN>
 
 If the dead disposable container can be safely removed after all sanitized evidence is recovered, remove only that exact disposable dead container and record cleanup. Do not touch production containers/images.
 
+## G2–G6 deterministic correction checkpoint
+
+### G2 compatibility and boundary audit
+
+The current Node runtime ordinary text branch was confirmed to use the
+incompatible post-connect `sendClientContent` path. The bounded correction is
+to use `sendRealtimeInput({ text })`; audio, audio-end, tool-response,
+reconnect, close, and the production Bun/2.5 path are unchanged.
+
+The SDK's `LiveServerMessage.text` and `.data` accessors concatenate all text
+and inline-data parts from a model turn, while the bridge forwards the complete
+server message. Downstream Slate processing therefore does not assume one
+part; this is recorded as `SERVER_MULTIPART_EVENT_AUDIT=PASS_NO_CHANGE`.
+
+Search-disabled tool evidence is now represented accurately:
+
+```text
+SEARCH_DECLARED=NO
+CUSTOM_FUNCTIONS_DECLARED=YES
+CUSTOM_FUNCTION_NAMES=propose_google_calendar_event,get_btc_price
+TOOL_INVOCATIONS=0_IN_PROVIDER_DISABLED_FIXTURES
+```
+
+### G3/G4 bounded implementation
+
+The Node runtime now sends ordinary text with `sendRealtimeInput({ text })`.
+The private bridge also carries a bounded internal `GeminiLiveBridgeFailure`
+stage enum covering configuration rejection, child spawn, credential,
+protocol, pre-ready provider connection, post-ready provider error, text-send,
+unexpected-close, timeout, and unknown-safe failures. Service/device-facing
+messages remain generic; no raw provider detail is retained or logged.
+
+### G5/G6 validation evidence
+
+```text
+G31_TEXT_TRANSPORT_COMPATIBILITY=DEFECT_CONFIRMED
+TEXT_TRANSPORT_CORRECTED=YES
+SAFE_FAILURE_STAGE_OBSERVABILITY=IMPROVED
+TARGETED_BRIDGE_SERVICE_TESTS=PASS
+FULL_BACKEND_HOST=327_PASS_0_FAIL_4_SECRET_GATED_SKIP
+FULL_BACKEND_ARM64=331_PASS_0_FAIL
+SHARED_TESTS=6_PASS_0_FAIL
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+NODE_SYNTAX_CHECK=PASS
+ARM64_CANDIDATE_BUILD_PRECOMMIT=PASS
+ARM64_NODE_VERSION=22.22.2
+ARM64_BUN_VERSION=1.4.0
+ARM64_GENAI_NODE_SDK_LOAD=PASS_NO_PROVIDER_CALL
+PROVIDER_DISABLED_FULL_ADAPTER_E2E=PASS
+PROVIDER_DISABLED_MODEL_EVENT_SHAPE=PASS
+PROVIDER_DISABLED_TURN_COMPLETE_SHAPE=PASS
+PRIVATE_DATA_FIXTURES=NONE
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+```
+
+The four host skips are the pre-existing integration tests gated on a
+synthetic `/run/secrets` fixture; the architecture-matched run supplied only
+that disposable synthetic fixture and executed all 331 backend tests. No
+production secret or environment was mounted.
+
 ## 8. G2 — Official Gemini 3.1 Live compatibility audit
 
 Audit the exact current Node bridge and service behavior against current official Gemini 3.1 Flash Live guidance.

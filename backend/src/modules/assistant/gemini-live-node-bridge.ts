@@ -6,9 +6,11 @@ import type { VoiceLanguageT } from 'shared';
 import { buildGeminiToolRegistry } from './gemini-tool-registry';
 import {
   encodeGeminiLiveBridgeFrame,
+  GeminiLiveBridgeFailure,
   GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
   GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES,
   parseGeminiLiveBridgeResponse,
+  type GeminiLiveFailureStage,
   type GeminiLiveBridgeErrorCode,
   type GeminiLiveBridgeRequest,
   type GeminiLiveBridgeResponse,
@@ -86,15 +88,24 @@ export class NodeGeminiLiveBridge {
     connectTimeoutMs: number,
     enableWebSearch: boolean
   ): Promise<GeminiLiveConnection> {
-    const process = this.processSpawner(
-      resolveExecutable(this.options.executable),
-      [resolve(this.options.script)],
-      {
-        env: buildBridgeEnvironment(this.options, model),
-        stdio: ['pipe', 'pipe', 'pipe'],
-        shell: false,
-      }
-    );
+    let process: BridgeProcess;
+    try {
+      process = this.processSpawner(
+        resolveExecutable(this.options.executable),
+        [resolve(this.options.script)],
+        {
+          env: buildBridgeEnvironment(this.options, model),
+          stdio: ['pipe', 'pipe', 'pipe'],
+          shell: false,
+        }
+      );
+    } catch (error) {
+      if (error instanceof GeminiLiveBridgeFailure) throw error;
+      throw new GeminiLiveBridgeFailure(
+        'CHILD_SPAWN_FAILED',
+        'Gemini Live Node bridge is unavailable'
+      );
+    }
     const connection = new NodeGeminiLiveConnection(
       process,
       onEvent,
@@ -141,18 +152,31 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     });
     process.stdout.on('data', (data) => this.handleStdout(data));
     process.stderr.on('data', () => undefined);
-    process.stdin.on?.('error', () => this.failBeforeReady('Gemini Live Node bridge write failed'));
-    process.once('error', () => this.failBeforeReady('Gemini Live Node bridge is unavailable'));
+    process.stdin.on?.('error', () =>
+      this.failBeforeReady(
+        'Gemini Live Node bridge write failed',
+        this.state === 'starting' ? 'CHILD_SPAWN_FAILED' : 'READY_THEN_TEXT_SEND_ERROR'
+      )
+    );
+    process.once('error', () =>
+      this.failBeforeReady(
+        'Gemini Live Node bridge is unavailable',
+        this.state === 'starting' ? 'CHILD_SPAWN_FAILED' : 'UNKNOWN_SAFE_FAILURE'
+      )
+    );
     process.once('exit', () => {
       this.clearCloseTimer();
-      this.failBeforeReady('Gemini Live Node bridge exited before ready');
+      this.failBeforeReady(
+        'Gemini Live Node bridge exited before ready',
+        this.state === 'starting' ? 'CHILD_SPAWN_FAILED' : 'SESSION_CLOSED_UNEXPECTEDLY'
+      );
     });
   }
 
   async open(frame: GeminiLiveBridgeRequest): Promise<GeminiLiveConnection> {
     this.epoch = 1;
     this.openTimer = this.timers.setTimeout(
-      () => this.failBeforeReady('Gemini Live Node bridge connection timed out'),
+      () => this.failBeforeReady('Gemini Live Node bridge connection timed out', 'CONNECT_TIMEOUT'),
       this.connectTimeoutMs
     );
     this.write(frame);
@@ -202,7 +226,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
       this.readyReject = rejectReady;
     });
     this.openTimer = this.timers.setTimeout(
-      () => this.failBeforeReady('Gemini Live Node bridge reconnect timed out'),
+      () => this.failBeforeReady('Gemini Live Node bridge reconnect timed out', 'CONNECT_TIMEOUT'),
       this.connectTimeoutMs
     );
     this.epoch += 1;
@@ -244,7 +268,10 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
   private handleStdout(data: Buffer | string): void {
     this.lineBuffer += data.toString();
     if (Buffer.byteLength(this.lineBuffer, 'utf8') > GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES) {
-      this.failBeforeReady('Gemini Live Node bridge protocol was rejected');
+      this.failBeforeReady(
+        'Gemini Live Node bridge protocol was rejected',
+        'BRIDGE_PROTOCOL_REJECTED'
+      );
       return;
     }
     let newline = this.lineBuffer.indexOf('\n');
@@ -261,7 +288,10 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     try {
       response = parseGeminiLiveBridgeResponse(line);
     } catch {
-      this.failBeforeReady('Gemini Live Node bridge protocol was rejected');
+      this.failBeforeReady(
+        'Gemini Live Node bridge protocol was rejected',
+        'BRIDGE_PROTOCOL_REJECTED'
+      );
       return;
     }
     if (response.epoch !== this.epoch) return;
@@ -279,9 +309,14 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
         return;
       case 'error':
         if (response.code === 'BRIDGE_PROVIDER_ERROR' && this.state === 'ready') {
-          this.onError(new Error(errorMessage(response.code)));
+          this.onError(
+            new GeminiLiveBridgeFailure('READY_THEN_PROVIDER_ERROR', errorMessage(response.code))
+          );
         } else {
-          this.failBeforeReady(errorMessage(response.code));
+          this.failBeforeReady(
+            errorMessage(response.code),
+            failureStageForBridgeCode(response.code, this.state)
+          );
         }
         return;
       case 'closed':
@@ -289,7 +324,12 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
         if (this.state !== 'closed') {
           this.state = 'disconnected';
           this.clearCloseTimer();
-          this.onError(new Error('Gemini Live Node bridge session closed'));
+          this.onError(
+            new GeminiLiveBridgeFailure(
+              'SESSION_CLOSED_UNEXPECTEDLY',
+              'Gemini Live Node bridge session closed'
+            )
+          );
         }
         return;
     }
@@ -300,7 +340,10 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     try {
       this.process.stdin.write(encodeGeminiLiveBridgeFrame(frame));
     } catch {
-      this.failBeforeReady('Gemini Live Node bridge write failed');
+      this.failBeforeReady(
+        'Gemini Live Node bridge write failed',
+        frame.type === 'text' ? 'READY_THEN_TEXT_SEND_ERROR' : 'UNKNOWN_SAFE_FAILURE'
+      );
     }
   }
 
@@ -316,12 +359,15 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     }
   }
 
-  private failBeforeReady(message: string): void {
+  private failBeforeReady(
+    message: string,
+    failureStage: GeminiLiveFailureStage = 'UNKNOWN_SAFE_FAILURE'
+  ): void {
     this.clearTimer();
     if (this.state === 'starting') {
       this.state = 'closed';
       this.terminateProcess();
-      const error = new Error(message);
+      const error = new GeminiLiveBridgeFailure(failureStage, message);
       this.readyReject?.(error);
       this.readyResolve = undefined;
       this.readyReject = undefined;
@@ -332,7 +378,7 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
       this.state = 'closed';
       this.clearCloseTimer();
       this.terminateProcess();
-      this.onError(new Error(message));
+      this.onError(new GeminiLiveBridgeFailure(failureStage, message));
     }
   }
 
@@ -369,10 +415,16 @@ function buildBridgeEnvironment(
   model: string
 ): NodeJS.ProcessEnv {
   if (options.apiKeyFile && !isTrustedCredentialPath(options.apiKeyFile)) {
-    throw new Error('Gemini Live Node bridge API-key credential reference is unavailable');
+    throw new GeminiLiveBridgeFailure(
+      'CONFIG_REJECTED_BEFORE_CHILD',
+      'Gemini Live Node bridge API-key credential reference is unavailable'
+    );
   }
   if (options.adcCredentialFile && !isSafeCredentialFileReference(options.adcCredentialFile)) {
-    throw new Error('Gemini Live Node bridge ADC credential reference is unavailable');
+    throw new GeminiLiveBridgeFailure(
+      'CONFIG_REJECTED_BEFORE_CHILD',
+      'Gemini Live Node bridge ADC credential reference is unavailable'
+    );
   }
   return {
     PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
@@ -431,5 +483,25 @@ function errorMessage(code: GeminiLiveBridgeErrorCode): string {
       return 'Gemini Live Node bridge provider connection failed';
     default:
       return 'Gemini Live Node bridge failed';
+  }
+}
+
+function failureStageForBridgeCode(
+  code: GeminiLiveBridgeErrorCode,
+  state: 'starting' | 'ready' | 'disconnected' | 'closed'
+): GeminiLiveFailureStage {
+  switch (code) {
+    case 'BRIDGE_CREDENTIAL_UNAVAILABLE':
+      return 'BRIDGE_CREDENTIAL_UNAVAILABLE';
+    case 'BRIDGE_PROTOCOL_REJECTED':
+      return 'BRIDGE_PROTOCOL_REJECTED';
+    case 'BRIDGE_PROVIDER_CONNECTION_FAILED':
+      return 'PROVIDER_CONNECT_FAILED_BEFORE_READY';
+    case 'BRIDGE_PROVIDER_ERROR':
+      return state === 'ready'
+        ? 'READY_THEN_PROVIDER_ERROR'
+        : 'PROVIDER_CONNECT_FAILED_BEFORE_READY';
+    default:
+      return 'UNKNOWN_SAFE_FAILURE';
   }
 }

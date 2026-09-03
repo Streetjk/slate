@@ -209,10 +209,7 @@ async function handle(frame) {
       return;
     case 'text':
       if (!isValidText(frame)) throw new BridgeRuntimeError('BRIDGE_PROTOCOL_REJECTED');
-      requireSession().sendClientContent({
-        turns: [{ role: 'user', parts: [{ text: frame.text }] }],
-        turnComplete: true,
-      });
+      requireSession().sendRealtimeInput({ text: frame.text });
       return;
     case 'audio_end':
       if (!hasExactKeys(frame, ['type', 'version']))

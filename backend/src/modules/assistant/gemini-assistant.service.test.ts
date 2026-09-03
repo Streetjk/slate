@@ -207,4 +207,16 @@ describe('Gemini tool registry', () => {
       /outlook|microsoft|arbitrary_http/i
     );
   });
+
+  it('reports Search disabled without mislabeling custom declarations as absent tools', () => {
+    const registry = buildGeminiToolRegistry(false);
+    const functionDeclarations = registry[0]?.functionDeclarations ?? [];
+
+    expect(registry.some((tool) => 'googleSearch' in tool)).toBe(false);
+    expect(functionDeclarations.map((declaration) => declaration.name)).toEqual([
+      'propose_google_calendar_event',
+      'get_btc_price',
+    ]);
+    expect(functionDeclarations.length).toBeGreaterThan(0);
+  });
 });

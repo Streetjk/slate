@@ -3063,3 +3063,51 @@ PRODUCTION_CHANGED=NO
 
 The text-transport mismatch remains a current official-contract correction
 hypothesis and is not claimed as the proven cause of F2.
+
+## Campaign 8D1K-G — G2–G6 zero-provider correction and validation
+
+The current official-contract mismatch was confirmed in the Node bridge and
+corrected narrowly: ordinary post-connect text now uses
+`sendRealtimeInput({ text })`; audio, audio-end, tool-response, reconnect,
+close, and the production Bun/2.5 route remain unchanged. The SDK and Slate
+event path safely preserve multi-part server messages, recorded as
+`SERVER_MULTIPART_EVENT_AUDIT=PASS_NO_CHANGE`.
+
+Search/tool reporting is explicit rather than conflated:
+
+```text
+SEARCH_DECLARED=NO
+CUSTOM_FUNCTIONS_DECLARED=YES
+CUSTOM_FUNCTION_NAMES=propose_google_calendar_event,get_btc_price
+TOOL_INVOCATIONS=0_IN_PROVIDER_DISABLED_FIXTURES
+```
+
+Sanitized internal failure-stage classification was added while retaining
+generic device-facing errors and excluding raw provider detail. The exact
+deterministic evidence before final commit was:
+
+```text
+G31_TEXT_TRANSPORT_COMPATIBILITY=DEFECT_CONFIRMED
+TEXT_TRANSPORT_CORRECTED=YES
+SAFE_FAILURE_STAGE_OBSERVABILITY=IMPROVED
+FULL_BACKEND_HOST=327_PASS_0_FAIL_4_SECRET_GATED_SKIP
+FULL_BACKEND_ARM64=331_PASS_0_FAIL
+SHARED_TESTS=6_PASS_0_FAIL
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+NODE_SYNTAX_CHECK=PASS
+ARM64_CANDIDATE_BUILD_PRECOMMIT=PASS
+ARM64_NODE_VERSION=22.22.2
+ARM64_BUN_VERSION=1.4.0
+ARM64_GENAI_NODE_SDK_LOAD=PASS_NO_PROVIDER_CALL
+PROVIDER_DISABLED_FULL_ADAPTER_E2E=PASS
+PRIVATE_DATA_FIXTURES=NONE
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+PRODUCTION_CHANGED=NO
+```
+
+This correction does not claim that the historical F2 failure was caused by
+text transport; that attribution remains unproven until a future separately
+authorized real-provider revalidation.

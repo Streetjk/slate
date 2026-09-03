@@ -151,10 +151,13 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
   it('distinguishes deterministic child-boundary failures without exposing raw details', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'slate-adapter-failures-'));
     try {
-      const cases: Array<{ mode: 'protocol' | 'crash' | 'timeout'; expected: string }> = [
-        { mode: 'protocol', expected: 'Gemini Live connection failed' },
-        { mode: 'crash', expected: 'Gemini Live connection failed' },
-        { mode: 'timeout', expected: 'Gemini Live connection failed' },
+      const cases: Array<{
+        mode: 'protocol' | 'crash' | 'timeout';
+        failureStage: string;
+      }> = [
+        { mode: 'protocol', failureStage: 'BRIDGE_PROTOCOL_REJECTED' },
+        { mode: 'crash', failureStage: 'CHILD_SPAWN_FAILED' },
+        { mode: 'timeout', failureStage: 'CONNECT_TIMEOUT' },
       ];
       for (const testCase of cases) {
         const service = new GeminiLiveService(
@@ -162,9 +165,11 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
             GEMINI_LIVE_CONNECT_TIMEOUT_MS: testCase.mode === 'timeout' ? 25 : 250,
           })
         );
-        await expect(service.connect('en', () => {}, undefined, false)).rejects.toThrow(
-          testCase.expected
-        );
+        await expect(service.connect('en', () => {}, undefined, false)).rejects.toMatchObject({
+          name: 'GeminiLiveBridgeFailure',
+          failureStage: testCase.failureStage,
+          message: 'Gemini Live connection failed',
+        });
       }
 
       const missingExecutable = new GeminiLiveService(
@@ -172,14 +177,18 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
           GEMINI_NODE_EXECUTABLE: '/definitely/missing/slate-node',
         })
       );
-      await expect(missingExecutable.connect('en', () => {}, undefined, false)).rejects.toThrow(
-        'Gemini Live connection failed'
-      );
+      await expect(
+        missingExecutable.connect('en', () => {}, undefined, false)
+      ).rejects.toMatchObject({
+        name: 'GeminiLiveBridgeFailure',
+        failureStage: 'CHILD_SPAWN_FAILED',
+      });
 
       const missingScript = new GeminiLiveService(config(join(directory, 'missing-bridge.mjs')));
-      await expect(missingScript.connect('en', () => {}, undefined, false)).rejects.toThrow(
-        'Gemini Live connection failed'
-      );
+      await expect(missingScript.connect('en', () => {}, undefined, false)).rejects.toMatchObject({
+        name: 'GeminiLiveBridgeFailure',
+        failureStage: 'CHILD_SPAWN_FAILED',
+      });
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -215,9 +224,10 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
       const service = new GeminiLiveService(
         config(mockScript(directory, 'pass'), {}, unsafeCredential)
       );
-      await expect(service.connect('en', () => {}, undefined, false)).rejects.toThrow(
-        'Gemini Live connection failed'
-      );
+      await expect(service.connect('en', () => {}, undefined, false)).rejects.toMatchObject({
+        name: 'GeminiLiveBridgeFailure',
+        failureStage: 'CONFIG_REJECTED_BEFORE_CHILD',
+      });
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

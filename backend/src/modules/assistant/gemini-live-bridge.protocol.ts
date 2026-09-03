@@ -3,6 +3,31 @@ import type { VoiceLanguageT } from 'shared';
 export const GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION = 1 as const;
 export const GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES = 2 * 1024 * 1024;
 
+export const GEMINI_LIVE_FAILURE_STAGES = [
+  'CONFIG_REJECTED_BEFORE_CHILD',
+  'CHILD_SPAWN_FAILED',
+  'BRIDGE_CREDENTIAL_UNAVAILABLE',
+  'BRIDGE_PROTOCOL_REJECTED',
+  'PROVIDER_CONNECT_FAILED_BEFORE_READY',
+  'READY_THEN_PROVIDER_ERROR',
+  'READY_THEN_TEXT_SEND_ERROR',
+  'SESSION_CLOSED_UNEXPECTEDLY',
+  'CONNECT_TIMEOUT',
+  'UNKNOWN_SAFE_FAILURE',
+] as const;
+
+export type GeminiLiveFailureStage = (typeof GEMINI_LIVE_FAILURE_STAGES)[number];
+
+export class GeminiLiveBridgeFailure extends Error {
+  constructor(
+    readonly failureStage: GeminiLiveFailureStage,
+    message: string
+  ) {
+    super(message);
+    this.name = 'GeminiLiveBridgeFailure';
+  }
+}
+
 export type GeminiLiveBridgeOpen = {
   type: 'open';
   version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
