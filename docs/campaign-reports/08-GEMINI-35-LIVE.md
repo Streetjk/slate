@@ -2801,3 +2801,90 @@ of their `docker wait` launcher. Separate polling, wait, inspect, result-copy,
 and log commands verified the records before cleanup. No provider call or
 credential mount/read occurred, the reviewed bridge remained unchanged, and
 production Slate/MySQL remained healthy and untouched.
+
+## Campaign 8D1K — final provider validation after harness recovery
+
+Date: 2026-09-03 (Australia/Perth)
+Controller: Luna; worker: Sonnet 4.6; reviewer: retained GLM-5.3-Flash PASS
+because no tracked product/runtime source changed.
+
+### CALL 2 — minimal exact Node bridge control
+
+CALL 2 was started exactly once in a uniquely named ARM64 disposable container
+using the reviewed Node bridge runtime lineage at
+`90ab7cbbff39dfb4dda79cf1260611e5f26cf941`, model
+`gemini-3.1-flash-live-preview`, synthetic text `Say exactly TEST.`, Search
+disabled, and no tool invocation. The protected runtime credential was mounted
+only at the container secret destination with read-only access. The container
+was started once without `--rm`; its wait launcher was intentionally terminated,
+then fresh independent status, wait, result-file, and log commands recovered
+the sanitized result before cleanup.
+
+```text
+CALL_2=PASS
+CALL_2_MODEL_EVENT=YES
+CALL_2_TURN_COMPLETE=YES
+CALL_2_EXIT=0
+CALL_2_OOM=false
+CALL_2_SEARCH_DISABLED=YES
+CALL_2_TOOL_INVOCATIONS=0
+CALL_2_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+```
+
+### CALL 3 — exact Slate Bun adapter
+
+CALL 3 was started exactly once in a disposable ARM64 image containing the
+exact Slate `GeminiLiveService`, `GeminiConfig`, Node bridge factory, and
+reviewed private Node runtime. It used the same exact model and protected
+read-only runtime credential mechanism, synthetic text only, Search disabled,
+and no tool invocation. The result survived deliberate launcher interruption
+and was retrieved independently from container status and logs.
+
+```text
+CALL_3=FAIL
+CALL_3_FAILURE_CLASS=SLATE_ADAPTER_ERROR
+CALL_3_EXIT=21
+CALL_3_OOM=false
+CALL_3_MODEL_EVENT=NO
+CALL_3_TURN_COMPLETE=NO
+CALL_3_TOOL_INVOCATIONS=0
+CALL_3_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+```
+
+`SLATE_ADAPTER_ERROR` is the exact sanitized classification emitted by the
+reviewed service boundary; raw provider error details were not captured or
+exposed. The result did not establish a deterministic product-source defect,
+so no bridge change or additional provider call was made. CALL 3 therefore
+fails the prerequisite for 8D1L, and the optional tool-registry provider call
+is waived because the three-call campaign budget is exhausted.
+
+### Final 8D1K stop state
+
+```text
+CAMPAIGN=8D1K
+STATUS=HARD_STOP_EXACT_NODE_LIVE_ADAPTER_E2E_FAILURE
+EXACT_ADAPTER_MODEL_EVENT=NO
+EXACT_ADAPTER_TURN_COMPLETE=NO
+PROVIDER_CALLS_USED=3_OF_3
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+SEARCH_EXECUTED=NO
+REAL_MICROPHONE=NO
+GENERATED_AUDIO_RETAINED=NO
+PRODUCT_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_CALL_3_FAILURE_NO_REMAINING_PROVIDER_CALLS
+```
+
+All disposable images, containers, result files, and build contexts were
+removed after evidence verification. Production Slate/MySQL remained running
+and healthy with zero restarts and `/healthz` status `ok`. 8D1L and 8D1M were
+not started.

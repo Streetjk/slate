@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-R disposable Node harness recovery
-Current status: HARNESS_RECOVERED_NO_PROVIDER_CALL — durable mock success and failure results survived an intentionally interrupted control launcher; calls 2 and 3 remain unused.
+Current stage: 8D1K Node Live non-production E2E
+Current status: HARD_STOP_EXACT_NODE_LIVE_ADAPTER_E2E_FAILURE — CALL 2 passed, but CALL 3 returned a durable sanitized adapter failure without model event or turn complete; no provider calls remain.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: stop at the human boundary and obtain explicit authorization before using any remaining 8D1K provider-call budget.
+Next automatic action: stop for human review of the sanitized CALL 3 adapter failure; do not start 8D1L.
 
-Human action required: YES — reauthorize the remaining two 8D1K provider calls after reviewing the durable harness recovery. Keep the key and all credential material out of chat and Git.
+Human action required: YES — review the sanitized CALL 3 adapter failure and decide the next bounded engineering action. No provider-call budget remains; keep the key and all credential material out of chat and Git.
 
 ## Campaign 6D D1 Candidate Checkpoint
 
@@ -1174,3 +1174,59 @@ failure result was exit `23`/`FAIL` with `MOCK_PROVIDER_DISABLED`. Both reported
 `RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES`. Cleanup occurred after
 verification, and the postcheck again found production Slate/MySQL healthy
 with zero restarts and `/healthz` status `ok`.
+
+## Campaign 8D1K — final provider validation checkpoint
+
+```text
+CAMPAIGN=8D1K
+STATUS=HARD_STOP_EXACT_NODE_LIVE_ADAPTER_E2E_FAILURE
+FEATURE_BRANCH=feature/gemini-35-live-evaluation
+REMOTE_HEAD_BEFORE_CHECKPOINT=8ba5d1271edb8a5f573c451f0f6a25062dbd32b0
+IMPLEMENTATION_SHA=90ab7cbbff39dfb4dda79cf1260611e5f26cf941
+CAMPAIGN_INSTRUCTIONS_SHA=08501bb3ca75739e43fbf4f54811e0243ca5d193
+PR=2
+PR_STATE=OPEN_DRAFT_UNMERGED
+CONTROLLER=LUNA
+WORKER=SONNET_4_6_BOUNDED
+REVIEWER=GLM_5_3_FLASH_RETAINED_PASS_NO_SOURCE_CHANGE
+PROVIDER_CALLS_THIS_STAGE=2
+8D1K_TOTAL_PROVIDER_CALLS_USED=3_OF_3
+REMAINING_PROVIDER_CALLS=0
+CALL_2_NODE_BRIDGE=PASS
+CALL_2_MODEL_EVENT=YES
+CALL_2_TURN_COMPLETE=YES
+CALL_3_EXACT_SLATE_ADAPTER=FAIL
+CALL_3_FAILURE_CLASS=SLATE_ADAPTER_ERROR
+CALL_3_MODEL_EVENT=NO
+CALL_3_TURN_COMPLETE=NO
+CALL_3_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+PRODUCT_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_CALL_3_FAILURE_NO_REMAINING_PROVIDER_CALLS
+```
+
+CALL 2 used the recovered durable Node harness and passed with the exact
+`gemini-3.1-flash-live-preview` model event and turn complete. CALL 3 used a
+disposable ARM64 Bun image containing the exact Slate `GeminiLiveService` and
+private Node bridge lineage, with the protected runtime credential mounted
+read-only. It persisted and independently recovered a sanitized FAIL record:
+exit `21`, `OOM=false`, `SLATE_ADAPTER_ERROR`, no model event, no turn complete,
+and zero tool invocations. The raw provider error was not captured or exposed;
+the recorded class is the exact sanitized adapter classification available from
+the reviewed boundary. No deterministic product-source defect was established,
+so the reviewed implementation was not changed and no new GLM review was
+required.
+
+Both provider-call containers were created without `--rm`, launched once, had
+their wait launcher deliberately interrupted, and were inspected through
+separate status, wait, result-file, and log retrieval commands before cleanup.
+No private NOTE4, Outlook, Calendar, Search, microphone, or retained audio data
+was used. Production Slate/MySQL remained healthy and untouched. Campaign 8D1L
+was not started because the exact adapter gate failed.
