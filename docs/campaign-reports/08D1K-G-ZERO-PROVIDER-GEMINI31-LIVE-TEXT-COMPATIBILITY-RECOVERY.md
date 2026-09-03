@@ -13,6 +13,36 @@ No additional Gemini provider call is authorized by this campaign.
 
 This campaign exists to perform a **zero-provider compatibility correction and observability recovery** before any further real-provider authorization is considered.
 
+## G1 forensic checkpoint — sanitized F2 reconstruction
+
+The exact F2 disposable container was checked by ID using filtered Docker
+metadata only. The remote daemon returned `no such object`; therefore no
+container metadata, environment, mount metadata, or logs remained available
+to inspect in this session. No removal command was issued.
+
+The already-pushed F2 report and durable-result evidence remain the complete
+sanitized record: the full adapter exited 21 before a model event or turn
+completion, reported `SLATE_ADAPTER_ERROR`, did not OOM, and the result was
+recovered independently. The prior report records the protected bind as
+read-only and the input/tool/private-data invariants as satisfied.
+
+```text
+G1_F2_CONTAINER_METADATA=NOT_PRESENT_NO_SUCH_OBJECT
+G1_F2_CONTAINER_REMOVAL=NOT_PERFORMED
+F2_STAGE_REACHED=UNKNOWN
+F2_BRIDGE_ERROR_CODE=UNKNOWN
+F2_CHILD_EXIT=UNKNOWN
+F2_READY_OBSERVED=NO
+F2_TEXT_FRAME_SENT=UNKNOWN
+F2_RESULT_EVIDENCE_PRESERVED=YES
+F2_RAW_PROVIDER_ERROR_READ=NO
+F2_CREDENTIAL_VALUE_READ=NO
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+```
+
+This evidence does not prove the historical F2 failure occurred at text send;
+the text-transport attribution remains plausible but not live-proven.
+
 The primary current hypothesis is now grounded in current official Google Gemini 3.1 Live documentation rather than only runtime inference:
 
 - current Slate Node bridge conversational text transport uses `session.sendClientContent(...)`;

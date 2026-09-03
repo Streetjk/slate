@@ -3035,3 +3035,31 @@ READY_FOR_8D1M=NO
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_REVIEW_SINGLE_CALL_FAILURE_AND_DECIDE_ANY_FUTURE_CAMPAIGN
 ```
+
+## Campaign 8D1K-G — G1 sanitized F2 forensic reconstruction
+
+The exact F2 disposable container ID was checked with filtered Docker metadata
+only. The remote daemon returned `no such object`; no removal command was
+issued, and no credential, environment, raw provider body, or private payload
+was read. The already-pushed F2 report and independently recovered sanitized
+result remain the authoritative evidence.
+
+```text
+CAMPAIGN=8D1K_G
+STATUS=G1_F2_FORENSICS_PRESERVED_CONTAINER_METADATA_UNAVAILABLE
+G1_F2_CONTAINER_METADATA=NOT_PRESENT_NO_SUCH_OBJECT
+G1_F2_CONTAINER_REMOVAL=NOT_PERFORMED
+F2_STAGE_REACHED=UNKNOWN
+F2_BRIDGE_ERROR_CODE=UNKNOWN
+F2_CHILD_EXIT=UNKNOWN
+F2_READY_OBSERVED=NO
+F2_TEXT_FRAME_SENT=UNKNOWN
+F2_RESULT_EVIDENCE_PRESERVED=YES
+F2_RAW_PROVIDER_ERROR_READ=NO
+F2_CREDENTIAL_VALUE_READ=NO
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+PRODUCTION_CHANGED=NO
+```
+
+The text-transport mismatch remains a current official-contract correction
+hypothesis and is not claimed as the proven cause of F2.
