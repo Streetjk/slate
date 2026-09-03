@@ -338,3 +338,82 @@ Stop only if:
 - or a genuine unresolved security/technical boundary remains after the authorized deterministic work.
 
 No provider call, 8D1L, or 8D1M is authorized by this directive.
+
+## G11 final forensic dossier and terminal checkpoint
+
+The exact G10 run used the existing ARM64 image
+`slate-note4:campaign8-voice-routing-121622c` (image ID
+`sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d`),
+with inherited `/app` workdir and image user overridden to `0:0`. The runner
+overrode the image entrypoint with `/usr/local/bin/bun /work/runner.ts` and
+used a read-only root with a 32 MiB `/tmp` tmpfs. The corrected assistant
+source was mounted read-only at `/app/backend/src/modules/assistant`, the
+runner at `/work/runner.ts`, results at writable `/results`, and the approved
+credential at `/run/secrets/gemini_api_key` read-only. G10 used `network=bridge`
+with no published ports, `NODE_ENV=test`, model
+`gemini-3.1-flash-live-preview`, and the bridge script
+`/app/backend/src/modules/assistant/gemini-live-node-bridge-runtime.mjs`.
+
+The exact G10 runner configured `GEMINI_NODE_EXECUTABLE=/usr/local/bin/node`.
+That path is absent from the image. The image instead resolves `node` through
+`/usr/local/bun-node-fallback-bin/node`, which runs Node-compatible version
+`26.3.0` and can import `@google/genai/node`. Therefore the observed
+`CHILD_SPAWN_FAILED` was precisely:
+
+```text
+G10_FAILURE_CLASS=SPAWN_THROWN_BEFORE_CHILD
+G10_FAILURE_DETAIL=HARNESS_NODE_EXECUTABLE_PATH_MISMATCH
+G10_CHILD_CREATED=NO
+G10_CHILD_PROCESS_ERROR_EVENT=NO
+G10_STDIN_WRITE_FAILURE=NO
+G10_CHILD_PROTOCOL_FRAME=NO
+```
+
+The initial G11 diagnostic runner’s missing-executable probe had an
+independent wait-on-`exit` hang; it was corrected with explicit `error` and
+`close` handling and is not product evidence. The final provider-disabled
+replay used synthetic secret material, `network=none`, the same `0:0` user,
+`/app` workdir, read-only root, Bun parent, and read-only source/runner/
+credential mounts. Its independent wait/status/copy verification passed:
+
+```text
+CAMPAIGN=8D1K_G11
+STATUS=ZERO_PROVIDER_CHILD_SPAWN_BOUNDARY_CLOSED_READY_FOR_HUMAN_DECISION
+FINAL_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+ROOT_CAUSE=G10_HARNESS_NODE_EXECUTABLE_PATH_MISMATCH
+EXACT_G10_SHAPE_PROVIDER_DISABLED_E2E=PASS
+EXACT_G10_SHAPE_BUN_PARENT=PASS
+EXACT_G10_SHAPE_NODE_CHILD_SPAWN=PASS
+EXACT_G10_SHAPE_JSONL_OPEN_READY=PASS
+EXACT_G10_SHAPE_TEXT_FRAME_PATH=PASS
+EXACT_G10_SHAPE_DURABLE_RESULT=PASS
+NODE_EXECUTABLE_FOUND=YES
+NODE_VERSION=26.3.0
+NODE_CAN_IMPORT_GOOGLE_GENAI_NODE=YES
+CHILD_PROCESS_SPAWN_EVENT_OBSERVED=YES
+CHILD_PID_ASSIGNED=YES
+CHILD_CAN_EMIT_SANITIZED_JSONL=YES
+PARENT_CAN_PARSE_CHILD_JSONL=YES
+MODEL_EVENT=YES
+TURN_COMPLETE=YES
+SLATE_ADAPTER_ERROR=NO
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+8D1K_G_CORRECTED_PROVIDER_CALLS_USED=1_OF_1
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_DECIDE_FUTURE_PROVIDER_REVALIDATION_ONLY_AFTER_REVIEWING_G11_ROOT_CAUSE
+```
+
+No tracked product/runtime source changed in G11, so no new GLM review was
+required. Production Slate and MySQL remained healthy and untouched; no
+credential value, production `.env`, raw provider body, private payload, or
+generated audio was read or retained.
