@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-G12 zero-provider harness/runtime normalization
-Current status: ZERO_PROVIDER_HARNESS_RUNTIME_CLOSED_READY_FOR_G13_HUMAN_PROVIDER_AUTHORIZATION — the bounded harness correction and exact-shape ARM64 provider-disabled replay passed; G11 root cause remains preserved, zero G12 provider calls were made, and the next action is a separate human decision on exactly one G13 provider call.
+Current stage: 8D1K-G13 exact full-Slate-adapter provider revalidation
+Current status: HARD_STOP_G13_EXACT_ADAPTER_PROVIDER_FAILURE — the one authorized G13 session reached child-spawn and bridge-ready, but no model event or turn completion was observed within the bounded window; no retry is authorized and 8D1L remains closed.
 
 Completed campaigns:
 
@@ -78,7 +78,7 @@ Active feature branches:
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 - `feature/gemini-35-live-evaluation` — PR #2; Campaign 8D1K-E complete; Campaign 8D1K-F one-call exact full-adapter provider revalidation authorized and not yet executed; production deployment and merge remain prohibited.
 
-Last test status: PASS — G12 exact-shape ARM64 provider-disabled replay, full deterministic gates, ARM64 candidate build/probes, image/history secret checks and production read-only health audit passed. Firmware was not changed or flashed.
+Last test status: G13 HARD STOP — sanitized durable result recovered after launcher timeout; bridge-ready was observed but model event/turn completion timed out. No retry was made and production was not changed. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -432,8 +432,56 @@ FIRMWARE_FLASHED=NO
 PR2_MERGED=NO
 READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
-HUMAN_ACTION_REQUIRED=YES_G13_PROVIDER_AUTHORIZATION
-NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_EXACTLY_ONE_NEW_G13_PROVIDER_CALL
+HUMAN_ACTION_REQUIRED=YES_G13_FAILURE_REVIEW
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_G13_FAILURE_AND_DECIDE_FUTURE_SCOPE
+
+## Campaign 8D1K-G13 hard stop
+
+```text
+CAMPAIGN=8D1K_G13
+STATUS=HARD_STOP_G13_EXACT_ADAPTER_PROVIDER_FAILURE
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+8D1K_G_CORRECTED_PROVIDER_CALLS_USED=1_OF_1
+MODEL=gemini-3.1-flash-live-preview
+NODE_ENV=test
+AUTH_MODE=developer_api_key
+LIVE_RUNTIME=node_bridge
+NODE_CHILD_SPAWN=YES
+BRIDGE_READY=YES
+MODEL_EVENT=NO
+TURN_COMPLETE=NO
+G13_FAILURE_CLASS=MODEL_EVENT_TIMEOUT_AFTER_BRIDGE_READY
+G13_REPORTED_FAILURE_STAGE=UNKNOWN_SAFE_FAILURE
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+OOM=NO
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+RAW_PROVIDER_ERROR_READ=NO
+CREDENTIAL_VALUE_READ=NO
+PROVIDER_CALL_RETRIED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_G13_FAILURE_AND_DECIDE_FUTURE_SCOPE
+```
 
 ## Campaign 8D1K-G12 first replay failure preserved
 

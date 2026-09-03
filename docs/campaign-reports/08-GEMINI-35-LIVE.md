@@ -3399,6 +3399,63 @@ passed through the Bun parent and mock Node child with synthetic text only;
 production remained untouched. The next step is the separate human G13
 authorization gate defined in the long-run sequence.
 
+## Campaign 8D1K-G13 hard stop
+
+```text
+CAMPAIGN=8D1K_G13
+STATUS=HARD_STOP_G13_EXACT_ADAPTER_PROVIDER_FAILURE
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+8D1K_F_PROVIDER_CALLS_USED=1_OF_1
+8D1K_G_CORRECTED_PROVIDER_CALLS_USED=1_OF_1
+MODEL=gemini-3.1-flash-live-preview
+NODE_ENV=test
+AUTH_MODE=developer_api_key
+LIVE_RUNTIME=node_bridge
+NODE_CHILD_SPAWN=YES
+BRIDGE_READY=YES
+MODEL_EVENT=NO
+TURN_COMPLETE=NO
+G13_FAILURE_CLASS=MODEL_EVENT_TIMEOUT_AFTER_BRIDGE_READY
+G13_REPORTED_FAILURE_STAGE=UNKNOWN_SAFE_FAILURE
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+OOM=NO
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+WAIT_LAUNCHER_TIMEOUT=YES_RC_124
+RAW_PROVIDER_ERROR_READ=NO
+CREDENTIAL_VALUE_READ=NO
+PROVIDER_CALL_RETRIED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_REVIEW_SANITIZED_G13_FAILURE_AND_DECIDE_FUTURE_SCOPE
+```
+
+The single authorized G13 provider session started exactly once through the
+full Slate Bun parent → Node bridge → Gemini Live path. The child started and
+the bridge became ready, but no model event or turn completion arrived within
+the bounded runner window. The durable result was recovered independently
+after the deliberate launcher timeout. The sanitized classification is a
+post-ready model-event timeout; no raw provider body or credential value was
+read, and no retry was made. The exact disposable container and candidate
+image were cleaned after evidence verification.
+
 ## Campaign 8D1K-G12 first replay failure preserved
 
 ```text
