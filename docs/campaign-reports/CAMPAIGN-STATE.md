@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-G13 exact full-Slate-adapter provider revalidation
-Current status: HARD_STOP_G13_EXACT_ADAPTER_PROVIDER_FAILURE — the one authorized G13 session reached child-spawn and bridge-ready, but no model event or turn completion was observed within the bounded window; no retry is authorized and 8D1L remains closed.
+Current stage: 8D1K-G14 zero-provider post-ready forensic reconstruction
+Current status: G14_IN_PROGRESS_ZERO_PROVIDER — G13’s one-call budget remains exhausted at `1_OF_1`; the accepted source is unchanged, and G14 is reconstructing the post-ready timeline without another provider call.
 
 Completed campaigns:
 
@@ -76,9 +76,9 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2; Campaign 8D1K-E complete; Campaign 8D1K-F one-call exact full-adapter provider revalidation authorized and not yet executed; production deployment and merge remain prohibited.
+- `feature/gemini-35-live-evaluation` — PR #2; G13 one-call budget exhausted after a sanitized post-ready timeout; G14-G16 are zero-provider recovery stages before the separate G17 human gate; production deployment and merge remain prohibited.
 
-Last test status: G13 HARD STOP — sanitized durable result recovered after launcher timeout; bridge-ready was observed but model event/turn completion timed out. No retry was made and production was not changed. Firmware was not changed or flashed.
+Last test status: G13 HARD STOP PRESERVED — sanitized durable result recovered after launcher timeout; bridge-ready was observed but model event/turn completion timed out. G14-G16 provider calls are zero-authorized. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -479,8 +479,8 @@ FIRMWARE_FLASHED=NO
 PR2_MERGED=NO
 READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
-HUMAN_ACTION_REQUIRED=YES
-NEXT_ACTION=HUMAN_REVIEW_SANITIZED_G13_FAILURE_AND_DECIDE_FUTURE_SCOPE
+HUMAN_ACTION_REQUIRED=NO_DURING_G14_G16
+NEXT_ACTION=RECONSTRUCT_G13_POST_READY_TIMELINE_THEN_RUN_G15_AND_G16_ZERO_PROVIDER_VALIDATION
 ```
 
 ## Campaign 8D1K-G12 first replay failure preserved
@@ -553,6 +553,29 @@ REMOTE_SHA_VERIFIED=YES
 PUSHED_SHA=e7e7c75245253fdbb004303ae15a9a61abf6e1d4
 PR_STATE_VERIFIED=YES
 PR_STATE=open_draft_unmerged
+```
+
+## Campaign 8D1K-G14 preflight
+
+```text
+CAMPAIGN=8D1K_G14
+STATUS=G14_IN_PROGRESS_ZERO_PROVIDER
+START_REMOTE_CHECKPOINT=0fd83949fe818013c6f509ddbbcc39e081584d6e
+ACCEPTED_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+G13_FAILURE_PRESERVED=YES
+G13_PROVIDER_CALLS_USED=1_OF_1
+G14_PROVIDER_CALLS_AUTHORIZED=0
+G15_PROVIDER_CALLS_AUTHORIZED=0
+G16_PROVIDER_CALLS_AUTHORIZED=0
+G17_PROVIDER_CALLS_AUTHORIZED=0_UNTIL_SEPARATE_HUMAN_CHECKPOINT
+8D1L_PROVIDER_CALLS_AUTHORIZED=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+READY_FOR_G17_AUTHORIZATION=NO_UNTIL_G16_CLOSES
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=NO_DURING_G14_G16
+NEXT_ACTION=RECONSTRUCT_G13_POST_READY_TIMELINE_THEN_RUN_G15_AND_G16_ZERO_PROVIDER_VALIDATION
 ```
 
 ## Campaign 8D1K-G11 zero-provider child-spawn forensic recovery
