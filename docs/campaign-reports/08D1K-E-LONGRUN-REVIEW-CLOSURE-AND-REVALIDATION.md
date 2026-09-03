@@ -603,3 +603,55 @@ No repository content was sent to the reviewer preflight. The installed
 GLM-5.2 helper was not substituted, no credential was read or exposed, and no
 Gemini provider call or production mutation occurred. E2 onward is blocked
 until the exact reviewer route is restored.
+
+## 21. E1 authentication restored; E2 exact-artifact review and E3 adjudication
+
+After reconciling origin, the active branch was clean at the exact reviewed
+artifact `daafe6b10e140c81c70acc91443300ba80c12c28`. The smallest safe E1
+preflight was rerun without repository content, tools, or credential output and
+returned the exact configured route:
+
+```text
+CAMPAIGN=8D1K_E
+E1=PASS
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_PROVIDER=ZAI
+REVIEW_MODEL=glm-5.3-flash
+ZAI_AUTH=PASS
+SECRET_EXPOSED=NO
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_PRIOR_PROVIDER_CALLS_USED=3_OF_3
+```
+
+E2 then reviewed the exact current artifact and its complete `82e8c67..HEAD`
+change set through the exact read-only GLM-5.3-Flash/ZAI route. The reviewer
+returned:
+
+```text
+REVIEW_TARGET_SHA=daafe6b10e140c81c70acc91443300ba80c12c28
+VERDICT=PASS
+P0=0
+P1=0
+P2=0
+P3=4
+```
+
+Luna adjudication: all four P3 observations are accepted as non-blocking
+operational/documentation follow-up. No immediate correction is justified.
+The reviewer confirmed the production `NODE_ENV=production` Developer API
+guard remains fail-closed before child spawn, the private Bun-to-Node boundary
+and credential checks remain sound, historical Call 3 `NODE_ENV` remains
+`UNKNOWN`, and no provider call or production mutation was introduced. The
+local integration-test skip caveat remains valid: positive tests require the
+separately enabled ARM64 trusted synthetic-secret run and must not be reported
+as local positive passes.
+
+```text
+E3=PASS
+E3_ADJUDICATION=ALL_FINDINGS_ADJUDICATED_NO_VALID_P0_P1_P2_DEFECT
+E4=NOT_REQUIRED
+SOURCE_CORRECTION=NOT_REQUIRED
+PRODUCTION_GUARD_PRESERVED=YES
+NEXT_STAGE=E5_DETERMINISTIC_VALIDATION
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=NO
+```
