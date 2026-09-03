@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-G11 zero-provider child-spawn forensic recovery
-Current status: ZERO_PROVIDER_CHILD_SPAWN_BOUNDARY_CLOSED_READY_FOR_HUMAN_DECISION — G10 was proven to use a missing `/usr/local/bin/node` path; PATH-based Node-compatible fallback passed the exact provider-disabled adapter replay; no provider call made.
+Current stage: 8D1K-G12 zero-provider harness/runtime normalization
+Current status: G12_PREFLIGHT_EXECUTING_ZERO_PROVIDER — origin reconciled at `26bf1409648fc36c37569330760f12bb1685b76a`; G11 root cause is preserved exactly; G12 authorizes zero provider calls and is validating the durable exact-shape ARM64 mock replay before the G13 human authorization boundary.
 
 Completed campaigns:
 
@@ -78,7 +78,7 @@ Active feature branches:
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 - `feature/gemini-35-live-evaluation` — PR #2; Campaign 8D1K-E complete; Campaign 8D1K-F one-call exact full-adapter provider revalidation authorized and not yet executed; production deployment and merge remain prohibited.
 
-Last test status: PASS — 8D1K-G corrected Node text transport, full deterministic gates, ARM64 build, image boundary checks and provider-disabled full-adapter E2E all passed. Firmware was not changed or flashed.
+Last test status: G12 preflight — PASS — G11 corrected Node text transport and child-spawn root cause preserved; G12 provider-disabled validation is in progress with zero provider calls. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -432,8 +432,36 @@ FIRMWARE_FLASHED=NO
 PR2_MERGED=NO
 READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
-HUMAN_ACTION_REQUIRED=YES
-NEXT_ACTION=HUMAN_REVIEW_SANITIZED_FAILURE_AND_DECIDE_FUTURE_SCOPE
+HUMAN_ACTION_REQUIRED=NO_DURING_G12
+NEXT_ACTION=RUN_G12_ZERO_PROVIDER_EXACT_SHAPE_ARM64_REPLAY_AND_DETERMINISTIC_GATES
+
+## Campaign 8D1K-G12 preflight
+
+```text
+CAMPAIGN=8D1K_G12
+STATUS=G12_PREFLIGHT_EXECUTING_ZERO_PROVIDER
+REMOTE_CHECKPOINT=26bf1409648fc36c37569330760f12bb1685b76a
+G11_ROOT_CAUSE_PRESERVED=YES
+ROOT_CAUSE=G10_HARNESS_NODE_EXECUTABLE_PATH_MISMATCH
+ACCEPTED_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+G12_PROVIDER_CALLS_AUTHORIZED=0
+G12_PROVIDER_CALLS_USED=0
+G13_PROVIDER_CALLS_AUTHORIZED=0_UNTIL_SEPARATE_HUMAN_CHECKPOINT
+8D1L_PROVIDER_CALLS_AUTHORIZED=0
+NODE_EXECUTABLE_CONTRACT=PATH_NODE
+G10_HARNESS_PATH=/usr/local/bin/node
+G10_HARNESS_PATH_PRESENT=NO
+ARM64_NODE_PATH=/usr/local/bun-node-fallback-bin/node
+ARM64_NODE_VERSION=26.3.0
+NODE_CAN_IMPORT_GOOGLE_GENAI_NODE=YES_FROM_G11_EVIDENCE
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+READY_FOR_G13_AUTHORIZATION=NO_UNTIL_G12_CLOSES
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=NO_DURING_G12
+NEXT_ACTION=RUN_G12_ZERO_PROVIDER_EXACT_SHAPE_ARM64_REPLAY_AND_DETERMINISTIC_GATES
+```
 ```
 
 Exact disposable cleanup was attempted after result verification, but the

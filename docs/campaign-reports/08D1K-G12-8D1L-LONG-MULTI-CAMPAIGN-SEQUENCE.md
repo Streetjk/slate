@@ -534,3 +534,43 @@ Return control only for a true boundary:
 10. 8D1L passes and the next action is the final human production/data-policy/deployment decision.
 
 The goal is hours of autonomous safe execution with only genuine human boundaries interrupting the controller.
+
+---
+
+# G12 execution record
+
+## G12-0 preflight
+
+```text
+CAMPAIGN=8D1K_G12
+STATUS=G12_PREFLIGHT_EXECUTING_ZERO_PROVIDER
+REMOTE_CHECKPOINT=26bf1409648fc36c37569330760f12bb1685b76a
+G11_ROOT_CAUSE_PRESERVED=YES
+ROOT_CAUSE=G10_HARNESS_NODE_EXECUTABLE_PATH_MISMATCH
+ACCEPTED_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+G12_PROVIDER_CALLS_AUTHORIZED=0
+G12_PROVIDER_CALLS_USED=0
+G13_PROVIDER_CALLS_AUTHORIZED=0_UNTIL_SEPARATE_HUMAN_CHECKPOINT
+8D1L_PROVIDER_CALLS_AUTHORIZED=0
+NODE_EXECUTABLE_CONTRACT=PATH_NODE
+G10_HARNESS_PATH=/usr/local/bin/node
+G10_HARNESS_PATH_PRESENT=NO
+ARM64_NODE_PATH=/usr/local/bun-node-fallback-bin/node
+ARM64_NODE_VERSION=26.3.0
+NODE_CAN_IMPORT_GOOGLE_GENAI_NODE=YES_FROM_G11_EVIDENCE
+PRODUCT_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+READY_FOR_G13_AUTHORIZATION=NO_UNTIL_G12_CLOSES
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=NO_DURING_G12
+NEXT_ACTION=RUN_G12_ZERO_PROVIDER_EXACT_SHAPE_ARM64_REPLAY_AND_DETERMINISTIC_GATES
+```
+
+The working tree was clean after fetching origin. Existing tracked bridge and
+adapter tests already cover PATH-preserving executable selection, child
+startup/JSONL exchange, production fail-closed configuration, synthetic text,
+and sanitized failure handling. No product/runtime source correction is
+indicated by the accepted G11 evidence, so this stage continues with a
+provider-disabled harness-only replay.
