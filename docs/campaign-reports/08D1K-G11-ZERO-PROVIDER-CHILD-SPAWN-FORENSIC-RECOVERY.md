@@ -417,3 +417,16 @@ No tracked product/runtime source changed in G11, so no new GLM review was
 required. Production Slate and MySQL remained healthy and untouched; no
 credential value, production `.env`, raw provider body, private payload, or
 generated audio was read or retained.
+
+## G11 report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=353669e55a975ae74b515ce3c932653dfd0a4671
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
