@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-G12 zero-provider harness/runtime normalization
-Current status: G12_HARNESS_CORRECTION_IN_PROGRESS_ZERO_PROVIDER — the first exact-shape ARM64 replay persisted and independently recovered a sanitized failure; the disposable runner used unsupported `node --version` probing against the image’s Node-compatible PATH wrapper. No product/runtime defect or provider call was identified.
+Current status: ZERO_PROVIDER_HARNESS_RUNTIME_CLOSED_READY_FOR_G13_HUMAN_PROVIDER_AUTHORIZATION — the bounded harness correction and exact-shape ARM64 provider-disabled replay passed; G11 root cause remains preserved, zero G12 provider calls were made, and the next action is a separate human decision on exactly one G13 provider call.
 
 Completed campaigns:
 
@@ -78,7 +78,7 @@ Active feature branches:
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 - `feature/gemini-35-live-evaluation` — PR #2; Campaign 8D1K-E complete; Campaign 8D1K-F one-call exact full-adapter provider revalidation authorized and not yet executed; production deployment and merge remain prohibited.
 
-Last test status: G12 first replay — SANITIZED_HARNESS_FAILURE — durable result recovered after launcher timeout; failure is bounded to the disposable version probe, with zero provider calls. Firmware was not changed or flashed.
+Last test status: PASS — G12 exact-shape ARM64 provider-disabled replay, full deterministic gates, ARM64 candidate build/probes, image/history secret checks and production read-only health audit passed. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -432,8 +432,8 @@ FIRMWARE_FLASHED=NO
 PR2_MERGED=NO
 READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
-HUMAN_ACTION_REQUIRED=NO_DURING_G12
-NEXT_ACTION=REPLACE_NODE_VERSION_FLAG_WITH_PROCESS_VERSIONS_PROBE_AND_RERUN_G12_ZERO_PROVIDER_REPLAY
+HUMAN_ACTION_REQUIRED=YES_G13_PROVIDER_AUTHORIZATION
+NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_EXACTLY_ONE_NEW_G13_PROVIDER_CALL
 
 ## Campaign 8D1K-G12 first replay failure preserved
 
