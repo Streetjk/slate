@@ -681,3 +681,16 @@ An independent provider-disabled image probe confirmed the supported
 `process.versions.node` version check. This is a bounded harness-only defect;
 the reviewed Slate source remains unchanged. The failed container was removed
 after independent status/result evidence was captured.
+
+## G12 final report-push checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=857103bfe718656f5a32524b6d0392ea28819ef9
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
