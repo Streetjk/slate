@@ -444,3 +444,45 @@ READY_FOR_8D1M=NO
 HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_PROVIDE_APPROVED_HOST_LOCAL_PROTECTED_RUNTIME_CREDENTIAL_REFERENCE_THEN_RESUME_F1
 ```
+
+## 17. F1 protected credential source recovered
+
+Date: 2026-09-03 (Australia/Perth)
+
+Historical provider-harness command/session evidence was reconciled with the
+prior successful protected-mount evidence. The approved host-side source is
+on `note4-orangepi`; synthetic disposable fixtures and the production `.env`
+are not sources for this run.
+
+Only safe metadata was checked. The source path was not opened for content,
+and no credential value was printed, copied, moved, logged, or persisted.
+
+```text
+F1=PASS
+F1_SOURCE_MECHANISM=REMOTE_HOST_LOCAL_PROTECTED_FILE
+F1_SOURCE_HOST=note4-orangepi
+F1_SOURCE_PATH=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+F1_SOURCE_TYPE=REGULAR_NON_SYMLINK_FILE
+F1_SOURCE_OWNER=pi
+F1_SOURCE_GROUP=pi
+F1_SOURCE_MODE=600
+F1_SOURCE_SIZE_BYTES=53
+F1_SOURCE_NONEMPTY=YES
+F1_CONTAINER_DESTINATION=/run/secrets/gemini_api_key
+F1_READ_ONLY_BIND=YES
+F1_PRODUCTION_ENV_USED=NO
+F1_CREDENTIAL_VALUE_READ=NO
+F1_CREDENTIAL_VALUE_PRINTED=NO
+F1_CREDENTIAL_COPIED_OR_MOVED=NO
+F1_DOCKER_BIND_METADATA=PASS
+F1_DOCKER_MOUNT_RW=false
+F1_DOCKER_MOUNT_TYPE=bind
+F1_PROVIDER_CALLS_USED=0_OF_1
+F1_PROVIDER_CALLS_REMAINING=1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+READY_FOR_F2=YES
+```
+
+Future runs must use this host-local source mechanism and exact destination
+with a read-only bind only. Never log, copy, move, or persist the credential
+value; never load production `.env` material.
