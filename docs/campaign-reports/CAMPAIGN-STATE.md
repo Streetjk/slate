@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1K-E long-run review closure and deterministic revalidation
-Current status: 8D1K-E E1–E6 PASS — exact ZAI GLM-5.3-Flash review passed, bounded test correction and full deterministic validation passed, the exact ARM64 provider-disabled adapter passed, and E7–E9 evidence closure is in progress; zero Gemini provider calls are authorized.
+Current status: 8D1K-E COMPLETE — review closure and deterministic revalidation passed; exact ARM64 provider-disabled adapter proof passed; zero new Gemini provider calls were made; stopped at the human API-key/data-policy decision boundary.
 
 Completed campaigns:
 
@@ -89,9 +89,36 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: complete 8D1K-E E7–E9 evidence closure and publish the human provider-revalidation boundary; do not make Gemini provider calls or start 8D1L.
+Next automatic action: human decide the API-key/data policy and separately authorize or reject one new exact-adapter provider revalidation; do not start 8D1L or 8D1M from this checkpoint.
 
-Human action required: NO — exact reviewer authentication is available for this deterministic campaign. No provider-call budget remains; keep all credential material out of chat and Git.
+Human action required: YES — review the deterministic evidence, API-key handling, and current data-policy implications before any new provider authorization. No provider-call budget remains in historical 8D1K; keep all credential material out of chat and Git.
+
+## Campaign 8D1K-E Final Checkpoint
+
+```text
+CAMPAIGN=8D1K_E
+STATUS=REVIEW_CLOSED_DETERMINISTICALLY_READY_FOR_HUMAN_PROVIDER_REVALIDATION_DECISION
+FINAL_SOURCE_SHA=693288a7b63d61a7ef9fe0e68d1882e5585353d8
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+FULL_TESTS=PASS
+ARM64_BUILD=PASS
+EXACT_FULL_ADAPTER_PROVIDER_DISABLED_E2E=PASS
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_TOTAL_PROVIDER_CALLS_USED=3_OF_3
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_DECIDE_API_KEY_AND_DATA_POLICY_AND_AUTHORIZE_OR_REJECT_ONE_NEW_EXACT_ADAPTER_PROVIDER_REVALIDATION
+```
 
 ## Campaign 6D D1 Candidate Checkpoint
 

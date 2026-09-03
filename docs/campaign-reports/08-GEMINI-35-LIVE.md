@@ -2888,3 +2888,47 @@ All disposable images, containers, result files, and build contexts were
 removed after evidence verification. Production Slate/MySQL remained running
 and healthy with zero restarts and `/healthz` status `ok`. 8D1L and 8D1M were
 not started.
+
+## Campaign 8D1K-E — review closure and deterministic revalidation
+
+Date: 2026-09-03 (Australia/Perth)
+
+The exact ZAI reviewer route was restored and passed the required E1 preflight:
+
+```text
+E1=PASS
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_PROVIDER=ZAI
+REVIEW_MODEL=glm-5.3-flash
+ZAI_AUTH=PASS
+SECRET_EXPOSED=NO
+```
+
+The exact product/runtime artifact review passed at
+`daafe6b10e140c81c70acc91443300ba80c12c28` with P0/P1/P2=0 and four accepted
+non-blocking P3 observations. A subsequent test-only formatting/import
+correction did not alter product/runtime behavior. Host deterministic gates,
+the exact ARM64 candidate, and the provider-disabled full Bun-parent/Node-child
+adapter all passed. The production guard remained fail-closed, the Node bridge
+had no public listener, image/config/history scans found no credential content,
+and production Slate/MySQL health was checked read-only and remained healthy.
+
+```text
+CAMPAIGN=8D1K_E
+STATUS=REVIEW_CLOSED_DETERMINISTICALLY_READY_FOR_HUMAN_PROVIDER_REVALIDATION_DECISION
+FINAL_SOURCE_SHA=693288a7b63d61a7ef9fe0e68d1882e5585353d8
+GLM53_REVIEW=PASS
+EXACT_FULL_ADAPTER_PROVIDER_DISABLED_E2E=PASS
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_TOTAL_PROVIDER_CALLS_USED=3_OF_3
+PRIVATE_DATA_SENT=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+READY_FOR_8D1L=NO
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_DECIDE_API_KEY_AND_DATA_POLICY_AND_AUTHORIZE_OR_REJECT_ONE_NEW_EXACT_ADAPTER_PROVIDER_REVALIDATION
+```
+
+The future provider plan is prepared only; no Gemini provider call was made in
+8D1K-E. 8D1L and 8D1M remain unstarted, and PR #2 remains unmerged.

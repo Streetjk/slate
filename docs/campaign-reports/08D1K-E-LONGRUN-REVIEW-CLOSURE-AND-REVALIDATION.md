@@ -729,3 +729,77 @@ PRODUCTION_GUARD_PRESERVED=YES
 NEXT_STAGE=E5_DETERMINISTIC_VALIDATION
 READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=NO
 ```
+
+## 24. E7 differential dossier, E8 future-plan preparation, and E9 boundary
+
+### E7 — adjudicated root cause and corrected-artifact disposition
+
+The exact deterministic evidence supports the previously accepted differential:
+
+```text
+PROVEN_DIFFERENTIAL=production_guard_blocks_node_bridge_before_child_spawn_WHILE_explicit_nonproduction_mode_allows_full_Bun_parent_Node_child_mock_E2E
+ORIGINAL_CALL3_NODE_ENV=UNKNOWN
+ORIGINAL_CALL3_FAILURE_CAUSE=NOT_CONCLUSIVELY_ATTRIBUTABLE_TO_PRODUCTION_GUARD
+SECONDARY_REAL_DEFECT=Developer_API_key_reference_root_not_enforced_at_Bun_parent_before_f8b36272
+```
+
+The reviewed product/runtime correction at `f8b36272b71c520d918940ee7cfd8e11594d44fc`
+remains preserved. The only post-review source change was a bounded test-only
+correction removing an unused import and applying formatting; no product or
+runtime behavior changed. The exact current product/runtime artifact was
+reviewed by GLM-5.3-Flash through ZAI at `daafe6b10e140c81c70acc91443300ba80c12c28`
+with `PASS`, P0/P1/P2=0, and four accepted P3 observations. No follow-up review
+was required for the test-only formatting correction.
+
+### E8 — future provider revalidation prepared, not executed
+
+All E8 prerequisites passed: exact review, Luna adjudication, full deterministic
+gates, ARM64 provider-disabled adapter proof, image/config/history secret scans,
+and read-only production health. A future human-authorized provider campaign
+may begin with one exact full Slate adapter session in explicit non-production
+mode, using the exact model `gemini-3.1-flash-live-preview`, synthetic text
+`Say exactly TEST.`, Search disabled, no tools or private data, protected
+read-only runtime credential mounting, no microphone/audio retention, and the
+durable result harness. Success must observe both a model event and turn
+complete. This plan is only a recommendation and was not executed here.
+
+### E9 — final durable state
+
+```text
+CAMPAIGN=8D1K_E
+STATUS=REVIEW_CLOSED_DETERMINISTICALLY_READY_FOR_HUMAN_PROVIDER_REVALIDATION_DECISION
+FINAL_SOURCE_SHA=693288a7b63d61a7ef9fe0e68d1882e5585353d8
+ROOT_CAUSE_CLASS=B_PARENT_CONFIG_GUARD_BEHAVIOR_AS_DESIGNED
+ORIGINAL_CALL3_ENV_PROVEN=NO
+HISTORICAL_CALL3_ATTRIBUTION=UNRESOLVED
+SECONDARY_DEFECT=E_CREDENTIAL_REFERENCE_PERMISSION_DEFECT
+SECONDARY_DEFECT_FIXED=YES
+PRODUCTION_GUARD_PRESERVED=YES
+EXACT_FULL_ADAPTER_PROVIDER_DISABLED_E2E=PASS
+SAFE_ERROR_CLASSIFICATION=PASS
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+FULL_TESTS=PASS
+ARM64_BUILD=PASS
+SECRET_SCAN=PASS
+PROVIDER_CALLS_THIS_CAMPAIGN=0
+8D1K_TOTAL_PROVIDER_CALLS_USED=3_OF_3
+HARNESS_DURABLE_RESULT=PASS
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+PRODUCT_RUNTIME_SOURCE_CHANGED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_DECIDE_API_KEY_AND_DATA_POLICY_AND_AUTHORIZE_OR_REJECT_ONE_NEW_EXACT_ADAPTER_PROVIDER_REVALIDATION
+```
+
+8D1L and 8D1M were not started. No deployment, restart, production Gemini
+setting change, credential movement, or provider call occurred in 8D1K-E.
