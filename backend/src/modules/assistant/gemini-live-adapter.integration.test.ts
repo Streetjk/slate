@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { GeminiConfig } from './gemini.config';
 import { GeminiLiveService } from './gemini-live.service';
-import { NodeGeminiLiveBridge } from './gemini-live-node-bridge';
 
 const SYNTHETIC_SECRET = process.env.SLATE_TEST_SYNTHETIC_SECRET ?? '/run/secrets/slate-test';
 const describeWithSyntheticSecret = existsSync(SYNTHETIC_SECRET) ? describe : describe.skip;
@@ -29,7 +28,10 @@ function config(
   return new GeminiConfig({ get: (key: string) => values[key] } as never);
 }
 
-function mockScript(directory: string, mode: 'pass' | 'protocol' | 'crash' | 'timeout' | 'provider-error' | 'unexpected-close') {
+function mockScript(
+  directory: string,
+  mode: 'pass' | 'protocol' | 'crash' | 'timeout' | 'provider-error' | 'unexpected-close'
+) {
   const file = join(directory, `${mode}.mjs`);
   const behavior = JSON.stringify(mode);
   writeFileSync(
@@ -133,7 +135,12 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
 
       connection.sendText('Say exactly TEST.');
       const event = await waitFor(() => events[0]);
-      expect(event).toMatchObject({ serverContent: { modelTurn: { parts: [{ text: 'synthetic response' }] }, turnComplete: true } });
+      expect(event).toMatchObject({
+        serverContent: {
+          modelTurn: { parts: [{ text: 'synthetic response' }] },
+          turnComplete: true,
+        },
+      });
       expect(errors).toEqual([]);
       connection.close();
     } finally {
@@ -169,9 +176,7 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
         'Gemini Live connection failed'
       );
 
-      const missingScript = new GeminiLiveService(
-        config(join(directory, 'missing-bridge.mjs'))
-      );
+      const missingScript = new GeminiLiveService(config(join(directory, 'missing-bridge.mjs')));
       await expect(missingScript.connect('en', () => {}, undefined, false)).rejects.toThrow(
         'Gemini Live connection failed'
       );
@@ -186,7 +191,12 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
       for (const mode of ['provider-error', 'unexpected-close'] as const) {
         const errors: Error[] = [];
         const service = new GeminiLiveService(config(mockScript(directory, mode)));
-        const connection = await service.connect('en', () => {}, (error) => errors.push(error), false);
+        const connection = await service.connect(
+          'en',
+          () => {},
+          (error) => errors.push(error),
+          false
+        );
         await waitFor(() => errors[0]);
         expect(errors[0]?.message).not.toContain('synthetic');
         expect(errors[0]?.message).not.toContain('credential');
