@@ -1,0 +1,242 @@
+# Campaign 8D1M-G — PROPOSED Quick Path: Gemini 2.5 Native Audio to Production
+
+Date: 2026-09-04 (Australia/Perth)
+Repository: `Streetjk/slate`
+Branch: `feature/gemini-35-live-evaluation`
+PR: #2
+
+## Objective
+
+Make Slate voice work sooner. Stop treating Gemini 3.1 Live as a prerequisite for NOTE4 voice functionality. Preserve the 3.1/F evidence as an R&D/provider-compatibility trail and pivot the software validation path to the currently documented Gemini Developer API native-audio model `gemini-2.5-flash-native-audio-preview-12-2025`.
+
+This is a fallback/quick-path proposal, not permission to run provider sessions or mutate production until explicit human activation.
+
+## Current starting evidence
+
+```text
+PR_HEAD_BEFORE_G=cb50bc780d68dd6b24b9d4f6df36dca381f0b274
+F1_RESULT=F1C
+F1_FAILURE_CLASS=RAW_FIRST_SERVER_MESSAGE_TIMEOUT
+F1_PROVIDER_SESSIONS_USED=1_OF_5
+F1_ZERO_PROVIDER_FORENSICS=PASS
+F1_PRODUCT_SOURCE_CHANGED=NO
+F1_NARROW_CORRECTION=NOT_JUSTIFIED
+PRODUCTION_CHANGED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+```
+
+The 3.1 path remains useful evidence but is no longer on the critical path for making NOTE4 voice functional.
+
+## Current official model basis to refresh before execution
+
+At proposal time, current Google Gemini Developer API documentation states:
+
+- `gemini-2.5-flash-native-audio-preview-12-2025` supports Live API;
+- inputs include text/audio/video and outputs include audio/text;
+- native audio generation is supported;
+- function calling and Search grounding are supported;
+- the model currently has no announced shutdown date;
+- Developer API free tier is currently available for this native-audio model, subject to the already recorded free-tier data-use/privacy acceptance.
+
+Refresh official Google documentation immediately before provider execution and record only semantic conclusions. If the model is withdrawn or materially changed, stop after zero-provider reconciliation rather than substituting another model silently.
+
+## Status
+
+```text
+DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
+PROVIDER_SESSIONS_AUTHORIZED=0
+PRODUCTION_DEPLOYMENT_AUTHORIZED=NO
+PRODUCTION_RESTART_AUTHORIZED=NO
+PHYSICAL_NOTE4_TEST_AUTHORIZED=NO
+FIRMWARE_FLASH_AUTHORIZED=NO
+PRIVATE_DATA_AUTHORIZED=NO
+BILLING_OR_VERTEX_CHANGE_AUTHORIZED=NO
+CREDENTIAL_REPLACEMENT_AUTHORIZED=NO
+PR2_MERGE_AUTHORIZED=NO
+```
+
+## Proposed long-run activation envelope
+
+A later explicit human activation should authorize one uninterrupted software chain:
+
+```text
+LONGRUN_DEFAULT=YES
+STOP_BETWEEN_AUTHORIZED_STAGES=NO
+FUTURE_PROVIDER_SESSION_POOL_MAX=3
+BLIND_RETRY=NO
+MODEL_TARGET=gemini-2.5-flash-native-audio-preview-12-2025
+AUTH_MODE=developer_api_key_existing_protected_readonly
+SEARCH_SYNTHETIC=OFF
+TOOLS_SYNTHETIC=NO_INVOCATION
+MICROPHONE_SYNTHETIC=NO
+PRIVATE_DATA=NO
+RAW_AUDIO_RETENTION=NO
+RAW_PROVIDER_PAYLOAD_RETENTION=NO
+PRODUCTION_DEPLOYMENT=CONDITIONAL_AFTER_FULL_ADAPTER_NONPROD_PASS
+PRODUCTION_RESTART=YES_WITHIN_G3_ONLY
+AUTO_ROLLBACK_ON_G3_FAILURE=YES
+LEAVE_CANDIDATE_DEPLOYED_ON_G3_PASS=YES_IF_HEALTH_GREEN
+PHYSICAL_NOTE4_TEST=NO_SEPARATE_FINAL_GATE
+FIRMWARE_FLASH=NO_SEPARATE_FINAL_GATE
+BILLING_OR_VERTEX_CHANGE=NO
+PR2_MERGE=NO
+```
+
+The three-session ceiling is conditional, not a target. Stop consuming provider sessions when evidence does not justify the next stage.
+
+## G0 — zero-provider reconcile
+
+Do not stop after G0 once activated.
+
+1. Reconcile current PR/report/state and immutable provider accounting.
+2. Refresh official model/deprecation/pricing/data-policy semantics.
+3. Verify protected Developer API credential metadata/mount path only; never print/read into reports/logs.
+4. Verify rollback production health and candidate build capability.
+5. Verify current source can mechanically target the 2.5 native-audio model without broad architectural change.
+6. Build provider-disabled fixtures for 2.5 model selection, AUDIO modality, model-turn inline audio, output transcription, generation/turn completion, EN/JA multi-turn, reconnect, and tool declaration preservation.
+
+If supporting 2.5 requires architecture/auth changes outside the Gemini Live model/config boundary, stop after autonomous analysis. Otherwise continue.
+
+## G1 — one minimal non-production 2.5 native-audio provider session
+
+Consume at most one provider session using the existing protected read-only Developer API credential, SDK/Node environment already qualified for Slate, and model:
+
+```text
+gemini-2.5-flash-native-audio-preview-12-2025
+```
+
+Use deliberately minimal configuration:
+
+```text
+RESPONSE_MODALITIES=AUDIO
+SEARCH=OFF
+TOOLS=NONE_OR_DECLARED_BUT_NOT_INVOKED_AS_REQUIRED_BY_EXISTING_HARNESS
+INPUT_TRANSCRIPTION=OFF_IF_HARNESS_PERMITS
+OUTPUT_TRANSCRIPTION=OFF_IF_HARNESS_PERMITS
+PROMPT="Say exactly TEST."
+```
+
+Capture payload-free structural telemetry only. PASS requires native-audio/model-turn evidence plus turn completion.
+
+### G1 PASS
+
+This proves the account/provider/runtime can produce native audio on the quick-path model. Continue automatically into G1.5/G2.
+
+### G1 FAIL
+
+Do not blindly retry. Exhaust zero-provider diagnosis and official compatibility checks. If a disposable harness-only defect is proven, one corrected G1 attempt is permitted within the pool. If the model/provider/account itself does not produce usable audio, stop; do not mutate production.
+
+## G1.5 — conditional narrow model/config correction and qualification
+
+If the current tracked source hardcodes 3.1 or otherwise needs a mechanically bounded change to select the proven 2.5 model, implement only the narrow Gemini Live model/config change and directly associated tests/docs.
+
+Allowed scope:
+
+- Gemini Live model constant/config validation;
+- Node bridge expected-model validation;
+- model-specific text-send semantics only if current official 2.5 docs require a different existing supported SDK method;
+- directly associated tests/documentation.
+
+Do not change auth mode, tools/Search policy, Calendar/Outlook behavior, firmware, UI, database, or unrelated code.
+
+Then automatically run:
+
+- focused Gemini Live regression;
+- backend/shared relevant tests;
+- Node bridge/protocol syntax/tests;
+- lint/typecheck/format/frontend build as applicable;
+- exact ARM64 build;
+- exact provider-disabled production-shape adapter replay;
+- secret/build-context/image-history checks;
+- exact `zai-glm53-reviewer` / `glm-5.3-flash` review;
+- address any P0/P1/P2 finding inside scope and repeat qualification/review;
+- record corrected source SHA and ARM64 image digest;
+- commit/push/fetch-verify checkpoint;
+- continue directly to G2.
+
+A narrow corrected artifact satisfying all gates is preauthorizable by the future G activation; do not create an extra human handoff merely because its SHA/image changed inside the declared scope.
+
+## G2 — full Slate adapter non-production broad validation
+
+Consume at most one provider session with the exact qualified source/image, Bun parent + Node bridge, existing protected credential read-only, Search off, no tool invocation, no private data, no microphone, no retained audio.
+
+Run in one session:
+
+```text
+TURN_1_EN="Say exactly TEST."
+TURN_2_EN="Say exactly SECOND."
+TURN_3_JA="日本語で「テスト」とだけ言ってください。"
+```
+
+Also perform one reconnect cycle in the same session/harness if mechanically supported without creating a second provider connection. PASS requires usable native audio/model output and turn completion for every executed turn.
+
+On PASS, publish checkpoint and continue directly to G3.
+
+On FAIL, do not deploy. Exhaust zero-provider forensics/requalification/reviewer work and stop only if another provider session/new authority is genuinely required.
+
+## G3 — exact qualified production deploy + broad synthetic validation
+
+Run only after G2 PASS.
+
+Before mutation:
+
+- verify exact source/image digest;
+- verify pinned rollback image exists;
+- verify Slate/MySQL/local/public health;
+- record production metadata without reading secret values;
+- publish/verify pre-mutation checkpoint and continue.
+
+Deploy/restart only the G2-qualified candidate with the already approved Developer API/Node-bridge production opt-ins and the existing protected credential read-only. Keep the Node bridge private.
+
+Consume at most one provider session using the same EN/EN/JA broad matrix and same native-audio acceptance gate.
+
+### G3 PASS
+
+- leave candidate deployed while health remains green;
+- verify Slate/MySQL/local/public health;
+- verify protected secret mount is read-only and no secret value was exposed;
+- publish the terminal software dossier;
+- stop only at the separate physical NOTE4/firmware gate.
+
+Expected software success state:
+
+```text
+MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+MINIMAL_NATIVE_AUDIO=PASS
+FULL_ADAPTER_NONPROD=PASS
+PRODUCTION_SYNTHETIC=PASS
+PRODUCTION_CANDIDATE_DEPLOYED=YES
+PRODUCTION_HEALTH=PASS
+ROLLBACK_AVAILABLE=YES
+READY_FOR_PHYSICAL_NOTE4_DECISION=YES
+PR2_STATE=open_draft_unmerged
+```
+
+### G3 FAIL/AMBIGUOUS
+
+Immediately rollback to the pinned rollback image/config, verify Slate/MySQL/local/public health, remove candidate-only secret mount/config if applicable, then exhaust all safe zero-provider forensic work. No production retry inside this activation.
+
+## Non-stopping work after activation
+
+Do not return control for checkpoints, report pushes, G0 completion, deterministic tests, narrow in-scope model/config correction, GLM review loops, ARM64 builds, provider-disabled replay, recoverable Docker/SSH/container issues, G1->G1.5->G2->G3 transitions, or terminal dossier publication.
+
+`REPORT-PUSH-INVARIANT.md` remains binding: push often, stop rarely.
+
+## True stop conditions after activation
+
+Stop only for:
+
+1. provider pool exhausted and another session is genuinely required;
+2. required source change exceeds the narrow Gemini Live model/config boundary;
+3. current official 2.5 native-audio model is unavailable/withdrawn or provider/account policy must change;
+4. credential creation/replacement/migration is required;
+5. billing or Vertex enablement/change is required;
+6. private data/microphone use is required;
+7. physical NOTE4 interaction or firmware flashing is required;
+8. unresolved P0/P1/security/privacy/data-integrity issue;
+9. destructive host/storage/database action outside disposable state;
+10. PR merge/release/publication.
+
+## 3.1 disposition
+
+Campaign 8D1M-F is not deleted or rewritten. Its 3.1 raw-WebSocket/SDK evidence remains valid research evidence. G simply removes 3.1 from the critical path for making Slate voice operational. Return to 3.1 only after the device is working or if the human explicitly prioritizes 3.1 research over the quick path.
