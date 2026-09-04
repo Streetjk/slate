@@ -286,3 +286,33 @@ AUTHORIZED_IMAGE_UNCHANGED=YES
 INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=2_OF_5
 NEXT_SESSION_JUSTIFICATION=RUN_SYNTAX_CHECKED_EXACT_IMAGE_PREFLIGHT_ONCE
 ```
+
+## 8D1M-B preflight evidence-capture recovery checkpoint
+
+The third detached exact-image preflight used the syntax-checked runner and
+completed with exit code 0. Its logs reported `PREFLIGHT_RESULT_PERSISTED=PASS`,
+but independent retrieval showed that the sanitized result was written inside
+the container's disposable `/tmp` tmpfs. Because that tmpfs is not durable
+after container exit, `docker cp` could not recover the result. This is a
+deterministic disposable-runner evidence-capture defect, not a provider or
+product failure; no result is treated as proven until it is recovered from an
+independent host-bound output path.
+
+```text
+PREFLIGHT_ATTEMPT_3=INITIATED_AND_PROVIDER_RUN_COMPLETED
+PREFLIGHT_FAILURE_CLASS=SANITIZED_RESULT_LOST_IN_DISPOSABLE_TMPFS_AFTER_EXIT
+PROVIDER_HANDSHAKE_STARTED=YES
+SANITIZED_PASS_OBSERVABLE_AFTER_EXIT=NO
+CREDENTIAL_VALUE_READ=NO
+PRODUCTION_SERVICE_MUTATED=NO
+AUTHORIZED_IMAGE_UNCHANGED=YES
+INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=3_OF_5
+NEXT_SESSION_JUSTIFICATION=ONE_CORRECTED_RUNNER_WITH_HOST_BOUND_SANITIZED_RESULT
+```
+
+The runner-only correction is to bind a dedicated disposable output directory
+for the sanitized JSON result while retaining the read-only container and
+read-only protected credential mount. No credential value is read, printed,
+copied, or persisted by this correction. The next session is the single
+justified evidence-capture retry; no provider call is made until this
+correction is installed and syntax-checked.
