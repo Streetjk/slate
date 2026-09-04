@@ -8,7 +8,7 @@ import type { NodeGeminiLiveBridgeOptions } from './gemini-live-node-bridge';
 export type GeminiAuthMode = 'vertex_adc' | 'developer_api_key';
 export type GeminiLiveRuntime = 'bun_sdk' | 'node_bridge';
 
-export const DEVELOPER_API_LIVE_MODEL = 'gemini-3.1-flash-live-preview';
+export const DEVELOPER_API_LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 @Injectable()
 export class GeminiConfig {

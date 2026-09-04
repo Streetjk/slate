@@ -121,7 +121,7 @@ function options() {
 const runtimeScript = resolve(import.meta.dir, 'gemini-live-node-bridge-runtime.mjs');
 const runtimeCwd = resolve(import.meta.dir, '../../../../');
 
-describe('Gemini 3.1 Node runtime compatibility contract', () => {
+describe('Gemini 2.5 native-audio Node runtime compatibility contract', () => {
   it('uses realtime text input and preserves the distinct audio/tool paths', () => {
     const source = readFileSync(runtimeScript, 'utf8');
     const textStart = source.indexOf("case 'text':");
@@ -155,7 +155,7 @@ function runtimeOpenFrame(overrides: Record<string, unknown> = {}): string {
     type: 'open',
     version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
     epoch: 1,
-    model: 'gemini-3.1-flash-live-preview',
+    model: 'gemini-2.5-flash-native-audio-preview-12-2025',
     language: 'en',
     systemInstruction: 'synthetic',
     connectTimeoutMs: 1_000,
@@ -210,7 +210,7 @@ async function runRuntime(input: string, credentialFile?: string) {
       PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
       NODE_ENV: 'test',
       SLATE_GEMINI_BRIDGE_AUTH_MODE: 'developer_api_key',
-      SLATE_GEMINI_BRIDGE_MODEL: 'gemini-3.1-flash-live-preview',
+      SLATE_GEMINI_BRIDGE_MODEL: 'gemini-2.5-flash-native-audio-preview-12-2025',
       ...(credentialFile ? { SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE: credentialFile } : {}),
     },
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -254,7 +254,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       ({ message }) => events.push(message),
       (error) => errors.push(error),
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       true
@@ -266,7 +266,7 @@ describe('NodeGeminiLiveBridge', () => {
       PATH: expect.any(String),
       NODE_ENV: expect.any(String),
       SLATE_GEMINI_BRIDGE_AUTH_MODE: 'developer_api_key',
-      SLATE_GEMINI_BRIDGE_MODEL: 'gemini-3.1-flash-live-preview',
+      SLATE_GEMINI_BRIDGE_MODEL: 'gemini-2.5-flash-native-audio-preview-12-2025',
       SLATE_GEMINI_BRIDGE_CREDENTIAL_FILE: '/run/secrets/gemini_api_key',
     });
     expect(JSON.stringify(child.writes[0])).not.toContain('gemini_api_key');
@@ -312,7 +312,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       ({ message }) => events.push(message),
       (error) => errors.push(error),
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -362,7 +362,7 @@ describe('NodeGeminiLiveBridge', () => {
         'en',
         () => undefined,
         () => undefined,
-        'gemini-3.1-flash-live-preview',
+        'gemini-2.5-flash-native-audio-preview-12-2025',
         'synthetic instruction',
         100,
         false
@@ -380,7 +380,7 @@ describe('NodeGeminiLiveBridge', () => {
         'en',
         () => undefined,
         () => undefined,
-        'gemini-3.1-flash-live-preview',
+        'gemini-2.5-flash-native-audio-preview-12-2025',
         'synthetic instruction',
         100,
         false
@@ -403,7 +403,7 @@ describe('NodeGeminiLiveBridge', () => {
         'en',
         () => undefined,
         () => undefined,
-        'gemini-3.1-flash-live-preview',
+        'gemini-2.5-flash-native-audio-preview-12-2025',
         'synthetic instruction',
         100,
         false
@@ -419,7 +419,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       (error) => errors.push(error),
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -439,7 +439,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       (error) => errors.push(error),
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -461,7 +461,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       () => undefined,
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -487,7 +487,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       () => undefined,
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -513,7 +513,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       () => undefined,
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -532,7 +532,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       () => undefined,
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -549,7 +549,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       () => undefined,
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -603,7 +603,7 @@ describe('NodeGeminiLiveBridge', () => {
       'en',
       () => undefined,
       (error) => errors.push(error),
-      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-preview-12-2025',
       'synthetic instruction',
       100,
       false
@@ -765,7 +765,7 @@ describe('NodeGeminiLiveBridge', () => {
         'en',
         () => undefined,
         () => undefined,
-        'gemini-3.1-flash-live-preview',
+        'gemini-2.5-flash-native-audio-preview-12-2025',
         'synthetic instruction',
         100,
         false

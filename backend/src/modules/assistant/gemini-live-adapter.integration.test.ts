@@ -19,7 +19,7 @@ function config(
     GEMINI_API_KEY_FILE: credentialFile,
     GEMINI_DEVELOPER_API_KEY_ENABLED: true,
     GEMINI_LIVE_RUNTIME: 'node_bridge',
-    GEMINI_LIVE_MODEL: 'gemini-3.1-flash-live-preview',
+    GEMINI_LIVE_MODEL: 'gemini-2.5-flash-native-audio-preview-12-2025',
     GEMINI_NODE_EXECUTABLE: 'node',
     GEMINI_NODE_BRIDGE_SCRIPT: script,
     GEMINI_LIVE_CONNECT_TIMEOUT_MS: 250,
