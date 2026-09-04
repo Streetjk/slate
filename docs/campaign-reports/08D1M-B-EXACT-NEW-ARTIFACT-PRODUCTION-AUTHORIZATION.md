@@ -269,3 +269,20 @@ AUTHORIZED_IMAGE_UNCHANGED=YES
 INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=1_OF_5
 NEXT_SESSION_JUSTIFICATION=RUN_CORRECTED_EXACT_IMAGE_PREFLIGHT_ONCE
 ```
+
+The second detached attempt used the corrected runner but exposed one further
+runner-only parse defect: a TypeScript return-type annotation remained in the
+`.mjs` file. It again failed before Slate initialization, credential access,
+or provider handshake. The runner is corrected and syntax-checked locally;
+this is still no product/source/image drift.
+
+```text
+PREFLIGHT_ATTEMPT_2=CONSUMED_BY_INITIATION
+PREFLIGHT_FAILURE_CLASS=DISPOSABLE_RUNNER_TYPESCRIPT_ANNOTATION_BEFORE_PROVIDER_ACCESS
+PROVIDER_HANDSHAKE_STARTED=NO
+CREDENTIAL_VALUE_READ=NO
+PRODUCTION_SERVICE_MUTATED=NO
+AUTHORIZED_IMAGE_UNCHANGED=YES
+INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=2_OF_5
+NEXT_SESSION_JUSTIFICATION=RUN_SYNTAX_CHECKED_EXACT_IMAGE_PREFLIGHT_ONCE
+```
