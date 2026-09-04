@@ -3873,3 +3873,17 @@ proposes no auth, model, billing, Vertex, or runtime change: current
 production remains Vertex/ADC with the Bun Live runtime and
 `gemini-live-2.5-flash-native-audio`. Any future Developer API-key or Node
 bridge production use remains a separate human decision.
+
+## Campaign 8D1M pre-mutation hard stop
+
+The exact 8D1M authorization at
+`ecb3dfa9942bc9f1960819e29b7192c1faf5b339` was reconciled against source
+`7a724488a9ed20093469caefc03addc764185be5`, candidate image
+`sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d`,
+and rollback image
+`sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
+The exact candidate’s unchanged production guard rejects the authorized
+`NODE_ENV=production` plus Developer API/Node-bridge configuration before
+child spawn. No deployment, provider call, credential read, or production
+mutation was attempted. See the detailed 8D1M execution checkpoint in
+`08D1M-PRODUCTION-DEPLOYMENT-AND-PHYSICAL-E2E.md`.
