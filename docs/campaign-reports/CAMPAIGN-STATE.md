@@ -6,8 +6,8 @@ Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A co
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M-B exact new-artifact production authorization and bounded validation
-Current status: HARD_STOP_SYNTHETIC_PRODUCTION_MODEL_EVENT_MISSING_ROLLED_BACK — the exact authorized ARM64 candidate deployed cleanly and passed health/security-boundary checks, but the final bounded synthetic production validation observed `TURN_COMPLETE=YES` without `MODEL_EVENT`; no credential rejection or source defect was proven. Automatic rollback restored the preserved ARM64 image; Slate/MySQL are healthy and untouched after rollback. All 5/5 B validation sessions are used; no physical NOTE4 E2E or further provider retry was attempted.
+Current stage: 8D1M-C long-run preflight-vs-production event differential recovery
+Current status: C0_RECONCILED_ZERO_PROVIDER_RECOVERY_IN_PROGRESS — PR #2 is open/draft/unmerged at the fetched C checkpoint; rollback production is healthy and frozen, the candidate secret mount is absent, provider calls and production mutations are unauthorized, and no tracked product/runtime files drifted after source `895e2d5`.
 
 Completed campaigns:
 
@@ -89,7 +89,7 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: transfer only the exact attested candidate image to note4-orangepi, run the protected-credential exact-image preflight, and proceed with the already authorized sequence. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: complete C1-C9 zero-provider differential reconstruction, deterministic structural-event/timing replay, and any bounded source correction only if proven. Do not deploy/restart production, read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
 Human action required: YES — retained provider/technical boundary after the exact candidate was rolled back. A new reviewed artifact or provider-validation authorization is required; no credential replacement was inferred or attempted. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`.
 

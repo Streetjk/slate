@@ -540,3 +540,33 @@ PROVIDER_CALLS_AUTHORIZED=0
 PRODUCTION_MUTATION_AUTHORIZED=0
 NEXT_ACTION=RECONSTRUCT_PREFLIGHT_VS_PRODUCTION_EVENT_AND_TIMING_DIFFERENTIAL_THEN_CONTINUE_AUTONOMOUSLY_TO_C9
 ```
+
+## C0 — live reconciliation PASS
+
+The branch was fetched and fast-forwarded to the directive checkpoint
+`3c848bb849bb7b6b47bd8f6172503da520f68b5c`. PR #2 is open, draft, and
+unmerged. The B rollback baseline is still active on `note4-orangepi`; no
+candidate Gemini secret mount is present. The exact source lineage remains
+`895e2d569d6ae0e8909c3e8958d64c189810f203`, and the product/runtime file
+diff from that source to the current branch is empty; only campaign/report
+material has advanced.
+
+```text
+C0=PASS
+HEAD=3c848bb849bb7b6b47bd8f6172503da520f68b5c
+PR2=open_draft_unmerged
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRODUCTION_SLATE=running_healthy
+PRODUCTION_MYSQL=running_healthy
+PRODUCTION_RESTARTS_SLATE=0
+PRODUCTION_RESTARTS_MYSQL=0
+PRODUCTION_HEALTHZ_LOCAL=HTTP_200
+PRODUCTION_HEALTHZ_PUBLIC=HTTP_200
+ROLLBACK_GEMINI_SECRET_MOUNT=ABSENT
+PROVIDER_CALLS_AUTHORIZED=0
+PRODUCTION_MUTATION_AUTHORIZED=0
+PRODUCT_RUNTIME_DRIFT_AFTER_895E2D5=NONE
+```
+
+The rollback production state is frozen as the safety baseline for the
+remaining zero-provider work.
