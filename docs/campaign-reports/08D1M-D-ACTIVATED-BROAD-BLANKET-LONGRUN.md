@@ -208,3 +208,39 @@ ROLLBACK_AVAILABLE=YES
 READY_FOR_PHYSICAL_NOTE4_DECISION=YES
 PR2_STATE=open_draft_unmerged
 ```
+
+## D1 failure checkpoint
+
+The first and only D1 provider session returned a sanitized structural failure
+on `TURN_1_EN`: output transcription, generation completion, and turn
+completion were observed, but the accepted `modelTurn` predicate was not.
+The durable result was recovered independently from the launcher/container
+lifetime. No raw provider payload, generated audio, credential value, private
+data, tool call, or Search request was retained or sent.
+
+```text
+D1_RESULT=FAIL
+D1_FAILURE_CLASS=MODEL_EVENT_MISSING_WITH_TURN_COMPLETE
+D1_MODEL_TURN_SEEN=NO
+D1_OUTPUT_TRANSCRIPTION_SEEN=YES
+D1_GENERATION_COMPLETE_SEEN=YES
+D1_TURN_COMPLETE_SEEN=YES
+D1_TOOL_INVOCATIONS=0
+D1_PROVIDER_ERROR_SEEN=NO
+D1_PROVIDER_CLOSE_SEEN=NO
+D1_PROVIDER_SESSIONS_USED=1_OF_2
+D2_RESULT=NOT_RUN_D1_FAILED
+D2_PRODUCTION_MUTATION=NO
+D1_RESULT_DURABLY_RECOVERED=YES
+D1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+D1_CREDENTIAL_VALUE_CAPTURED=NO
+D1_PRIVATE_DATA_SENT=NO
+D1_SEARCH_EXECUTED=NO
+D1_GENERATED_AUDIO_RETAINED=NO
+ZERO_PROVIDER_FORENSICS=REQUIRED
+```
+
+Under the reduced-stop policy, zero-provider forensic, deterministic
+requalification, and any justified exact-route review work continues before
+returning control. D2 remains unstarted unless a harness-only defect is proven
+without changing the exact source/image authorization pin.

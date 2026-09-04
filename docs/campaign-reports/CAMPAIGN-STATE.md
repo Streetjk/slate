@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-D long-run structural live revalidation
-Current status: D1_D2_CHAIN_AUTHORIZED_IN_PROGRESS — human authorized one non-production D1 provider session and one conditional D2 production session under the fixed two-session ceiling; D0 passed and the exact reviewed source/candidate/rollback identities are preserved.
+Current status: D1_FAILED_ZERO_PROVIDER_FORENSICS_IN_PROGRESS — the one authorized D1 session observed output-transcription plus generation/turn-complete but no accepted model-turn event; D2 remains unstarted while zero-provider diagnosis and requalification proceed under the same exact source/image pins.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: execute exactly one D1 session; if it passes, continue directly to the conditionally authorized D2 deployment/session, then D3. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: complete zero-provider forensic/requalification work; do not spend the second provider session unless a harness-only defect is proven. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: NO — D1 and conditional D2 are explicitly authorized within the fixed two-session pool. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
+Human action required: NO — authorized zero-provider recovery continues; the second provider session remains reserved. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
@@ -141,6 +141,29 @@ PHYSICAL_NOTE4_TEST=NO
 PRIVATE_DATA_SENT=NO
 PR2_MERGED=NO
 ```
+
+## Campaign 8D1M-D D1 failure and forensic continuation
+
+```text
+D1_RESULT=FAIL
+D1_FAILURE_CLASS=MODEL_EVENT_MISSING_WITH_TURN_COMPLETE
+D1_MODEL_TURN_SEEN=NO
+D1_OUTPUT_TRANSCRIPTION_SEEN=YES
+D1_GENERATION_COMPLETE_SEEN=YES
+D1_TURN_COMPLETE_SEEN=YES
+D1_TOOL_INVOCATIONS=0
+D1_PROVIDER_SESSIONS_USED=1_OF_2
+D2_RESULT=NOT_RUN_D1_FAILED
+D2_PRODUCTION_MUTATION=NO
+D1_RESULT_DURABLY_RECOVERED=YES
+D1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+D1_CREDENTIAL_VALUE_CAPTURED=NO
+ZERO_PROVIDER_FORENSICS=IN_PROGRESS
+```
+
+The second provider session is not a blind retry. It remains available only if
+zero-provider evidence proves a harness-only defect with the exact artifact
+pin unchanged.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 

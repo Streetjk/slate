@@ -248,3 +248,52 @@ GENERATED_AUDIO_RETAINED=NO
 Execution must proceed D1 → conditional D2 → D3 without a human handoff
 between already-authorized stages. The provider-session ceiling and rollback
 conditions remain hard limits.
+
+## D1 — exact-image broad session result and zero-provider recovery
+
+The single authorized D1 session was executed once against the exact candidate
+lineage. The durable result was retrieved independently after the container
+had exited; Docker status, result, and logs were retrieved separately. The
+session stopped after the first turn failed the binding acceptance predicate,
+so no second provider session and no D2 production mutation was started.
+
+```text
+D1_RESULT=FAIL
+D1_DRIVER_RESULT=ACCEPTANCE_PREDICATE_FAILED
+D1_FAILURE_CLASS=MODEL_EVENT_MISSING_WITH_TURN_COMPLETE
+D1_CONTAINER=slate-d1-1788522852-58747
+D1_REMOTE_IMAGE_ID=sha256:f644fa6fa0bed63b3f248d33038e8595016fd453e78f6bb97565495a2268de5c
+D1_MODEL=gemini-3.1-flash-live-preview
+D1_TURN_1=TURN_1_EN
+D1_MODEL_TURN_SEEN=NO
+D1_MODEL_TURN_PART_COUNT=0
+D1_MODEL_TURN_TEXT_PART_SEEN=NO
+D1_MODEL_TURN_INLINE_DATA_PART_SEEN=NO
+D1_OUTPUT_TRANSCRIPTION_SEEN=YES
+D1_GENERATION_COMPLETE_SEEN=YES
+D1_TURN_COMPLETE_SEEN=YES
+D1_TOOL_INVOCATIONS=0
+D1_PROVIDER_ERROR_SEEN=NO
+D1_PROVIDER_CLOSE_SEEN=NO
+D1_FIRST_MESSAGE_MS=2493
+D1_TURN_COMPLETE_MS=2499
+D1_ACCEPTANCE_PREDICATE=FAIL
+D1_RESULT_DURABLY_RECOVERED=YES
+D1_RESULT_RECOVERED_AFTER_LAUNCHER_LIFETIME=YES
+D1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+D1_GENERATED_AUDIO_RETAINED=NO
+D1_CREDENTIAL_VALUE_CAPTURED=NO
+D1_PRIVATE_DATA_SENT=NO
+D1_SEARCH_ENABLED=NO
+D1_MICROPHONE_SENT=NO
+D1_PROVIDER_SESSIONS_USED=1_OF_2
+D2_PROVIDER_SESSION=NOT_RUN_D1_FAILED
+D2_PRODUCTION_MUTATION=NO
+```
+
+The observed shape is structurally consistent with the prior retained
+`MODEL_EVENT_MISSING_WITH_TURN_COMPLETE` class. It does not by itself prove a
+credential, provider, SDK, harness, or product-source defect. The second
+provider session is therefore reserved and will not be spent unless the
+required zero-provider work proves a harness-only failure with the exact pins
+unchanged.
