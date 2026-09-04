@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1L non-production production-readiness audit
-Current status: 8D1L_REVIEW_CORRECTIONS_IN_PROGRESS — deterministic audit passed; the preliminary exact GLM review identified report/evidence-boundary findings, Luna adjudicated them as bounded report-only corrections, and no product-source correction is justified.
+Current status: READY_FOR_HUMAN_PRODUCTION_DECISION — 8D1L zero-provider readiness audit, exact ARM64 candidate checks, production read-only health checks, and final exact GLM-5.3-Flash review all passed. No product-source correction was required; production remains untouched.
 
 Completed campaigns:
 
@@ -79,7 +79,7 @@ Active feature branches:
 - `feature/gemini-35-live-evaluation` — PR #2; G17 exact full-adapter synthetic provider validation passed once after the historical G13 call and G14-G16 zero-provider recovery; 8D1L readiness audit is active, production deployment and merge remain prohibited.
 
 Last test status: G17 PASS — exact ARM64 full Slate adapter reached the provider, observed a first provider message, model event, output transcription, generation completion, and turn completion; durable result recovered after launcher disconnect. Firmware was not changed or flashed.
-Last independent review verdict: `8D1L PRELIMINARY BLOCK` — exact GLM-5.3-Flash/ZAI read-only review found no P0 findings and four P1 evidence/policy-boundary findings; Luna adjudicated them as report-only corrections. The historical G17 source review remains PASS and the product source is unchanged.
+Last independent review verdict: `PASS` — exact ZAI `zai-glm53-reviewer` GLM-5.3-Flash read-only review of the corrected 8D1L evidence and source lineage `7a724488a9ed20093469caefc03addc764185be5`; P0/P1/P2/P3 all zero.
 
 External review gate:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: rerun the exact GLM-5.3-Flash readiness review against the corrected 8D1L evidence, then complete the final zero-provider validation/publication and stop at the human production/API-key/data-policy/deployment boundary. Do not start 8D1M, load production `.env` material, or mutate production.
+Next action: human must accept or reject the current Gemini data policy and separately authorize or reject any future 8D1M deployment. 8D1M has not started; do not load production `.env` material, mutate production, or merge PR #2.
 
-Human action required: NO_DURING_8D1L_ZERO_PROVIDER_AUDIT — G17 is exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3` and no further provider call is authorized.
+Human action required: YES — retained 8D1L production/API-key/data-policy/deployment boundary. G17 is exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3` and no further provider call is authorized.
 
 ## Campaign 8D1K-F F1 Hard Stop Checkpoint
 

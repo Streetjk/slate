@@ -233,3 +233,73 @@ This execution record supplies the exact image, runtime, rollback, matrix,
 health, secret boundary, policy separation, and template interpretation. A
 fresh exact-SHA GLM review is required after this correction and before the
 terminal human boundary.
+
+## 8D1L final revalidation and human boundary
+
+The report-only corrections were re-reviewed through the exact ZAI
+`zai-glm53-reviewer` route. The reviewer was instructed to treat the initial
+template as normative, historical Node `26.3.0` fallback evidence as
+historical, and the G17 Developer API-key use as non-production-only. The
+review completed with:
+
+```text
+REVIEW_PROVIDER=ZAI
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_MODEL=glm-5.3-flash
+REVIEWED_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+VERDICT=PASS
+P0_FINDINGS=0
+P1_FINDINGS=0
+P2_FINDINGS=0
+P3_FINDINGS=0
+REQUIRED_ACTIONS=none
+```
+
+The reviewer confirmed the corrected evidence is internally consistent, the
+production fail-closed guard is preserved, the bridge is private stdio, and
+the production matrix does not propose Developer API-key/Node-bridge
+enablement. No tracked product/runtime source changed during the correction
+cycle.
+
+Final zero-provider revalidation remains green: backend `327 pass, 4 skip,
+0 fail` across 331 tests, shared `6 pass, 0 fail`, lint, typecheck, format,
+frontend build, exact ARM64 candidate build, and targeted ARM64
+provider-disabled adapter E2E `23 pass, 0 fail`. Production read-only health
+remains green, with no deploy/restart/configuration mutation. G17 remains the
+only real-provider session in this sequence (`1_OF_1`); 8D1L made zero
+provider calls.
+
+```text
+CAMPAIGN=8D1L
+STATUS=READY_FOR_HUMAN_PRODUCTION_DECISION
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PROPOSED_IMAGE_SHA=sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+SECRET_IN_IMAGE=NO
+NODE_BOUNDARY_PUBLIC=NO
+FULL_TESTS=PASS
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=0
+PROVIDER_CALLS_8D1L=0
+G17_PROVIDER_CALLS_USED=1_OF_1
+8D1K_HISTORICAL_PROVIDER_CALLS_USED=3_OF_3
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_PRODUCTION_DEPLOYMENT_REVIEW=YES
+READY_FOR_HUMAN_PRODUCTION_API_KEY_AND_DATA_POLICY_DECISION=YES
+READY_FOR_8D1M=NO_UNTIL_EXPLICIT_HUMAN_AUTHORIZATION
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_ACCEPT_OR_REJECT_CURRENT_GEMINI_DATA_POLICY_AND_AUTHORIZE_OR_REJECT_8D1M_DEPLOYMENT
+```
+
+This is the retained human boundary. No production deployment, restart,
+Developer API-key decision, billing/Vertex change, private-data submission,
+firmware flash, or PR merge is authorized by this checkpoint. Campaign 8D1M
+has not started.
