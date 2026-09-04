@@ -307,6 +307,63 @@ Do not return for:
 
 `REPORT-PUSH-INVARIANT.md` remains binding. Push often, stop rarely.
 
+## Campaign 8D1M-E E0 reconciliation and diagnostic checkpoint
+
+```text
+CAMPAIGN=8D1M_E
+DIRECTIVE_CHECKPOINT=1910dfa9d97837d1dcd7e73836bfa93f2ff8cb98
+E0_STATUS=PASS
+START_SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+START_ARM64_IMAGE=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRODUCT_SOURCE_DRIFT=NO
+POST_PIN_NON_DOCUMENT_PATHS=0
+MODEL=gemini-3.1-flash-live-preview
+SDK_VERSION=2.20.0
+OFFICIAL_SDK_SEMANTICS_REFRESH=PASS
+OFFICIAL_REALTIME_TEXT_SURFACE=sendRealtimeInput_text
+OFFICIAL_CLIENT_CONTENT_SURFACE=sendClientContent_turnComplete_true
+OFFICIAL_AUDIO_SURFACE=serverContent_modelTurn_parts_inlineData
+OFFICIAL_TRANSCRIPTION_INDEPENDENT_OF_MODEL_TURN=YES
+PRODUCTION_ROLLBACK_HEALTH=PASS
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+PRODUCTION_GEMINI_MOUNT_PRESENT=NO
+PROTECTED_SECRET_METADATA=PASS_NO_VALUE_READ
+```
+
+The official semantic refresh used the current Google GenAI JavaScript Live
+API documentation and SDK reference. It confirms that realtime text and
+client-content text are distinct send surfaces, that model audio is carried
+by `serverContent.modelTurn.parts[].inlineData`, and that output transcription
+does not establish model-turn ordering. The diagnostic therefore retains the
+audio/model-turn acceptance gate.
+
+The disposable E0 diagnostic used the exact ARM64 candidate with an explicit
+Node entrypoint, network disabled, read-only root, a read-only diagnostic
+mount, and a separate writable sanitized result file. The first two launch
+attempts exposed only recoverable disposable-boundary issues (inherited image
+entrypoint and temporary result-file permissions); the corrected run passed.
+
+```text
+E0_DIAGNOSTIC=PASS
+E0_DRIVER=PROVIDER_DISABLED_MOCK
+E0_RESULT_TELEMETRY_ONLY=YES
+E0_RESULT_RETRIEVED_INDEPENDENTLY=YES
+E0_RESULT_VERIFIED_BEFORE_CLEANUP=YES
+E0_CONTAINER_ROOT_READ_ONLY=YES
+E0_NETWORK=NONE
+E0_SECRET_MOUNT_PRESENT=NO
+E0_PROVIDER_CALLS=0
+E0_RAW_PAYLOAD_RETAINED=NO
+E0_AUDIO_RETAINED=NO
+E0_CREDENTIAL_CAPTURED=NO
+```
+
+E1 is now the next authorized action: one exact-image, protected-credential,
+non-production response-surface differential session. No production mutation
+has occurred.
+
 ## True stop conditions
 
 Stop only if:

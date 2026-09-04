@@ -6,8 +6,8 @@ Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A co
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M-D long-run structural live revalidation
-Current status: D1_FAILED_ZERO_PROVIDER_FORENSICS_CLOSED_HUMAN_BOUNDARY — the one authorized D1 session observed output-transcription plus generation/turn-complete but no accepted model-turn event; exact zero-provider diagnosis and requalification passed without proving a harness-only or product-source defect, so D2 remains unstarted.
+Current stage: 8D1M-E activated response-surface differential to production long run
+Current status: E0_RECONCILIATION_PASS_E1_READY — the accepted source/image and rollback pins are verified, production is healthy and untouched, official SDK semantics are refreshed, and the payload-free disposable diagnostic passed.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: human authorization is required for any new provider strategy/session; do not blindly spend the retained second session or start D2. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: execute the single authorized E1 non-production response-surface differential using the protected read-only credential mount; classify the result before any correction or later provider session. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: YES — zero-provider recovery is closed; the second provider session remains reserved pending a new provider strategy/session authorization. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
+Human action required: NO — E1 is explicitly authorized under the activated E campaign; provider sessions remain conditional and capped at `3`. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `0_OF_3`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
@@ -192,6 +192,31 @@ READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
 
 This stage now remains at the human boundary for a new provider strategy or
 session. PR #2 remains open/draft/unmerged and production remains on rollback.
+
+## Campaign 8D1M-E E0 checkpoint
+
+```text
+CAMPAIGN=8D1M_E
+DIRECTIVE_CHECKPOINT=1910dfa9d97837d1dcd7e73836bfa93f2ff8cb98
+E0_STATUS=PASS
+SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+ARM64_IMAGE=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+OFFICIAL_SDK_SEMANTICS_REFRESH=PASS
+E0_DIAGNOSTIC=PASS_PROVIDER_DISABLED_MOCK
+E0_RESULT_TELEMETRY_ONLY=YES
+E0_RESULT_INDEPENDENTLY_RECOVERED=YES
+E0_SECRET_MOUNT_PRESENT=NO
+E0_PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+E1_PROVIDER_SESSION=AUTHORIZED_NEXT
+PROVIDER_SESSIONS_USED=0_OF_3
+```
+
+E0 is complete and does not create a handoff. The activated E1 differential is
+the next action under the existing three-session ceiling.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 
