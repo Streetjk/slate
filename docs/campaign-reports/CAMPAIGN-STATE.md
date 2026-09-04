@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-B exact new-artifact production authorization and bounded validation
-Current status: PREDEPLOY_RECONCILIATION_PASS_IMAGE_TRANSFER_PENDING — the exact authorized source/image/rollback lineage, protected credential metadata, PR state, current production health, and current official Gemini model/auth/billing guidance reconcile. The exact ARM64 candidate is not yet present on note4-orangepi and must be transferred before the authorized preflight. No production service mutation, restart, provider call, credential-value read, billing/Vertex change, firmware flash, or PR merge occurred.
+Current status: PREFLIGHT_RUNNER_CORRECTION_PENDING — exact source/image/rollback lineage and protected credential boundary reconcile. The first detached exact-image preflight attempt failed before provider access due only to disposable runner syntax; it is counted as initiated, no credential value was read, and no production service was mutated. The runner is corrected for one justified remaining preflight attempt.
 
 Completed campaigns:
 
@@ -91,7 +91,7 @@ External review gate:
 
 Next action: transfer only the exact attested candidate image to note4-orangepi, run the protected-credential exact-image preflight, and proceed with the already authorized sequence. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: NO — 8D1M-B production deployment and bounded initial-validation pool are explicitly authorized. Stop only for credential replacement/migration, another human-only boundary, or a defined hard failure after rollback. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `0_OF_5`.
+Human action required: NO — 8D1M-B production deployment and bounded initial-validation pool are explicitly authorized. Stop only for credential replacement/migration, another human-only boundary, or a defined hard failure after rollback. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `1_OF_5` after the initiated runner attempt.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 

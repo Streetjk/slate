@@ -248,3 +248,24 @@ No production service mutation or provider session has occurred at this
 checkpoint. The next authorized action is transfer of the exact candidate
 image without touching the protected credential, followed by the exact-image
 read-only protected-credential preflight.
+
+## 8D1M-B preflight recovery checkpoint
+
+The first detached exact-image preflight attempt was retained as container
+`slate-8d1mb-preflight-20260904` and inspected separately. It failed during
+disposable runner parsing because an `.mjs` runner contained TypeScript-only
+`as never` syntax. The failure occurred before Slate initialization, credential
+access, or provider handshake; no raw provider body or credential value was
+read. The disposable runner was corrected only, with no product/source/image
+change.
+
+```text
+PREFLIGHT_ATTEMPT_1=CONSUMED_BY_INITIATION
+PREFLIGHT_FAILURE_CLASS=DISPOSABLE_RUNNER_SYNTAX_BEFORE_PROVIDER_ACCESS
+PROVIDER_HANDSHAKE_STARTED=NO
+CREDENTIAL_VALUE_READ=NO
+PRODUCTION_SERVICE_MUTATED=NO
+AUTHORIZED_IMAGE_UNCHANGED=YES
+INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=1_OF_5
+NEXT_SESSION_JUSTIFICATION=RUN_CORRECTED_EXACT_IMAGE_PREFLIGHT_ONCE
+```
