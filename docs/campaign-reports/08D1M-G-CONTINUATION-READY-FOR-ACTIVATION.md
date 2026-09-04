@@ -136,3 +136,35 @@ Do not return for report/checkpoint pushes, G2 PASS, pre-production checkpoint, 
 ## True stops
 
 Stop only for provider pool exhaustion, new source/artifact outside the narrow reviewed pin, credential/billing/Vertex change, private data/microphone, physical NOTE4/firmware, destructive host/database action, unresolved P0/P1/security/privacy issue, or PR merge/release.
+
+## Human activation checkpoint
+
+Date: 2026-09-04 (Australia/Perth)
+
+The human instruction `proceed` explicitly activated the continuation envelope
+above. The original staged boundary is retained as historical evidence; this
+block is the active state for execution.
+
+```text
+ACTIVATION_BASIS=EXPLICIT_HUMAN_PROCEED_IN_CONTEXT
+DIRECTIVE_STATE=AUTHORIZED_ACTIVE
+G2_STATUS=AUTHORIZED_READY
+G3_STATUS=CONDITIONAL_AFTER_G2_PASS
+CARRY_FORWARD_EXISTING_G_PROVIDER_SESSION=1
+ADDITIONAL_NEW_PROVIDER_SESSIONS_MAX=1
+TOTAL_FUTURE_PROVIDER_SESSIONS_FROM_ACTIVATION_MAX=2
+G_PROVIDER_SESSIONS_USED=2_OF_3
+G_PROVIDER_SESSIONS_REMAINING=1
+MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+PRODUCTION_DEPLOYMENT=CONDITIONAL_AFTER_G2_PASS
+PRODUCTION_RESTART=AUTHORIZED_WITHIN_G3_ONLY
+BLIND_RETRY=NO
+PRIVATE_DATA_SENT=NO
+PR2_MERGED=NO
+```
+
+`REPORT-PUSH-INVARIANT` applies before the G2 provider boundary. Checkpoint
+publication is not a handoff; once the exact remote checkpoint is verified,
+the authorized G2 work continues automatically.
