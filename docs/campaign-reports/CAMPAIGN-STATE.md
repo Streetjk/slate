@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-B exact new-artifact production authorization and bounded validation
-Current status: PREMUTATION_PRODUCTION_CHECKS_PASS_DEPLOYMENT_PENDING — exact source/image/rollback lineage and protected credential boundary reconcile. The exact candidate passed the protected read-only Gemini 3.1 Live synthetic preflight with durable sanitized evidence, and fresh read-only production health/public/device-boundary checks plus a secret-safe rollback snapshot pass. No production service has been mutated.
+Current status: PRODUCTION_CANDIDATE_DEPLOYED_SYNTHETIC_CHECK_PENDING — exact source/image/rollback lineage and protected credential boundary reconcile. The exact authorized ARM64 candidate is deployed through the existing Slate Compose project with MySQL untouched, the protected credential mounted read-only at the reviewed destination, and production/public/device-boundary checks healthy. The one remaining validation session is reserved for the bounded synthetic production backend check before physical NOTE4 content.
 
 Completed campaigns:
 

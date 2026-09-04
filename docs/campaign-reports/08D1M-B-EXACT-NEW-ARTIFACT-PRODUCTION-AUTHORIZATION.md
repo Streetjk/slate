@@ -404,3 +404,47 @@ exact candidate Slate-service replacement, with the current Compose project,
 persistent data mount, MySQL dependency, and existing non-secret environment
 configuration preserved, plus only the reviewed Gemini 3.1 Node-bridge
 settings and protected read-only secret mount.
+
+## 8D1M-B exact candidate production deployment checkpoint
+
+The exact authorized candidate was deployed through the existing
+`slate-note4-deploy` Compose project. Only the Slate service was recreated;
+MySQL was not restarted or recreated. The existing `/data` persistent bind
+mount, network, port, restart policy, and environment-file configuration were
+preserved. The reviewed Gemini settings were applied as the explicit
+production environment override and the established protected host file was
+bound read-only at the reviewed destination. No environment values were
+dumped, and no credential value was read or exposed.
+
+```text
+DEPLOYMENT=PASS
+PRODUCTION_CONTAINER=slate-note4
+PRODUCTION_IMAGE_TRANSPORT_ID=sha256:f644fa6fa0bed63b3f248d33038e8595016fd453e78f6bb97565495a2268de5c
+AUTHORIZED_IMAGE_ID=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+IMAGE_ROOTFS_AND_CONFIG_MATCH=YES
+PRODUCTION_ARCH=linux/arm64
+PRODUCTION_HEALTH=healthy
+PRODUCTION_RESTARTS_SLATE=0
+PRODUCTION_MYSQL=healthy
+PRODUCTION_RESTARTS_MYSQL=0
+PRODUCTION_HEALTHZ_LOCAL=HTTP_200
+PRODUCTION_HEALTHZ_PUBLIC=HTTP_200
+PRODUCTION_WEB_UI_LOCAL=HTTP_200
+PRODUCTION_WEB_UI_PUBLIC=HTTP_200
+GEMINI_API_KEY_MOUNT=/run/secrets/gemini_api_key
+GEMINI_API_KEY_MOUNT_READ_ONLY=YES
+PROTECTED_SOURCE_VALUE_EXPOSED=NO
+NODE_BRIDGE_PUBLIC_LISTENER=NO_WHEN_IDLE
+VOICE_CONFIG_UNAUTHENTICATED=HTTP_401
+VOICE_WEBSOCKET_UNAUTHENTICATED=CLOSE_1008_DEVICE_AUTHENTICATION_FAILED
+LEGACY_XIAOZHI_OTA=HTTP_404
+TAILSCALE_FUNNEL=PASS
+PRODUCTION_GEMINI_SYNTHETIC_CHECK=NOT_RUN_YET
+NOTE4_POST_RESTART_POLLING=AWAITING_NEXT_DEVICE_POLL
+PROVIDER_SESSIONS_USED=4_OF_5
+```
+
+The candidate is running without a health or boundary regression. The one
+remaining provider session is reserved for the bounded synthetic production
+backend check before any physical NOTE4 content is sent. A physical test will
+not be started if that check fails.
