@@ -168,3 +168,41 @@ PR2_MERGED=NO
 `REPORT-PUSH-INVARIANT` applies before the G2 provider boundary. Checkpoint
 publication is not a handoff; once the exact remote checkpoint is verified,
 the authorized G2 work continues automatically.
+
+## G2 preflight hard stop — exact candidate image storage boundary
+
+The exact ARM64 candidate was present in the local Colima Docker store, but was
+not present in the remote Docker store. A zero-provider transfer of only that
+qualified image was attempted so the approved host-local protected credential
+could remain at its existing path. The remote Docker root filesystem reached
+100% during the load. The launcher was disconnected, disposable untagged
+partial layers were identified and removed, and no credential was mounted,
+read, copied, or exposed.
+
+```text
+G2_PROVIDER_CALL=NOT_STARTED
+G2_PROVIDER_SESSIONS_USED=0_FROM_ACTIVATION
+G_PROVIDER_SESSIONS_USED=2_OF_3
+G_PROVIDER_SESSIONS_REMAINING=1
+G2_EXACT_IMAGE_LOCAL=PASS
+G2_EXACT_IMAGE_REMOTE=ABSENT
+G2_IMAGE_TRANSFER=ABORTED_REMOTE_DOCKER_ROOT_CAPACITY
+G2_PARTIAL_TRANSFER_CLEANUP=PASS_DISPOSABLE_UNTAGGED_LAYERS_ONLY
+G2_DURABLE_PROVIDER_RESULT=NOT_CREATED_PROVIDER_NOT_STARTED
+G2_CREDENTIAL_VALUE_READ=NO
+G2_CREDENTIAL_MOUNTED=NO
+G2_PRODUCTION_MUTATION=NO
+G2_STATUS=BLOCKED_EXACT_IMAGE_CANNOT_BE_LOADED_SAFELY
+READY_FOR_G2_PROVIDER_CALL=NO
+HUMAN_INFRASTRUCTURE_DECISION_REQUIRED=YES
+```
+
+The remote root is 14 GB with 871 MB available after cleanup; the candidate
+image metadata reports 1,130,704,920 bytes before Docker's load overhead. The
+historical images and Docker root were not deleted or relocated. Production
+remains on rollback image
+`sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`,
+with Slate and MySQL healthy and both restart counts at zero; the read-only
+health endpoint returned HTTP 200. No G3 action is authorized or possible
+until the exact candidate image can be made available without a new
+destructive host/storage decision.
