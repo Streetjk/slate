@@ -407,6 +407,66 @@ ceiling solely to run the corrected E1 differential. It will not be used as a
 blind retry; the exact source/image pins remain unchanged and no E1 result has
 yet justified a product correction or E2.
 
+## Campaign 8D1M-E E1 response-surface result and CASE D closure
+
+The corrected E1 differential consumed the second authorized session after the
+first attempt's module-resolution defect was proven and repaired in the
+disposable harness. It used one direct SDK Live session and completed both
+synthetic turns. Neither send surface produced an accepted model turn or
+usable audio, although output transcription, generation completion, and turn
+completion were observed for both turns.
+
+```text
+E1_RESULT=CASE_D
+E1_SESSION_ATTEMPTS=2_OF_3
+E1_PROVIDER_CONNECTIONS_REACHED=1
+E1_CORRECTED_HARNESS=PASS
+E1_TURN_A_METHOD=sendRealtimeInput_text
+E1_TURN_A_MODEL_TURN=NO
+E1_TURN_A_AUDIO_BEFORE_BOUNDARY=NO
+E1_TURN_A_AUDIO_AFTER_BOUNDARY=NO
+E1_TURN_A_OUTPUT_TRANSCRIPTION=YES
+E1_TURN_A_GENERATION_COMPLETE=YES
+E1_TURN_A_TURN_COMPLETE=YES
+E1_TURN_B_METHOD=sendClientContent_turnComplete_true
+E1_TURN_B_MODEL_TURN=NO
+E1_TURN_B_AUDIO_BEFORE_BOUNDARY=NO
+E1_TURN_B_AUDIO_AFTER_BOUNDARY=NO
+E1_TURN_B_OUTPUT_TRANSCRIPTION=YES
+E1_TURN_B_GENERATION_COMPLETE=YES
+E1_TURN_B_TURN_COMPLETE=YES
+E1_TOOL_INVOCATIONS=0
+E1_PROVIDER_ERRORS=0
+E1_CASE_D=NEITHER_METHOD_USABLE_AUDIO_OR_MODEL_TURN
+E1_PRODUCT_SOURCE_DEFECT=NO
+E1_NARROW_CORRECTION=NOT_JUSTIFIED
+E1_RESULT_DURABLY_RECOVERED=YES
+E1_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+E1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+E1_GENERATED_AUDIO_RETAINED=NO
+E1_CREDENTIAL_VALUE_CAPTURED=NO
+E1_PRIVATE_DATA_SENT=NO
+E1_SEARCH_ENABLED=NO
+E1_MICROPHONE_SENT=NO
+PROVIDER_SESSIONS_USED=2_OF_3
+PROVIDER_SESSIONS_REMAINING=1
+E2_RESULT=NOT_RUN_CASE_D
+E3_RESULT=NOT_RUN_E2_NOT_RUN
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+GLM53_REVIEW=NOT_REQUIRED_NO_TRACKED_PRODUCT_RUNTIME_CHANGE
+READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
+```
+
+The official semantics remain consistent with CASE D: the Google JavaScript
+Live guide documents realtime text input and model audio under
+`serverContent.modelTurn.parts[].inlineData`, while the SDK reference exposes
+the distinct client-content surface and independent transcription fields.
+No deterministic, mechanically bounded product correction remains. E2 and E3
+are therefore not consumed or attempted; the remaining one-session allowance
+is retained for a newly authorized strategy only.
+
 ## True stop conditions
 
 Stop only if:
