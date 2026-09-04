@@ -93,6 +93,31 @@ Next action: human decision on a separately authorized bounded Gemini revalidati
 
 Human action required: YES — retained C boundary for a new provider-validation authorization; no new artifact or credential replacement is required by this zero-provider result. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
 
+## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
+
+The proposed D directive was fetched and reconciled at remote checkpoint
+`4fa7cda9f86a648e45bf160725cd4685e8a8320e`. Its state remains
+`PROPOSED_NOT_AUTHORIZED`; D0 reconciliation did not activate D1 or D2.
+
+```text
+D0_STATUS=PASS
+DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
+PROVIDER_CALLS_USED=0
+SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+ARM64_IMAGE_ID=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+STRUCTURAL_MATRIX=PASS_A_TO_J
+ARM64_PROVIDER_DISABLED_ADAPTER_REPLAY=PASS_6_TESTS
+ROLLBACK_PRODUCTION_HEALTH=PASS
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+PROTECTED_CREDENTIAL_VALUE_READ=NO
+READY_FOR_D1_AUTHORIZATION=NO_HUMAN_ACTIVATION_REQUIRED
+READY_FOR_D2_AUTHORIZATION=NO_HUMAN_ACTIVATION_REQUIRED
+```
+
+Rollback Slate/MySQL remain healthy and untouched; the production Gemini mount
+is absent. PR #2 remains open/draft/unmerged.
+
 ## Campaign 8D1M-A report-push invariant checkpoint
 
 ```text

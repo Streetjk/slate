@@ -170,3 +170,50 @@ Even after 8D1M-D activation, physical NOTE4 testing and PR merge remain separat
 - `REPORT-PUSH-INVARIANT.md` remains binding.
 
 Do not return control for routine recoverable work after activation. Stop only on D1/D2 failure, a genuine security/credential boundary, or the terminal human decision boundary.
+
+## D0 — zero-provider reconciliation checkpoint
+
+D0 was executed under the proposal's permitted zero-provider scope. The
+proposal remains inactive; no D1 or D2 authorization is implied.
+
+```text
+D0_STATUS=PASS
+DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
+PROVIDER_CALLS_USED=0
+PRODUCTION_DEPLOYMENT=NO
+PRODUCTION_RESTART=NO
+PHYSICAL_NOTE4_TEST=NO
+PR2_MERGE=NO
+SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+ARM64_IMAGE_ID=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ARM64_IMAGE_PLATFORM=linux/arm64
+ARM64_IMAGE_RUNTIME=Node_v22.22.2_Bun_1.4.0_GenAI_2.20.0
+PROTECTED_SOURCE_HOST=note4-orangepi
+PROTECTED_SOURCE_PATH=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+PROTECTED_SOURCE_METADATA=regular_non_symlink_nonempty_owner_pi_mode_600
+CREDENTIAL_VALUE_READ=NO
+CREDENTIAL_MOUNT_DESTINATION=/run/secrets/gemini_api_key
+CREDENTIAL_MOUNT_READONLY=REQUIRED
+STRUCTURAL_MATRIX=PASS_A_TO_J
+STRUCTURAL_TELEMETRY=PAYLOAD_FREE_EPHEMERAL_SUMMARY
+PREFLIGHT_PRODUCTION_CLASSIFIERS=IDENTICAL
+ARM64_PROVIDER_DISABLED_ADAPTER_REPLAY=PASS_6_TESTS
+ARM64_REPLAY_NETWORK=none
+ARM64_REPLAY_ROOTFS=read_only
+ARM64_REPLAY_SYNTHETIC_SECRET=READONLY_MOUNT_ONLY
+ROLLBACK_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROLLBACK_PRODUCTION_HEALTH=PASS
+SLATE_RESTARTS=0
+MYSQL_RESTARTS=0
+PRODUCTION_HEALTHZ=200
+PRODUCTION_GEMINI_MOUNT=ABSENT
+REMOTE_BRANCH_SHA=4fa7cda9f86a648e45bf160725cd4685e8a8320e
+PR_STATE=open_draft_unmerged
+```
+
+The local exact-image replay retained its sanitized test result and container
+metadata before cleanup. It exercised the Bun parent, Node mock child, trusted
+synthetic mount boundary, and existing production guard without network or
+provider access. No tracked product/runtime source changed. The existing C9
+human boundary remains in force: explicit human activation is required before
+any D1 provider session or D2 production mutation.
