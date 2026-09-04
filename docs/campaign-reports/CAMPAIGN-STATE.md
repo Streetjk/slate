@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-D long-run structural live revalidation
-Current status: D1_FAILED_ZERO_PROVIDER_FORENSICS_IN_PROGRESS — the one authorized D1 session observed output-transcription plus generation/turn-complete but no accepted model-turn event; D2 remains unstarted while zero-provider diagnosis and requalification proceed under the same exact source/image pins.
+Current status: D1_FAILED_ZERO_PROVIDER_FORENSICS_CLOSED_HUMAN_BOUNDARY — the one authorized D1 session observed output-transcription plus generation/turn-complete but no accepted model-turn event; exact zero-provider diagnosis and requalification passed without proving a harness-only or product-source defect, so D2 remains unstarted.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: complete zero-provider forensic/requalification work; do not spend the second provider session unless a harness-only defect is proven. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: human authorization is required for any new provider strategy/session; do not blindly spend the retained second session or start D2. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: NO — authorized zero-provider recovery continues; the second provider session remains reserved. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
+Human action required: YES — zero-provider recovery is closed; the second provider session remains reserved pending a new provider strategy/session authorization. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
@@ -158,12 +158,40 @@ D2_PRODUCTION_MUTATION=NO
 D1_RESULT_DURABLY_RECOVERED=YES
 D1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
 D1_CREDENTIAL_VALUE_CAPTURED=NO
-ZERO_PROVIDER_FORENSICS=IN_PROGRESS
+ZERO_PROVIDER_FORENSICS=PASS
 ```
 
 The second provider session is not a blind retry. It remains available only if
 zero-provider evidence proves a harness-only defect with the exact artifact
 pin unchanged.
+
+## Campaign 8D1M-D D1 forensic closure
+
+The zero-provider forensic and requalification work closed without a proven
+harness-only or tracked product/runtime source defect. The focused regression,
+exact ARM64 provider-disabled replay, syntax/lint/type/format/frontend gates,
+and accepted artifact lineage remain valid. The full-repository failures are
+the known Bun/Nest controller-loader baseline.
+
+```text
+D1_ZERO_PROVIDER_FORENSICS=PASS
+FOCUSED_ASSISTANT_SHARED_REGRESSION=PASS_85_TESTS_5_EXPECTED_SYNTHETIC_SKIPS
+EXACT_ARM64_PROVIDER_DISABLED_REPLAY=PASS_6_TESTS
+PRODUCT_SOURCE_CHANGED=NO
+HARNESS_ONLY_DEFECT_PROVEN=NO
+GLM53_REVIEW=NOT_REQUIRED_NO_TRACKED_PRODUCT_RUNTIME_CHANGE
+D1_PROVIDER_SESSIONS_USED=1_OF_2
+SECOND_PROVIDER_SESSION=NOT_USED
+D2_RESULT=NOT_RUN_D1_FAILED
+D2_PRODUCTION_MUTATION=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
+```
+
+This stage now remains at the human boundary for a new provider strategy or
+session. PR #2 remains open/draft/unmerged and production remains on rollback.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 

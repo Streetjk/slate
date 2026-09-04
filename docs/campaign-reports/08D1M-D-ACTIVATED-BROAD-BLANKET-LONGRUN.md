@@ -244,3 +244,41 @@ Under the reduced-stop policy, zero-provider forensic, deterministic
 requalification, and any justified exact-route review work continues before
 returning control. D2 remains unstarted unless a harness-only defect is proven
 without changing the exact source/image authorization pin.
+
+## D1 zero-provider forensic closure and human boundary
+
+The authorized zero-provider work is complete. Focused assistant/shared
+regression passed, the exact ARM64 provider-disabled replay passed, and the
+remaining deterministic gates passed. The full-repository failures are the
+known host/candidate Bun Nest controller-loader baseline and did not identify
+a tracked product/runtime defect. No harness-only defect was proven, so the
+remaining provider session is not eligible for an automatic retry and D2 is
+not authorized by the failed D1 path.
+
+```text
+D1_ZERO_PROVIDER_FORENSICS=PASS
+FOCUSED_ASSISTANT_SHARED_REGRESSION=PASS_85_TESTS_5_EXPECTED_SYNTHETIC_SKIPS
+EXACT_ARM64_PROVIDER_DISABLED_REPLAY=PASS_6_TESTS
+NODE_BRIDGE_SYNTAX=PASS
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+FULL_REPO_TESTS=BASELINE_BUN_NEST_CONTROLLER_LOADER_LIMITATION_4_FAILURES_5_ERRORS
+SOURCE_DIFF_FROM_PIN=REPORT_ONLY
+PRODUCT_SOURCE_CHANGED=NO
+HARNESS_ONLY_DEFECT_PROVEN=NO
+GLM53_REVIEW=NOT_REQUIRED_NO_TRACKED_PRODUCT_RUNTIME_CHANGE
+D1_PROVIDER_SESSIONS_USED=1_OF_2
+SECOND_PROVIDER_SESSION=NOT_USED
+D2_RESULT=NOT_RUN_D1_FAILED
+D2_PRODUCTION_MUTATION=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
+```
+
+This is the retained human boundary for a new provider strategy/session.
+There was no second provider call, no production mutation, no physical NOTE4
+test, no firmware action, and no private data use.

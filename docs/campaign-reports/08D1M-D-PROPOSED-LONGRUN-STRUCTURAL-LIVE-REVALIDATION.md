@@ -297,3 +297,40 @@ credential, provider, SDK, harness, or product-source defect. The second
 provider session is therefore reserved and will not be spent unless the
 required zero-provider work proves a harness-only failure with the exact pins
 unchanged.
+
+## D1 zero-provider forensic closure
+
+The authorized zero-provider recovery and requalification work is complete.
+The exact source and ARM64 candidate pins remain unchanged, the durable
+provider-disabled replay passed, and no tracked product/runtime source defect
+or harness-only defect was proven. The live failure therefore remains a
+provider-observation compatibility boundary, not a basis for a blind retry or
+conditional D2 deployment.
+
+```text
+D1_ZERO_PROVIDER_FORENSICS=PASS
+FOCUSED_ASSISTANT_SHARED_REGRESSION=PASS_85_TESTS_5_EXPECTED_SYNTHETIC_SKIPS
+EXACT_ARM64_PROVIDER_DISABLED_REPLAY=PASS_6_TESTS
+NODE_BRIDGE_SYNTAX=PASS
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+FULL_REPO_TESTS=BASELINE_BUN_NEST_CONTROLLER_LOADER_LIMITATION_4_FAILURES_5_ERRORS
+SOURCE_DIFF_FROM_PIN=REPORT_ONLY
+PRODUCT_SOURCE_CHANGED=NO
+HARNESS_ONLY_DEFECT_PROVEN=NO
+GLM53_REVIEW=NOT_REQUIRED_NO_TRACKED_PRODUCT_RUNTIME_CHANGE
+D1_PROVIDER_SESSIONS_USED=1_OF_2
+SECOND_PROVIDER_SESSION=NOT_USED
+D2_RESULT=NOT_RUN_D1_FAILED
+D2_PRODUCTION_MUTATION=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
+```
+
+The remaining provider session is retained, not automatically consumed. A new
+provider strategy or equivalent human authorization is required before any
+further live validation; production remains on the rollback image.
