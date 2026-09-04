@@ -7,12 +7,19 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-G activated Gemini 2.5 native-audio quick path
-Current status: G1_HARNESS_PATH_FAILURE_FORENSICS_PASS_CORRECTED_G1_READY — the first G1 session consumed one authorized session but the disposable harness invoked the wrong packaged runtime path; zero-provider forensics proved the product image path and a corrected harness-only attempt is permitted.
-G0_PROVIDER_SESSIONS_USED=1_OF_3
-G0_NEXT_ACTION=G1_CORRECTED_DISPOSABLE_HARNESS_ATTEMPT
-G1_PROVIDER_SESSIONS_USED=1_OF_3
-G1_PROVIDER_SESSIONS_REMAINING=2
-G1_PRODUCT_SOURCE_CHANGED=NO
+Current status: G1_5_QUALIFICATION_REVIEW_BOUNDARY — corrected G1 passed, the narrow 2.5 model/config source correction and ARM64 candidate passed focused qualification, but full-repository regression has unrelated existing Bun/Nest decorator failures and the required Grok 4.6 reviewer route is unauthenticated.
+G0_PROVIDER_SESSIONS_USED=2_OF_3
+G0_NEXT_ACTION=RETAINED_REVIEWER_AND_FULL_REGRESSION_BOUNDARY
+G1_PROVIDER_SESSIONS_USED=2_OF_3
+G1_PROVIDER_SESSIONS_REMAINING=1
+G1_PRODUCT_SOURCE_CHANGED=YES_NARROW_MODEL_CONFIG_ONLY
+G1_SOURCE_SHA=5ec1838b4c2ca8a741c772788382a1d4ec7f1d04
+G1_ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+G1_REVIEWER=GROK_4_6_EXISTING_AUTHENTICATED_CLI
+G1_REVIEW_STATUS=UNAVAILABLE_UNAUTHENTICATED
+G1_FULL_REPOSITORY_REGRESSION=BLOCKED_UNRELATED_BUN_NEST_DECORATOR_FAILURES
+G1_READY_FOR_G2=NO
+G1_PRODUCT_SOURCE_DEFECT=NO
 G1_PRODUCTION_CHANGED=NO
 G0_PRODUCTION_CHANGED=NO
 G0_PRODUCTION_HEALTH=PASS

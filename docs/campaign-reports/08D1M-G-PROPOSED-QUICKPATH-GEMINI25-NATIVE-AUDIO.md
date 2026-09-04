@@ -443,6 +443,138 @@ G1_PRODUCT_SOURCE_CHANGED=NO
 G1_PRODUCTION_CHANGED=NO
 ```
 
+## G1 corrected attempt — native-audio PASS
+
+Because G1's first attempt was proven to be a disposable harness path defect,
+the proposal's one corrected G1 attempt was used. It consumed the second G
+provider session and ran the same minimal bridge control on the same protected
+credential path and ARM64 candidate:
+
+```text
+G1_CORRECTED_PROVIDER_SESSION_USED=2_OF_3
+G1_CORRECTED_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+G1_CORRECTED_PROMPT=Say exactly TEST.
+G1_CORRECTED_RESPONSE_MODALITIES=AUDIO
+G1_CORRECTED_SEARCH=OFF
+G1_CORRECTED_TOOL_INVOCATIONS=0
+G1_CORRECTED_MICROPHONE=NO
+G1_CORRECTED_PRIVATE_DATA=NO
+G1_CORRECTED_RAW_AUDIO_RETAINED=NO
+G1_CORRECTED_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+G1_CORRECTED_READY=YES
+G1_CORRECTED_MODEL_EVENT=YES
+G1_CORRECTED_MODEL_TURN=YES
+G1_CORRECTED_INLINE_AUDIO=YES
+G1_CORRECTED_OUTPUT_TRANSCRIPTION=YES
+G1_CORRECTED_GENERATION_COMPLETE=YES
+G1_CORRECTED_TURN_COMPLETE=YES
+G1_CORRECTED_RESULT=PASS
+```
+
+The durable result was retrieved independently after a deliberate launcher
+timeout/disconnect. The container remained non-`--rm` until status, result, and
+log retrieval completed; its disposable state was then cleaned. The result
+file was mode 600, contained only sanitized structural telemetry, and no
+credential value, raw provider payload, or generated audio was retained.
+
+```text
+G1_DURABLE_RESULT=PASS
+G1_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+G1_DISPOSABLE_CLEANUP_AFTER_VERIFICATION=YES
+G1_PROVIDER_SESSIONS_USED=2_OF_3
+G1_PROVIDER_SESSIONS_REMAINING=1
+```
+
+## G1.5 narrow model/config correction and qualification
+
+The corrected provider evidence justified the proposal's bounded model/config
+change. The tracked source now selects only
+`gemini-2.5-flash-native-audio-preview-12-2025` in
+`backend/src/modules/assistant/gemini.config.ts`; directly coupled assistant
+contract fixtures were updated to the same model. No auth mode, credential
+handling, bridge protocol, Search/tool policy, Calendar/Outlook behavior, UI,
+database, device, firmware, or production setting changed.
+
+```text
+G1_5_SOURCE_SHA=5ec1838b4c2ca8a741c772788382a1d4ec7f1d04
+G1_5_SOURCE_SCOPE=NARROW_GEMINI_LIVE_MODEL_CONFIG_AND_DIRECT_TEST_CONTRACTS
+G1_5_ARM64_IMAGE_TAG=slate-8d1mg-candidate:2.5-native-audio
+G1_5_ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+G1_5_ARM64_PLATFORM=linux/arm64
+G1_5_ARM64_USER=bun
+G1_5_ARM64_WORKDIR=/app
+G1_5_NODE=v22.22.2
+G1_5_BUN=1.4.1
+G1_5_SDK=2.20.0
+```
+
+Qualification evidence:
+
+```text
+G1_5_CHANGED_ASSISTANT_TESTS=PASS
+G1_5_CHANGED_ASSISTANT_TESTS_PASS=85
+G1_5_CHANGED_ASSISTANT_TESTS_FAIL=0
+G1_5_CHANGED_ASSISTANT_TESTS_SKIPPED=5_ACTUAL_PROVIDER_DIFFERENTIALS
+G1_5_LINT=PASS
+G1_5_TYPECHECK=PASS
+G1_5_FORMAT_CHECK=PASS
+G1_5_FRONTEND_BUILD=PASS
+G1_5_ARM64_NODE_RUNTIME_SYNTAX=PASS
+G1_5_ARM64_PROVIDER_DISABLED_REPLAY=PASS
+G1_5_IMAGE_ENV_FILES=ABSENT
+G1_5_IMAGE_CREDENTIAL_CONTENT=ABSENT
+G1_5_PRODUCTION_CHANGED=NO
+```
+
+The complete `bun test backend/src shared/test` sweep was also run. It
+reported 326 passing tests, 5 intentional provider-differential skips, and 4
+failures with 5 errors. Those failures are confined to unrelated existing
+Bun/Nest decorator loading behavior in controller/decorator tests (including
+`assistant.controller.test.ts`); no changed G1.5 file failed. The assistant
+source-focused sweep reported 85 passing, 5 intentional provider-differential
+skips, 1 unrelated controller failure, and 1 related loader error for the
+same pre-existing decorator issue. No unrelated repair is authorized by the
+narrow G1.5 scope.
+
+```text
+G1_5_FULL_REPOSITORY_REGRESSION=BLOCKED_UNRELATED_BUN_NEST_DECORATOR_FAILURES
+G1_5_SOURCE_REQUALIFICATION=FOCUSED_PASS_FULL_SWEEP_NOT_CLEAN
+```
+
+The image was built reproducibly from `G1_5_SOURCE_SHA` with the pinned
+Dockerfile Node base. The final image has no `.env` files or credential
+content, the bridge runtime syntax check passes, and the provider-disabled
+ARM64 replay used `--network none`, `--read-only`, and no secret mount.
+
+## G1.5 independent-review boundary
+
+The current repository routing override requires the existing authenticated
+Grok 4.6 CLI/session for independent review and prohibits silent substitution
+of another reviewer. `grok models` returned `You are not authenticated`.
+No credential was created, exposed, moved, or replaced, and no Gemini 3.7
+review/shadow call was made. Therefore the required exact-artifact review
+cannot be completed in this environment.
+
+```text
+INDEPENDENT_REVIEWER=GROK_4_6
+REVIEW_TRANSPORT=GROK_CLI_EXISTING_AUTH_SESSION
+REVIEW_STATUS=UNAVAILABLE_UNAUTHENTICATED
+GEMINI37_REVIEW_CALLS=0
+GEMINI37_SHADOW_CALLS=0
+GEMINI37_BLACKOUT_EXPIRES=2026-09-06T02:00:00+08:00
+G1_5_REVIEWED=NO
+READY_FOR_G2=NO
+READY_FOR_G3=NO
+PROVIDER_SESSIONS_USED=2_OF_3
+PROVIDER_SESSIONS_REMAINING=1
+PRODUCTION_CHANGED=NO
+```
+
+This is a retained reviewer/full-regression boundary. The remaining provider
+session is not spent until the exact reviewer route and clean in-scope
+requalification prerequisites are available. The candidate has not been
+deployed; rollback production remains untouched and healthy.
+
 ## 3.1 disposition
 
 Campaign 8D1M-F is not deleted or rewritten. Its 3.1 raw-WebSocket/SDK evidence remains valid research evidence. G simply removes 3.1 from the critical path for making Slate voice operational. Return to 3.1 only after the device is working or if the human explicitly prioritizes 3.1 research over the quick path.
