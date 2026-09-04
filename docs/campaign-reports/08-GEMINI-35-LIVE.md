@@ -3732,3 +3732,48 @@ result was retrieved from the mounted result directory after deliberate
 launcher timeout, independently of `docker wait`; the container and result
 artifacts were inspected and then removed only after verification. No tracked
 product/runtime source changed, so no new GLM review was required.
+## Campaign 8D1K-G17 pre-call reconciliation
+
+```text
+CAMPAIGN=8D1K_G17
+STATUS=PRECALL_RECONCILIATION_PASS
+AUTHORIZATION_CHECKPOINT=dd415d4653e7b10f0ccb6317de2514e67de6ed98
+PR2_STATE=open_draft_unmerged
+REMOTE_HEAD=dd415d4653e7b10f0ccb6317de2514e67de6ed98
+G16_COMPLETE=YES
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PRODUCT_SOURCE_DRIFT=NO
+SDK_VERSION=2.20.0
+MODEL=gemini-3.1-flash-live-preview
+G13_PROVIDER_CALLS_USED=1_OF_1
+G14_G16_PROVIDER_CALLS_USED=0
+G17_PROVIDER_CALLS_USED=0_OF_1
+PROTECTED_SECRET_HOST=note4-orangepi
+PROTECTED_SECRET_SOURCE=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+PROTECTED_SECRET_OWNER=pi
+PROTECTED_SECRET_GROUP=pi
+PROTECTED_SECRET_MODE=600
+PROTECTED_SECRET_TYPE=REGULAR_NON_SYMLINK
+PROTECTED_SECRET_VALUE_READ=NO
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_READ_ONLY_BIND=YES
+OFFICIAL_MODEL_API_BOUNDARY_REFRESHED=YES_2026-09-04
+OFFICIAL_MODEL_STATUS=LISTED_LIVE_SUPPORTED
+OFFICIAL_TEXT_CONTRACT=SEND_REALTIME_INPUT_TEXT_FOR_CONVERSATIONAL_UPDATES
+OFFICIAL_DATA_POLICY=UNPAID_INPUT_OUTPUT_MAY_BE_USED_TO_IMPROVE_PRODUCTS
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+NEXT_ACTION=EXECUTE_EXACTLY_ONE_G17_FULL_ADAPTER_SYNTHETIC_PROVIDER_VALIDATION
+```
+
+The exact ARM64 candidate was transferred without credentials. Remote image
+layers and product/runtime source hashes match the accepted G16 candidate;
+the remote loaded Docker image identity is recorded separately as
+`sha256:d2af1d0dc48f40d4b53324e4a31531b26ce611c5851d33df93c23956b0209e48`.
+The protected source path was checked only for safe metadata and will be
+mounted read-only at `/run/secrets/gemini_api_key` for this one call.

@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-G14 zero-provider post-ready forensic reconstruction
-Current status: G16_COMPLETE_ZERO_PROVIDER_READY_FOR_G17_HUMAN_GATE — G13’s one-call budget remains exhausted at `1_OF_1`; the accepted source is unchanged, and G14-G16 closed the post-ready boundary without another provider call.
+Current stage: 8D1K-G17 exact full-adapter provider validation
+Current status: G17_IN_PROGRESS_ONE_AUTHORIZED_CALL — G13’s one-call budget remains exhausted at `1_OF_1`; the separate G17 authorization is active at `0_OF_1`, with the accepted source and SDK/image lineage reconciled.
 
 Completed campaigns:
 
@@ -78,7 +78,7 @@ Active feature branches:
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
 - `feature/gemini-35-live-evaluation` — PR #2; G13 one-call budget exhausted after a sanitized post-ready timeout; G14-G16 are zero-provider recovery stages before the separate G17 human gate; production deployment and merge remain prohibited.
 
-Last test status: G16 PASS — exact ARM64 provider-disabled full-adapter replay observed bridge-ready, text dispatch through the child boundary, mock model turn, generation completion, and turn completion; durable result survived a deliberate launcher timeout. G14-G16 provider calls were zero. Firmware was not changed or flashed.
+Last test status: G17 preflight PASS — exact model/source/SDK/image lineage, protected secret metadata, current official model/API/data-policy boundary, and PR/production safety reconciled. The one authorized provider session has not yet been finalized. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: human authorize or reject one G17 exact-adapter Gemini provider call. Do not start 8D1L/8D1M, load production `.env` material, or use the historical credential without the separate provider authorization.
+Next automatic action: execute exactly one durable G17 full-adapter synthetic provider validation, then follow its PASS/FAIL continuation. Do not start 8D1M, load production `.env` material, or mutate production.
 
-Human action required: YES — decide whether to authorize one separately budgeted G17 exact-adapter provider validation. 8D1K historical accounting remains `3_OF_3`; G14-G16 provider calls remain `0`.
+Human action required: NO_FOR_G17_EXECUTION — the separate one-call authorization is active. 8D1K historical accounting remains `3_OF_3`; G14-G16 provider calls remain `0`.
 
 ## Campaign 8D1K-F F1 Hard Stop Checkpoint
 
@@ -689,4 +689,34 @@ REMOTE_SHA_VERIFIED=YES
 PUSHED_SHA=588584f6f504b268ebc35b0bd682437588a98b09
 PR_STATE_VERIFIED=YES
 PR_STATE=open_draft_unmerged
+```
+
+## Campaign 8D1K-G17 pre-call reconciliation
+
+```text
+CAMPAIGN=8D1K_G17
+STATUS=PRECALL_RECONCILIATION_PASS
+AUTHORIZATION_CHECKPOINT=dd415d4653e7b10f0ccb6317de2514e67de6ed98
+PR2_STATE=open_draft_unmerged
+REMOTE_HEAD=dd415d4653e7b10f0ccb6317de2514e67de6ed98
+G16_COMPLETE=YES
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+PRODUCT_SOURCE_DRIFT=NO
+SDK_VERSION=2.20.0
+MODEL=gemini-3.1-flash-live-preview
+G13_PROVIDER_CALLS_USED=1_OF_1
+G14_G16_PROVIDER_CALLS_USED=0
+G17_PROVIDER_CALLS_USED=0_OF_1
+PROTECTED_SECRET_METADATA=PASS_NO_VALUE_READ
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_READ_ONLY_BIND=YES
+OFFICIAL_MODEL_API_BOUNDARY_REFRESHED=YES_2026-09-04
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=NO
+READY_FOR_8D1M=NO
+NEXT_ACTION=EXECUTE_EXACTLY_ONE_G17_FULL_ADAPTER_SYNTHETIC_PROVIDER_VALIDATION
 ```
