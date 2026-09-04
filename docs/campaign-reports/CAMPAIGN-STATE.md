@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-C long-run preflight-vs-production event differential recovery
-Current status: C0_RECONCILED_ZERO_PROVIDER_RECOVERY_IN_PROGRESS — PR #2 is open/draft/unmerged at the fetched C checkpoint; rollback production is healthy and frozen, the candidate secret mount is absent, provider calls and production mutations are unauthorized, and no tracked product/runtime files drifted after source `895e2d5`.
+Current status: C5_DIFFERENTIAL_NARROWED_ZERO_PROVIDER_C7_PENDING — C0 reconciliation passed; C1 proved identical preflight/production predicates and reviewed runtime shape; C2–C4 defined and replayed content-free structural telemetry across A–J; C5 did not reproduce a callback-finalization race. No tracked product/runtime source changed, provider calls remain zero, and rollback production remains frozen and healthy.
 
 Completed campaigns:
 
