@@ -204,3 +204,47 @@ NORMAL_PRODUCTION_USE_AUTHORIZED=YES_UNDER_ACCEPTED_CURRENT_FREE_TIER_POLICY
 ```
 
 Do not stop for routine implementation-free reconciliation, transient network recovery, test/report publication, or rollback verification. Apply `AUTONOMY-AND-HUMAN-GATE-POLICY.md` throughout.
+
+## 8D1M-B pre-deploy reconciliation checkpoint
+
+Date: 2026-09-04 (Australia/Perth)
+
+The branch was fetched and fast-forwarded to authorization checkpoint
+`53662296b337e3852f39c31a51080893be731c3f`. PR #2 is open, draft, and
+unmerged. The exact corrected product source remains
+`895e2d569d6ae0e8909c3e8958d64c189810f203`; the exact authorized candidate is
+`sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400`
+and the exact rollback image is
+`sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`.
+
+The local candidate attestation remains `linux/arm64`, Node `v22.22.2`, Bun
+`1.4.0`, and `@google/genai` `2.20.0`. On `note4-orangepi`, the established
+protected source exists as a regular non-symlink mode-600 `pi:pi` file with
+non-empty metadata only; its value was not read. The exact candidate is not
+yet present on that host, while the exact rollback image is present.
+
+Read-only production reconciliation passed before any mutation:
+
+```text
+PRODUCTION_SLATE=healthy_running
+PRODUCTION_MYSQL=healthy_running
+PRODUCTION_RESTARTS=0
+PRODUCTION_CURRENT_IMAGE=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+PRODUCTION_HEALTHZ=PASS
+BILLING_ENABLED=NO_CHANGE
+VERTEX_CHANGED=NO
+PROVIDER_SESSIONS_USED=0_OF_5
+```
+
+Current official references still list `gemini-3.1-flash-live-preview` as a
+Live API model. Google’s current API-key guidance notes the September 2026
+Standard-key rejection/migration boundary; the existing protected key type is
+not inferred from metadata. The first authorized preflight will therefore
+test the existing key without exposing it. If Google rejects it as requiring
+Auth-key migration, no credential replacement will be attempted and this
+campaign will stop at that human credential boundary.
+
+No production service mutation or provider session has occurred at this
+checkpoint. The next authorized action is transfer of the exact candidate
+image without touching the protected credential, followed by the exact-image
+read-only protected-credential preflight.

@@ -6,8 +6,8 @@ Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A co
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M-A production guard correction and requalification
-Current status: READY_FOR_EXACT_NEW_ARTIFACT_PRODUCTION_AUTHORIZATION — corrected source `895e2d5` and ARM64 candidate `sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400` passed deterministic regression, production-shape provider-disabled E2E, attestation, read-only production/rollback checks, and exact GLM-5.3-Flash review. No deployment, production restart, provider call, credential-value read, billing/Vertex change, firmware flash, or PR merge occurred.
+Current stage: 8D1M-B exact new-artifact production authorization and bounded validation
+Current status: PREDEPLOY_RECONCILIATION_PASS_IMAGE_TRANSFER_PENDING — the exact authorized source/image/rollback lineage, protected credential metadata, PR state, current production health, and current official Gemini model/auth/billing guidance reconcile. The exact ARM64 candidate is not yet present on note4-orangepi and must be transferred before the authorized preflight. No production service mutation, restart, provider call, credential-value read, billing/Vertex change, firmware flash, or PR merge occurred.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: human must authorize or reject deployment of the exact new source/image pair and production authentication/data policy. Do not bypass the production fail-closed guard, load production `.env` material, mutate production, or merge PR #2.
+Next action: transfer only the exact attested candidate image to note4-orangepi, run the protected-credential exact-image preflight, and proceed with the already authorized sequence. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: YES — exact new-artifact production deployment authorization and production API-key/data-policy decision. G17 remains exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3`; 8D1M-A provider calls used `0`.
+Human action required: NO — 8D1M-B production deployment and bounded initial-validation pool are explicitly authorized. Stop only for credential replacement/migration, another human-only boundary, or a defined hard failure after rollback. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `0_OF_5`.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 
