@@ -295,3 +295,148 @@ IMPLEMENTATION_VALIDATION=IN_PROGRESS
 The skipped tests require the integration test's synthetic secret file and are
 intentionally not provider calls. Full regression, ARM64 build/E2E, exact
 GLM-5.3-Flash review, and final artifact publication remain pending.
+
+## Codex execution checkpoint — deterministic and ARM64 qualification
+
+Date: 2026-09-04 (Australia/Perth)
+
+The implementation checkpoint was published at source SHA
+`895e2d569d6ae0e8909c3e8958d64c189810f203`, and the active PR branch was
+fetched back and matched exactly. The PR remains open, draft, and unmerged.
+
+Deterministic qualification passed:
+
+```text
+BACKEND_TESTS=PASS_332_5_SKIPPED_ENV_GATED
+SHARED_TESTS=PASS_6
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+GIT_DIFF_CHECK=PASS
+REPORT_SECRET_SCAN=PASS
+PROVIDER_CALLS_USED=0
+```
+
+Fresh candidate build and attestation passed:
+
+```text
+ARM64_IMAGE_TAG=slate-8d1ma-candidate:895e2d5
+ARM64_IMAGE_SHA=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+IMAGE_PLATFORM=linux/arm64
+NODE_RUNTIME=v22.22.2
+BUN_RUNTIME=1.4.0
+GENAI_SDK_VERSION=2.20.0
+NODE_BRIDGE_ARTIFACT=PASS
+NODE_BRIDGE_PUBLIC_LISTENER=NO
+IMAGE_HISTORY_SECRET_SCAN=PASS
+SECRET_IN_IMAGE=NO
+```
+
+The exact production-shape provider-disabled E2E used `NODE_ENV=production`,
+both Developer-API opt-ins, the exact Live model and Node bridge runtime, a
+synthetic mode-600 temporary credential on a read-only/no-network ARM64
+container, and the actual image Node executable/bridge artifact. It passed
+the no-production-opt-in fail-closed test and the accepted parent → child
+spawn → bridge-ready → synthetic text → model event/turn-complete test, plus
+the bridge failure/sanitization suite:
+
+```text
+PRODUCTION_SHAPE_PROVIDER_DISABLED_E2E=PASS_40_TESTS
+DEDICATED_OPT_IN_REMOVED=FAIL_CLOSED
+CHILD_SPAWN_AND_BRIDGE_READY=PASS
+SYNTHETIC_TURN_COMPLETE=PASS
+NETWORK_ACCESS=DISABLED
+PRIVATE_DATA_SENT=NO
+GEMINI_PROVIDER_CALL=NO
+GENERATED_AUDIO_RETAINED=NO
+```
+
+The final read-only production health and rollback recheck, exact independent
+GLM-5.3-Flash review, Luna adjudication, and final publication remain pending.
+
+## 8D1M-A terminal requalification checkpoint
+
+Date: 2026-09-04 (Australia/Perth)
+
+The required read-only production recheck passed after the new candidate was
+built; no production deployment, restart, environment mutation, or Gemini
+setting change occurred:
+
+```text
+CURRENT_PRODUCTION_SLATE=healthy_running
+CURRENT_PRODUCTION_MYSQL=healthy_running
+CURRENT_PRODUCTION_RESTARTS=0
+CURRENT_PRODUCTION_IMAGE_SHA=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+PRODUCTION_HEALTHZ=PASS
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROLLBACK_IMAGE_METADATA=PASS_LINUX_ARM64
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+```
+
+Exact independent review route and Luna adjudication:
+
+```text
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_PROVIDER=ZAI
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_MODE=read_only
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+GLM53_P2=0
+GLM53_P3=3_ROUTINE_PUBLICATION_ITEMS
+LUNA_ADJUDICATION=ACCEPT_P3_NO_SOURCE_CORRECTION_REQUIRED
+```
+
+The review confirmed that the new flag is a narrow, false-by-default
+production authorization predicate, not a wholesale production Developer API
+enablement. Exact auth mode, existing Developer API opt-in, exact model,
+`node_bridge`, protected non-symlink restrictive credential-file checks, the
+production Bun SDK prohibition, private stdio boundary, and Vertex/ADC path
+remain enforced. The three P3 items were publication/recheck completeness
+items and are closed by this section and the pushed state checkpoint.
+
+The current official compatibility references were refreshed before closure:
+
+- [Gemini 3.1 Flash Live Preview model](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview) — Live API support remains documented.
+- [Gemini API key guidance](https://ai.google.dev/gemini-api/docs/api-key) — credentials remain secret runtime material; no credential value was read or recorded.
+- [Gemini billing](https://ai.google.dev/gemini-api/docs/billing) — billing remains unchanged and OFF for this campaign.
+
+Final terminal state:
+
+```text
+CAMPAIGN=8D1M_A
+STATUS=READY_FOR_EXACT_NEW_ARTIFACT_PRODUCTION_AUTHORIZATION
+BASE_SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+CORRECTED_SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+NEW_CANDIDATE_IMAGE_SHA=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRODUCTION_OPT_IN=GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED
+DEFAULT_PRODUCTION_OPT_IN=false
+PRODUCTION_NODE_BRIDGE_WITHOUT_OPT_IN=FAIL_CLOSED
+PRODUCTION_NODE_BRIDGE_EXACT_AUTHORIZED_SHAPE=PASS_PROVIDER_DISABLED
+PRODUCTION_BUN_DEVELOPER_API=FAIL_CLOSED
+VERTEX_ADC_BEHAVIOR=UNCHANGED
+FULL_TESTS=PASS
+ARM64_BUILD=PASS
+PRODUCTION_SHAPE_PROVIDER_DISABLED_E2E=PASS
+SECRET_IN_IMAGE=NO
+NODE_BOUNDARY_PUBLIC=NO
+GLM53_REVIEW=PASS
+GLM53_P0=0
+GLM53_P1=0
+PROVIDER_CALLS_USED=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1M_REDEPLOYMENT_AUTHORIZATION=YES
+HUMAN_ACTION_REQUIRED=YES_EXACT_NEW_ARTIFACT_DEPLOYMENT_AUTHORIZATION
+```
+
+This is a retained human boundary. The old 8D1M production authorization does
+not automatically authorize this new source/image pair. No deployment or
+restart is permitted until a human separately authorizes the exact source,
+image, production opt-in, protected credential policy, and rollback procedure.

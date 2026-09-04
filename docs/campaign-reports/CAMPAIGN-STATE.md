@@ -2,12 +2,12 @@
 
 Repository: Streetjk/slate
 Integration branch: `integration/note4-custom`
-Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 8D1E implementation; deterministic gates and exact GLM-5.3-Flash review pass; overnight Node control passed and Bun control timed out without a sanitized result; no production use)
+Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A corrected product source; full deterministic gates, production-shape provider-disabled ARM64 qualification, exact GLM-5.3-Flash review, and artifact requalification pass)
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-A production guard correction and requalification
-Current status: CORRECTION_IMPLEMENTED_VALIDATION_IN_PROGRESS — the required false-by-default production-only Developer API opt-in is now an additional predicate for the exact production Node bridge; targeted deterministic tests pass, and full regression/ARM64/review/publication remain in progress. No deployment, production restart, provider call, credential-value read, billing/Vertex change, firmware flash, or PR merge occurred.
+Current status: READY_FOR_EXACT_NEW_ARTIFACT_PRODUCTION_AUTHORIZATION — corrected source `895e2d5` and ARM64 candidate `sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400` passed deterministic regression, production-shape provider-disabled E2E, attestation, read-only production/rollback checks, and exact GLM-5.3-Flash review. No deployment, production restart, provider call, credential-value read, billing/Vertex change, firmware flash, or PR merge occurred.
 
 Completed campaigns:
 
@@ -76,10 +76,10 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2; G17 exact full-adapter synthetic provider validation passed once after the historical G13 call and G14-G16 zero-provider recovery; 8D1L passed, while 8D1M is at a pre-mutation exact-config hard stop and PR merge remains prohibited.
+- `feature/gemini-35-live-evaluation` — PR #2; 8D1M-A corrected source/image requalification PASS; new-artifact production deployment remains human-authorized only and PR merge remains prohibited.
 
-Last test status: G17 PASS — exact ARM64 full Slate adapter reached the provider, observed a first provider message, model event, output transcription, generation completion, and turn completion; durable result recovered after launcher disconnect. Firmware was not changed or flashed.
-Last independent review verdict: `PASS` — exact ZAI `zai-glm53-reviewer` GLM-5.3-Flash read-only review of the corrected 8D1L evidence and source lineage `7a724488a9ed20093469caefc03addc764185be5`; P0/P1/P2/P3 all zero.
+Last test status: 8D1M-A deterministic and ARM64 qualification PASS — source `895e2d5`, image `sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400`, 332 backend tests plus 6 shared tests, lint/typecheck/format/frontend build, and 40-test production-shape no-network mock E2E passed. Firmware was not changed or flashed.
+Last independent review verdict: `PASS` — exact ZAI `zai-glm53-reviewer` GLM-5.3-Flash read-only review of corrected source `895e2d5` and ARM64 candidate attestation; P0/P1/P2 all zero and three routine P3 publication items adjudicated without source correction.
 
 External review gate:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: human must authorize a new reviewed production-compatible source/image and authentication boundary, or reject 8D1M. Do not bypass the production fail-closed guard, load production `.env` material, mutate production, or merge PR #2.
+Next action: human must authorize or reject deployment of the exact new source/image pair and production authentication/data policy. Do not bypass the production fail-closed guard, load production `.env` material, mutate production, or merge PR #2.
 
-Human action required: YES — retained 8D1M source/authentication compatibility boundary. G17 remains exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3`; 8D1M provider calls used `0`.
+Human action required: YES — exact new-artifact production deployment authorization and production API-key/data-policy decision. G17 remains exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3`; 8D1M-A provider calls used `0`.
 
 ## Campaign 8D1M pre-mutation report-push invariant checkpoint
 
