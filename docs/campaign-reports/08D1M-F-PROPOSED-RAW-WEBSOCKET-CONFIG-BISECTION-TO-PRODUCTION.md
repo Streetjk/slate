@@ -294,3 +294,57 @@ ROLLBACK_AVAILABLE=YES
 READY_FOR_PHYSICAL_NOTE4_DECISION=YES
 PR2_STATE=open_draft_unmerged
 ```
+
+## Campaign 8D1M-F activation and F0 checkpoint
+
+The contextual human instruction `proceed`, issued after reconciliation of
+this proposal, activates the bounded F sequence. The five-session ceiling is
+conditional and no session is consumed merely because it exists.
+
+```text
+CAMPAIGN=8D1M_F
+DIRECTIVE_STATE=AUTHORIZED_ACTIVE
+ACTIVATION_BASIS=HUMAN_PROCEED_IN_CONTEXT
+FUTURE_PROVIDER_SESSION_POOL_MAX=5
+PROVIDER_SESSIONS_USED=0_OF_5
+PRODUCTION_DEPLOYMENT=CONDITIONAL_AFTER_F5_PASS
+BLIND_RETRY=NO
+SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+ARM64_IMAGE=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+MODEL=gemini-3.1-flash-live-preview
+SDK_BASELINE=2.20.0
+```
+
+The required official documentation refresh confirms the pinned model supports
+text input and audio output; for Gemini 3.1 conversational text uses the
+realtime input surface, while client content is limited to initial history
+seeding. The raw WebSocket contract uses the `models/<model>` setup identifier,
+`responseModalities: ["AUDIO"]`, and `realtimeInput.text`. Native audio is
+identified only from server-content model-turn inline-data parts.
+
+```text
+OFFICIAL_SEMANTICS_REFRESH=PASS_2026-09-04
+F0_STATUS=PASS
+F0_DRIVER=PROVIDER_DISABLED_MOCK
+F0_TRANSPORT=RAW_WEBSOCKET_CLASSIFIER_FIXTURE
+F0_RESULT_TELEMETRY_ONLY=YES
+F0_RESULT_DURABLY_RECOVERED=YES
+F0_RESULT_VERIFIED_BEFORE_CLEANUP=YES
+F0_CONTAINER_ROOT_READ_ONLY=YES
+F0_NETWORK=NONE
+F0_SECRET_MOUNT_PRESENT=NO
+F0_SETUP_COMPLETE_CLASSIFIED=YES
+F0_SERVER_CONTENT_CLASSIFIED=YES
+F0_MODEL_TURN_CLASSIFIED=YES
+F0_INLINE_AUDIO_CLASSIFIED=YES
+F0_TRANSCRIPTION_CLASSIFIED=YES
+F0_GENERATION_COMPLETE_CLASSIFIED=YES
+F0_TURN_COMPLETE_CLASSIFIED=YES
+F0_PROVIDER_ERROR_CLOSE_CLASSIFIED=YES
+F0_PROVIDER_SESSIONS_USED=0
+F0_PRODUCTION_CHANGED=NO
+```
+
+F1 is the next authorized action: one minimal direct raw-WebSocket session
+using only the existing protected read-only credential source.
