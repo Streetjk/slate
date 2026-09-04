@@ -440,3 +440,16 @@ This is a retained human boundary. The old 8D1M production authorization does
 not automatically authorize this new source/image pair. No deployment or
 restart is permitted until a human separately authorizes the exact source,
 image, production opt-in, protected credential policy, and rollback procedure.
+
+## 8D1M-A report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=a3e63f1003a481d4a090efe21b29b5ce3b0cde0f
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```

@@ -93,6 +93,19 @@ Next action: human must authorize or reject deployment of the exact new source/i
 
 Human action required: YES — exact new-artifact production deployment authorization and production API-key/data-policy decision. G17 remains exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3`; 8D1M-A provider calls used `0`.
 
+## Campaign 8D1M-A report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=a3e63f1003a481d4a090efe21b29b5ce3b0cde0f
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
+
 ## Campaign 8D1M pre-mutation report-push invariant checkpoint
 
 ```text
