@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1K-G17 exact full-adapter provider validation
-Current status: G17_IN_PROGRESS_ONE_AUTHORIZED_CALL — G13’s one-call budget remains exhausted at `1_OF_1`; the separate G17 authorization is active at `0_OF_1`, with the accepted source and SDK/image lineage reconciled.
+Current stage: 8D1L non-production production-readiness audit
+Current status: G17_PASS_READY_FOR_8D1L — the separate G17 authorization was consumed exactly once with a durable exact full-adapter PASS; no further provider calls are authorized.
 
 Completed campaigns:
 
@@ -76,9 +76,9 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2; G13 one-call budget exhausted after a sanitized post-ready timeout; G14-G16 are zero-provider recovery stages before the separate G17 human gate; production deployment and merge remain prohibited.
+- `feature/gemini-35-live-evaluation` — PR #2; G17 exact full-adapter synthetic provider validation passed once after the historical G13 call and G14-G16 zero-provider recovery; 8D1L readiness audit is active, production deployment and merge remain prohibited.
 
-Last test status: G17 preflight PASS — exact model/source/SDK/image lineage, protected secret metadata, current official model/API/data-policy boundary, and PR/production safety reconciled. The one authorized provider session has not yet been finalized. Firmware was not changed or flashed.
+Last test status: G17 PASS — exact ARM64 full Slate adapter reached the provider, observed a first provider message, model event, output transcription, generation completion, and turn completion; durable result recovered after launcher disconnect. Firmware was not changed or flashed.
 Last independent review verdict: `PASS` — exact GLM-5.3-Flash/ZAI read-only review of source SHA `7a724488a9ed20093469caefc03addc764185be5`; no P0/P1/P2 findings; two non-blocking P3 observations adjudicated by Luna.
 
 External review gate:
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next automatic action: execute exactly one durable G17 full-adapter synthetic provider validation, then follow its PASS/FAIL continuation. Do not start 8D1M, load production `.env` material, or mutate production.
+Next automatic action: execute the zero-provider 8D1L production-readiness audit, then stop at its final human production/API-key/data-policy/deployment boundary. Do not start 8D1M, load production `.env` material, or mutate production.
 
-Human action required: NO_FOR_G17_EXECUTION — the separate one-call authorization is active. 8D1K historical accounting remains `3_OF_3`; G14-G16 provider calls remain `0`.
+Human action required: NO_DURING_8D1L_ZERO_PROVIDER_AUDIT — G17 is exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3` and no further provider call is authorized.
 
 ## Campaign 8D1K-F F1 Hard Stop Checkpoint
 
@@ -719,4 +719,51 @@ PR2_MERGED=NO
 READY_FOR_8D1L=NO
 READY_FOR_8D1M=NO
 NEXT_ACTION=EXECUTE_EXACTLY_ONE_G17_FULL_ADAPTER_SYNTHETIC_PROVIDER_VALIDATION
+```
+
+## Campaign 8D1K-G17 PASS checkpoint
+
+```text
+CAMPAIGN=8D1K_G17
+STATUS=PASS_EXACT_FULL_ADAPTER_REAL_PROVIDER_VALIDATION
+AUTHORIZATION_CHECKPOINT=dd415d4653e7b10f0ccb6317de2514e67de6ed98
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+SDK_VERSION=2.20.0
+MODEL=gemini-3.1-flash-live-preview
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+NODE_CHILD_SPAWN=YES
+BRIDGE_READY=YES
+TEXT_DISPATCH_PROVEN=YES
+FIRST_PROVIDER_MESSAGE=YES
+MODEL_EVENT=YES
+TURN_COMPLETE=YES
+OUTPUT_TRANSCRIPTION_OBSERVED=YES
+GENERATION_COMPLETE_OBSERVED=YES
+WAITING_FOR_INPUT_OBSERVED=NO
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+OUTER_LAUNCHER_RC=124
+OOM=NO
+RAW_PROVIDER_BODY_READ=NO
+CREDENTIAL_VALUE_READ=NO
+PROVIDER_CALL_RETRIED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+READY_FOR_8D1L=YES
+READY_FOR_8D1M=NO
+HUMAN_ACTION_REQUIRED=NO_DURING_8D1L
+NEXT_ACTION=CONTINUE_8D1L_ZERO_PROVIDER_PRODUCTION_READINESS_AUDIT
 ```

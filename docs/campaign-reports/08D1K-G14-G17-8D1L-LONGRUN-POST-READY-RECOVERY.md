@@ -634,6 +634,42 @@ HUMAN_ACTION_REQUIRED=YES
 NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_FUTURE_G17_PROVIDER_VALIDATION
 ```
 
+## G17 exact provider execution checkpoint
+
+The separately authorized G17 session was consumed exactly once using the
+accepted source/image/SDK lineage. The durable sanitized result passed the
+full Slate adapter and was recovered after the launcher control connection
+was deliberately disconnected. No additional provider call is authorized;
+the flow now continues into the zero-provider 8D1L audit.
+
+```text
+CAMPAIGN=8D1K_G17
+STATUS=PASS_EXACT_FULL_ADAPTER_REAL_PROVIDER_VALIDATION
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+MODEL=gemini-3.1-flash-live-preview
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+SDK_VERSION=2.20.0
+NODE_CHILD_SPAWN=YES
+BRIDGE_READY=YES
+TEXT_DISPATCH_PROVEN=YES
+FIRST_PROVIDER_MESSAGE=YES
+MODEL_EVENT=YES
+TURN_COMPLETE=YES
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+PRODUCTION_CHANGED=NO
+READY_FOR_8D1L=YES
+READY_FOR_8D1M=NO
+NEXT_ACTION=CONTINUE_8D1L_ZERO_PROVIDER_PRODUCTION_READINESS_AUDIT
+```
+
 ## G16 report-push invariant checkpoint
 
 ```text

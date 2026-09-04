@@ -3777,3 +3777,82 @@ the remote loaded Docker image identity is recorded separately as
 `sha256:d2af1d0dc48f40d4b53324e4a31531b26ce611c5851d33df93c23956b0209e48`.
 The protected source path was checked only for safe metadata and will be
 mounted read-only at `/run/secrets/gemini_api_key` for this one call.
+
+## Campaign 8D1K-G17 exact full-adapter provider PASS
+
+The single separately authorized G17 session was executed exactly once after
+the live reconciliation and official-documentation refresh. It used the exact
+accepted product source, exact ARM64 candidate lineage, Node bridge, and
+`@google/genai` `2.20.0` runtime. The result was recovered independently from
+the launcher after a deliberate one-second outer wait disconnect; no retry was
+made and no raw provider body or generated audio was retained.
+
+```text
+CAMPAIGN=8D1K_G17
+STATUS=PASS_EXACT_FULL_ADAPTER_REAL_PROVIDER_VALIDATION
+AUTHORIZATION_CHECKPOINT=dd415d4653e7b10f0ccb6317de2514e67de6ed98
+SOURCE_SHA=7a724488a9ed20093469caefc03addc764185be5
+MODEL=gemini-3.1-flash-live-preview
+SDK_VERSION=2.20.0
+NODE_ENV=test
+LIVE_RUNTIME=node_bridge
+SYNTHETIC_INPUT_ONLY=YES
+SYNTHETIC_TEXT=Say exactly TEST.
+SEARCH_ENABLED=NO
+TOOLS_ENABLED=NO_INVOCATION_CUSTOM_DECLARATIONS_PRESENT
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+TOOL_INVOCATIONS=0
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_READ_ONLY_MOUNT=YES
+SECRET_VALUE_CAPTURED=NO
+CREDENTIAL_VALUE_READ_BY_RUNNER=NO
+NODE_EXECUTABLE_CONFIGURED=node
+NODE_EXECUTABLE_PATH=/usr/local/bin/node
+BRIDGE_SCRIPT_PRESENT=YES
+NODE_CHILD_SPAWN=YES
+BRIDGE_READY=YES
+TEXT_DISPATCH_PROVEN=YES
+FIRST_PROVIDER_MESSAGE=YES
+MODEL_EVENT=YES
+TURN_COMPLETE=YES
+OUTPUT_TRANSCRIPTION_OBSERVED=YES
+WAITING_FOR_INPUT_OBSERVED=NO
+GENERATION_COMPLETE_OBSERVED=YES
+PROVIDER_ERROR_CALLBACK_OBSERVED=NO
+PROVIDER_CLOSE_CALLBACK_OBSERVED=NO
+CONNECT_TIMEOUT_MS=15000
+FIRST_PROVIDER_MESSAGE_TIMEOUT_MS=30000
+TURN_COMPLETE_TIMEOUT_MS=60000
+OUTER_LAUNCHER_TIMEOUT_MS=70000
+PROVIDER_CALL_RETRIED=NO
+RAW_PROVIDER_BODY_READ=NO
+OUTER_LAUNCHER_RC=124
+RESULT_DURABLY_RECOVERABLE=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+OOM=NO
+IMAGE_ID=sha256:d2af1d0dc48f40d4b53324e4a31531b26ce611c5851d33df93c23956b0209e48
+ARM64_IMAGE_LAYERS_MATCH_G16=YES
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+PROVIDER_CALLS_AUTHORIZED=1
+PROVIDER_CALLS_USED=1_OF_1
+PROVIDER_CALLS_REMAINING=0
+READY_FOR_8D1L=YES
+READY_FOR_8D1M=NO
+NEXT_ACTION=CONTINUE_8D1L_ZERO_PROVIDER_PRODUCTION_READINESS_AUDIT
+```
+
+Sanitized monotonic timings: bridge-ready at 1433 ms, text dispatch at 1433
+ms, and final durable result at 2898 ms. The result contained eight sanitized
+event summaries and zero error callbacks. The remote disposable container was
+not production and had no published ports; its logs were retrieved
+independently and were empty. The protected host secret was never read by
+Codex or copied; it was mounted read-only only for this authorized call.
