@@ -316,3 +316,42 @@ read-only protected credential mount. No credential value is read, printed,
 copied, or persisted by this correction. The next session is the single
 justified evidence-capture retry; no provider call is made until this
 correction is installed and syntax-checked.
+
+## 8D1M-B exact-image pre-deploy provider preflight PASS checkpoint
+
+The fourth initiated preflight used the exact loaded candidate image and the
+same protected host source mounted read-only at
+`/run/secrets/gemini_api_key`. The disposable container was uniquely named,
+root-read-only, and retained until separate status, wait, log, and
+host-bound-result retrieval completed. The sanitized result was then verified
+as a regular mode-600 `pi:pi` host file before the disposable container was
+removed. The result contains no provider response body, audio, credential, or
+private content.
+
+```text
+PREFLIGHT_ATTEMPT_4=PASS
+PREFLIGHT_FAILURE_CLASS=NONE
+EXACT_IMAGE_PREDEPLOY_PROVIDER_PREFLIGHT=PASS
+PROVIDER_RESULT=PASS
+MODEL=gemini-3.1-flash-live-preview
+MODEL_EVENT=YES
+TURN_COMPLETE=YES
+SEARCH_EXECUTED=NO
+TOOL_INVOCATIONS=0
+PRIVATE_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+CREDENTIAL_EXPOSED=NO
+RESULT_CAPTURE=HOST_BOUND_SANITIZED_JSON
+RESULT_FILE_MODE=600
+RESULT_FILE_OWNER=pi:pi
+RESULT_RETRIEVED_AFTER_CONTAINER_EXIT=YES
+DISPOSABLE_CONTAINER_CLEANED_AFTER_EVIDENCE=YES
+PRODUCTION_SERVICE_MUTATED=NO
+INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=4_OF_5
+```
+
+The authorized candidate source/image/rollback lineage remains unchanged.
+Production deployment is now the next authorized stage, pending the required
+fresh read-only production snapshot and health/route checks. No production
+container has been stopped or restarted at this checkpoint.
