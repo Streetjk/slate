@@ -6,8 +6,12 @@ Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A co
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M-F activated raw-WebSocket/config-bisection to production long run
-Current status: F1_RAW_WEBSOCKET_NO_RESPONSE_ZERO_PROVIDER_CLOSED_HUMAN_BOUNDARY — the single F1 raw-WebSocket session produced no setup/server message before timeout; zero-provider transport and endpoint analysis passed without proving a Slate defect or justifying another session.
+Current stage: 8D1M-G activated Gemini 2.5 native-audio quick path
+Current status: G0_RECONCILIATION_PASS_G1_READY — official model availability and policy semantics refreshed, protected credential metadata and rollback health verified, and provider-disabled 2.5 native-audio fixtures plus focused assistant regressions passed.
+G0_PROVIDER_SESSIONS_USED=0_OF_3
+G0_NEXT_ACTION=G1_MINIMAL_GEMINI25_NATIVE_AUDIO_NONPRODUCTION_SESSION
+G0_PRODUCTION_CHANGED=NO
+G0_PRODUCTION_HEALTH=PASS
 
 Completed campaigns:
 

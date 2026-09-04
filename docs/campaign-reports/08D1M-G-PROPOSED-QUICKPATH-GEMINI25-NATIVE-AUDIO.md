@@ -237,6 +237,160 @@ Stop only for:
 9. destructive host/storage/database action outside disposable state;
 10. PR merge/release/publication.
 
+## G activation and G0 zero-provider checkpoint
+
+The human's subsequent `proceed` instruction activated this declared G
+long-run envelope. The activation was reconciled against remote commit
+`381a0c5228454dbb129f8894121479c79c042569`. The historical F accounting is
+preserved; G has its own conditional pool and no provider session has been
+reset or spent.
+
+```text
+CAMPAIGN=8D1M-G
+DIRECTIVE_STATE=AUTHORIZED_ACTIVE
+ACTIVATION_BASIS=HUMAN_PROCEED_IN_CONTEXT
+FUTURE_PROVIDER_SESSION_POOL_MAX=3
+PROVIDER_SESSIONS_USED=0_OF_3
+PROVIDER_SESSIONS_REMAINING=3
+HISTORICAL_8D1K_PROVIDER_SESSIONS=3_OF_3
+MODEL_TARGET=gemini-2.5-flash-native-audio-preview-12-2025
+AUTH_MODE=EXISTING_DEVELOPER_API_KEY_PROTECTED_READONLY
+SEARCH=OFF
+TOOLS=NO_INVOCATION
+MICROPHONE=OFF
+PRIVATE_DATA=NO
+RAW_AUDIO_RETENTION=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PRODUCTION_CHANGED=NO
+PR2_STATE=open_draft_unmerged
+```
+
+### Official compatibility refresh
+
+The current official Google model page still lists
+`gemini-2.5-flash-native-audio-preview-12-2025` with Live API support, audio
+generation, text/audio/video input, and text/audio output. The official
+models page lists it as a low-latency native-audio Live model. The official
+deprecations page reports no shutdown date for this model and names
+`gemini-3.1-flash-live-preview` as its recommended replacement. The official
+pricing page continues to show a free tier for this model and says free-tier
+content may be used to improve Google's products; billing remains disabled.
+
+References checked during G0:
+
+- https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-native-audio-preview-12-2025
+- https://ai.google.dev/gemini-api/docs/models
+- https://ai.google.dev/gemini-api/docs/deprecations
+- https://ai.google.dev/gemini-api/docs/pricing
+
+```text
+OFFICIAL_MODEL_LISTED=YES
+OFFICIAL_LIVE_API=YES
+OFFICIAL_NATIVE_AUDIO=YES
+OFFICIAL_SHUTDOWN_DATE=NONE_ANNOUNCED
+FREE_TIER_DATA_USE_FOR_PRODUCT_IMPROVEMENT=YES
+G0_POLICY_REFRESH=PASS
+```
+
+### G0 evidence
+
+The existing source currently pins the approved Gemini Live model in
+`backend/src/modules/assistant/gemini.config.ts` and validates the expected
+model before the Node bridge can spawn. The bridge already expresses AUDIO
+response modality, sanitized model-turn/turn-complete handling, reconnect,
+and tool declaration preservation. Therefore selecting the 2.5 model is a
+narrow model/config boundary; no auth, architecture, Search, tool policy,
+Calendar/Outlook, UI, database, device, or firmware change is required by
+the source shape.
+
+The exact local ARM64 candidate remained available as:
+
+```text
+ARM64_CANDIDATE_IMAGE=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ARM64_CANDIDATE_PLATFORM=linux/arm64
+ARM64_CANDIDATE_USER=bun
+ARM64_CANDIDATE_WORKDIR=/app
+ARM64_CANDIDATE_SDK=2.20.0
+```
+
+The protected host source was checked on `note4-orangepi` by metadata only:
+
+```text
+SECRET_SOURCE=/mnt/ssd-tmp/slate-tools/gemini-api-key/gemini_api_key
+SECRET_SOURCE_TYPE=regular_file
+SECRET_SOURCE_SYMLINK=NO
+SECRET_SOURCE_OWNER=pi
+SECRET_SOURCE_GROUP=pi
+SECRET_SOURCE_MODE=600
+SECRET_SOURCE_NONEMPTY=YES
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_MOUNT=READ_ONLY_BIND
+SECRET_VALUE_READ=NO
+SECRET_VALUE_LOGGED=NO
+SECRET_VALUE_COPIED=NO
+```
+
+Read-only production checks passed without restart or mutation:
+
+```text
+SLATE_NOTE4=running_healthy_RESTARTS_0
+SLATE_NOTE4_MYSQL=running_healthy_RESTARTS_0
+PRODUCTION_LOCAL_HEALTH_HTTP=200
+PRODUCTION_ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRODUCTION_CANDIDATE_DEPLOYED=NO
+```
+
+The provider-disabled fixture ran in the exact ARM64 candidate with
+`--network none`, `--read-only`, `--user bun`, no credential mount, and no
+provider client. It emitted only sanitized structural values and passed the
+2.5 model selection, AUDIO modality, inline-audio model-turn, output
+transcription, generation/turn completion, EN/JA matrix, reconnect/tool
+preservation, Search-off, zero-tool-invocation, and zero-audio-retention
+checks:
+
+```text
+G0_PROVIDER_DISABLED_FIXTURE=PASS
+G0_FIXTURE_PROVIDER_CALLS=0
+G0_FIXTURE_MODEL_SELECTION=PASS
+G0_FIXTURE_AUDIO_MODALITY=PASS
+G0_FIXTURE_MODEL_TURN_INLINE_AUDIO=PASS
+G0_FIXTURE_OUTPUT_TRANSCRIPTION=PASS
+G0_FIXTURE_GENERATION_COMPLETE=PASS
+G0_FIXTURE_TURN_COMPLETE=PASS
+G0_FIXTURE_EN_JA_MATRIX=PASS
+G0_FIXTURE_RECONNECT_TOOL_PRESERVATION=PASS
+G0_FIXTURE_SEARCH=OFF
+G0_FIXTURE_TOOL_INVOCATIONS=0
+G0_FIXTURE_RAW_AUDIO_RETAINED=NO
+```
+
+Focused deterministic assistant regression also passed:
+
+```text
+G0_FOCUSED_TESTS=PASS
+G0_FOCUSED_TESTS_PASSED=48
+G0_FOCUSED_TESTS_FAILED=0
+G0_FOCUSED_TESTS_SKIPPED=5_INTENTIONAL_ACTUAL_PROVIDER_DIFFERENTIALS
+```
+
+The first disposable fixture invocation exposed only an assertion bug in the
+fixture itself: it incorrectly treated the expected `rawAudioRetained=false`
+safety result as failure. It made zero provider calls, was corrected in place,
+and the corrected fixture passed. No product source was changed.
+
+```text
+G0_STATUS=PASS
+G0_PRODUCT_SOURCE_CHANGED=NO
+G0_PROVIDER_SESSIONS_USED=0_OF_3
+G1_NEXT=AUTHORIZED_WITHIN_G_ENVELOPE
+```
+
+The next action is the single minimal G1 provider session, using the existing
+protected read-only credential mechanism and the exact 2.5 model. No second
+session will be attempted without evidence meeting the directive's G1
+conditions.
+
 ## 3.1 disposition
 
 Campaign 8D1M-F is not deleted or rewritten. Its 3.1 raw-WebSocket/SDK evidence remains valid research evidence. G simply removes 3.1 from the critical path for making Slate voice operational. Return to 3.1 only after the device is working or if the human explicitly prioritizes 3.1 research over the quick path.
