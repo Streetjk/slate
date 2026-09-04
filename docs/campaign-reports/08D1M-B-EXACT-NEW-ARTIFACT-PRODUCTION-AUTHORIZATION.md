@@ -355,3 +355,52 @@ The authorized candidate source/image/rollback lineage remains unchanged.
 Production deployment is now the next authorized stage, pending the required
 fresh read-only production snapshot and health/route checks. No production
 container has been stopped or restarted at this checkpoint.
+
+## 8D1M-B pre-mutation production snapshot and boundary checks PASS
+
+The fresh read-only production snapshot was captured from the existing Compose
+project before any service mutation. Secret-bearing environment values were
+not printed or inspected. The rollback configuration is preserved by the
+existing project file and persistent Slate bind mount; the MySQL service and
+its data mount remain outside the candidate service replacement.
+
+```text
+PRODUCTION_SLATE=running_healthy
+PRODUCTION_MYSQL=running_healthy
+PRODUCTION_RESTARTS_SLATE=0
+PRODUCTION_RESTARTS_MYSQL=0
+PRODUCTION_CURRENT_IMAGE=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+PRODUCTION_CURRENT_CONTAINER=slate-note4
+PRODUCTION_NETWORK=slate-note4-deploy_default
+PRODUCTION_PORT=3001:3001
+PRODUCTION_RESTART_POLICY=unless-stopped
+PRODUCTION_DATA_MOUNT=/home/pi/slate-note4-deploy/slate-data:/data:rw
+MYSQL_DATA_MOUNT=/home/pi/slate-note4-deploy/mysql-data:/var/lib/mysql:rw
+PRODUCTION_HEALTHZ_LOCAL=HTTP_200
+PRODUCTION_HEALTHZ_PUBLIC=HTTP_200
+PRODUCTION_WEB_UI_LOCAL=HTTP_200
+PRODUCTION_WEB_UI_PUBLIC=HTTP_200
+TAILSCALE=Running
+FUNNEL=https://orangepi5.tail6aabef.ts.net -> http://127.0.0.1:3001
+NOTE4_AUTHENTICATED_POLLING=HTTP_201_EVENTS_OBSERVED
+VOICE_CONFIG_UNAUTHENTICATED=HTTP_401
+VOICE_WEBSOCKET_UNAUTHENTICATED=CLOSE_1008_DEVICE_AUTHENTICATION_FAILED
+LEGACY_XIAOZHI_OTA=HTTP_404
+PRODUCTION_MUTATED=NO
+ROLLBACK_SNAPSHOT=CAPTURED_SECRET_SAFE
+```
+
+The candidate image is loaded on `note4-orangepi` under transport identity
+`sha256:f644fa6fa0bed63b3f248d33038e8595016fd453e78f6bb97565495a2268de5`.
+Its complete RootFS layer chain and `.Config` digest match the authorized
+local candidate `sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400`;
+the differing image IDs are recorded as Docker save/load transport identity,
+not artifact drift. The protected source remains the established non-symlink
+mode-600 file and will be mounted only read-only at
+`/run/secrets/gemini_api_key`.
+
+All mandatory pre-mutation checks pass. The next action is the authorized
+exact candidate Slate-service replacement, with the current Compose project,
+persistent data mount, MySQL dependency, and existing non-secret environment
+configuration preserved, plus only the reviewed Gemini 3.1 Node-bridge
+settings and protected read-only secret mount.

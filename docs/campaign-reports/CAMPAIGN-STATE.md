@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-B exact new-artifact production authorization and bounded validation
-Current status: EXACT_IMAGE_PREFLIGHT_PASS_DEPLOYMENT_PENDING — exact source/image/rollback lineage and protected credential boundary reconcile. The exact candidate image passed the protected read-only Gemini 3.1 Live synthetic preflight with independently recovered host-bound sanitized evidence: model event and turn complete observed, no tools/Search/private data/audio/microphone, and no credential exposure. No production service has been mutated; production snapshot and read-only route checks are next.
+Current status: PREMUTATION_PRODUCTION_CHECKS_PASS_DEPLOYMENT_PENDING — exact source/image/rollback lineage and protected credential boundary reconcile. The exact candidate passed the protected read-only Gemini 3.1 Live synthetic preflight with durable sanitized evidence, and fresh read-only production health/public/device-boundary checks plus a secret-safe rollback snapshot pass. No production service has been mutated.
 
 Completed campaigns:
 
