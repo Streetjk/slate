@@ -3856,3 +3856,20 @@ event summaries and zero error callbacks. The remote disposable container was
 not production and had no published ports; its logs were retrieved
 independently and were empty. The protected host secret was never read by
 Codex or copied; it was mounted read-only only for this authorized call.
+
+## 8D1L candidate attestation and policy-boundary correction
+
+The zero-provider 8D1L candidate is separately attested from the historical
+G17 disposable image. Its exact ARM64 image is
+`sha256:fa280ce50cc707f4c442834b3759638ca73851494ce4893a70208a96d2c1807d`.
+The actual `/usr/local/bin/node` in that candidate is `v22.22.2`, and
+`@google/genai` `2.20.0` loads successfully from `/app/backend`. Historical
+G12/G16 Node `26.3.0` fallback-wrapper evidence is not the production-readiness
+candidate runtime.
+
+The G17 Developer API-key mount and `gemini-3.1-flash-live-preview` call were
+explicitly non-production and synthetic-only. The 8D1L production matrix
+proposes no auth, model, billing, Vertex, or runtime change: current
+production remains Vertex/ADC with the Bun Live runtime and
+`gemini-live-2.5-flash-native-audio`. Any future Developer API-key or Node
+bridge production use remains a separate human decision.
