@@ -7,9 +7,13 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-G activated Gemini 2.5 native-audio quick path
-Current status: G0_RECONCILIATION_PASS_G1_READY — official model availability and policy semantics refreshed, protected credential metadata and rollback health verified, and provider-disabled 2.5 native-audio fixtures plus focused assistant regressions passed.
-G0_PROVIDER_SESSIONS_USED=0_OF_3
-G0_NEXT_ACTION=G1_MINIMAL_GEMINI25_NATIVE_AUDIO_NONPRODUCTION_SESSION
+Current status: G1_HARNESS_PATH_FAILURE_FORENSICS_PASS_CORRECTED_G1_READY — the first G1 session consumed one authorized session but the disposable harness invoked the wrong packaged runtime path; zero-provider forensics proved the product image path and a corrected harness-only attempt is permitted.
+G0_PROVIDER_SESSIONS_USED=1_OF_3
+G0_NEXT_ACTION=G1_CORRECTED_DISPOSABLE_HARNESS_ATTEMPT
+G1_PROVIDER_SESSIONS_USED=1_OF_3
+G1_PROVIDER_SESSIONS_REMAINING=2
+G1_PRODUCT_SOURCE_CHANGED=NO
+G1_PRODUCTION_CHANGED=NO
 G0_PRODUCTION_CHANGED=NO
 G0_PRODUCTION_HEALTH=PASS
 

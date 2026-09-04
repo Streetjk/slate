@@ -391,6 +391,58 @@ protected read-only credential mechanism and the exact 2.5 model. No second
 session will be attempted without evidence meeting the directive's G1
 conditions.
 
+## G1 first attempt — disposable harness failure and zero-provider closure
+
+The first authorized G1 attempt used one provider session and produced a
+durable sanitized failure before `ready`:
+
+```text
+G1_PROVIDER_SESSION_USED=1_OF_3
+G1_RESULT=FAIL
+G1_FAILURE_CLASS=BRIDGE_EXITED
+G1_READY=NO
+G1_MODEL_EVENT=NO
+G1_INLINE_AUDIO=NO
+G1_TURN_COMPLETE=NO
+G1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+G1_RAW_AUDIO_RETAINED=NO
+```
+
+The independent result file was recovered after the launcher completed. Its
+container was retained until the result and status were verified. No raw
+provider log or audio was retained.
+
+Zero-provider forensic replay then ran against the exact ARM64 candidate with
+network disabled and no credential mount. Node version and module loading
+were checked without opening a provider session. The sanitized diagnostic
+identified the harness path defect:
+
+```text
+G1_FORENSICS=PASS
+G1_FORENSIC_IMAGE=slate-8d1ma-candidate:895e2d5
+G1_FORENSIC_NODE=v22.22.2
+G1_FORENSIC_RUNTIME_EXPECTED=/app/backend/src/modules/assistant/gemini-live-node-bridge-runtime.mjs
+G1_FORENSIC_HARNESS_INVOKED=/app/backend/gemini-live-node-bridge-runtime.mjs
+G1_FORENSIC_FAILURE_CLASS=MODULE_NOT_FOUND_DISPOSABLE_HARNESS_PATH
+G1_FORENSIC_PRODUCT_SOURCE_DEFECT=NO
+G1_FORENSIC_PROVIDER_CALLS=0
+```
+
+The image's actual packaged runtime path matches the tracked production
+configuration (`GEMINI_NODE_BRIDGE_SCRIPT=./src/modules/assistant/gemini-live-node-bridge-runtime.mjs`)
+under the `/app/backend` workdir. The first G1 failure therefore does not
+classify the 2.5 model, account, credential, or provider. Luna adjudication
+is `HARNESS_ONLY_DEFECT`; the proposal explicitly allows one corrected G1
+attempt within the existing pool. No product/runtime source changed.
+
+```text
+G1_CORRECTED_HARNESS_ATTEMPT=AUTHORIZED_WITHIN_G_ENVELOPE
+G1_PROVIDER_SESSIONS_USED=1_OF_3
+G1_PROVIDER_SESSIONS_REMAINING=2
+G1_PRODUCT_SOURCE_CHANGED=NO
+G1_PRODUCTION_CHANGED=NO
+```
+
 ## 3.1 disposition
 
 Campaign 8D1M-F is not deleted or rewritten. Its 3.1 raw-WebSocket/SDK evidence remains valid research evidence. G simply removes 3.1 from the critical path for making Slate voice operational. Return to 3.1 only after the device is working or if the human explicitly prioritizes 3.1 research over the quick path.
