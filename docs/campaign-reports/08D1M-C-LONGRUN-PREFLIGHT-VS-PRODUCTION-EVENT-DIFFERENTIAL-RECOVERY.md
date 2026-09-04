@@ -726,3 +726,100 @@ PROVIDER_RESULT_SHAPE_FROM_B=NOT_RECOVERABLE_CONTENT_FREE_ONLY
 ROOT_CAUSE_NARROWED=LEGITIMATE_OR_UNOBSERVED_PROVIDER_RESPONSE_SHAPE_OR_RUN_VARIANCE
 PRODUCT_DEFECT_PROVEN=NO
 ```
+
+## C6 — correction adjudication
+
+Luna adjudication finds no deterministic product/runtime defect to correct.
+The preflight and production acceptance predicates are identical, the bridge
+preserves server-message structure, and the current runner finalizes after its
+synchronous callback bookkeeping. Changing the predicate to accept a bare
+`turnComplete`, transcription-only signal, or lifecycle signal would weaken
+the exact AUDIO-output gate without evidence that generated output existed.
+
+```text
+C6=PASS_NO_CORRECTION_REQUIRED
+PRODUCT_SOURCE_CHANGED=NO
+HARNESS_PREDICATE_FIX=NO
+RESULT_FINALIZATION_FIX=NO
+PRODUCTION_CONFIG_SHAPE_FIX=NO
+LUNA_ADJUDICATION=NO_PRODUCT_DEFECT_PROVEN
+```
+
+## C7 — deterministic and exact ARM64 provider-disabled qualification PASS
+
+The host gates and the exact candidate image were revalidated without network,
+credentials, or provider access. The candidate image replay used a unique
+container, `--network none`, a read-only root, and a mode-600 synthetic-only
+credential mount. The container exited successfully and its retained logs
+were inspected before cleanup.
+
+```text
+BACKEND_TESTS=PASS_332_5_SKIPPED_ENV_GATED
+SHARED_TESTS=PASS_6
+LINT=PASS
+TYPECHECK=PASS
+FORMAT_CHECK=PASS
+FRONTEND_BUILD=PASS
+NODE_BRIDGE_SYNTAX=PASS
+ARM64_IMAGE=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+IMAGE_PLATFORM=linux/arm64
+NODE_RUNTIME=v22.22.2
+BUN_RUNTIME=1.4.0
+GENAI_SDK_VERSION=2.20.0
+PRODUCTION_SHAPE_PROVIDER_DISABLED_E2E=PASS_6_TESTS
+DUAL_SHAPE_EVENT_MATRIX=PASS_A_TO_J
+IMAGE_HISTORY_SECRET_SCAN=PASS
+SECRET_IN_IMAGE=NO
+NETWORK_ACCESS=DISABLED
+PROVIDER_CALLS=0
+ROLLBACK_PRODUCTION_HEALTH=PASS
+PRODUCTION_CHANGED=NO
+```
+
+## C8 — review routing adjudication
+
+No tracked product/runtime behavior changed in C6–C7, so the mandatory exact
+GLM-5.3-Flash review gate for corrected source was not invoked. The existing
+reviewed source remains exactly `895e2d5`; there is no new artifact requiring
+review or production authorization.
+
+```text
+GLM53_REVIEW=NOT_REQUIRED_PRODUCT_SOURCE_UNCHANGED
+SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+LUNA_ADJUDICATION=ACCEPT_NO_CORRECTION
+```
+
+## C9 — final human revalidation boundary
+
+The zero-provider differential is closed for the existing reviewed artifact.
+The exact structural event shape of the B production failure cannot be
+recovered after the fact because B intentionally retained no provider payload
+or structural telemetry. Deterministic work ruled out a predicate mismatch,
+current callback-finalization race, production guard defect, and image/source
+drift. A future separately authorized provider session should use the
+content-free structural summary defined in C2 to distinguish a genuine
+turn-complete-only response from an unobserved generated-content event.
+
+```text
+CAMPAIGN=8D1M_C
+STATUS=ZERO_PROVIDER_DIFFERENTIAL_CLOSED_EXISTING_ARTIFACT_READY_FOR_HUMAN_REVALIDATION_DECISION
+ROOT_CAUSE_CLASS=PROVIDER_RESPONSE_SHAPE_NOT_OBSERVABLE_AFTER_PAYLOAD_FREE_RUN
+PRODUCT_SOURCE_CHANGED=NO
+FINAL_SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+FINAL_ARM64_IMAGE_SHA=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+DUAL_SHAPE_EVENT_MATRIX=PASS
+PRODUCTION_SHAPE_PROVIDER_DISABLED_E2E=PASS
+FULL_TESTS=PASS
+GLM53_REVIEW=NOT_REQUIRED_SOURCE_UNCHANGED
+PROVIDER_CALLS_USED=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+READY_FOR_NEW_PROVIDER_VALIDATION_AUTHORIZATION=YES
+READY_FOR_PRODUCTION_DEPLOYMENT_AUTHORIZATION=NO_UNTIL_HUMAN_DECISION
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_AUTHORIZE_OR_REJECT_NEW_BOUNDED_LIVE_VALIDATION_POOL
+```
+
+The candidate was not redeployed, rollback production remains untouched, and
+PR #2 remains open/draft/unmerged. This is the retained C human boundary.

@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-C long-run preflight-vs-production event differential recovery
-Current status: C5_DIFFERENTIAL_NARROWED_ZERO_PROVIDER_C7_PENDING — C0 reconciliation passed; C1 proved identical preflight/production predicates and reviewed runtime shape; C2–C4 defined and replayed content-free structural telemetry across A–J; C5 did not reproduce a callback-finalization race. No tracked product/runtime source changed, provider calls remain zero, and rollback production remains frozen and healthy.
+Current status: C9_ZERO_PROVIDER_DIFFERENTIAL_CLOSED_EXISTING_ARTIFACT_READY_FOR_HUMAN_REVALIDATION — C0–C8 completed without provider calls, production mutation, or tracked product/runtime correction. Identical predicates, structural A–J matrix, lifecycle replay, full deterministic gates, exact ARM64 provider-disabled replay, and rollback health are PASS; the historical B response shape is not recoverable after payload-free capture. Existing source/image are ready only for a separately authorized human provider revalidation decision.
 
 Completed campaigns:
 
@@ -76,9 +76,9 @@ Active feature branches:
 - `feature/english-ui` — PASS; integrated at `eb3c9dbeacf48772b179c6d0d2954fa2120a39ef`
 - `feature/btc` — PASS; integrated at `2011ac2c88fcf8c53d12ade1a53269c27b72ee70`
 - `feature/external-review-hardening` — PASS; integrated at `5edab3c45e060426fbd0986eac52cf04695d6c0e`
-- `feature/gemini-35-live-evaluation` — PR #2; 8D1M-A corrected source/image requalification PASS; 8D1M-B exact candidate deployment rolled back after the retained synthetic production model-event failure; PR merge remains prohibited.
+- `feature/gemini-35-live-evaluation` — PR #2; 8D1M-A corrected source/image requalification PASS; 8D1M-B exact candidate deployment rolled back after the retained synthetic production model-event failure; 8D1M-C closed the zero-provider differential with no source correction; PR merge remains prohibited.
 
-Last test status: 8D1M-B exact candidate deployment/rollback PASS with synthetic production gate FAIL — source `895e2d5`, candidate transport image `sha256:f644fa6fa0bed63b3f248d33038e8595016fd453e78f6bb97565495a2268de5c` matched authorized candidate layers/config, preflight model event/turn complete passed, production synthetic observed turn complete without model event, and rollback restored `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3`. No firmware was changed or flashed.
+Last test status: 8D1M-C zero-provider differential closure PASS — source `895e2d5` unchanged; preflight/production predicates identical; structural A–J and timing matrices pass; full deterministic gates and exact ARM64 provider-disabled adapter replay pass; rollback image `sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3` remains healthy. No provider call, production mutation, or firmware change occurred.
 Last independent review verdict: `PASS` — exact ZAI `zai-glm53-reviewer` GLM-5.3-Flash read-only review of corrected source `895e2d5` and ARM64 candidate attestation; P0/P1/P2 all zero and three routine P3 publication items adjudicated without source correction.
 
 External review gate:
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: complete C1-C9 zero-provider differential reconstruction, deterministic structural-event/timing replay, and any bounded source correction only if proven. Do not deploy/restart production, read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: human decision on a separately authorized bounded Gemini revalidation using future content-free structural telemetry. Do not deploy/restart production, read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: YES — retained provider/technical boundary after the exact candidate was rolled back. A new reviewed artifact or provider-validation authorization is required; no credential replacement was inferred or attempted. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`.
+Human action required: YES — retained C boundary for a new provider-validation authorization; no new artifact or credential replacement is required by this zero-provider result. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 
