@@ -496,7 +496,7 @@ handling, bridge protocol, Search/tool policy, Calendar/Outlook behavior, UI,
 database, device, firmware, or production setting changed.
 
 ```text
-G1_5_SOURCE_SHA=5ec1838b4c2ca8a741c772788382a1d4ec7f1d04
+G1_5_SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
 G1_5_SOURCE_SCOPE=NARROW_GEMINI_LIVE_MODEL_CONFIG_AND_DIRECT_TEST_CONTRACTS
 G1_5_ARM64_IMAGE_TAG=slate-8d1mg-candidate:2.5-native-audio
 G1_5_ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
@@ -574,6 +574,32 @@ This is a retained reviewer/full-regression boundary. The remaining provider
 session is not spent until the exact reviewer route and clean in-scope
 requalification prerequisites are available. The candidate has not been
 deployed; rollback production remains untouched and healthy.
+
+## Exact source-pin reconciliation boundary
+
+The continuation request supplied
+`5ec1838b4c2ca8a741c772788382a1d4ec7f1d04` as the review source SHA. Git
+contains no object for that exact SHA. The actual pushed model-correction
+commit is:
+
+```text
+REQUESTED_SOURCE_SHA=5ec1838b4c2ca8a741c772788382a1d4ec7f1d04
+REQUESTED_SOURCE_PRESENT=NO
+ACTUAL_PUSHED_SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+ACTUAL_SOURCE_SHORT_SHA=5ec1838
+SOURCE_CONTENT_USED_FOR_ARM64_BUILD=ACTUAL_PUSHED_SOURCE_SHA
+ARM64_IMAGE=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+GROK_AUTHENTICATION=PASS
+GROK_REVIEW=NOT_RUN_EXACT_SOURCE_PIN_MISMATCH
+PROVIDER_CALLS_AFTER_G1=0
+PRODUCTION_CHANGED=NO
+```
+
+The short prefix is shared, but an exact SHA mismatch cannot be silently
+treated as equivalent for an artifact review. The requested exact review was
+therefore stopped before any reviewer conclusion or subsequent provider
+session. This is a retained artifact/source reconciliation boundary; no
+unrelated test repair, G2 provider call, or production action was performed.
 
 ## 3.1 disposition
 
