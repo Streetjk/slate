@@ -767,3 +767,7 @@ READY_FOR_8D1M=NO
 HUMAN_ACTION_REQUIRED=NO_DURING_8D1L
 NEXT_ACTION=CONTINUE_8D1L_ZERO_PROVIDER_PRODUCTION_READINESS_AUDIT
 ```
+
+G17 PASS publication checkpoint: the exact first publication commit was
+`f71f022d528ac039cf55cc2542a4328576715bbc`; origin and PR #2 were verified
+at that SHA before the zero-provider 8D1L audit continued.

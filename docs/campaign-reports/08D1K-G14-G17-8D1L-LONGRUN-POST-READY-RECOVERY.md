@@ -670,6 +670,23 @@ READY_FOR_8D1M=NO
 NEXT_ACTION=CONTINUE_8D1L_ZERO_PROVIDER_PRODUCTION_READINESS_AUDIT
 ```
 
+## G17 report-push invariant checkpoint
+
+The G17 PASS report and campaign state were selectively committed and pushed
+before 8D1L began. The exact published commit was verified locally, through
+the fetched origin-tracking branch, and with `ls-remote`; PR #2 remained open,
+draft, and unmerged.
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+G17_PASS_REPORT_PUSHED_SHA=f71f022d528ac039cf55cc2542a4328576715bbc
+PR_STATE_VERIFIED=YES_OPEN_DRAFT_UNMERGED
+```
+
 ## G16 report-push invariant checkpoint
 
 ```text
