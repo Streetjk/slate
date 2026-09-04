@@ -348,3 +348,60 @@ F0_PRODUCTION_CHANGED=NO
 
 F1 is the next authorized action: one minimal direct raw-WebSocket session
 using only the existing protected read-only credential source.
+
+## Campaign 8D1M-F F1 result and zero-provider closure
+
+The single F1 raw-WebSocket session was executed once against the exact
+candidate. The WebSocket did not yield a setup or server-content message
+within the first-message deadline, and no provider error or close callback was
+observed. Consequently no accepted audio/model-turn or turn-complete event
+was observed. The sanitized result was recovered independently after the
+launcher control disconnect; no retry was made.
+
+```text
+F1_RESULT=F1C
+F1_FAILURE_CLASS=RAW_FIRST_SERVER_MESSAGE_TIMEOUT
+F1_PROVIDER_SESSION_USED=1_OF_5
+F1_PROVIDER_SESSIONS_REMAINING=4
+F1_SETUP_COMPLETE=NO
+F1_SERVER_CONTENT=NO
+F1_MODEL_TURN=NO
+F1_INLINE_AUDIO=NO
+F1_TURN_COMPLETE=NO
+F1_PROVIDER_ERROR=NO_OBSERVED
+F1_PROVIDER_CLOSE=NO_OBSERVED
+F1_RESULT_DURABLY_RECOVERED=YES
+F1_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+F1_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+F1_GENERATED_AUDIO_RETAINED=NO
+F1_CREDENTIAL_VALUE_CAPTURED=NO
+F1_PRIVATE_DATA_SENT=NO
+F1_SEARCH_ENABLED=NO
+F1_TOOLS=NONE
+F1_MICROPHONE_SENT=NO
+F1_PRODUCTION_CHANGED=NO
+```
+
+Zero-provider closure found no client-library defect: Node 22's built-in
+WebSocket completed a local loopback fixture in the exact candidate, and the
+raw endpoint/model/setup contract matches the refreshed official Live API
+documentation. The evidence does not justify a Slate source correction or a
+blind F2/F3 session. The remaining F sessions are retained for a materially
+different, newly justified official configuration or provider strategy only.
+
+```text
+F1_ZERO_PROVIDER_FORENSICS=PASS
+RAW_CLIENT_LOOPBACK_FIXTURE=PASS
+RAW_ENDPOINT_CONTRACT=OFFICIAL_SEMANTICS_MATCH
+PRODUCT_SOURCE_CHANGED=NO
+NARROW_CORRECTION=NOT_JUSTIFIED
+F2_RESULT=NOT_RUN_F1C
+F3_RESULT=NOT_RUN_F1C
+F4_RESULT=NOT_RUN_NO_SOURCE_DEFECT
+F5_RESULT=NOT_RUN_F1C
+F6_RESULT=NOT_RUN_F5_NOT_RUN
+READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
+```
+
+This is the retained human/provider-strategy boundary. Production remains on
+the pinned rollback image and PR #2 remains open/draft/unmerged.

@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-F activated raw-WebSocket/config-bisection to production long run
-Current status: F0_PASS_F1_READY — the contextual human `proceed` activated the bounded F sequence; the exact source/image/rollback pins and production health are verified, official raw-WebSocket semantics are refreshed, and the provider-disabled classifier fixture passed.
+Current status: F1_RAW_WEBSOCKET_NO_RESPONSE_ZERO_PROVIDER_CLOSED_HUMAN_BOUNDARY — the single F1 raw-WebSocket session produced no setup/server message before timeout; zero-provider transport and endpoint analysis passed without proving a Slate defect or justifying another session.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: execute one minimal direct raw-WebSocket F1 session with the existing protected credential mounted read-only; classify the sanitized result before any F2/F3 session or production mutation. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: human authorization is required for a materially different official configuration/provider strategy; do not blindly consume the retained F sessions or start F2/F3/F5/F6. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: NO — F is activated by the contextual human `proceed`; provider sessions remain conditional and capped at `5`. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `2_OF_3`; 8D1M-F provider sessions `0_OF_5`.
+Human action required: YES — F1C is closed after zero-provider analysis; a materially different official configuration/provider strategy is required before another F session. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `2_OF_3`; 8D1M-F provider sessions `1_OF_5`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
@@ -299,6 +299,41 @@ F1_PROVIDER_SESSION=AUTHORIZED_NEXT
 
 F0 is complete; the minimal raw-WebSocket F1 session is the next authorized
 action under the new five-session ceiling.
+
+## Campaign 8D1M-F F1 terminal checkpoint
+
+```text
+CAMPAIGN=8D1M_F
+F1_RESULT=F1C
+F1_FAILURE_CLASS=RAW_FIRST_SERVER_MESSAGE_TIMEOUT
+F1_PROVIDER_SESSION_USED=1_OF_5
+F1_PROVIDER_SESSIONS_REMAINING=4
+F1_SETUP_COMPLETE=NO
+F1_SERVER_CONTENT=NO
+F1_MODEL_TURN=NO
+F1_INLINE_AUDIO=NO
+F1_TURN_COMPLETE=NO
+F1_PROVIDER_ERROR=NO_OBSERVED
+F1_PROVIDER_CLOSE=NO_OBSERVED
+F1_RESULT_DURABLY_RECOVERED=YES
+F1_RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+F1_ZERO_PROVIDER_FORENSICS=PASS
+RAW_CLIENT_LOOPBACK_FIXTURE=PASS
+PRODUCT_SOURCE_CHANGED=NO
+NARROW_CORRECTION=NOT_JUSTIFIED
+F2_RESULT=NOT_RUN_F1C
+F3_RESULT=NOT_RUN_F1C
+F5_RESULT=NOT_RUN_F1C
+F6_RESULT=NOT_RUN_F5_NOT_RUN
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
+```
+
+F1C is a retained human/provider-strategy boundary. No blind retry, source
+correction, production mutation, private-data use, physical action, firmware
+action, or PR merge occurred.
 
 ## Campaign 8D1M-F proposal reconciliation
 
