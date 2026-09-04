@@ -93,6 +93,19 @@ Next action: human must authorize a new reviewed production-compatible source/im
 
 Human action required: YES — retained 8D1M source/authentication compatibility boundary. G17 remains exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3`; 8D1M provider calls used `0`.
 
+## Campaign 8D1M pre-mutation report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=dca1266187f4c22c040de14966a52d0b56c4610d
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
+
 ## Campaign 8D1L final report-push invariant checkpoint
 
 ```text

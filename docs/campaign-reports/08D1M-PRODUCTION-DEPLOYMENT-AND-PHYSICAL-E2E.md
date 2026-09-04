@@ -160,3 +160,16 @@ or private-data operation was attempted. The next action is a human decision
 to authorize a corrected, separately reviewed production-compatible artifact
 and authentication boundary; this exact candidate must not be deployed as a
 way around the fail-closed guard.
+
+### Report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=dca1266187f4c22c040de14966a52d0b56c4610d
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
