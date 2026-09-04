@@ -448,3 +448,71 @@ The candidate is running without a health or boundary regression. The one
 remaining provider session is reserved for the bounded synthetic production
 backend check before any physical NOTE4 content is sent. A physical test will
 not be started if that check fails.
+
+## 8D1M-B synthetic production validation failure and automatic rollback
+
+The final authorized initial-validation session ran against the deployed
+candidate Slate container using its production settings and protected
+read-only credential mount. The launcher was detached; the sanitized result
+was polled and copied independently while the production container remained
+alive, then the temporary runner/result was removed. No provider response body,
+credential value, private content, microphone input, or generated audio was
+retained.
+
+```text
+PROVIDER_SESSION=5_OF_5
+SYNTHETIC_PROMPT=Say exactly TEST.
+MODEL=gemini-3.1-flash-live-preview
+SEARCH_EXECUTED=NO
+TOOL_INVOCATIONS=0
+PRIVATE_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+CREDENTIAL_EXPOSED=NO
+MODEL_EVENT=NO
+TURN_COMPLETE=YES
+ADAPTER_ERROR=NO
+PROVIDER_RESULT=FAIL
+FAILURE_CLASS=MODEL_EVENT_MISSING_WITH_TURN_COMPLETE
+PRODUCTION_HEALTH_DURING_CHECK=healthy
+PRODUCTION_RESTARTS_DURING_CHECK=0
+```
+
+The earlier exact-image preflight had independently passed with both model
+event and turn complete. The production synthetic result therefore does not
+prove credential rejection or a tracked source defect; no credential
+replacement, source correction, or provider retry was attempted. Because the
+required production synthetic gate failed, physical NOTE4 English/Japanese/
+reconnect validation was not started.
+
+The directive's automatic rollback authority was exercised immediately. The
+Slate service was restored through the existing Compose project to the
+preserved ARM64 rollback image. MySQL was not recreated, persistent data was
+not changed, and the candidate secret mount was removed with the candidate
+service. Post-rollback checks passed:
+
+```text
+ROLLBACK_EXECUTED=YES
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROLLBACK_SLATE=running_healthy
+ROLLBACK_SLATE_RESTARTS=0
+ROLLBACK_MYSQL=running_healthy
+ROLLBACK_MYSQL_RESTARTS=0
+ROLLBACK_LOCAL_HEALTHZ=HTTP_200
+ROLLBACK_PUBLIC_HEALTHZ=HTTP_200
+ROLLBACK_LOCAL_UI=HTTP_200
+ROLLBACK_PUBLIC_UI=HTTP_200
+ROLLBACK_GEMINI_SECRET_MOUNT=ABSENT
+ROLLBACK_VOICE_CONFIG_UNAUTHENTICATED=HTTP_404_EXPECTED_ROLLBACK_CONTRACT
+ROLLBACK_VOICE_WEBSOCKET_UNAUTHENTICATED=CLOSE_1008_DEVICE_AUTHENTICATION_FAILED
+ROLLBACK_LEGACY_XIAOZHI_OTA=HTTP_404
+ROLLBACK_TAILSCALE_FUNNEL=PASS
+PRODUCTION_DATA_CHANGED=NO
+PRODUCTION_MYSQL_CHANGED=NO
+PHYSICAL_NOTE4_E2E=NOT_RUN_SYNTHETIC_GATE_FAILED
+INITIAL_VALIDATION_PROVIDER_SESSIONS_USED=5_OF_5
+```
+
+This is a retained provider/technical human boundary. The exact candidate is
+not left deployed, and no further provider session is authorized by this
+checkpoint.
