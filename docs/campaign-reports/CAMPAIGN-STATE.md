@@ -93,6 +93,19 @@ Next action: human must accept or reject the current Gemini data policy and sepa
 
 Human action required: YES — retained 8D1L production/API-key/data-policy/deployment boundary. G17 is exhausted at `1_OF_1`; 8D1K historical accounting remains `3_OF_3` and no further provider call is authorized.
 
+## Campaign 8D1L final report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=32e6d6169beacf536251d56fe060bbe5619dc669
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
+
 ## Campaign 8D1K-F F1 Hard Stop Checkpoint
 
 ```text

@@ -303,3 +303,16 @@ This is the retained human boundary. No production deployment, restart,
 Developer API-key decision, billing/Vertex change, private-data submission,
 firmware flash, or PR merge is authorized by this checkpoint. Campaign 8D1M
 has not started.
+
+### Report-push invariant checkpoint
+
+```text
+REPORT_UPDATED=YES
+CAMPAIGN_STATE_UPDATED=YES
+REPORT_COMMITTED=YES
+REPORT_PUSHED=YES
+REMOTE_SHA_VERIFIED=YES
+PUSHED_SHA=32e6d6169beacf536251d56fe060bbe5619dc669
+PR_STATE_VERIFIED=YES
+PR_STATE=open_draft_unmerged
+```
