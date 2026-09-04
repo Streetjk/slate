@@ -364,6 +364,49 @@ E1 is now the next authorized action: one exact-image, protected-credential,
 non-production response-surface differential session. No production mutation
 has occurred.
 
+## Campaign 8D1M-E E1 harness forensic checkpoint
+
+The first E1 session attempt was made once and ended before the SDK could open
+the provider connection. The disposable diagnostic used CommonJS resolution
+from `/app/package.json` while the exact candidate exposes the SDK through the
+backend ESM package-resolution path. The sanitized result was recovered after
+the deliberate launcher disconnect; no provider response, raw payload, audio,
+or log body was retained.
+
+```text
+E1_SESSION_1=ATTEMPTED
+E1_PROVIDER_CONNECTION=NOT_REACHED
+E1_FAILURE_CLASS=DIAGNOSTIC_HARNESS_MODULE_RESOLUTION_FAILURE
+E1_HARNESS_ONLY_DEFECT_PROVEN=YES
+E1_PRODUCT_SOURCE_DEFECT=NO
+E1_PROVIDER_SESSIONS_USED=1_OF_3
+E1_PROVIDER_SESSIONS_REMAINING=2
+E1_BLIND_RETRY=NO
+```
+
+Zero-provider inspection confirmed that the exact image resolves the SDK from
+the backend runtime location and that static ESM import works there. The
+disposable harness was corrected only to use that proven location. A corrected
+provider-disabled replay passed with the exact candidate, network disabled,
+read-only root, read-only script mount, and durable sanitized result file.
+
+```text
+E1_HARNESS_CORRECTION_SCOPE=DISPOSABLE_DIAGNOSTIC_ONLY
+E1_CORRECTED_MOCK_REPLAY=PASS
+E1_CORRECTED_SDK_IMPORT=PASS
+E1_CORRECTED_SECRET_MOUNT=ABSENT
+E1_CORRECTED_PROVIDER_CALLS=0
+E1_CORRECTED_RAW_PAYLOAD_RETAINED=NO
+E1_CORRECTED_AUDIO_RETAINED=NO
+E1_CORRECTED_CREDENTIAL_CAPTURED=NO
+E1_SECOND_SESSION_ELIGIBLE=YES_HARNESS_ONLY_DEFECT_PROVEN
+```
+
+The second future session is authorized by the activated three-session
+ceiling solely to run the corrected E1 differential. It will not be used as a
+blind retry; the exact source/image pins remain unchanged and no E1 result has
+yet justified a product correction or E2.
+
 ## True stop conditions
 
 Stop only if:

@@ -7,7 +7,7 @@ Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
 Current stage: 8D1M-E activated response-surface differential to production long run
-Current status: E0_RECONCILIATION_PASS_E1_READY — the accepted source/image and rollback pins are verified, production is healthy and untouched, official SDK semantics are refreshed, and the payload-free disposable diagnostic passed.
+Current status: E1_HARNESS_FORENSICS_PASS_CORRECTED_E1_READY — the first E1 attempt stopped before provider connection because of a disposable SDK module-resolution defect; zero-provider evidence proved and corrected that harness defect, and the corrected provider-disabled replay passed.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: execute the single authorized E1 non-production response-surface differential using the protected read-only credential mount; classify the result before any correction or later provider session. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: execute one corrected E1 non-production response-surface differential using the protected read-only credential mount; classify both SDK send surfaces before any product correction or E2. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: NO — E1 is explicitly authorized under the activated E campaign; provider sessions remain conditional and capped at `3`. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `0_OF_3`.
+Human action required: NO — the corrected E1 session is authorized under the activated E campaign; provider sessions remain conditional and capped at `3`. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `1_OF_3`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
@@ -217,6 +217,29 @@ PROVIDER_SESSIONS_USED=0_OF_3
 
 E0 is complete and does not create a handoff. The activated E1 differential is
 the next action under the existing three-session ceiling.
+
+## Campaign 8D1M-E E1 harness forensic checkpoint
+
+```text
+E1_SESSION_1=ATTEMPTED
+E1_PROVIDER_CONNECTION=NOT_REACHED
+E1_FAILURE_CLASS=DIAGNOSTIC_HARNESS_MODULE_RESOLUTION_FAILURE
+E1_HARNESS_ONLY_DEFECT_PROVEN=YES
+E1_PRODUCT_SOURCE_DEFECT=NO
+E1_PROVIDER_SESSIONS_USED=1_OF_3
+E1_PROVIDER_SESSIONS_REMAINING=2
+E1_BLIND_RETRY=NO
+E1_CORRECTED_MOCK_REPLAY=PASS
+E1_SECOND_SESSION_ELIGIBLE=YES_HARNESS_ONLY_DEFECT_PROVEN
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+ROLLBACK_PRODUCTION_HEALTH=PASS
+```
+
+The first E1 attempt was a disposable harness module-resolution failure before
+provider connection. The corrected harness uses the exact backend ESM SDK
+resolution path and passed provider-disabled replay. The next authorized
+action is the corrected E1 differential.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 
