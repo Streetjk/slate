@@ -6,8 +6,8 @@ Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A co
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M-C long-run preflight-vs-production event differential recovery
-Current status: C9_ZERO_PROVIDER_DIFFERENTIAL_CLOSED_EXISTING_ARTIFACT_READY_FOR_HUMAN_REVALIDATION — C0–C8 completed without provider calls, production mutation, or tracked product/runtime correction. Identical predicates, structural A–J matrix, lifecycle replay, full deterministic gates, exact ARM64 provider-disabled replay, and rollback health are PASS; the historical B response shape is not recoverable after payload-free capture. Existing source/image are ready only for a separately authorized human provider revalidation decision.
+Current stage: 8D1M-D long-run structural live revalidation
+Current status: D1_D2_CHAIN_AUTHORIZED_IN_PROGRESS — human authorized one non-production D1 provider session and one conditional D2 production session under the fixed two-session ceiling; D0 passed and the exact reviewed source/candidate/rollback identities are preserved.
 
 Completed campaigns:
 
@@ -89,15 +89,16 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: human decision on a separately authorized bounded Gemini revalidation using future content-free structural telemetry. Do not deploy/restart production, read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: execute exactly one D1 session; if it passes, continue directly to the conditionally authorized D2 deployment/session, then D3. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: YES — retained C boundary for a new provider-validation authorization; no new artifact or credential replacement is required by this zero-provider result. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
+Human action required: NO — D1 and conditional D2 are explicitly authorized within the fixed two-session pool. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
 The proposed D directive was fetched and reconciled at remote checkpoint
-`4fa7cda9f86a648e45bf160725cd4685e8a8320e`. Its state remains
-`PROPOSED_NOT_AUTHORIZED`; D0 reconciliation did not activate D1 or D2.
+`4fa7cda9f86a648e45bf160725cd4685e8a8320e`. At the time of D0 reconciliation
+its state was `PROPOSED_NOT_AUTHORIZED`; the later human activation is recorded
+below.
 
 ```text
 D0_STATUS=PASS
@@ -117,6 +118,29 @@ READY_FOR_D2_AUTHORIZATION=NO_HUMAN_ACTIVATION_REQUIRED
 
 Rollback Slate/MySQL remain healthy and untouched; the production Gemini mount
 is absent. PR #2 remains open/draft/unmerged.
+
+## Campaign 8D1M-D human activation
+
+The human explicitly activated D1 plus conditional D2. The reduced-stop policy
+requires automatic continuation from D1 to D2 when D1 passes.
+
+```text
+CAMPAIGN=8D1M_D
+DIRECTIVE_STATE=AUTHORIZED_ACTIVE
+D1_PROVIDER_SESSION_MAX=1
+D2_PROVIDER_SESSION_MAX=1
+D1_PLUS_D2_PROVIDER_POOL_MAX=2
+NO_RETRY_IF_D1_FAILS=YES
+NO_RETRY_AFTER_D2=YES
+AUTO_ROLLBACK_ON_D2_FAILURE=YES
+STOP_BETWEEN_D1_AND_D2=NO_IF_D2_WAS_PREAUTHORIZED
+PROVIDER_MODEL=gemini-3.1-flash-live-preview
+PROVIDER_CALLS_USED=0_OF_2
+PRODUCTION_DEPLOYMENT=CONDITIONAL_D2_ONLY
+PHYSICAL_NOTE4_TEST=NO
+PRIVATE_DATA_SENT=NO
+PR2_MERGED=NO
+```
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 

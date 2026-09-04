@@ -13,10 +13,10 @@ Model: `gemini-3.1-flash-live-preview`
 ## Status
 
 ```text
-DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
-PROVIDER_CALLS_AUTHORIZED=0
-PRODUCTION_DEPLOYMENT_AUTHORIZED=NO
-PRODUCTION_RESTART_AUTHORIZED=NO
+DIRECTIVE_STATE=AUTHORIZED_ACTIVE
+PROVIDER_CALLS_AUTHORIZED=2_MAX_ONE_D1_ONE_D2
+PRODUCTION_DEPLOYMENT_AUTHORIZED=CONDITIONAL_D2
+PRODUCTION_RESTART_AUTHORIZED=CONDITIONAL_D2
 PHYSICAL_NOTE4_TEST_AUTHORIZED=NO
 PR2_MERGE_AUTHORIZED=NO
 ```
@@ -173,8 +173,8 @@ Do not return control for routine recoverable work after activation. Stop only o
 
 ## D0 — zero-provider reconciliation checkpoint
 
-D0 was executed under the proposal's permitted zero-provider scope. The
-proposal remains inactive; no D1 or D2 authorization is implied.
+D0 was executed under the proposal's permitted zero-provider scope before the
+activation recorded below. Its evidence remains the unchanged D0 baseline.
 
 ```text
 D0_STATUS=PASS
@@ -214,6 +214,37 @@ PR_STATE=open_draft_unmerged
 The local exact-image replay retained its sanitized test result and container
 metadata before cleanup. It exercised the Bun parent, Node mock child, trusted
 synthetic mount boundary, and existing production guard without network or
-provider access. No tracked product/runtime source changed. The existing C9
-human boundary remains in force: explicit human activation is required before
-any D1 provider session or D2 production mutation.
+provider access. No tracked product/runtime source changed. The C9 human
+boundary was in force during D0; the subsequent activation below now authorizes
+the bounded D1 and conditional D2 chain.
+
+## D1 plus conditional D2 — human activation checkpoint
+
+The human explicitly authorized D1 and conditional D2 in the controller
+session after the D0 checkpoint. This activates the bounded two-session chain;
+it does not authorize physical NOTE4 testing, firmware, private-data expansion,
+billing/Vertex changes, or PR merge.
+
+```text
+CAMPAIGN=8D1M_D
+ACTIVATION=HUMAN_AUTHORIZED
+D1_PROVIDER_SESSION_MAX=1
+D2_PROVIDER_SESSION_MAX=1
+D1_PLUS_D2_PROVIDER_POOL_MAX=2
+NO_RETRY_IF_D1_FAILS=YES
+NO_RETRY_AFTER_D2=YES
+AUTO_ROLLBACK_ON_D2_FAILURE=YES
+STOP_BETWEEN_D1_AND_D2=NO_IF_D2_WAS_PREAUTHORIZED
+PROVIDER_MODEL=gemini-3.1-flash-live-preview
+SOURCE_SHA=895e2d569d6ae0e8909c3e8958d64c189810f203
+ARM64_IMAGE=sha256:34897dd8375f1be09a00d45910d44fc484f08f2ee82099816390fab1a15d5400
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRIVATE_DATA_SENT=NO
+SEARCH_ENABLED=NO
+MICROPHONE_INPUT=NO
+GENERATED_AUDIO_RETAINED=NO
+```
+
+Execution must proceed D1 → conditional D2 → D3 without a human handoff
+between already-authorized stages. The provider-session ceiling and rollback
+conditions remain hard limits.
