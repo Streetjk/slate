@@ -467,6 +467,27 @@ No deterministic, mechanically bounded product correction remains. E2 and E3
 are therefore not consumed or attempted; the remaining one-session allowance
 is retained for a newly authorized strategy only.
 
+## Transition to Campaign 8D1M-F proposal
+
+The branch was reconciled to remote checkpoint
+`780a600daf3d63d2914557ee4b25b2d1735c8412`, which adds
+`08D1M-F-PROPOSED-RAW-WEBSOCKET-CONFIG-BISECTION-TO-PRODUCTION.md`.
+That directive is explicitly `PROPOSED_NOT_AUTHORIZED` and authorizes zero
+provider sessions until a later human activation. It is therefore a retained
+proposal, not permission to consume E's remaining session or begin raw
+WebSocket work.
+
+```text
+F_DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
+F_PROVIDER_SESSIONS_AUTHORIZED=0
+E_PROVIDER_SESSIONS_USED=2_OF_3
+E_PROVIDER_SESSIONS_REMAINING=1
+E1_CASE_D_PRESERVED=YES
+PRODUCTION_CHANGED=NO
+PR2_MERGED=NO
+NEXT_ACTION=EXPLICIT_F_ACTIVATION_REQUIRED
+```
+
 ## True stop conditions
 
 Stop only if:

@@ -6,8 +6,8 @@ Last known good SHA: `895e2d569d6ae0e8909c3e8958d64c189810f203` (PR #2 8D1M-A co
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M-E activated response-surface differential to production long run
-Current status: E1_CASE_D_ZERO_PROVIDER_CLOSED_HUMAN_BOUNDARY — the disposable harness defect was corrected and the second E1 session completed both SDK send surfaces, but neither produced accepted model-turn/audio telemetry despite output transcription and turn completion; no product correction is justified.
+Current stage: 8D1M-F proposed raw-WebSocket/config-bisection to production long run
+Current status: F_PROPOSED_NOT_AUTHORIZED_AFTER_E1_CASE_D — E1 CASE D remains closed after zero-provider requalification; the new raw-WebSocket proposal is not activated and authorizes zero provider sessions until explicit human activation.
 
 Completed campaigns:
 
@@ -89,9 +89,9 @@ External review gate:
 - XR-004 — strict per-tool input contracts before Gemini execution: FIXED and rechecked.
 - XR-005 — remaining English display labels/defaults: FIXED and rechecked.
 
-Next action: human authorization is required for a new provider strategy/session; do not consume the retained allowance blindly and do not start E2/E3. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
+Next action: obtain explicit human activation of Campaign 8D1M-F before any raw-WebSocket diagnostic or provider session. Do not read production `.env` material or credential values, change billing/Vertex, flash firmware, or merge PR #2.
 
-Human action required: YES — E1 CASE D is closed after zero-provider requalification; a new provider strategy/session is required before any E2/E3 action. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `2_OF_3`.
+Human action required: YES — E1 CASE D is closed and the new F raw-WebSocket/config-bisection directive is only proposed; explicit F activation is required. Historical 8D1K remains `3_OF_3`; 8D1M-A provider calls `0`; 8D1M-B provider sessions `5_OF_5`; 8D1M-C provider calls `0`; 8D1M-E provider sessions `2_OF_3`; 8D1M-F provider sessions `0_AUTHORIZED_UNTIL_ACTIVATION`.
 
 ## Campaign 8D1M-D D0 zero-provider reconciliation checkpoint
 
@@ -273,6 +273,24 @@ READY_FOR_NEW_PROVIDER_AUTHORIZATION=YES
 CASE D is a retained human/provider-strategy boundary. No blind retry, product
 correction, E2, E3, deployment, private-data use, physical action, or firmware
 action occurred. PR #2 remains open/draft/unmerged.
+
+## Campaign 8D1M-F proposal reconciliation
+
+```text
+CAMPAIGN=8D1M_F
+DIRECTIVE_CHECKPOINT=780a600daf3d63d2914557ee4b25b2d1735c8412
+DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
+PROVIDER_SESSIONS_AUTHORIZED=0
+E1_CASE_D_PRESERVED=YES
+E_PROVIDER_SESSIONS_USED=2_OF_3
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+PR2_STATE=open_draft_unmerged
+NEXT_ACTION=EXPLICIT_F_ACTIVATION_REQUIRED
+```
+
+No raw-WebSocket diagnostic, provider session, production mutation, or
+credential access was performed under the proposed directive.
 
 ## Campaign 8D1M-A report-push invariant checkpoint
 
