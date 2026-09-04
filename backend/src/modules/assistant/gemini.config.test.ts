@@ -146,6 +146,144 @@ describe('GeminiConfig', () => {
     }
   });
 
+  it('fails closed for the production Node bridge without its dedicated opt-in', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-production-node-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'production',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+
+      expect(value.isConfigured()).toBe(false);
+      expect(value.configurationErrorMessage()).toContain(
+        'GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true'
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('requires the existing Developer API opt-in in production', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-production-node-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'production',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+
+      expect(value.isConfigured()).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts the exact production Node bridge only with both opt-ins', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-production-node-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'production',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+        GEMINI_NODE_EXECUTABLE: 'node',
+        GEMINI_NODE_BRIDGE_SCRIPT: './src/modules/assistant/gemini-live-node-bridge-runtime.mjs',
+      });
+
+      expect(value.isConfigured()).toBe(true);
+      expect(value.nodeBridgeOptions()).toEqual({
+        executable: 'node',
+        script: './src/modules/assistant/gemini-live-node-bridge-runtime.mjs',
+        authMode: 'developer_api_key',
+        apiKeyFile: file,
+      });
+      expect(JSON.stringify(value.nodeBridgeOptions())).not.toContain('synthetic-key');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps production Bun SDK plus Developer API blocked despite the production opt-in', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-production-bun-'));
+    const file = join(directory, 'gemini-api-key');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const value = config({
+        NODE_ENV: 'production',
+        GEMINI_AUTH_MODE: 'developer_api_key',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'bun_sdk',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      });
+
+      expect(value.isConfigured()).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps production Node bridge closed for wrong auth, model, and credential', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-gemini-production-matrix-'));
+    const file = join(directory, 'gemini-api-key');
+    const link = join(directory, 'gemini-api-key-link');
+    try {
+      writeFileSync(file, 'synthetic-key\n', { mode: 0o600 });
+      const base = {
+        NODE_ENV: 'production',
+        GEMINI_API_KEY_FILE: file,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: true,
+        GEMINI_LIVE_RUNTIME: 'node_bridge',
+        GEMINI_LIVE_MODEL: DEVELOPER_API_LIVE_MODEL,
+      };
+
+      expect(config({ ...base, GEMINI_AUTH_MODE: 'vertex_adc' }).isConfigured()).toBe(false);
+      expect(
+        config({
+          ...base,
+          GEMINI_AUTH_MODE: 'developer_api_key',
+          GEMINI_LIVE_MODEL: 'wrong-model',
+        }).isConfigured()
+      ).toBe(false);
+      expect(
+        config({
+          ...base,
+          GEMINI_AUTH_MODE: 'developer_api_key',
+          GEMINI_API_KEY_FILE: '/run/secrets/missing-gemini-api-key',
+        }).isConfigured()
+      ).toBe(false);
+
+      symlinkSync(file, link);
+      expect(
+        config({
+          ...base,
+          GEMINI_AUTH_MODE: 'developer_api_key',
+          GEMINI_API_KEY_FILE: link,
+        }).isConfigured()
+      ).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed when production selects the Node Live bridge', () => {
     const value = config({
       NODE_ENV: 'production',
@@ -156,7 +294,9 @@ describe('GeminiConfig', () => {
     });
 
     expect(value.isConfigured()).toBe(false);
-    expect(value.configurationErrorMessage()).toContain('disabled in production');
+    expect(value.configurationErrorMessage()).toContain(
+      'GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true'
+    );
   });
 
   it('fails closed when Developer API evaluation mode is not explicitly enabled', () => {

@@ -6,8 +6,8 @@ Last known good SHA: `4bfce037b2d206dbabca9ab905301c088a0c1f01` (PR #2 Campaign 
 Campaign instructions SHA: `08501bb3ca75739e43fbf4f54811e0243ca5d193`
 
 Current campaign: Campaign 8 — PR #2 Slate-owned voice routing
-Current stage: 8D1M pre-mutation production deployment gate
-Current status: HARD_STOP_AUTHORIZED_PRODUCTION_CONFIG_REJECTED_BEFORE_CHILD — exact authorized candidate/source rejects the authorized production Node-bridge configuration before child spawn; no deployment or provider call occurred. Candidate/rollback are preserved and production remains untouched.
+Current stage: 8D1M-A production guard correction and requalification
+Current status: CORRECTION_IMPLEMENTED_VALIDATION_IN_PROGRESS — the required false-by-default production-only Developer API opt-in is now an additional predicate for the exact production Node bridge; targeted deterministic tests pass, and full regression/ARM64/review/publication remain in progress. No deployment, production restart, provider call, credential-value read, billing/Vertex change, firmware flash, or PR merge occurred.
 
 Completed campaigns:
 

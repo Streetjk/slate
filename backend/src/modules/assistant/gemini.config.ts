@@ -38,6 +38,10 @@ export class GeminiConfig {
     return this.cs.get('GEMINI_DEVELOPER_API_KEY_ENABLED', { infer: true }) ?? false;
   }
 
+  get productionDeveloperApiKeyEnabled(): boolean {
+    return this.cs.get('GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED', { infer: true }) ?? false;
+  }
+
   get liveRuntime(): GeminiLiveRuntime {
     return this.cs.get('GEMINI_LIVE_RUNTIME', { infer: true });
   }
@@ -69,7 +73,7 @@ export class GeminiConfig {
   isConfigured(): boolean {
     if (this.liveRuntime === 'node_bridge') {
       return (
-        this.nodeEnv !== 'production' &&
+        (this.nodeEnv !== 'production' || this.productionDeveloperApiKeyEnabled) &&
         this.authMode === 'developer_api_key' &&
         this.developerApiKeyEnabled &&
         this.liveModel === DEVELOPER_API_LIVE_MODEL &&
@@ -87,7 +91,9 @@ export class GeminiConfig {
   configurationErrorMessage(): string {
     if (this.liveRuntime === 'node_bridge') {
       if (this.nodeEnv === 'production') {
-        return 'Gemini runtime is not configured: the Node Live bridge is disabled in production until separately authorized';
+        if (!this.productionDeveloperApiKeyEnabled) {
+          return 'Gemini runtime is not configured: production Node Live bridge requires GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true';
+        }
       }
       if (this.authMode !== 'developer_api_key' || !this.developerApiKeyEnabled) {
         return 'Gemini runtime is not configured: the Node Live bridge requires explicitly enabled evaluation-only Developer API mode';

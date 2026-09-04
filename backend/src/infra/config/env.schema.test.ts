@@ -42,6 +42,7 @@ describe('EnvSchema', () => {
 
     expect(parsed.GEMINI_AUTH_MODE).toBe('vertex_adc');
     expect(parsed.GEMINI_DEVELOPER_API_KEY_ENABLED).toBe(false);
+    expect(parsed.GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED).toBe(false);
     expect(parsed.GEMINI_LIVE_RUNTIME).toBe('bun_sdk');
     expect(parsed.GEMINI_NODE_EXECUTABLE).toBe('node');
     expect(parsed.GEMINI_NODE_BRIDGE_SCRIPT).toBe(

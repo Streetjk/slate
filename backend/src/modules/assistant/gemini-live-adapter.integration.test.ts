@@ -110,7 +110,7 @@ describe('GeminiLiveService deterministic adapter differential', () => {
 
       await expect(service.connect('en', () => {}, undefined, false)).rejects.toMatchObject({
         name: 'GeminiConfigurationError',
-        message: expect.stringContaining('disabled in production'),
+        message: expect.stringContaining('GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true'),
       });
       expect(childSpawned).toBe(false);
     } finally {
@@ -124,6 +124,39 @@ describeWithSyntheticSecret('GeminiLiveService actual Bun-parent differential', 
     const directory = mkdtempSync(join(tmpdir(), 'slate-adapter-pass-'));
     try {
       const service = new GeminiLiveService(config(mockScript(directory, 'pass')));
+      const events: unknown[] = [];
+      const errors: Error[] = [];
+      const connection = await service.connect(
+        'en',
+        ({ message }) => events.push(message),
+        (error) => errors.push(error),
+        false
+      );
+
+      connection.sendText('Say exactly TEST.');
+      const event = await waitFor(() => events[0]);
+      expect(event).toMatchObject({
+        serverContent: {
+          modelTurn: { parts: [{ text: 'synthetic response' }] },
+          turnComplete: true,
+        },
+      });
+      expect(errors).toEqual([]);
+      connection.close();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts the exact production Node bridge shape and completes a provider-disabled mock turn', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'slate-adapter-production-pass-'));
+    try {
+      const service = new GeminiLiveService(
+        config(mockScript(directory, 'pass'), {
+          NODE_ENV: 'production',
+          GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: true,
+        })
+      );
       const events: unknown[] = [];
       const errors: Error[] = [];
       const connection = await service.connect(

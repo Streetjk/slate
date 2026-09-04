@@ -259,3 +259,39 @@ HUMAN_ACTION_REQUIRED=YES_EXACT_NEW_ARTIFACT_DEPLOYMENT_AUTHORIZATION
 At meaningful checkpoints, update report/state, run secret-safe checks and `git diff --check`, selectively commit, push, fetch/verify the remote SHA, and verify PR #2 remains open/draft/unmerged.
 
 Do not stop after intermediate implementation or test milestones. Continue through correction, full validation, ARM64 requalification, exact reviewer closure, report/state publication, push verification, and the final exact-new-artifact deployment-authorization boundary in one long run whenever technically possible.
+
+## Codex execution checkpoint — implementation correction
+
+Date: 2026-09-04 (Australia/Perth)
+
+The live remote branch was fetched and reconciled at directive/source checkpoint
+`72e493d34d0160a11400c3e119ef9c5dbda38eb3`. The accepted pre-correction source
+lineage remains `7a724488a9ed20093469caefc03addc764185be5`; no production
+container, environment, settings, credential value, billing state, Vertex
+state, firmware, or provider call was touched.
+
+The narrow correction adds the required false-by-default
+`GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED` schema/config/example field and
+uses it as an additional predicate for the exact production Node bridge path.
+The existing Developer API opt-in, exact model, node-bridge runtime, and
+protected credential-file checks remain required. Production Bun SDK plus
+Developer API remains fail-closed. A production-shaped provider-disabled mock
+adapter test now proves the accepted parent reaches the actual child bridge,
+dispatches synthetic text, and observes a completed model turn; the matching
+missing-production-opt-in test proves no child spawn.
+
+Deterministic targeted checkpoint:
+
+```text
+TARGETED_TESTS=PASS
+TARGETED_TEST_COUNT=28_PASS_5_SKIP
+TARGETED_EXPECTATIONS=62
+PROVIDER_CALLS_USED=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+IMPLEMENTATION_VALIDATION=IN_PROGRESS
+```
+
+The skipped tests require the integration test's synthetic secret file and are
+intentionally not provider calls. Full regression, ARM64 build/E2E, exact
+GLM-5.3-Flash review, and final artifact publication remain pending.
