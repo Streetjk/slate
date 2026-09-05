@@ -120,3 +120,34 @@ The operator should enter the sudo password only into their own terminal. Do not
 After the command completes, the operator only needs to tell Codex that the root step completed and whether it exited successfully. Codex must then live-verify the resulting daemon/data-root/health state and, on M1 PASS, continue automatically through the already-activated M2 exact UX backend deployment -> M3 app-only firmware flash -> M4 bounded EN/JA physical retest without another handoff unless a genuinely new safety/authority boundary appears.
 
 `REPORT-PUSH-INVARIANT.md` and `AUTONOMY-AND-HUMAN-GATE-POLICY.md` remain binding. PR #2 remains open/draft/unmerged.
+
+## M1 preparation — fail-closed root-step handoff ready
+
+The single root-step script was prepared, installed on the Orange Pi, and
+validated without invoking sudo or reading/requesting a sudo password.
+
+```text
+REMOTE_SCRIPT=/home/pi/slate-m1-rootstep.sh
+REMOTE_SCRIPT_MODE=700
+REMOTE_SCRIPT_SHA256=f93d4c1f6c509a986a1742cdc81f4cd5c4795cca432d97e15d8f89c2441ebdf8
+LOCAL_SCRIPT_BASH_N=PASS
+REMOTE_SCRIPT_BASH_N=PASS
+NONROOT_FAIL_CLOSED_PREFLIGHT=PASS
+NONROOT_FAILURE_CLASS=NOT_ROOT
+REMOTE_SCRIPT_STDERR=NONE
+SCRIPT_SECRET_SCAN=PASS
+SUDO_INVOKED_BY_CODEX=NO
+SUDO_PASSWORD_REQUESTED_BY_CODEX=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+GEMINI_PROVIDER_CALLS=0
+```
+
+The script is limited to the activated M1 Docker data-root migration. It
+contains exact source/destination and image pins, NVMe reserve checks,
+faithful rsync/copy verification, Docker visibility/health gates, and
+automatic restoration of the original daemon configuration and data-root on
+post-stop failure. It does not read or handle application credentials.
+
+STATUS=M1_ROOT_STEP_READY_FOR_MANUAL_SUDO
+HUMAN_ACTION_REQUIRED=RUN_EXACT_COMMAND_BELOW_ON_OPERATOR_TERMINAL
