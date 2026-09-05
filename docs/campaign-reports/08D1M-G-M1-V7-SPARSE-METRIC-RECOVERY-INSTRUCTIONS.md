@@ -163,3 +163,55 @@ If V8 fails after mutation, require healthy rollback evidence and stop only if t
 No model change, billing/Vertex change, credential replacement, Calendar write, Outlook payload use, Search/tool invocation, destructive Docker-tree cleanup or PR #2 merge is authorized by this recovery.
 
 `REPORT-PUSH-INVARIANT.md`, the reduced-stop autonomy policy, the current Gemini 3.8 Flash writer override and the existing M1->M4 activation remain binding.
+
+## Recovery checkpoint — rollback verified; path-level sparse proof blocked
+
+Date: 2026-09-05 (Australia/Perth)
+
+The reported V7 result was preserved without rerunning V7. The current
+rollback state was independently checked read-only:
+
+```text
+DOCKER_ROOT=/var/lib/docker
+DOCKER_DAEMON=active
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+ORIGINAL_ROOT_PRESENT=YES
+NVME_COPY_PRESENT=YES
+EXPECTED_IMAGES=YES
+EXPECTED_NETWORK=YES
+PROVIDER_CALLS=0
+FIRMWARE_FLASHED=NO
+```
+
+The available non-root filesystem metadata confirms separate ext4 filesystems
+and distinct directory identities:
+
+```text
+SOURCE_FS=ext4 /dev/mmcblk1p1
+DEST_FS=ext4 /dev/nvme0n1p1
+SOURCE_DIR_METADATA=directory:710:45825:47015
+DEST_DIR_METADATA=directory:710:66305:15244388
+```
+
+The SSH operator account cannot traverse either Docker tree. A non-interactive
+`sudo -n` probe was attempted without requesting a password and classified as
+`NONINTERACTIVE_ROOT_AUTH_UNAVAILABLE`. The unprivileged exact rsync dry-run
+also failed at the permission boundary (`RC=3`) without producing itemized
+payload output. Therefore the exact relative path with sparse classification
+4-versus-5 cannot be proven from this controller session, and V8 must not be
+prepared by inference from aggregate counts alone.
+
+```text
+V8_STATUS=BLOCKED_PATH_LEVEL_METADATA_UNAVAILABLE
+V8_PREPARATION=NOT_STARTED
+V7_RERUN=NO
+PRODUCTION_CHANGED=NO
+```
+
+No source correction, provider call, production mutation, firmware flash,
+credential access or PR merge occurred. A human may run one sanitized,
+read-only root diagnostic to establish the exact path-level metadata and
+authorise V8 preparation; the existing V7 rollback remains healthy.

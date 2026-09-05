@@ -27,3 +27,25 @@ M1_ROOT_STEP_V7 stage=copy status=FAIL class=COPY_SPARSE_FILE_COUNT_MISMATCH
 ```
 
 Do not rerun V7. Follow `08D1M-G-M1-V7-SPARSE-METRIC-RECOVERY-INSTRUCTIONS.md` and prepare/review a versioned V8 only after live rollback verification and proof that the sparse-count difference is allocation representation rather than content mismatch.
+
+## Recovery status
+
+```text
+ROLLBACK_VERIFICATION=PASS
+DOCKER_ROOT=/var/lib/docker
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_PUBLIC_HEALTH=HTTP_200
+ORIGINAL_ROOT_PRESENT=YES
+NVME_COPY_PRESENT=YES
+SOURCE_FS=ext4:/dev/mmcblk1p1
+DEST_FS=ext4:/dev/nvme0n1p1
+NONINTERACTIVE_ROOT_AUTH=UNAVAILABLE
+PATH_LEVEL_SPARSE_PROOF=BLOCKED
+V8_STATUS=BLOCKED_PATH_LEVEL_METADATA_UNAVAILABLE
+V8_PREPARATION=NOT_STARTED
+V7_RERUN=NO
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+NEXT_ACTION=HUMAN_RUN_SANITIZED_READ_ONLY_ROOT_DIAGNOSTIC
+```
