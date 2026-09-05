@@ -302,3 +302,55 @@ The exact result was retrieved through separate status, wait, result, and log
 retrieval operations. No provider retry was made. The C3 production session
 remains conditional and is the only remaining new provider session in this
 activation.
+
+## C2 production storage preparation — HARD STOP
+
+C1 PASS authorized the narrow C2 preparation, but the capacity gate failed
+before any production mutation. The current production Slate image is the
+same exact image as the pinned rollback image, so deleting it to make room
+would violate the rollback-preservation rule. Only the current app image and
+container were considered; no historical image, MySQL image/data, volume,
+Deluge path, or production Docker data-root was touched.
+
+```text
+CAMPAIGN=8D1M-G
+STATUS=C2_HARD_STOP_INSUFFICIENT_NARROW_PRODUCTION_IMAGE_STORAGE
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+CURRENT_PRODUCTION_IMAGE_ID=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+CURRENT_PRODUCTION_IMAGE_SIZE_BYTES=311579600
+CANDIDATE_IMAGE_SIZE_BYTES=1130800794
+PRODUCTION_ROOT_AVAILABLE_BEFORE_SWAP_BYTES=891793408
+PRODUCTION_ROOT_AVAILABLE_AFTER_C2_BYTES=891781120
+NARROW_SWAP_CAPACITY=FAIL
+ROLLBACK_IMAGE_DELETE=FORBIDDEN
+CURRENT_PRODUCTION_ARCHIVE=/mnt/ssd-tmp/slate-tools/g3-rollback-staging-20260905/slate-note4-current-rollback-before-campaign8.tar
+CURRENT_PRODUCTION_ARCHIVE_SHA256=882f1ea9b44de7f7b0fa5859a634363f4f6f610bcb7eff0ae30b6f6009b6b4
+CURRENT_PRODUCTION_ARCHIVE_READABLE=YES
+ARCHIVE_MODE=600
+PRODUCTION_SLATE=HEALTHY_RESTARTS_0
+PRODUCTION_MYSQL=HEALTHY_RESTARTS_0
+PRODUCTION_HEALTH_ENDPOINT=/healthz
+PRODUCTION_HEALTH_HTTP=200
+PRODUCTION_IMAGE_SWAP=NOT_ATTEMPTED
+PRODUCTION_RESTARTED=NO
+PRODUCTION_CHANGED=NO
+G3_PROVIDER_SESSION=NOT_RUN
+NEW_PROVIDER_SESSIONS_USED=1_OF_2
+HISTORICAL_PROVIDER_CALLS=3_OF_3_UNCHANGED
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PRIVATE_DATA_SENT=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+DISPOSABLE_RUNTIME_CLEANUP=PASS
+READY_FOR_G3=NO_STORAGE_HARD_STOP
+HUMAN_ACTION_REQUIRED=YES
+NEXT_ACTION=HUMAN_DECIDE_NARROW_PRODUCTION_STORAGE_CAPACITY_REMEDIATION
+```
+
+The exact production application image was safely snapshotted to the
+NVMe-backed Slate tools area before this assessment. The production Docker
+daemon and data-root remain unchanged. Resolving this boundary requires a new
+storage decision; no broader deletion or storage migration is inferred.
