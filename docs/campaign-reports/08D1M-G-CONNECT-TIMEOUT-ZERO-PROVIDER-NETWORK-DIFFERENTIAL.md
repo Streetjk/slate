@@ -141,3 +141,91 @@ READY_FOR_NEW_PROVIDER_DECISION=YES
 No new Gemini provider session, no G3 production deployment, no credential value read/copy, no billing/Vertex change, no production Docker mutation, no persistent firewall/network change, no Deluge/NVMe repartitioning, no private data/microphone, no firmware flash, and no PR #2 merge.
 
 `REPORT-PUSH-INVARIANT.md` remains binding. Zero-provider forensic/report pushes are not handoffs; exhaust this differential before returning control.
+
+## N0–N2 execution closure — disposable daemon network namespace differential
+
+Date: 2026-09-05 (Australia/Perth)
+
+The historical successful G1 corrected run used the production Docker default
+bridge context. Its disposable container metadata was not retained, but the
+archived successful launch context and the failed G2 invocation are
+structurally different:
+
+```text
+G1_NETWORK_MODE=PRODUCTION_DOCKER_DEFAULT_BRIDGE
+G2_NETWORK_MODE=host
+G2_USED_HOST_NETWORK=YES
+G2_DAEMON_NETWORK_NAMESPACE=HELPER_NONE_NAMESPACE
+NETWORK_SHAPE_EQUIVALENT=NO
+```
+
+The failed G2 host-native daemon was launched by a privileged disposable
+helper with mount-namespace entry only. The helper itself used `--network
+none`, so the daemon and its `--network host` containers shared the helper
+network namespace rather than the Orange Pi host namespace. Read-only namespace
+metadata proved the daemon namespace differed from PID 1 and matched the
+helper namespace. No production socket or production Docker root was involved.
+
+N1 zero-provider egress results used only the public TLS endpoint hostname
+required by the Developer API SDK. No API request, Live WebSocket, credential,
+or provider payload was sent:
+
+```text
+HOST_DNS=PASS
+HOST_TCP443=PASS
+HOST_TLS=PASS
+G2_EXACT_NETWORK_DNS=FAIL
+G2_EXACT_NETWORK_TCP443=FAIL
+G2_EXACT_NETWORK_TLS=FAIL
+G2_HOST_NETWORK_CONTROL_DNS=PASS
+G2_HOST_NETWORK_CONTROL_TCP443=PASS
+G2_HOST_NETWORK_CONTROL_TLS=PASS
+```
+
+The exact candidate produced the three `G2_EXACT_NETWORK_*` failures under the
+original failed daemon shape. The same exact candidate produced all three
+`G2_HOST_NETWORK_CONTROL_*` passes after the disposable daemon was relaunched
+with explicit host network namespace entry (`nsenter -t 1 -m -n`) and
+`--ip6tables=false`, while retaining its NVMe-only data-root/exec-root and
+bridge/iptables-disabled configuration. TLS used SNI and certificate
+verification and retained no certificate or response body.
+
+N2 then repeated the provider-disabled exact-candidate adapter matrix with
+`--network none`, a synthetic mode-600 secret only, and the same read-only
+root shape. All six integration tests passed; no tracked source changed:
+
+```text
+G2_NETWORK_CORRECTED_RUNTIME=PASS
+G2_CORRECTED_PROVIDER_DISABLED_ADAPTER=PASS_6_TESTS
+G2_CORRECTED_PRODUCT_SOURCE_CHANGED=NO
+G2_CORRECTED_IMAGE=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+PROVIDER_CALLS_THIS_STAGE=0
+```
+
+The temporary daemon, helper, and test containers were stopped/removed after
+evidence capture. Historical Docker images, production networking, production
+Docker state, Slate/MySQL, Deluge paths, and the rollback image were left
+untouched. Read-only production checks remained green:
+
+```text
+PRODUCTION_SLATE=running_healthy_RESTARTS_0
+PRODUCTION_MYSQL=running_healthy_RESTARTS_0
+PRODUCTION_ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRODUCTION_LOCAL_HEALTH_HTTP=200
+PRODUCTION_NETWORK_MUTATION=NO
+PRODUCTION_MUTATION=NO
+CREDENTIAL_VALUE_READ=NO
+```
+
+The zero-provider differential is exhausted. The corrected disposable
+network shape is ready for a new human-authorized G2 provider session; this
+directive does not authorize that session.
+
+```text
+ROOT_CAUSE_CLASS=G2_DISPOSABLE_DAEMON_NETWORK_NAMESPACE
+NETWORK_CORRECTION=PASS
+PRODUCT_SOURCE_CHANGED=NO
+ZERO_PROVIDER_DIFFERENTIAL=EXHAUSTED
+READY_FOR_ONE_CORRECTED_G2_PROVIDER_AUTHORIZATION=YES
+G_PROVIDER_SESSIONS_USED=3_OF_3_HISTORICAL
+```
