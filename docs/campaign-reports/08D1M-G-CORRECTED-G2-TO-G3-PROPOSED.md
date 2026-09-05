@@ -249,3 +249,56 @@ fixture. The production daemon, production image, rollback image, persistent
 data, and networking were not changed. The host-local port-3000/API-health
 probe was non-authoritative because the service publishes port 3001 and the
 authoritative `/healthz` check returned HTTP 200.
+
+## C1 corrected G2 provider session — PASS
+
+The single corrected G2 session was launched detached in a uniquely named
+container from the exact reviewed ARM64 candidate. The launcher was
+deliberately disconnected with a timeout (`rc=124`); the container continued
+and its mode-600 sanitized result was recovered independently from the
+NVMe-backed result directory before container cleanup.
+
+```text
+CAMPAIGN=8D1M-G
+STATUS=C1_CORRECTED_G2_PASS
+PROVIDER_SESSION=C1_G2
+PROVIDER_CALLS_AUTHORIZED=2
+NEW_PROVIDER_SESSIONS_USED=1_OF_2
+HISTORICAL_PROVIDER_CALLS=3_OF_3_UNCHANGED
+MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+CONTAINER=g2-c1-provider-20260905
+CONTAINER_EXIT=0
+OOM=NO
+OUTER_LAUNCHER_RC=124
+RESULT_DURABLY_PERSISTED=YES
+RESULT_RECOVERED_AFTER_CONTROL_DISCONNECT=YES
+NODE_CHILD_SPAWN=YES
+BRIDGE_READY=YES
+RECONNECT=PASS
+EN_TEST_MODEL_EVENT=YES
+EN_TEST_TURN_COMPLETE=YES
+EN_SECOND_MODEL_EVENT=YES
+EN_SECOND_TURN_COMPLETE=YES
+JA_TEST_MODEL_EVENT=YES
+JA_TEST_TURN_COMPLETE=YES
+INLINE_AUDIO_OBSERVED=YES
+OUTPUT_TRANSCRIPTION_OBSERVED=YES
+GENERATION_COMPLETE_OBSERVED=YES
+TOOL_INVOCATIONS=0
+SEARCH_EXECUTED=NO
+PRIVATE_DATA_SENT=NO
+OUTLOOK_DATA_SENT=NO
+CALENDAR_DATA_SENT=NO
+MICROPHONE_SENT=NO
+GENERATED_AUDIO_RETAINED=NO
+RAW_PROVIDER_PAYLOAD_RETAINED=NO
+CREDENTIAL_VALUE_READ_OR_LOGGED=NO
+PRODUCTION_CHANGED=NO
+```
+
+The exact result was retrieved through separate status, wait, result, and log
+retrieval operations. No provider retry was made. The C3 production session
+remains conditional and is the only remaining new provider session in this
+activation.
