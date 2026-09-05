@@ -133,6 +133,7 @@ class XiaozhiService {
     void         SetAlert(const std::string& status, const std::string& message, const std::string& emotion);
     void         SetCalendarProposal(const IncomingMessage& message);
     void         SetCalendarResult(const std::string& message);
+    void         UpsertMessageLocked(const std::string& role, const std::string& text);
     void         ClearAlertLocked();
     void         TrimMessagesLocked();
     XiaozhiState CurrentState();

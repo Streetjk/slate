@@ -13,6 +13,7 @@
 #include "xiaozhi/config/settings.h"
 #include "xiaozhi/service/audio_service.h"
 #include "xiaozhi/service/message_handler.h"
+#include "utils/timing_trace.h"
 #include "xiaozhi/service/xiaozhi_phase.h"
 
 namespace {
@@ -52,6 +53,20 @@ const char* XiaozhiPhaseName(xiaozhi::XiaozhiPhase phase) {
             return "start_pending";
     }
     return "unknown";
+}
+
+std::string MergeTranscriptFragment(const std::string& previous, const std::string& incoming) {
+    if (previous.empty())
+        return incoming;
+    if (incoming.empty() || incoming == previous)
+        return previous;
+    if (incoming.rfind(previous, 0) == 0)
+        return incoming;
+    if (previous.size() >= incoming.size() &&
+        previous.compare(previous.size() - incoming.size(), incoming.size(), incoming) == 0)
+        return previous;
+
+    return previous + incoming;
 }
 }  // namespace
 
@@ -634,6 +649,7 @@ void XiaozhiService::ConversationTask() {
         return;
     }
     xiaozhi_phase_.store(XiaozhiPhase::kRunning, std::memory_order_relaxed);
+    SLATE_TIMING_LOG(kTag, "T_DEVICE_LISTEN_START");
     active_protocol->SendStartListening(ListeningMode::kAutoStop);
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
     audio_->EnableVoiceProcessing(true);
@@ -646,6 +662,7 @@ void XiaozhiService::ConversationTask() {
             break;
 
         if (pending_listen_after_playback_.load(std::memory_order_relaxed) && audio_->WaitForPlaybackQueueEmpty(0)) {
+            SLATE_TIMING_LOG(kTag, "T_DEVICE_LISTEN_START");
             active_protocol->SendStartListening(ListeningMode::kAutoStop);
             pending_listen_after_playback_.store(false, std::memory_order_relaxed);
             audio_->EnableVoiceProcessing(true);
@@ -836,25 +853,47 @@ void XiaozhiService::SetError(const std::string& error) {
 }
 
 void XiaozhiService::SetUserText(const std::string& text) {
+    bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.user_text = text;
-        if (!text.empty())
-            snapshot_.messages.push_back({"user", text});
+        const std::string previous = !snapshot_.messages.empty() && snapshot_.messages.back().role == "user"
+                                         ? snapshot_.messages.back().text
+                                         : "";
+        const std::string merged = MergeTranscriptFragment(previous, text);
+        changed               = merged != snapshot_.user_text;
+        snapshot_.user_text   = merged;
+        if (!merged.empty())
+            UpsertMessageLocked("user", merged);
         TrimMessagesLocked();
     }
-    PostChanged();
+    if (changed)
+        PostChanged();
 }
 
 void XiaozhiService::SetAssistantText(const std::string& text) {
+    bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.assistant_text = text;
-        if (!text.empty())
-            snapshot_.messages.push_back({"assistant", text});
+        const std::string previous = !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant"
+                                         ? snapshot_.messages.back().text
+                                         : "";
+        const std::string merged = MergeTranscriptFragment(previous, text);
+        changed                  = merged != snapshot_.assistant_text;
+        snapshot_.assistant_text = merged;
+        if (!merged.empty())
+            UpsertMessageLocked("assistant", merged);
         TrimMessagesLocked();
     }
-    PostChanged();
+    if (changed)
+        PostChanged();
+}
+
+void XiaozhiService::UpsertMessageLocked(const std::string& role, const std::string& text) {
+    if (!snapshot_.messages.empty() && snapshot_.messages.back().role == role) {
+        snapshot_.messages.back().text = text;
+        return;
+    }
+    snapshot_.messages.push_back({role, text});
 }
 
 void XiaozhiService::SetAlert(const std::string& status, const std::string& message, const std::string& emotion) {

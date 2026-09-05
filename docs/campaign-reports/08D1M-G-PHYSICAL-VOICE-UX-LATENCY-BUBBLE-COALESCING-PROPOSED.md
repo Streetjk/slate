@@ -189,3 +189,115 @@ READY_FOR_DEPLOY_AND_PHYSICAL_RETEST=YES|NO
 ```
 
 Stop only at the next genuine production/physical-write/private-data boundary after review PASS. `REPORT-PUSH-INVARIANT.md` remains binding. Keep PR #2 open/draft/unmerged.
+
+## U0/U1/U2 — zero-provider implementation checkpoint
+
+Date: 2026-09-05 (Australia/Perth)
+
+The directive was activated by the current human instruction. No Gemini
+provider call, production mutation, credential access, model/configuration
+change, billing change, Vertex change, firmware flash, or PR merge occurred.
+
+```text
+CHECKPOINT_BASE_SHA=2cd407044200ecd088f9d9ee862b6b35c3ddc4e3
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+FIRMWARE_FLASHED=NO
+PR2_MERGED=NO
+```
+
+### U0 deterministic finding
+
+The source trace and focused fixtures confirm that Live input and output
+transcription fields can arrive as either delta fragments or cumulative
+text under the adapter contract. The previous session emitted each non-empty
+fragment immediately. Firmware then appended every `stt` and
+`tts/sentence_start` message, while the Xiaozhi scene treated each changed
+message key as a reason to clear and recreate the entire conversation list.
+
+The corrected contract buffers each logical input/output transcript, merges
+delta or cumulative fragments without duplicate cumulative prefixes, and
+publishes the text only at `turnComplete`. Abort, close, and live-failure
+paths discard unfinished text. Audio encoding, packetization, and send order
+remain on the existing path. Firmware additionally upserts a same-role tail
+message and preserves the same merge behavior as a defense against a future
+fragmented protocol sender.
+
+Focused backend tests cover:
+
+```text
+DELTA_FRAGMENTS=PASS
+CUMULATIVE_FRAGMENTS=PASS
+CUMULATIVE_OVERLAP_DEDUPLICATION=PASS
+ENGLISH_AND_JAPANESE_TEXT=PASS
+TURN_COMPLETE_FINALIZATION=PASS
+ABORT_DISCARDS_UNFINISHED_TEXT=PASS
+AUDIO_BRIDGING_REGRESSION=PASS
+FOCUSED_RESULT=10_PASS_0_FAIL
+```
+
+### U2 sanitized timing markers
+
+Timing is opt-in with `SLATE_VOICE_TIMING=1`. It emits stage name, monotonic
+process timestamp, and no transcript, audio, credential, provider payload,
+session identifier, or user data. Firmware timing is opt-in with the existing
+`SLATE_EPD_TIMING=1` diagnostic build definition. The nearest observable
+boundaries are documented rather than presented as more precise than they
+are.
+
+```text
+T_DEVICE_LISTEN_START=firmware_send_listening_or_backend_listen_observation
+T_FIRST_DEVICE_AUDIO_SENT=first_device_packet_released_for_transport
+T_BACKEND_FIRST_AUDIO_RECEIVED=first_backend_binary_packet_observed
+T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN=live_connect_resolved
+T_PROVIDER_FIRST_OUTPUT_EVENT=first_nonempty_model_output_text
+T_PROVIDER_FIRST_AUDIO_EVENT=first_model_audio_event
+T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE=first_encoded_packet_written_to_socket
+T_DEVICE_FIRST_AUDIO_PLAYBACK=first_decoded_pcm_write_to_audio_player
+T_TRANSCRIPT_FINALIZED=turnComplete_flush
+T_UI_RENDER_REQUEST=scene_render_entry
+T_EPD_REFRESH_COMPLETE_IF_AVAILABLE=refresh_command_completion
+```
+
+### Published latency budget
+
+This zero-provider source/build checkpoint publishes the complete stage
+separation. Numeric end-to-end values require a later authorized physical
+trace and are intentionally not invented here.
+
+| Segment | Boundary markers | Current evidence |
+| --- | --- | --- |
+| Device capture and frame buffering | `T_DEVICE_LISTEN_START` -> `T_FIRST_DEVICE_AUDIO_SENT` | Instrumented; physical value pending |
+| NOTE4 -> Orange Pi transport | `T_FIRST_DEVICE_AUDIO_SENT` -> `T_BACKEND_FIRST_AUDIO_RECEIVED` | Both endpoints instrumented; cross-device value pending |
+| Gemini/provider response | `T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN` -> `T_PROVIDER_FIRST_OUTPUT_EVENT` / `T_PROVIDER_FIRST_AUDIO_EVENT` | Instrumented; no provider call in this campaign |
+| Backend codec/protocol | `T_PROVIDER_FIRST_AUDIO_EVENT` -> `T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE` | Instrumented; deterministic timing value pending |
+| Orange Pi -> NOTE4 transport | `T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE` -> `T_DEVICE_FIRST_AUDIO_PLAYBACK` | Both endpoints instrumented; physical value pending |
+| Device decode/playback start | `T_DEVICE_FIRST_AUDIO_PLAYBACK` | Instrumented at first PCM write |
+| UI/render/e-ink refresh | `T_TRANSCRIPT_FINALIZED` -> `T_UI_RENDER_REQUEST` -> `T_EPD_REFRESH_COMPLETE_IF_AVAILABLE` | Instrumented; fragment-driven redraw path removed by final-turn publication |
+
+```text
+LATENCY_BUDGET=PUBLISHED_STAGE_SEPARATION_ONLY
+NUMERIC_END_TO_END_LATENCY=NOT_MEASURED_NO_PHYSICAL_RETEST_AUTHORIZED
+MEASURED_LOCAL_LATENCY_IMPROVEMENT_MS=NOT_MEASURED
+PROVIDER_BEHAVIOR_CHANGED=NO
+```
+
+### Deterministic qualification checkpoint
+
+```text
+BACKEND_FOCUSED_TESTS=10_PASS_0_FAIL
+BACKEND_FULL_REGRESSION=329_PASS_5_SKIP_4_FAIL_5_ERRORS_KNOWN_BASELINE
+BACKEND_TYPECHECK=PASS
+BACKEND_LINT=PASS
+GIT_DIFF_CHECK=PASS
+ESP_IDF=5.5.2
+ESP_TARGET=ESP32S3
+ESP_IDF_BUILD=PASS
+ESP_APP_BINARY_SHA256=edf94e0c4f78b1f6f40475679eeffd16aeb629cd50127beb25c2ab1f6a122abb
+ESP_MERGED_BINARY_SHA256=7bf1f37b3c79bb7a01220cb8e168b74413db82f38e942687b3c9be7b94be7a65
+```
+
+The four full-regression failures and five errors match the pre-existing
+Nest/Bun decorator baseline recorded by the repository; no unrelated repair
+was made. Exact independent Grok 4.6 review remains the next authorized
+stage.

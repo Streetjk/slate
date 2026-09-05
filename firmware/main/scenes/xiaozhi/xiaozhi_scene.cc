@@ -14,6 +14,7 @@
 #include "scenes/core/scene_stack.h"
 #include "scenes/settings/settings_scene.h"
 #include "ui/theme.h"
+#include "utils/timing_trace.h"
 #include "utils/utf8_utils.h"
 #include "xiaozhi/service/xiaozhi_service.h"
 
@@ -353,6 +354,7 @@ void XiaozhiScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
 void XiaozhiScene::Render(SceneContext& ctx, bool full) {
     if (!root_)
         return;
+    SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
     SyncRender(ctx, [this]() { RenderContent(); }, full);
 }
 

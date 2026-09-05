@@ -17,9 +17,12 @@ export interface VoiceCalendarActions {
 export class XiaozhiVoiceSession {
   private readonly sessionId = randomUUID();
   private readonly codec: VoiceCodec;
+  private readonly timing = new VoiceTimingTrace();
   private live: GeminiLiveConnection | undefined;
   private handshaken = false;
   private speaking = false;
+  private pendingInputTranscript = '';
+  private pendingOutputTranscript = '';
   private operation = Promise.resolve();
 
   constructor(
@@ -54,6 +57,9 @@ export class XiaozhiVoiceSession {
       case 'listen':
         if (!this.handshaken) throw new Error('voice session not initialized; hello required');
         if (message.state === 'start') {
+          this.pendingInputTranscript = '';
+          this.pendingOutputTranscript = '';
+          this.timing.mark('T_DEVICE_LISTEN_START');
           await this.ensureLive();
         } else if (message.state === 'stop') {
           this.live?.endAudio();
@@ -63,6 +69,8 @@ export class XiaozhiVoiceSession {
         this.live?.close();
         this.live = undefined;
         this.speaking = false;
+        this.pendingInputTranscript = '';
+        this.pendingOutputTranscript = '';
         this.codec.reset();
         return;
       case 'calendar':
@@ -80,6 +88,8 @@ export class XiaozhiVoiceSession {
   close(): void {
     this.live?.close();
     this.live = undefined;
+    this.pendingInputTranscript = '';
+    this.pendingOutputTranscript = '';
     this.codec.close();
   }
 
@@ -101,6 +111,8 @@ export class XiaozhiVoiceSession {
   private handleAudio(packet: Uint8Array): void {
     if (!this.handshaken || !this.live)
       throw new Error('voice audio received before session start');
+    this.timing.mark('T_FIRST_DEVICE_AUDIO_SENT');
+    this.timing.mark('T_BACKEND_FIRST_AUDIO_RECEIVED');
     this.live.sendAudio(this.codec.decodeDevicePacket(packet));
   }
 
@@ -111,24 +123,39 @@ export class XiaozhiVoiceSession {
       ({ message }) => this.handleGeminiMessage(message),
       () => this.handleLiveFailure()
     );
+    this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
   }
 
   private handleGeminiMessage(message: LiveServerMessage): void {
     try {
-      const inputText = message.serverContent?.inputTranscription?.text?.trim();
-      if (inputText) this.sendJson({ type: 'stt', text: inputText });
+      const inputText = message.serverContent?.inputTranscription?.text;
+      if (inputText?.trim()) {
+        this.pendingInputTranscript = mergeTranscriptFragment(
+          this.pendingInputTranscript,
+          inputText
+        );
+      }
 
-      const outputText =
-        message.serverContent?.outputTranscription?.text?.trim() || message.text?.trim();
-      if (outputText) {
+      const outputText = message.serverContent?.outputTranscription?.text || message.text;
+      if (outputText?.trim()) {
+        this.timing.mark('T_PROVIDER_FIRST_OUTPUT_EVENT');
         this.startSpeaking();
-        this.sendJson({ type: 'tts', state: 'sentence_start', text: outputText });
+        this.pendingOutputTranscript = mergeTranscriptFragment(
+          this.pendingOutputTranscript,
+          outputText
+        );
+      }
+
+      if (message.serverContent?.turnComplete) {
+        this.flushPendingTranscripts();
       }
 
       const audio = message.data;
       if (audio) {
+        this.timing.mark('T_PROVIDER_FIRST_AUDIO_EVENT');
         this.startSpeaking();
         for (const packet of this.codec.encodeModelPcm(Buffer.from(audio, 'base64'))) {
+          this.timing.mark('T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE');
           this.socket.send(packet, { binary: true });
         }
       }
@@ -210,8 +237,23 @@ export class XiaozhiVoiceSession {
     this.live = undefined;
     live?.close();
     this.speaking = false;
+    this.pendingInputTranscript = '';
+    this.pendingOutputTranscript = '';
     this.codec.reset();
     this.sendAlert('Voice service error', 'Voice service error');
+  }
+
+  private flushPendingTranscripts(): void {
+    const inputText = this.pendingInputTranscript.trim();
+    const outputText = this.pendingOutputTranscript.trim();
+    if (inputText || outputText) this.timing.mark('T_TRANSCRIPT_FINALIZED');
+    if (inputText) this.sendJson({ type: 'stt', text: inputText });
+    if (outputText) {
+      this.startSpeaking();
+      this.sendJson({ type: 'tts', state: 'sentence_start', text: outputText });
+    }
+    this.pendingInputTranscript = '';
+    this.pendingOutputTranscript = '';
   }
 
   private sendJson(message: Record<string, unknown>): void {
@@ -242,4 +284,24 @@ function toBuffer(data: RawData): Buffer {
   if (Buffer.isBuffer(value)) return value;
   if (value instanceof ArrayBuffer) return Buffer.from(value);
   return Buffer.concat(value);
+}
+
+export function mergeTranscriptFragment(previous: string, incoming: string): string {
+  const next = incoming.trim();
+  const current = previous.trimEnd();
+  if (!current) return next;
+  if (!next || next === current || current.endsWith(next)) return current;
+  if (next.startsWith(current)) return next;
+  return current + next;
+}
+
+class VoiceTimingTrace {
+  private readonly emitted = new Set<string>();
+  private readonly enabled = process.env.SLATE_VOICE_TIMING === '1';
+
+  mark(stage: string): void {
+    if (!this.enabled || this.emitted.has(stage)) return;
+    this.emitted.add(stage);
+    console.info(`[slate-voice-timing] stage=${stage} t_ms=${Date.now()}`);
+  }
 }

@@ -129,6 +129,8 @@ class AudioService {
     std::atomic<uint32_t>                          queue_epoch_{0};
     std::atomic<bool>                              decode_active_{false};
     std::atomic<bool>                              playback_active_{false};
+    std::atomic<bool>                              first_playback_timing_emitted_{false};
+    std::atomic<bool>                              first_audio_timing_emitted_{false};
 #if defined(CONFIG_LOG_DEFAULT_LEVEL_DEBUG)
     DiagCounters diag_;
 #endif

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { describe, expect, it } from 'bun:test';
 import type { WebSocket } from 'ws';
-import { XiaozhiVoiceSession } from './xiaozhi-voice-session';
+import { mergeTranscriptFragment, XiaozhiVoiceSession } from './xiaozhi-voice-session';
 import type { GeminiLiveConnection, GeminiLiveEvent } from './gemini-live.service';
 import type { VoiceCodec } from './opus-pcm-codec';
 
@@ -84,6 +84,111 @@ describe('XiaozhiVoiceSession', () => {
     expect(
       ws.sent.map((item) => (item.binary ? 'binary' : JSON.parse(String(item.data)).type))
     ).toEqual(['hello', 'tts', 'tts', 'binary', 'tts']);
+  });
+
+  it('coalesces delta and cumulative transcription fragments at turn completion', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+    const session = new XiaozhiVoiceSession(
+      ws,
+      {
+        connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+          liveEvent = onEvent;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never,
+      codec
+    );
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    liveEvent?.({ message: { serverContent: { inputTranscription: { text: 'Hel' } } } as never });
+    liveEvent?.({ message: { serverContent: { inputTranscription: { text: 'lo' } } } as never });
+    liveEvent?.({ message: { serverContent: { inputTranscription: { text: 'Hello' } } } as never });
+    liveEvent?.({
+      message: { serverContent: { outputTranscription: { text: 'こんにちは' } } } as never,
+    });
+    liveEvent?.({
+      message: {
+        serverContent: {
+          outputTranscription: { text: 'こんにちは 世界' },
+          turnComplete: true,
+        },
+      } as never,
+    });
+
+    const messages = ws.sent
+      .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+      .filter((item) => item?.type === 'stt' || item?.type === 'tts');
+    expect(messages.filter((item) => item.type === 'stt')).toEqual([
+      { type: 'stt', text: 'Hello' },
+    ]);
+    expect(
+      messages.filter((item) => item.type === 'tts' && item.state === 'sentence_start')
+    ).toEqual([{ type: 'tts', state: 'sentence_start', text: 'こんにちは 世界' }]);
+    expect(messages.filter((item) => item.type === 'tts' && item.state === 'stop')).toHaveLength(1);
+  });
+
+  it('preserves cumulative and delta merge semantics without duplicating overlap', () => {
+    expect(mergeTranscriptFragment('', '  Hello')).toBe('Hello');
+    expect(mergeTranscriptFragment('Hello', 'Hello world')).toBe('Hello world');
+    expect(mergeTranscriptFragment('Hel', 'lo')).toBe('Hello');
+    expect(mergeTranscriptFragment('こんにちは', 'にちは')).toBe('こんにちは');
+  });
+
+  it('discards unfinished transcript fragments on abort', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+    const session = new XiaozhiVoiceSession(
+      ws,
+      {
+        connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+          liveEvent = onEvent;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never,
+      codec
+    );
+
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    liveEvent?.({
+      message: { serverContent: { outputTranscription: { text: 'unfinished 日本語' } } } as never,
+    });
+    await session.handleMessage(Buffer.from(JSON.stringify({ type: 'abort' })), false);
+    expect(
+      ws.sent
+        .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+        .filter((item) => item?.type === 'tts')
+    ).toEqual([{ type: 'tts', state: 'start' }]);
   });
 
   it('requires the handshake before opening Gemini Live', async () => {
