@@ -159,3 +159,36 @@ deleted.
 No provider call, firmware flash, Deluge change, credential/model/billing
 change or production deployment was performed. M1 remains pending the single
 manual V4 root-step execution.
+
+## Routing adoption checkpoint — Campaign 8E
+
+Date: 2026-09-05 (Australia/Perth)
+
+The Campaign 8E Gemini 3.8 Flash writer / Grok 4.6 reviewer override was read
+from checkpoint `0ea99789171d4632a59d82a08fb043e804ea172a`. Origin contained a
+newer descendant, `866771056873556ab60193a4786f91a5ec7886b7`, which was
+reconciled without rewriting history. The V4 implementation remains the
+reviewed artifact; no source correction was required.
+
+The V4 file SHA-256 was rechecked locally and against the installed remote
+file as `5b2d7c23244d34fea0ed248d33516e15c34d3f7a8d4f4ed4f1faec6ea433bfb3`.
+The live read-only verification remains:
+
+```text
+DOCKER_ROOT=/var/lib/docker
+ORIGINAL_ROOT_PRESENT=YES
+NVME_COPY_PRESENT=YES
+SLATE=running/healthy/restarts=2
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+DISPOSABLE_CONTAINERS=0
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+```
+
+Gemini 3.8 Flash is now the bounded implementation writer for future
+in-scope implementation work; Codex remains controller, sole repository
+writer/integrator and validator, and Grok 4.6 remains the independent
+reviewer. M1 is still at the manual root-authority boundary. No provider call,
+credential access, production mutation or PR merge occurred.
