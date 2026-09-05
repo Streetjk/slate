@@ -63,3 +63,34 @@ READY_FOR_P3_PRIVACY_DECISION=YES
 If the authenticated voice WebSocket or microphone path requires short ENTER, classify that remaining action as part of the explicit P3/private-microphone decision rather than weakening the privacy gate.
 
 `REPORT-PUSH-INVARIANT.md` remains binding. Keep PR #2 open/draft/unmerged.
+
+## Monitoring-ready checkpoint
+
+The branch was reconciled to the requested remote state. Sanitized monitors
+are active for the single authorized human action: one NOTE4 ENTER double-tap.
+The serial monitor retains only a local mode-0600 capture file, and the
+backend monitor reduces Docker log input to fixed structural event labels;
+neither monitor prints payloads, credentials, audio, or private data.
+
+```text
+CAMPAIGN=8D1M_G_P2
+REMOTE_CHECKPOINT=53ea0307e07e67d2fa139c9908fef06d5ea996d5
+PR2=OPEN_DRAFT_UNMERGED
+SERIAL_PORT=/dev/cu.usbmodem31201
+SERIAL_MONITOR=ACTIVE_SANITIZED_CAPTURE
+BACKEND_MONITOR=ACTIVE_SANITIZED_DOCKER_LOG_FOLLOW
+MONITOR_FILTERS=VOICE_CONFIG_ROUTE|VOICE_WEBSOCKET_ROUTE|LEGACY_VENDOR|POLL_OR_SYNC
+MONITOR_INITIAL_SERIAL_EVENTS=0
+MONITOR_INITIAL_BACKEND_EVENTS=0
+MONITOR_ERRORS=0
+MONITOR_CREDENTIAL_READ=NO
+MONITOR_PRIVATE_DATA_READ=NO
+MONITOR_MICROPHONE_STREAM=NO
+PROVIDER_CALLS=0
+SHORT_ENTER_PRESS_AUTHORIZED=NO
+DOUBLE_TAP_ENTER_AUTHORIZED=ONE
+MONITORING_READY=YES
+WAITING_FOR=ONE_MANUAL_DOUBLE_TAP_ENTER
+```
+
+The monitor is ready. No short press should be performed yet.
