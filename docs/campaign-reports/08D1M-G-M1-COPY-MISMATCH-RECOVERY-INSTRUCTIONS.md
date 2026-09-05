@@ -89,3 +89,106 @@ No sudo password may be requested, stored, printed, transmitted, or committed.
 After the corrected manual root command succeeds, Codex must live-verify M1 and continue automatically through the already-activated M2 exact UX backend deployment -> M3 app-only firmware flash -> M4 bounded EN/JA physical retest, stopping only at a genuine new safety/authority boundary.
 
 `REPORT-PUSH-INVARIANT.md` and `AUTONOMY-AND-HUMAN-GATE-POLICY.md` remain binding. PR #2 stays open/draft/unmerged.
+
+## Recovery checkpoint — M1 copy differential and versioned root-step replacement
+
+Date: 2026-09-05 (Australia/Perth)
+
+The requested live preflight was completed before any root migration attempt:
+
+```text
+DOCKER_ROOT=/var/lib/docker
+STORAGE_DRIVER=overlayfs
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+ORIGINAL_SOURCE=/var/lib/docker PRESENT
+NVME_DESTINATION=/mnt/ssd-tmp/slate-tools/docker-data PRESENT
+DISPOSABLE_VALIDATION_CONTAINERS=0 AFTER_CLEANUP
+PRODUCTION_CHANGED=NO
+```
+
+The exact old verification was confirmed as `du -sb "$SOURCE"` versus
+`du -sb "$DEST"`, followed by an rsync dry-run. The old script is preserved
+unchanged at `/home/pi/slate-m1-rootstep.sh`; it was not rerun.
+
+The differential is classified as **B — invalid raw byte-count verification
+across live overlay and ext4 filesystems**, with a resumable-copy refinement.
+The source was live while inspected, so its `rootfs/overlayfs/*` entries
+included mounted production container roots and transient disposable helper
+roots. The destination contained the copied regular contents on ext4. Raw
+directory `du` therefore included filesystem-specific allocation and live
+mount state rather than being a payload-equality test.
+
+Stable Docker metadata, excluding the runtime `rootfs/overlayfs` and container
+metadata directories, matched:
+
+```text
+FILE_COUNT=8/8
+FILE_PATH_SHA256=21052014bc77f6055a8cb75dd20839061db2dd45b075cf65ec36c31fe163401e
+LOGICAL_BYTES=1540157/1540157
+SYMLINK_COUNT=0/0
+HARDLINK_FILE_COUNT=0/0
+SPARSE_FILE_COUNT=4/5 (allocation-only difference)
+```
+
+The two production container root views also matched in logical content:
+
+```text
+SLATE_ROOTFS_FILE_COUNT=54578/54578
+SLATE_ROOTFS_PATH_SHA256=4b6f6e4558fa0910325c4892c2e33256ae91f6a7586f54f3c5adc03aaa1500de
+SLATE_ROOTFS_LOGICAL_BYTES=1794655656/1794655656
+SLATE_ROOTFS_SYMLINK_COUNT=2189/2189
+SLATE_ROOTFS_HARDLINK_FILE_COUNT=53350/53350
+
+MYSQL_ROOTFS_FILE_COUNT=23180/23180
+MYSQL_ROOTFS_PATH_SHA256=0a8aab6f321fc4b25d332f2f0f7bad52000f82bf818e20bfb876c31308cf37b2
+MYSQL_ROOTFS_LOGICAL_BYTES=784765057/784765057
+MYSQL_ROOTFS_SYMLINK_COUNT=1244/1244
+MYSQL_ROOTFS_HARDLINK_FILE_COUNT=1263/1263
+```
+
+An exact checksum rsync dry-run of the Slate root returned no itemized
+changes. A root-level dry-run with the live-only runtime roots excluded
+returned exit 0 and only directory timestamp entries plus
+`network/files/local-kv.db`; the latter has different source/destination
+checksums because it is live Docker state and changed after the copy. The
+stable rsync stderr was empty. The MySQL checksum dry-run was not allowed to
+become an unbounded live-database operation; its file-set, logical-size,
+symlink and hardlink comparisons were exact, and no MySQL copy-failure
+classification was made from the interrupted checksum walk.
+
+The source/destination sparse counts differed (`0/264` for Slate and `0/543`
+for MySQL in the live overlay-versus-ext4 view), which is direct evidence that
+raw allocation counts are not a valid cross-filesystem content gate. ACL and
+xattr command-line tools are not installed on the host; the rsync command
+itself supports `-A -X`, and representative mode/owner/size checks were
+performed without reading credential material.
+
+The bounded correction is a new fail-closed, resumable root step:
+
+```text
+LOCAL_SCRIPT=scripts/slate-m1-rootstep-v2-content-verify.sh
+REMOTE_SCRIPT=/home/pi/slate-m1-rootstep-v2-content-verify.sh
+OLD_SCRIPT_SHA256=f93d4c1f6c509a986a1742cdc81f4cd5c4795cca432d97e15d8f89c2441ebdf8
+NEW_SCRIPT_SHA256=be8e05166ac38d04eeaf2059906218ea7e434de17f1114f2404b4530fe86bf74
+LOCAL_BASH_N=PASS
+REMOTE_MODE=700
+REMOTE_BASH_N=PASS
+```
+
+The replacement retains the original source/destination, image, network,
+reserve, rollback and no-credential invariants. It does not remove either
+Docker tree. It stops Docker before reconciling the existing destination,
+uses `rsync -aHAXS --numeric-ids --delete` as an in-place resumable
+reconciliation (never a whole-tree deletion), then validates regular-file
+count/path/logical-size, symlink target, hardlink and checksum-rsync equality.
+Raw directory `du` is used only for the conservative free-space precheck, not
+as a content-equality gate. Any post-stop or post-switch error restores the
+original daemon configuration and verifies `/var/lib/docker` before returning
+failure.
+
+No provider call, firmware action, credential access, production deployment or
+production restart was performed by Codex. The operator must run the new
+versioned root command once; M1 is not yet proven PASS.
