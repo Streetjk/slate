@@ -93,3 +93,94 @@ continue automatically through the already-activated M2 exact UX backend deploym
 Do not change the Gemini model, billing/Vertex, credentials, Calendar/Outlook scope, Deluge paths, NVMe partitioning, or merge PR #2.
 
 `REPORT-PUSH-INVARIANT.md` and `AUTONOMY-AND-HUMAN-GATE-POLICY.md` remain binding.
+
+## Recovery checkpoint — V2 switch-health differential and V3 handoff
+
+Date: 2026-09-05 (Australia/Perth)
+
+The rollback state was verified without root mutation or provider activity:
+
+```text
+DOCKER_ROOT=/var/lib/docker
+DOCKER_DRIVER=overlayfs
+DOCKER_DAEMON=active
+SLATE=running/healthy/restarts=2
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+ORIGINAL_ROOT=/var/lib/docker PRESENT
+NVME_COPY=/mnt/ssd-tmp/slate-tools/docker-data PRESENT
+EXPECTED_NETWORK=slate-note4-deploy_default PRESENT
+DISPOSABLE_CONTAINERS=0
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION=NO
+```
+
+The two Slate restarts are the expected consequence of the attempted Docker
+stop/start and fail-closed rollback sequence; the container is currently
+healthy with `FailingStreak=0`, empty state error and continuously passing
+healthchecks. MySQL is healthy with zero restarts. The source and NVMe trees
+were both preserved.
+
+Classification is **A — V2 checked too early during normal startup**. The
+sanitized daemon journal gives this sequence:
+
+```text
+19:01:37  original Docker stop began
+19:01:45  original Docker daemon stopped
+19:01:51  first switched-root daemon began startup
+19:01:54  first daemon reported Loading containers: done / service started
+19:01:56  second Docker stop began (V2 fail-closed rollback)
+19:02:07  first switched-root daemon stopped
+19:02:08  rollback daemon began startup on /var/lib/docker
+19:02:11  rollback daemon reported Loading containers: done / service started
+```
+
+V2 waits only for `DockerRootDir` and then calls its immediate health
+assertion. That places `SLATE_NOT_HEALTHY` within roughly two seconds of the
+first daemon becoming available. The current healthcheck contracts are
+Slate: interval `30s`, timeout `5s`, retries `3`; MySQL: interval `5s`,
+timeout `3s`, retries `12`. After rollback, both containers are running and
+healthy and the retained health events are exit 0. The Docker daemon journal
+contains no NVMe storage, mount, permission, network, or application startup
+failure. The only warnings are the known container-mount detection and absent
+`nft` helper messages, present during both normal daemon starts. Historical
+Docker event records for the stopped daemon are not retained, so no missing
+event is treated as evidence of a runtime defect.
+
+The source/destination health and network checks therefore show a normal
+startup timing gate, not a genuine NVMe-root runtime regression. No production
+container, Docker tree, credential, provider, firmware, billing or network
+configuration was changed by the recovery investigation.
+
+## Versioned V3 correction
+
+V2 was not rerun. A new fail-closed script was prepared and installed:
+
+```text
+LOCAL_SCRIPT=scripts/slate-m1-rootstep-v3-startup-wait.sh
+REMOTE_SCRIPT=/home/pi/slate-m1-rootstep-v3-startup-wait.sh
+V2_SCRIPT_SHA256=be8e05166ac38d04eeaf2059906218ea7e434de17f1114f2404b4530fe86bf74
+V3_SCRIPT_SHA256=ab130ebbd16fa2e4f028ffc5eb1e315b524dbf4c12f42449c44c3a1a0cbb801a
+V3_LOCAL_BASH_N=PASS
+V3_LOCAL_NONROOT_FAIL_CLOSED=PASS class=NOT_ROOT
+V3_REMOTE_MODE=700
+V3_REMOTE_BASH_N=PASS
+```
+
+V3 preserves V2’s already-passed copy/content gate and all source, destination,
+image, network, reserve, no-credential and no-whole-tree-deletion invariants.
+It waits up to `180s` for both containers to exist, run and become healthy,
+captures the copied NVMe container restart counts immediately after the
+switched daemon exposes them, rejects growth from those baselines, then
+requires local and public HTTP health. (It records the original-root counts
+separately for rollback context, avoiding comparison with the later source
+rollback count.) Its
+rollback path waits up to `180s` for the original Docker root, Slate/MySQL
+health and local/public health to recover before declaring rollback PASS.
+Transient `starting` states are tolerated; timeout, crash/restart growth or
+health failure remains fail-closed.
+
+M1 is not yet proven PASS. The operator must run the single versioned V3 root
+step manually. No provider call, firmware flash, production deployment or
+credential access occurred during this recovery.
