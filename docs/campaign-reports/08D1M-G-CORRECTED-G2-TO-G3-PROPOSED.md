@@ -200,3 +200,52 @@ Stop only for:
 - PR merge/release.
 
 `REPORT-PUSH-INVARIANT.md` remains binding. Push often; stop only at a true new authority boundary.
+
+## C0 activation and corrected runtime preflight — PASS
+
+Activation was explicitly granted by the human `proceed` instruction after
+this proposal was fetched at remote checkpoint
+`87fae39d0f1b0add0936ed02ba9b4892c93d2dc0`. The activation envelope remains
+limited to at most two new provider sessions: one corrected G2 session and one
+conditional G3 session. Historical 8D1K accounting is unchanged.
+
+```text
+CAMPAIGN=8D1M-G
+STATUS=C0_PASS_READY_FOR_CORRECTED_G2
+ACTIVATION=EXPLICIT_HUMAN_PROCEED
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+ARM64_IMAGE_SHA=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+ROLLBACK_IMAGE_SHA=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ISOLATED_DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/g2-c1-hostnet-20260905/data-root
+ISOLATED_DOCKER_EXEC_ROOT=/mnt/ssd-tmp/slate-tools/g2-c1-hostnet-20260905/exec-root
+ISOLATED_DOCKER_SOCKET=/mnt/ssd-tmp/slate-tools/g2-c1-hostnet-20260905/docker.sock
+DISPOSABLE_DAEMON_HOST_NETNS_ENTRY=PASS
+CANDIDATE_IMAGE_DIGEST=PASS_EXACT_ARM64
+C0_DNS=PASS
+C0_TCP443=PASS
+C0_TLS=PASS
+C0_PROVIDER_DISABLED_ADAPTER=PASS_6_TESTS
+PROTECTED_SECRET_METADATA=PASS_NO_VALUE_READ
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_READ_ONLY_BIND=REQUIRED_NOT_USED_IN_C0
+PRODUCTION_SLATE=HEALTHY_RESTARTS_0
+PRODUCTION_MYSQL=HEALTHY_RESTARTS_0
+PRODUCTION_HEALTH_ENDPOINT=/healthz
+PRODUCTION_HEALTH_HTTP=200
+PRODUCTION_MUTATION=NO
+PRODUCTION_DOCKER_DAEMON_TOUCHED=NO
+HISTORICAL_PROVIDER_CALLS=3_OF_3_UNCHANGED
+NEW_PROVIDER_SESSIONS_USED=0_OF_2
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PRIVATE_DATA_SENT=NO
+PR2_MERGED=NO
+NEXT_ACTION=EXECUTE_ONE_CORRECTED_G2_PROVIDER_SESSION
+```
+
+The candidate egress probe made no Gemini API or Live request and mounted no
+credential. The provider-disabled matrix used only a synthetic mode-600 test
+fixture. The production daemon, production image, rollback image, persistent
+data, and networking were not changed. The host-local port-3000/API-health
+probe was non-authoritative because the service publishes port 3001 and the
+authoritative `/healthz` check returned HTTP 200.
