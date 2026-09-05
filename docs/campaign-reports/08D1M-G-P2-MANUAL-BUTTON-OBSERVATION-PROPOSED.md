@@ -94,3 +94,27 @@ WAITING_FOR=ONE_MANUAL_DOUBLE_TAP_ENTER
 ```
 
 The monitor is ready. No short press should be performed yet.
+
+## Monitoring re-armed checkpoint
+
+After a controller restart, origin was fetched and the already-published
+monitoring setup was re-armed without changing firmware, production, or
+authorization scope.
+
+```text
+CAMPAIGN=8D1M_G_P2
+MONITORING_REARMED=YES
+REMOTE_HEAD=f9c78e2767d65ce57d352c0a436e5e6531ea8fb4
+SERIAL_PORT=/dev/cu.usbmodem31201
+SERIAL_MONITOR=ACTIVE_SANITIZED
+BACKEND_MONITOR=ACTIVE_SANITIZED
+SERIAL_INITIAL_BYTES=0
+BACKEND_INITIAL_EVENTS=0
+MONITOR_ERRORS_BYTES=0
+DOUBLE_TAP_ENTER_AUTHORIZED=ONE
+SHORT_ENTER_AUTHORIZED=NO
+MICROPHONE_TO_GEMINI=NO
+PROVIDER_CALLS=0
+MONITORING_READY=YES
+WAITING_FOR=ONE_MANUAL_DOUBLE_TAP_ENTER
+```
