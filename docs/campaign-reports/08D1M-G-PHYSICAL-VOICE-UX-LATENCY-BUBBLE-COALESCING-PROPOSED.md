@@ -353,3 +353,32 @@ ARM64_IMAGE_REBUILD=REQUIRED
 
 The previously built ARM64 image was not treated as qualified for this
 corrected source and will be rebuilt and re-run before the exact Grok review.
+
+## U4-B — corrected artifact qualification checkpoint
+
+```text
+SOURCE_SHA=aae1c1fefce5e6c4ca4dbc2cd4d50f44ed4863d3
+ARM64_IMAGE_ID=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+ARM64_IMAGE_PLATFORM=linux/arm64
+ARM64_DOCKER_BUILD=PASS
+ARM64_NODE_LIVE_SDK_LOAD=PASS
+ARM64_NETWORK=NONE
+ARM64_PROVIDER_CALLS=0
+ARM64_FULL_ADAPTER_MOCK_E2E=6_PASS_0_FAIL
+ARM64_XIAOZHI_COALESCING_TESTS=10_PASS_0_FAIL
+ARM64_TOTAL=16_PASS_0_FAIL
+ARM64_CREDENTIAL=NOT_MOUNTED
+```
+
+The corrected image was rebuilt from the exact pushed source and replayed
+with the real Bun parent/Node child mock boundary. The provider-disabled
+test used only a disposable tmpfs synthetic file; no Gemini credential was
+mounted or read. The firmware source tree is identical to the previously
+built ESP-IDF candidate, so the exact `esp32s3` / IDF 5.5.2 build evidence
+above remains valid for this backend-only correction.
+
+```text
+CORRECTED_SOURCE_ARM64_REQUALIFICATION=PASS
+READY_FOR_EXACT_GROK_REVIEW=YES
+READY_FOR_DEPLOY_AND_PHYSICAL_RETEST=NO_GROK_REVIEW_PENDING
+```
