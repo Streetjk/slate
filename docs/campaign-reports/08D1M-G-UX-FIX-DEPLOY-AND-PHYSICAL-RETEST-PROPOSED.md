@@ -262,3 +262,47 @@ terminated, its process residue was absent, and no active, rollback, MySQL,
 volume, Deluge, or Docker-data-root state was changed.
 
 NEXT_ACTION=NVME_ARCHIVE_AND_EXACT_UNREFERENCED_ARTIFACT_RECLAIM
+
+## D0-R-FINAL — protected storage boundary
+
+The bounded reclaim completed and was insufficient for the exact candidate
+load. All three unreferenced base images were individually archived to the
+NVMe safety surface with mode 600 and removed by exact digest. The remaining
+Docker images are protected current production, pinned rollback, or MySQL
+artifacts and were not removed.
+
+```text
+ROOT_FREE_BYTES_AFTER_BOUNDED_RECLAIM=833589248
+ROOT_FREE_TARGET_BYTES=2500000000
+ROOT_HEADROOM_GATE=FAIL
+NVME_FREE_BYTES=190120091648
+ARCHIVE_UX_D0R_OVEN_BUN_SLIM=baf2239d7f6f0bb5c760fe26882bfdd3d4661bc2f7b932747cb75d33e8dc12ce
+ARCHIVE_UX_D0R_OVEN_BUN_ALPINE=ff5c8a946696ce69890e21c9d562b4b53a7cafa6092a431b43b4361152aadd71
+ARCHIVE_UX_D0R_NODE_22_ALPINE=3dca85357ae7f3c89d638b5bb1ce7c47de9f407d71adb9518b25a1eb0587667c
+ARCHIVES_MODE=600
+ARCHIVES_READABLE=YES
+CURRENT_PRODUCTION_IMAGE_PRESENT=YES
+ROLLBACK_IMAGE_PRESENT=YES
+MYSQL_IMAGE_PRESENT=YES
+CANDIDATE_IMAGE_PRESENT=NO
+PRODUCTION_SLATE=healthy
+PRODUCTION_MYSQL=healthy
+PRODUCTION_RESTARTS_SLATE=0
+PRODUCTION_RESTARTS_MYSQL=0
+PRODUCTION_LOCAL_HEALTHZ=HTTP_200
+PRODUCTION_PUBLIC_HEALTHZ=HTTP_200
+PRODUCTION_CONTAINER_RECREATED=NO
+PRODUCTION_CHANGED=NO
+FIRMWARE_FLASHED=NO
+GEMINI_PROVIDER_CALLS=0
+```
+
+The current production image cannot be deleted under the approved bounded
+reclaim rules, even after NVMe archival, because it is the immediate UX
+rollback artifact. Docker data-root migration, broad prune, volume deletion,
+and production-image deletion are not authorized. The exact candidate was
+not deployed and the device was not flashed.
+
+STATUS=HARD_STOP_INSUFFICIENT_PROTECTED_DOCKER_ROOT_HEADROOM
+READY_FOR_D1=NO_STORAGE_BOUNDARY
+HUMAN_ACTION_REQUIRED=AUTHORIZE_NARROW_STORAGE_REMEDIATION_OR_DEFER_UX_DEPLOYMENT
