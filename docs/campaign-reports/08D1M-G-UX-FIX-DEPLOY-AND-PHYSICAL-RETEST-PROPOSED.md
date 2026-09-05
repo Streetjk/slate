@@ -233,3 +233,32 @@ FULL_FLASH_ERASE=NO
 
 D0_STATUS=PASS
 READY_FOR_D1_EXACT_BACKEND_DEPLOYMENT=YES
+
+## D0-R — exact candidate transfer storage interruption
+
+The first exact candidate transfer was stopped after production root free
+space fell below the safe load threshold. No container recreation occurred.
+
+```text
+TRANSFER_IMAGE=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+TRANSFER_MODE=DOCKER_SAVE_PIPE_TO_REMOTE_DOCKER_LOAD
+TRANSFER_RESULT=INCOMPLETE_STOPPED
+CANDIDATE_PRESENT_AFTER_STOP=NO
+REMOTE_LOADER_TEMP_FILES=NONE_FOUND
+ROOT_FREE_BEFORE_TRANSFER_BYTES=1781481472
+ROOT_FREE_DURING_TRANSFER_BYTES=157028352
+ROOT_FREE_AFTER_LOADER_STOP_BYTES=137596928
+PRODUCTION_CONTAINER_RECREATED=NO
+PRODUCTION_SLATE=healthy
+PRODUCTION_MYSQL=healthy
+PRODUCTION_RESTARTS_SLATE=0
+PRODUCTION_RESTARTS_MYSQL=0
+PRODUCTION_LOCAL_HEALTHZ=HTTP_200
+GEMINI_PROVIDER_CALLS=0
+```
+
+This is a recoverable bounded Docker-storage condition. The exact loader was
+terminated, its process residue was absent, and no active, rollback, MySQL,
+volume, Deluge, or Docker-data-root state was changed.
+
+NEXT_ACTION=NVME_ARCHIVE_AND_EXACT_UNREFERENCED_ARTIFACT_RECLAIM
