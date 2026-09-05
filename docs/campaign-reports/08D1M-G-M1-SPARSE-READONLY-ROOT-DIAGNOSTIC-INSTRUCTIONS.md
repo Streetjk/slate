@@ -71,3 +71,17 @@ After the operator runs the diagnostic:
 5. On M1 PASS continue automatically through M2 -> M3 -> M4 under the already-authorized long-run envelope.
 
 Do not rerun V7. Keep PR #2 open/draft/unmerged. Checkpoint pushes are not stops.
+
+## Codex installation checkpoint
+
+The sanitized diagnostic is installed but has not been executed:
+
+```text
+DIAGNOSTIC_SCRIPT=/home/pi/slate-m1-sparse-readonly-root-diagnostic-v1.sh
+DIAGNOSTIC_SCRIPT_SHA256=ffb42c0cee064186a097d96a079b6f6d8e03939df4f6630e3bc37bbb8958aa5b
+```
+
+The remote copy is a regular file, mode 700, and passes `bash -n`. Production
+Docker/MySQL and local/public health were rechecked healthy with both Docker
+trees preserved. The operator must run only the one command handed off by
+Codex; V8 remains blocked until sanitized output is ingested.
