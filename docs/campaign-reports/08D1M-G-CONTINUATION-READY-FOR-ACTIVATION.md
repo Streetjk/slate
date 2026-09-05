@@ -250,3 +250,82 @@ historical Docker images, the production Docker root, Deluge paths, Slate,
 MySQL, and the rollback image were preserved. G2 cannot safely consume the
 authorized provider session until a human-approved runtime mechanism fixes
 this host-specific boundary.
+
+## G2 host-native NVMe execution — provider hard stop
+
+Date: 2026-09-05 (Australia/Perth)
+
+The explicit NVMe-isolated runtime instruction was exercised without changing
+the production Docker daemon. Because `pi` has no non-interactive sudo
+permission, the disposable helper entered only the host mount namespace to
+launch a second host-native `dockerd`/`containerd` pair. Its data-root,
+exec-root, socket, PID state, and containerd state were all under the
+NVMe-backed `g2-host-native-r1` scratch directory. The production socket and
+`/var/lib/docker` were not mounted or reconfigured.
+
+The host-native runtime controls passed before provider access:
+
+```text
+G2_HOST_NATIVE_DOCKER=PASS_DOCKER_29_1_3_OVERLAY2
+G2_HOST_NATIVE_DATA_ROOT=NVME_ONLY
+G2_HOST_NATIVE_EXEC_ROOT=NVME_ONLY
+G2_BASE_IMAGE_CONTROL=PASS_EXIT_0
+G2_EXACT_IMAGE_LOAD=PASS
+G2_EXACT_IMAGE_DIGEST=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+G2_PROVIDER_DISABLED_CANDIDATE_CONTROL=PASS_6_TESTS
+G2_PROVIDER_DISABLED_NETWORK=NONE
+G2_PROVIDER_DISABLED_SYNTHETIC_SECRET=YES
+G2_PROVIDER_DISABLED_PRODUCT_SOURCE_CHANGED=NO
+```
+
+The single authorized G2 provider session was launched detached with a
+uniquely named retained container. The exact reviewed image ran as `bun` from
+`/app/backend`; the existing protected source was mounted read-only at
+`/run/secrets/gemini_api_key`, Search was disabled, and no tools, private
+payloads, microphone input, or raw audio/provider payload retention were used.
+The first detached launcher exposed only a corrected disposable path issue
+(`Module not found` before application start); it did not contact Gemini and
+was removed after log/status evidence. The corrected detached launch then
+survived launcher/SSH disconnect and was inspected through separate wait,
+status, result, and log retrieval controls.
+
+The durable sanitized result was recovered after the launcher and temporary
+daemon were gone:
+
+```text
+G2_PROVIDER_SESSION=1_OF_1
+G2_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+G2_RESULT_FILE_MODE=600
+G2_RESULT_STATUS=FAIL
+G2_RESULT_READY=NO
+G2_RESULT_TURNS=0
+G2_RESULT_RECONNECT=NOT_RUN
+G2_FAILURE_CLASS=CONNECT_TIMEOUT
+G2_RESULT_RAW_AUDIO_RETAINED=NO
+G2_RESULT_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+G2_RESULT_RECOVERED_AFTER_LAUNCHER_DISCONNECT=YES
+G2_APPLICATION_CONTAINER_EXIT=1
+G2_G3_CONSUMED=NO
+```
+
+The failure was retrieved as the sanitized bridge classification
+`CONNECT_TIMEOUT`; no raw provider error body was retained. No blind retry is
+authorized or performed, and the conditional G3 production session was not
+consumed.
+
+Post-cleanup read-only production checks remained green:
+
+```text
+PRODUCTION_SLATE=running_healthy_RESTARTS_0
+PRODUCTION_MYSQL=running_healthy_RESTARTS_0
+PRODUCTION_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+PRODUCTION_LOCAL_HEALTH_HTTP=200
+PRODUCTION_MUTATION=NO
+HISTORICAL_DOCKER_IMAGES_CLEANED=NO
+CREDENTIAL_VALUE_READ=NO
+```
+
+The G2 provider failure exhausts the remaining G provider-session budget
+(`G_PROVIDER_SESSIONS_USED=3_OF_3`). G3 is not authorized by this result and
+requires a new human/provider decision before any further provider or
+production action.

@@ -175,3 +175,39 @@ Stop only for:
 8. PR merge/release.
 
 `REPORT-PUSH-INVARIANT.md` remains binding. Successful R0/R1, G2 PASS, NVMe snapshot creation, or pre-G3 checkpoints are not handoffs once a future activation authorizes this proposal.
+
+## Execution addendum — host-native R1 and G2 result
+
+Under the explicit NVMe-isolated runtime instruction, R0/R1 completed with a
+host-native disposable Docker 29.1.3 daemon on `overlay2`, separate from the
+production daemon. The base-image control exited 0 and the exact candidate's
+provider-disabled Bun-parent/Node-child integration matrix passed 6/6 with
+synthetic-only secret material and no network. No tracked product source
+changed.
+
+The one remaining G2 provider session then ran in the exact candidate image
+with the existing protected host source mounted read-only at
+`/run/secrets/gemini_api_key`. The durable result was captured independently
+of the detached launcher and recovered after daemon shutdown. It contained
+only structural fields and reported:
+
+```text
+G2_PROVIDER_SESSION=1_OF_1
+G2_STATUS=FAIL
+G2_FAILURE_CLASS=CONNECT_TIMEOUT
+G2_READY=NO
+G2_TURNS=0
+G2_RECONNECT=NOT_RUN
+G2_RAW_AUDIO_RETAINED=NO
+G2_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+G2_RESULT_RECOVERED_AFTER_LAUNCHER_DISCONNECT=YES
+G3_RUN=NO
+G_PROVIDER_SESSIONS_USED=3_OF_3
+```
+
+No provider retry or G3 production mutation followed. The production Slate
+rollback image and MySQL remained healthy with restart counts at zero, the
+local health endpoint returned HTTP 200, the credential value was never read
+or logged, and historical Docker images were not cleaned. This is the G2
+provider-failure human boundary; a new authorization is required before any
+additional provider or production action.
