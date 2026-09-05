@@ -217,3 +217,47 @@ The two historical image candidates are not current, rollback, MySQL, exact
 G candidate, or active-container artifacts. They will be individually saved
 to mode-600 NVMe archives and removed only by exact image ID, with a free-space
 check after each operation. Cleanup stops once the 2.5 GB target is reached.
+
+## S1 bounded reclaim — PASS
+
+Only individually classified disposable or historical Docker artifacts were
+reclaimed. The current Slate/rollback image, MySQL image/data, persistent
+mounts, Deluge paths, production Docker data-root, and unrelated retained
+runtime images were not touched.
+
+```text
+CAMPAIGN=8D1M-G
+STATUS=S1_PASS_ROOT_HEADROOM_REACHED
+DANGLING_LAYER_REMOVED=sha256:c47aea44b7fe4335a1aa50331bd5b0a17f68e6e4fd29c72a8fc23852256f8f4d
+G16_IMAGE_REMOVED=sha256:d2af1d0dc48f40d4b53324e4a31531b26ce611c5851d33df93c23956b0209e48
+G16_ARCHIVE=/mnt/ssd-tmp/slate-tools/g3-storage-archives-20260905/g16-campaign-8d1kg-7a72448.tar
+G16_ARCHIVE_SHA256=d7a2095d8fe1ce9814a24fa9252e454cf973b3519ab2619c5a7a9995407f0485
+G16_ARCHIVE_READABLE=YES
+PRIOR_PRODUCTION_IMAGE_REMOVED=sha256:bd992672d76be4c36e96725bfc78a4e1fd5c32aecf36a66f03cd3e1b3fea526d
+PRIOR_PRODUCTION_ARCHIVE=/mnt/ssd-tmp/slate-tools/g3-storage-archives-20260905/prior-production-campaign8-voice-routing.tar
+PRIOR_PRODUCTION_ARCHIVE_SHA256=328b628a005d45c531e2ac80c08b5411a1cc094e13a1e1f007b91e2f39da0981
+PRIOR_PRODUCTION_ARCHIVE_READABLE=YES
+F644_STOPPED_VALIDATION_CONTAINERS_REMOVED=4_EXACT
+F644_IMAGE_REMOVED=sha256:f644fa6fa0bed63b3f248d33038e8595016fd453e78f6bb97565495a2268de5c
+F644_TAGS_REMOVED=2_EXACT
+F644_ARCHIVE=/mnt/ssd-tmp/slate-tools/g3-storage-archives-20260905/older-8d1m-validation-candidate-f644.tar
+F644_ARCHIVE_SHA256=00485e81cce01779230c8eb80155d1b878caad6bf2dbb32d24a0b784b6575666
+F644_ARCHIVE_READABLE=YES
+ROOT_FREE_BYTES_AFTER_S1=3263156224
+ROOT_FREE_TARGET_BYTES=2500000000
+ROOT_FREE_TARGET=PASS
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+MYSQL_IMAGE=sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+PRODUCTION_SLATE=HEALTHY_RESTARTS_0
+PRODUCTION_MYSQL=HEALTHY_RESTARTS_0
+PRODUCTION_HEALTH_HTTP=200
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+NEW_PROVIDER_SESSIONS_USED=1_OF_2
+G3_PROVIDER_SESSION=1_CONDITIONAL_REMAINING
+NEXT_ACTION=RUN_S2_EXACT_CANDIDATE_LOAD_AND_PRE_G3_GATE
+```
+
+Cleanup stopped at the target; no broad prune, volume deletion, root/data-root
+migration, package-cache deletion, journal deletion, or production image
+deletion was performed.
