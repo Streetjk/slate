@@ -151,3 +151,93 @@ Any substantive source correction requires focused regression, exact ARM64/firmw
 No firmware write, no real/private microphone provider content, no billing/Vertex change, no credential replacement, no destructive device erase, no Calendar write, and no PR #2 merge are authorized by this proposal.
 
 `REPORT-PUSH-INVARIANT.md` remains binding. P0 zero-provider reconciliation/checkpoint pushes are not handoffs once a later activation authorizes P0; P1 and P3 remain separate explicit human decisions because they are physical-write and private-data boundaries.
+
+## Campaign 8D physical authorization — P0 reconciliation PASS
+
+The human instruction for this checkpoint explicitly activates P0 -> app-only
+firmware flash -> P2 routing validation. P3 remains closed: no real
+microphone content is authorized for Gemini.
+
+```text
+CAMPAIGN=8D
+PHYSICAL_SCOPE=P0_FLASH_P2
+REMOTE_CHECKPOINT=54920d22cb7e731676b4619d1ce684bb3bc0b4b0
+PR2=OPEN_DRAFT_UNMERGED
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+SOFTWARE_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+PRODUCTION_IMAGE=sha256:5ef126ff62ccf466c0795c1c76b4bdf0a7b9657184eab1f09b7435deeedbab6d
+PRODUCTION_SLATE=HEALTHY_RESTARTS_0
+PRODUCTION_MYSQL=HEALTHY_RESTARTS_0
+PRODUCTION_LOCAL_HEALTH_HTTP=200
+PRODUCTION_PUBLIC_HEALTH_HTTP=200
+NOTE4_POLL_EVIDENCE=SANITIZED_RECENT_LOG_MATCHES_25
+VOICE_CONFIG_UNAUTH_HTTP=401
+VOICE_WEBSOCKET_UNAUTH=REJECTED_HTTP_400
+LEGACY_XIAOZHI_OTA_HTTP=404
+PRODUCTION_LEGACY_ACTIVATION_LOG_MATCHES=0
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PRIVATE_MICROPHONE_TO_GEMINI=NO
+REAL_VOICE_GEMINI_E2E=NO
+
+FIRMWARE_SOURCE_SHA=121622c3bd1d23587b4aadb3a079ec85d2052278
+FIRMWARE_SOURCE_AT_REVIEWED_SHA=PASS
+ESP_IDF=v5.5.2
+FIRMWARE_TARGET=esp32s3
+FIRMWARE_FLASH_SIZE=16MB
+FIRMWARE_BOOTLOADER_SHA256=fdcbdeeb3ab93e7a58059ce4c18894ec5d3178b445dc4c4a00e05eff6fb54151
+FIRMWARE_PARTITION_TABLE_SHA256=6f0657eb6b8007c0dbfed6f64cf7a0d59f8ee1752af898e2f66dd218846b1835
+CANDIDATE_FULL_IMAGE_SHA256=eba9427558bf08eb387894bb1feac2da5ec1d0b2ab8c8785285251d65afe33
+CANDIDATE_APP_IMAGE_SHA256=95ddf7e41c3dbb3aafb7d983708ccf39c131d68a89eac7f000c48adb5e99c9d4
+CANDIDATE_APP_IMAGE_VALID=YES
+CANDIDATE_APP_FLASH_OFFSET=0x10000
+CANDIDATE_APP_ONLY_PRESERVES_NVS=YES
+CANDIDATE_APP_ONLY_PRESERVES_LITTLEFS_STORAGE=YES
+FULL_FLASH_ERASE=NO
+PARTITION_REWRITE=NO
+
+ROLLBACK_SOURCE_SHA=bca05819e2cccc5cfdc128d82ffda052b3913412
+ROLLBACK_DOCUMENTED_APP_SHA256=e880386b0155780389469c2895177528959a81c46f2fe44b411668ac184062b9
+ROLLBACK_DOCUMENTED_FULL_SHA256=522f189bd36ea9b19cfe6767d70ea00c87c909d7e98ae4c8e1b7015430a1b41c
+ROLLBACK_REBUILT_FROM_EXACT_SOURCE=YES
+ROLLBACK_REBUILT_APP_SHA256=61baf54af122f8188e75d30d07068d95679be21d378ba9740d4d33487983fbfa
+ROLLBACK_REBUILT_FULL_SHA256=59af51186b30b4e0a22eb8e2d21bbedae3ddd57e02d284ec6937fd6cc76e2cfa
+ROLLBACK_REBUILT_APP_SIZE=2518224
+ROLLBACK_REBUILT_FULL_SIZE=2583760
+ROLLBACK_REBUILT_IDF_IMAGE=espressif/idf:v5.5.2@sha256:05cbfc42ed2e987b8026722c15bf1d8523d3e4fd1b4ac04d2e4056f5e0918b99
+ROLLBACK_REBUILT_IMAGE_VALID=YES
+ROLLBACK_DURABLE_LOCAL_PATH=/Users/ollama/NOTE4-backups/campaign8-physical-20260905/rollback-bca05819-app.bin
+ROLLBACK_DURABLE_LOCAL_MODE=0600
+ROLLBACK_READY_FOR_AUTOMATIC_APP_ONLY_RESTORE=YES
+
+DEVICE_SERIAL_PORT=/dev/cu.usbmodem31201
+DEVICE_CHIP=ESP32-S3_REV_V0.2
+DEVICE_FLASH_ID=MANUFACTURER_46_DEVICE_4018
+DEVICE_FLASH_SIZE=16MB
+DEVICE_FLASH_TYPE=QUAD
+DEVICE_IDENTITY_READONLY_CHECK=PASS
+DEVICE_SECURITY_INFO_READONLY_CHECK=PASS
+NO_NVS_READ=YES
+NO_LITTLEFS_READ=YES
+NO_DEVICE_SECRET_READ=YES
+NO_FIRMWARE_WRITE_YET=YES
+
+NO_VENDOR_ACTIVATION_SOURCE_TEST=PASS
+NO_VENDOR_ACTIVATION_TOKENS_IN_FIRMWARE_MAIN=PASS
+P0_STATUS=PASS
+READY_FOR_APP_ONLY_FLASH=YES
+READY_FOR_P2_ROUTING_VALIDATION=YES
+```
+
+The historical rollback hashes remain the documented Campaign 5 references.
+The original ignored rollback binaries were not present locally, so a durable
+app and full-image fallback was rebuilt from the exact rollback source using
+the documented ESP-IDF image. The rebuilt app has the documented historical
+size and independently passes ESP32-S3 image validation; its digest is
+recorded above for the automatic app-only fallback. No NVS, LittleFS, pairing,
+server address, identity, or device secret was read or modified during P0.
+
+P0 backend, firmware, partition, device, no-vendor, and rollback gates pass.
+The next authorized action is the exact candidate app-only write at `0x10000`.
