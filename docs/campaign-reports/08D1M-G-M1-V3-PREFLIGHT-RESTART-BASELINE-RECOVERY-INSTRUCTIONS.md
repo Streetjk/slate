@@ -192,3 +192,48 @@ in-scope implementation work; Codex remains controller, sole repository
 writer/integrator and validator, and Grok 4.6 remains the independent
 reviewer. M1 is still at the manual root-authority boundary. No provider call,
 credential access, production mutation or PR merge occurred.
+
+## V5–V7 correction and final safety-review checkpoint
+
+Date: 2026-09-05 (Australia/Perth)
+
+The exact V4 safety review found a guaranteed undefined `manifest_metrics`
+failure plus eager switch checks, late `jq` validation, unchecked rollback
+operations and stale restart handling. Gemini 3.8 Flash produced V5, V6 and
+V7 as bounded, new versioned artifacts. Codex independently ran syntax and
+non-root fail-closed checks after each version and confirmed V4, V5 and V6
+were preserved whenever a later version was created.
+
+```text
+V5_SCRIPT=scripts/slate-m1-rootstep-v5-startup-rollback-verify.sh
+V5_SHA256=aff16ce069aa9affd97af17b10b18230bf3ec6cbe4cddf45e982f9e4a2086b2c
+V5_BASH_N=PASS
+V5_NONROOT_FAIL_CLOSED=PASS class=NOT_ROOT
+V6_SCRIPT=scripts/slate-m1-rootstep-v6-startup-rollback-verify.sh
+V6_SHA256=8524eb43f0944e290d5ac5743cfe3bfd08b0e4932a34aa6346099c94ee2abc98
+V6_BASH_N=PASS
+V6_NONROOT_FAIL_CLOSED=PASS class=NOT_ROOT
+V7_SCRIPT=scripts/slate-m1-rootstep-v7-signal-safe-rollback-verify.sh
+V7_SHA256=f0c8daaa030e9b04fde60d713a5da2a849114f9ebee442892644f1626d02c49e
+V7_BASH_N=PASS
+V7_NONROOT_FAIL_CLOSED=PASS class=NOT_ROOT
+V4_V5_V6_PRESERVED=YES
+GROK_V4_REVIEW=FAIL_BOUNDED_DEFECTS_FOUND
+GROK_V5_REVIEW=PASS_NO_P0_P1_WITH_P2_P3_HARDENING_REQUIRED
+GROK_V6_REVIEW=PASS_NO_P0_P1_WITH_P2_P3_HARDENING_REQUIRED
+GROK_V7_REVIEW=PASS_NO_P0_P1_NO_P2
+GROK_V7_REVIEWER=GROK_4_6
+```
+
+V7 closes the reviewed V6 interruption/rollback, restart-stability, cleanup,
+identity and late-operation-classification findings while retaining all V4
+mutation, copy, reserve, daemon-config, health, rollback, no-delete and
+no-secret gates. Grok’s remaining V7 observations are P3 only: no
+`--one-file-system` on rsync, no nested-mount check under the destination,
+successful rollback leaves its backup for fail-closed retry collision, and
+signal traps are cleared during rollback. None permits a wrong-root PASS or
+Docker-tree deletion; V7 is the clean reviewed artifact for the next manual
+root step.
+
+No provider call, firmware flash, credential access, production mutation or
+PR merge occurred. V7 has not yet been executed on the Orange Pi.
