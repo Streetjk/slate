@@ -1,0 +1,153 @@
+# Campaign 8D1M-G — PROPOSED Physical NOTE4 E2E Reconciliation
+
+Date: 2026-09-05 (Australia/Perth)
+Repository: `Streetjk/slate`
+Branch: `feature/gemini-35-live-evaluation`
+PR: #2
+
+## Purpose
+
+Reconcile the stale Campaign 8D physical-device directive with the terminal 8D1M-G software result. The Gemini 2.5 Developer API candidate has now passed corrected non-production G2 and production G3 validation and remains deployed healthy. The old 8D text still assumes the historical Campaign 8C backend and Vertex/ADC; those assumptions no longer govern where they conflict with this proposal and the latest terminal software checkpoint.
+
+This file is a proposal only. It authorizes no firmware write, no real microphone/private voice submission, no billing change, and no PR merge.
+
+## Accepted terminal software state
+
+```text
+SOFTWARE_STAGE=S3_G3_PRODUCTION_PASS_READY_FOR_PHYSICAL_HUMAN_BOUNDARY
+MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+AUTHORIZED_ARM64_IMAGE=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+PRODUCTION_TRANSPORT_IMAGE=sha256:5ef126ff62ccf466c0795c1c76b4bdf0a7b9657184eab1f09b7435deeedbab6d
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+G3_PROVIDER_SESSION=PASS
+EN_EN_JA=PASS_3_OF_3
+RECONNECT=PASS
+INLINE_AUDIO=PASS
+LOCAL_HEALTH_HTTP=200
+PUBLIC_HEALTH_HTTP=200
+PRODUCTION_SLATE=HEALTHY
+PRODUCTION_MYSQL=HEALTHY
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PR2_MERGED=NO
+```
+
+The production backend now uses the already-protected Developer API credential and private Node stdio bridge. Do not reintroduce the old Vertex/ADC gate unless a later explicit strategy change authorizes it.
+
+## Current Google data-use policy checkpoint
+
+Before any real microphone/private voice test, refresh the official Gemini Developer API policy again. As of this reconciliation, Google's current official pricing/billing documentation states that Free Tier content is used to improve Google products, while Paid Tier content is not used to improve Google products.
+
+Therefore:
+
+```text
+FREE_TIER_REAL_PRIVATE_MICROPHONE_AUTHORIZED=NO
+PAID_TIER_CHANGE_AUTHORIZED=NO
+REAL_PRIVATE_VOICE_REQUIRES_EXPLICIT_HUMAN_ACKNOWLEDGEMENT=YES
+```
+
+Synthetic provider validation already completed under the accepted scope; this new privacy gate applies to real user/device microphone content.
+
+## P0 — zero-provider physical readiness reconciliation
+
+Without flashing or sending microphone audio to Gemini:
+
+1. verify PR #2 remains open/draft/unmerged and exact production software pins above remain current;
+2. verify Slate/MySQL/local/public health and rollback/NVMe archives;
+3. verify NOTE4 authenticated polling still succeeds against the deployed backend;
+4. verify voice-config and authenticated Slate voice WebSocket routes remain present and unauthenticated access is rejected;
+5. resolve the exact reviewed firmware candidate from existing Campaign 8 artifacts/reports and current branch history;
+6. independently verify the firmware source pin, ESP-IDF version/target, partition compatibility, full image hash, app/OTA hash, and rollback artifact;
+7. do not trust or reuse a stale firmware hash if repository evidence conflicts; stop and reconcile the artifact instead;
+8. verify the least-destructive app-only/OTA path can preserve NVS/LittleFS, pairing, server address and device secret;
+9. identify the physical NOTE4 serial port/device deterministically, but do not write.
+
+P0 may update documentation/checkpoints and run deterministic firmware verification/builds. It must not flash, erase, reset pairing, send microphone audio to Gemini, change billing, or merge PR #2.
+
+## P1 — firmware flash is a separate explicit human gate
+
+A later explicit human authorization may permit flashing only the exact P0-reconciled firmware artifact.
+
+Required invariants:
+
+```text
+ERASE_FLASH=NO
+PRESERVE_NVS=YES
+PRESERVE_LITTLEFS=YES_IF_PRESENT
+PRESERVE_PAIRING=YES
+PRESERVE_SERVER_ADDRESS=YES
+PRESERVE_DEVICE_SECRET=YES
+APP_ONLY_OR_OTA_PREFERRED=YES_IF_COMPATIBILITY_PROVEN
+FULL_ERASE_OR_PARTITION_REWRITE=NO_UNLESS_SEPARATELY_AUTHORIZED
+```
+
+Immediately after flash, test only boot, pairing, polling, controls, Slate route selection, and absence of Tenclass/Xiaozhi activation fallback before any Gemini microphone test.
+
+## P2 — physical routing checks before private provider audio
+
+After an authorized flash, but before real microphone content is sent to Gemini:
+
+- device boots normally;
+- existing pairing/server address/device identity survive;
+- authenticated polling resumes;
+- double-tap ENTER opens Voice AI;
+- short ENTER starts/toggles the local voice flow;
+- microphone hardware/capture can be checked locally without forwarding retained real speech to Gemini;
+- no Tenclass/Xiaozhi activation code/control-panel request appears;
+- backend observes NOTE4 fetching Slate voice config and connecting to the authenticated Slate voice WebSocket;
+- no fallback to `api.tenclass.net` or other old vendor route occurs.
+
+Failure in boot/pairing/routing stops before private provider audio and uses the preserved firmware/backend rollback path.
+
+## P3 — real microphone/private Gemini E2E is another explicit human gate
+
+Do not send real user speech to Gemini merely because firmware flashing is authorized.
+
+Before P3, present the current Free Tier data-use fact to the human. The human must explicitly choose one of:
+
+```text
+A=AUTHORIZE_BOUNDED_REAL_MICROPHONE_TEST_ON_CURRENT_FREE_TIER_WITH_DATA_USE_ACKNOWLEDGED
+B=DO_NOT_SEND_PRIVATE_MICROPHONE_AUDIO_AND_STOP_AFTER_ROUTING_VALIDATION
+C=AUTHORIZE_SEPARATE_PAID_TIER/BILLING_MIGRATION_DECISION_BEFORE_PRIVATE_VOICE
+```
+
+Option C does not itself authorize billing changes; it opens a separate billing decision. Never enable billing automatically.
+
+If Option A is explicitly selected, run only a bounded physical matrix first:
+
+- one simple English voice turn;
+- one simple Japanese voice turn;
+- one interruption/barge-in check;
+- one controlled reconnect;
+- no Outlook payload;
+- Search off unless separately re-authorized for the physical test;
+- no external-state-writing tools or Calendar writes in the first private voice pass;
+- do not retain generated audio or raw provider payloads.
+
+Broader Search/tool/Calendar physical validation can follow only after the core private voice path passes and the relevant OAuth/write gates are separately satisfied.
+
+## P4 — terminal physical adjudication
+
+Publish exact outcomes for:
+
+```text
+PHYSICAL_FIRMWARE_FLASH=PASS|FAIL|NOT_RUN
+PAIRING_PRESERVED=YES|NO|NOT_RUN
+SLATE_VOICE_ROUTING_PHYSICAL=PASS|FAIL|NOT_RUN
+TENCLASS_ACTIVATION_PHYSICAL=ABSENT|PRESENT|NOT_RUN
+PRIVATE_MICROPHONE_PROVIDER_TEST=PASS|FAIL|NOT_RUN
+EN_VOICE_E2E=PASS|FAIL|NOT_RUN
+JP_VOICE_E2E=PASS|FAIL|NOT_RUN
+RECONNECT_PHYSICAL=PASS|FAIL|NOT_RUN
+FIRMWARE_ROLLBACK_REQUIRED=YES|NO
+PRODUCTION_BACKEND_ROLLBACK_REQUIRED=YES|NO
+```
+
+Any substantive source correction requires focused regression, exact ARM64/firmware requalification as applicable, and the currently required independent reviewer before another deployment/flash.
+
+## Boundaries
+
+No firmware write, no real/private microphone provider content, no billing/Vertex change, no credential replacement, no destructive device erase, no Calendar write, and no PR #2 merge are authorized by this proposal.
+
+`REPORT-PUSH-INVARIANT.md` remains binding. P0 zero-provider reconciliation/checkpoint pushes are not handoffs once a later activation authorizes P0; P1 and P3 remain separate explicit human decisions because they are physical-write and private-data boundaries.
