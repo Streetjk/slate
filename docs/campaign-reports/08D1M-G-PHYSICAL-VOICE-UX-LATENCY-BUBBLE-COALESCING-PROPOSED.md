@@ -1,0 +1,191 @@
+# Campaign 8D1M-G — PROPOSED Physical Voice UX Latency + Bubble Coalescing
+
+Date: 2026-09-05 (Australia/Perth)
+Repository: `Streetjk/slate`
+Branch: `feature/gemini-35-live-evaluation`
+PR: #2
+
+## Trigger
+
+Human physical NOTE4 observation after the reviewed Campaign 8 firmware app-only flash:
+
+```text
+PHYSICAL_VOICE_PATH=WORKS
+USER_REPORTED_LATENCY=VERY_LAGGY
+ASSISTANT_ONE_SENTENCE_RENDERING=MULTIPLE_BUBBLES
+```
+
+Treat this as a real physical UX defect, not as a provider-connectivity failure. The qualified Gemini 2.5 production backend remains healthy and must not be churned unnecessarily.
+
+## Source-level mechanism already established
+
+Current backend `XiaozhiVoiceSession.handleGeminiMessage()` forwards every non-empty Gemini `outputTranscription.text` event immediately as:
+
+```text
+{ type: 'tts', state: 'sentence_start', text: outputText }
+```
+
+Current firmware maps every incoming `kTtsSentenceStart` to `SetAssistantText(message.text)`.
+
+Current `SetAssistantText()` appends every non-empty text item as a new assistant message:
+
+```text
+snapshot_.messages.push_back({"assistant", text});
+```
+
+The Xiaozhi scene rebuilds the message UI whenever the message count/key changes, clearing and recreating all bubbles before a render/EPD update.
+
+Therefore the multiple-bubble behavior is structurally explained by per-fragment output-transcription events being treated as independent final assistant messages. The same pattern exists for input transcription / user text and must be assessed for equivalent fragmentation.
+
+The physical lag may have multiple contributors. Repeated transcript-driven UI/EPD work is a concrete candidate, but provider/network/audio timing must be measured rather than guessed.
+
+## Status
+
+```text
+DIRECTIVE_STATE=PROPOSED_NOT_AUTHORIZED
+SOURCE_CHANGE_AUTHORIZED=NO
+PRODUCTION_DEPLOYMENT_AUTHORIZED=NO
+FIRMWARE_FLASH_AUTHORIZED=NO
+NEW_PROVIDER_SESSION_AUTHORIZED=NO
+PRIVATE_DATA_CAPTURE_AUTHORIZED=NO
+PR2_MERGE_AUTHORIZED=NO
+```
+
+This proposal creates no mutation authority until later explicit human activation.
+
+## Proposed activation envelope
+
+A later explicit activation should authorize a long-running narrow UX repair through source correction, deterministic qualification and independent review, but stop before production deployment or firmware flash unless those actions are separately and explicitly included by the human.
+
+```text
+WORKER=LUNA_BOUNDED
+CONTROLLER=CODEX
+INDEPENDENT_REVIEWER=GROK_4_6_EXISTING_AUTHENTICATED_CLI
+SCOPE=VOICE_TRANSCRIPT_TURN_COALESCING_AND_LATENCY_INSTRUMENTATION_ONLY
+MODEL_CHANGE=NO
+CREDENTIAL_CHANGE=NO
+BILLING_OR_VERTEX_CHANGE=NO
+CALENDAR_OR_OUTLOOK_SEMANTICS_CHANGE=NO
+SEARCH_CHANGE=NO
+AUDIO_CODEC_CHANGE=NO_UNLESS_MEASURED_EVIDENCE_REQUIRES_NARROW_FIX
+PRODUCTION_DEPLOYMENT=NO
+FIRMWARE_FLASH=NO
+PROVIDER_CALLS=0_BY_DEFAULT
+PRIVATE_MICROPHONE_DATA=NO
+RAW_AUDIO_RETENTION=NO
+RAW_PROVIDER_PAYLOAD_RETENTION=NO
+PR2_MERGE=NO
+LONGRUN_DEFAULT=YES
+CHECKPOINT_PUSH_IS_NOT_A_STOP=YES
+```
+
+## U0 — establish deterministic turn/transcript semantics
+
+Without provider calls or private data:
+
+1. trace backend Gemini Live event handling -> Xiaozhi protocol -> firmware message handler -> snapshot -> scene render;
+2. prove with fixtures whether `inputTranscription` and `outputTranscription` events are deltas, cumulative fragments, or either under the adapter contract;
+3. reproduce one logical turn split across multiple transcription events;
+4. assert current behavior produces multiple message entries/bubbles;
+5. identify the authoritative finalization signal (`turnComplete`, generation-complete plus turn-complete, or existing protocol stop boundary) for committing a logical transcript message;
+6. preserve streaming audio independently of display transcript finalization.
+
+Do not infer concatenation rules without tests. Prevent duplicated text when providers emit cumulative transcription and prevent missing text when providers emit deltas.
+
+## U1 — narrow bubble coalescing correction
+
+Implement the smallest safe contract so one logical user turn and one logical assistant turn each produce one chat bubble.
+
+Preferred behavioral outcome:
+
+```text
+ONE_USER_TURN=ONE_USER_BUBBLE
+ONE_ASSISTANT_TURN=ONE_ASSISTANT_BUBBLE
+PARTIAL_TRANSCRIPTION_EVENT=NO_NEW_BUBBLE
+AUDIO_STREAMING=UNCHANGED
+TURN_COMPLETE=FINALIZE_ASSISTANT_DISPLAY_TEXT
+```
+
+Choose the exact boundary based on U0 evidence. It is acceptable to update one in-progress message internally, or buffer fragments and publish only finalized text, but do not create a new persistent bubble for every transcription fragment.
+
+Because NOTE4 uses e-ink, avoid redraw/refresh work for every partial transcript unless there is measured UX value. Prefer final-turn text rendering or a bounded single-bubble update strategy that does not repeatedly clean and rebuild the whole conversation list.
+
+Add focused backend + firmware/unit tests for fragmented/cumulative transcription, turn finalization, reconnect/abort cleanup, and EN/JP text.
+
+## U2 — latency instrumentation, zero private content
+
+Add temporary or test-only sanitized timing markers that contain timestamps/stage names only, never transcript text, audio, credentials, provider payloads or user data.
+
+Measure at least:
+
+```text
+T_DEVICE_LISTEN_START
+T_FIRST_DEVICE_AUDIO_SENT
+T_BACKEND_FIRST_AUDIO_RECEIVED
+T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN
+T_PROVIDER_FIRST_OUTPUT_EVENT
+T_PROVIDER_FIRST_AUDIO_EVENT
+T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE
+T_DEVICE_FIRST_AUDIO_PLAYBACK
+T_TRANSCRIPT_FINALIZED
+T_UI_RENDER_REQUEST
+T_EPD_REFRESH_COMPLETE_IF_AVAILABLE
+```
+
+Where an exact marker is not mechanically available, document the nearest observable boundary rather than inventing precision.
+
+Produce a latency budget separating:
+
+- device capture/frame buffering;
+- NOTE4 -> Orange Pi transport;
+- Gemini/provider response latency;
+- backend codec/protocol processing;
+- Orange Pi -> NOTE4 transport;
+- device decode/playback start;
+- UI/render/e-ink refresh overhead.
+
+First use deterministic fixtures/replays and synthetic timing hooks. Do not consume a new provider session merely for instrumentation under this proposal.
+
+## U3 — optimize only measured local bottlenecks
+
+Apply only reversible, narrow optimizations supported by U2 evidence. Likely candidates to evaluate include:
+
+- eliminating per-transcription-fragment `PostChanged()` / UI rebuilds;
+- avoiding full conversation-list clean/recreate when only the final bubble changes;
+- avoiding unnecessary e-ink refreshes while audio is streaming;
+- preserving the current audio packet path and codec unless timing proves it is material;
+- keeping the Gemini Live connection lifecycle/reconnect behavior unchanged unless measured setup latency is dominant and an existing-session optimization is safe.
+
+Do not trade away barge-in, reconnect, EN/JP, native audio, privacy or rollback behavior for a cosmetic speedup.
+
+## U4 — qualification + independent review
+
+Run focused backend/firmware tests, format/lint/typecheck, exact ESP-IDF 5.5.2 esp32s3 build, secret/diff checks, and any relevant provider-disabled ARM64 replay.
+
+Use the current routing override:
+
+```text
+WORKER=LUNA
+REVIEWER=GROK_4_6
+```
+
+Grok 4.6 must review the exact corrected source/artifacts. Fix P0/P1/P2 findings within the narrow UX scope, requalify and re-review without stopping for intermediate successful checkpoints.
+
+## Completion of this proposal
+
+Publish:
+
+```text
+MULTI_BUBBLE_ROOT_CAUSE=CONFIRMED|REVISED
+ONE_ASSISTANT_TURN_ONE_BUBBLE=PASS|FAIL
+ONE_USER_TURN_ONE_BUBBLE=PASS|FAIL
+EPD_PARTIAL_TRANSCRIPT_REFRESH_CHURN=REMOVED|RETAINED_WITH_REASON
+LATENCY_BUDGET=PUBLISHED
+MEASURED_LOCAL_LATENCY_IMPROVEMENT_MS=<value_or_not_measured>
+PROVIDER_BEHAVIOR_CHANGED=NO
+PRODUCTION_DEPLOYED=NO
+FIRMWARE_FLASHED=NO
+READY_FOR_DEPLOY_AND_PHYSICAL_RETEST=YES|NO
+```
+
+Stop only at the next genuine production/physical-write/private-data boundary after review PASS. `REPORT-PUSH-INVARIANT.md` remains binding. Keep PR #2 open/draft/unmerged.
