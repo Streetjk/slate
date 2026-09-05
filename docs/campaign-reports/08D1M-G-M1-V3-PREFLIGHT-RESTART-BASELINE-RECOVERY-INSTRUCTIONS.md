@@ -98,3 +98,64 @@ Codex must:
 No provider call, firmware flash, Docker-tree deletion, Deluge change, credential access, billing/Vertex/model change, or PR merge is authorized by this recovery step.
 
 After a V4 PASS, independently verify the NVMe Docker root and production health, publish M1 PASS, then continue the already-authorized M2 -> M3 -> M4 chain without another intermediate stop unless a genuinely new authority/safety boundary appears.
+
+## Recovery checkpoint — V4 restart-baseline correction ready
+
+Date: 2026-09-05 (Australia/Perth)
+
+The live original-root state was verified before correction:
+
+```text
+DOCKER_ROOT=/var/lib/docker
+DOCKER_DAEMON=active
+SLATE=running/healthy/restarts=2
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+ORIGINAL_ROOT_PRESENT=YES
+NVME_COPY_PRESENT=YES
+DISPOSABLE_CONTAINERS=0
+PROVIDER_CALLS=0
+FIRMWARE_FLASHED=NO
+```
+
+The exact V3 control-flow defect is confirmed in the installed source:
+
+```text
+26: slate_restart_expected=0
+27: mysql_restart_expected=0
+151: slate_restart_before=$(docker inspect slate-note4 --format '{{.RestartCount}}')
+152: mysql_restart_before=$(docker inspect slate-note4-mysql --format '{{.RestartCount}}')
+155: assert_production_health
+```
+
+V3 did not initialize the expected values from the captured live values before
+that assertion. A healthy Slate restart count of 2 therefore failed against
+the stale expected value 0. The observed failure was preflight-only; V3 did
+not stop Docker or switch roots.
+
+V4 is the only new script prepared for this correction:
+
+```text
+V3_SCRIPT=/home/pi/slate-m1-rootstep-v3-startup-wait.sh
+V3_SCRIPT_SHA256=ab130ebbd16fa2e4f028ffc5eb1e315b524dbf4c12f42449c44c3a1a0cbb801a
+V4_SCRIPT=/home/pi/slate-m1-rootstep-v4-restart-baseline.sh
+V4_SCRIPT_SHA256=25957f86d4c6e66854175aae6f26ea18124a5bb7eb725e931f36d3b13c32567f
+V4_LOCAL_BASH_N=PASS
+V4_LOCAL_NONROOT_FAIL_CLOSED=PASS class=NOT_ROOT
+V4_REMOTE_MODE=700
+V4_REMOTE_BASH_N=PASS
+V4_SECRET_SCAN=PASS
+```
+
+V4 sets `slate_restart_expected` and `mysql_restart_expected` from the live
+preflight captures before `assert_production_health`. It retains separate
+switched-root baselines captured after the NVMe daemon exposes the copied
+containers, rejects restart growth during the 180-second startup wait,
+preserves the V2/V3 content verification, and retains the 180-second
+rollback-health wait. No safety gate was weakened and no Docker tree is
+deleted.
+
+No provider call, firmware flash, Deluge change, credential/model/billing
+change or production deployment was performed. M1 remains pending the single
+manual V4 root-step execution.
