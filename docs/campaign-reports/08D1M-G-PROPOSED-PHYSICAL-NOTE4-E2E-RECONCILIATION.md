@@ -241,3 +241,73 @@ server address, identity, or device secret was read or modified during P0.
 
 P0 backend, firmware, partition, device, no-vendor, and rollback gates pass.
 The next authorized action is the exact candidate app-only write at `0x10000`.
+
+## Campaign 8D P1 flash and P2 routing checkpoint
+
+The explicitly authorized physical write was performed with the exact
+reconciled candidate app image. No full-flash erase, partition-table write,
+NVS write, LittleFS/storage write, pairing reset, credential read, or Gemini
+provider session occurred.
+
+```text
+CAMPAIGN=8D
+P1_STATUS=PASS
+FLASH_TOOL=esptool_v5.2.0
+FLASH_PORT=/dev/cu.usbmodem31201
+FLASH_TARGET=ESP32-S3_REV_V0.2
+FLASH_OFFSET=0x10000
+FLASH_APP_BYTES=2502096
+FLASH_APP_SHA256=95ddf7e41c3dbb3aafb7d983708ccf39c131d68a89eac7f000c48adb5e99c9d4
+FLASH_SOURCE_SHA=121622c3bd1d23587b4aadb3a079ec85d2052278
+FLASH_RESULT=PASS
+FLASH_DIGEST_VERIFY=PASS
+FULL_FLASH_ERASE=NO
+PARTITION_TABLE_WRITE=NO
+APP_REGION_SECTOR_ERASE_BY_WRITE=YES
+NVS_WRITE=NO
+LITTLEFS_WRITE=NO
+PAIRING_RESET=NO
+DEVICE_SECRET_READ=NO
+
+P2_DEVICE_BOOT=PASS_OBSERVED_APP_SYNC
+P2_SERIAL_EVIDENCE=SANITIZED_SYNC_START_AND_SYNC_DONE_OK_1
+P2_AUTHENTICATED_POLLING=PASS_SANITIZED_BACKEND_LOG_MATCHES_12
+P2_PAIRING_PRESERVED=YES_INFERRED_FROM_AUTHENTICATED_POLLING
+P2_SERVER_ADDRESS_PRESERVED=YES_INFERRED_FROM_AUTHENTICATED_POLLING
+P2_DEVICE_IDENTITY_PRESERVED=YES_NO_IDENTITY_RESET
+P2_SLATE_HEALTH=HEALTHY_RESTARTS_0
+P2_MYSQL_HEALTH=HEALTHY_RESTARTS_0
+P2_LOCAL_HEALTH_HTTP=200
+P2_PUBLIC_HEALTH_HTTP=200
+P2_VOICE_CONFIG_UNAUTH_HTTP=401
+P2_VOICE_WEBSOCKET_UNAUTH=REJECTED_HTTP_400
+P2_LEGACY_OTA_HTTP=404
+P2_LEGACY_ACTIVATION_LOG_MATCHES=0
+P2_FIRMWARE_SOURCE_VENDOR_TEST=PASS
+P2_PRIVATE_MICROPHONE_TO_GEMINI=NO
+P2_PROVIDER_SESSIONS=0
+
+P2_PHYSICAL_DOUBLE_TAP_ENTER=NOT_OBSERVED_NO_SAFE_HARDWARE_ACTUATOR
+P2_PHYSICAL_SHORT_ENTER=NOT_OBSERVED_NO_SAFE_HARDWARE_ACTUATOR
+P2_VOICE_CONFIG_FETCH=NOT_OBSERVED_BUTTON_GATE
+P2_AUTHENTICATED_VOICE_WEBSOCKET=NOT_OBSERVED_BUTTON_GATE
+P2_LOCAL_MIC_CAPTURE=NOT_RUN
+TENCLASS_ACTIVATION_PHYSICAL=NOT_OBSERVED
+FIRMWARE_ROLLBACK_REQUIRED=NO
+PRODUCTION_BACKEND_ROLLBACK_REQUIRED=NO
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+BILLING_ENABLED=NO
+VERTEX_ENABLED=NO
+PR2_MERGED=NO
+```
+
+The app-only write and digest verification succeeded. The device subsequently
+produced normal Slate synchronization with `ok=1`; authenticated polling
+continued, so the existing pairing, server address, and device identity were
+not reset. Backend route and log checks found no vendor activation fallback.
+The connected USB serial/JTAG interface provides no safe actuator for the
+physical ENTER button, and no button event was observed spontaneously. Thus
+the literal double-tap/short-press and resulting authenticated voice-session
+checks remain a genuine physical-observation boundary. No private microphone
+or provider test was attempted.
