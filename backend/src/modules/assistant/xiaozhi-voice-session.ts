@@ -287,12 +287,12 @@ function toBuffer(data: RawData): Buffer {
 }
 
 export function mergeTranscriptFragment(previous: string, incoming: string): string {
+  const current = previous.trim();
   const next = incoming.trim();
-  const current = previous.trimEnd();
   if (!current) return next;
   if (!next || next === current || current.endsWith(next)) return current;
   if (next.startsWith(current)) return next;
-  return current + next;
+  return `${previous}${incoming}`.trim();
 }
 
 class VoiceTimingTrace {

@@ -147,6 +147,7 @@ describe('XiaozhiVoiceSession', () => {
     expect(mergeTranscriptFragment('', '  Hello')).toBe('Hello');
     expect(mergeTranscriptFragment('Hello', 'Hello world')).toBe('Hello world');
     expect(mergeTranscriptFragment('Hel', 'lo')).toBe('Hello');
+    expect(mergeTranscriptFragment('Hello', ' world')).toBe('Hello world');
     expect(mergeTranscriptFragment('こんにちは', 'にちは')).toBe('こんにちは');
   });
 

@@ -329,3 +329,27 @@ device were untouched.
 READY_FOR_EXACT_GROK_REVIEW=YES
 READY_FOR_DEPLOY_AND_PHYSICAL_RETEST=NO_GROK_REVIEW_PENDING
 ```
+
+## U4-A — bounded whitespace-preservation correction
+
+The pre-review self-audit found that trimming each fragment before merging
+could remove a provider-supplied leading space at a valid delta boundary
+(for example, `Hello` followed by ` world`). The merge helper now compares
+trimmed views for cumulative/duplicate detection but preserves the original
+fragment boundary when concatenating deltas, with final display trimming only
+at turn flush. This is within the authorized transcript-coalescing scope.
+
+```text
+CORRECTION_SCOPE=TRANSCRIPT_FRAGMENT_MERGE_ONLY
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+FIRMWARE_FLASHED=NO
+FOCUSED_REQUALIFICATION=10_PASS_0_FAIL
+TYPECHECK=PASS
+LINT=PASS
+GROK_REVIEW_OF_PREVIOUS_SHA=DISCARDED_BEFORE_VERDICT
+ARM64_IMAGE_REBUILD=REQUIRED
+```
+
+The previously built ARM64 image was not treated as qualified for this
+corrected source and will be rebuilt and re-run before the exact Grok review.
