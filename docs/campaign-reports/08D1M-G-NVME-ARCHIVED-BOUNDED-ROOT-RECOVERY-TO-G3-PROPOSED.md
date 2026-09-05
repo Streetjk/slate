@@ -261,3 +261,45 @@ NEXT_ACTION=RUN_S2_EXACT_CANDIDATE_LOAD_AND_PRE_G3_GATE
 Cleanup stopped at the target; no broad prune, volume deletion, root/data-root
 migration, package-cache deletion, journal deletion, or production image
 deletion was performed.
+
+## S2 exact candidate load and pre-G3 gate — PASS
+
+The first uninstrumented image stream returned without an observable tag and
+left two exact load pipelines running after their launcher sessions ended.
+Those recorded stream PIDs were terminated without touching the production
+daemon. A single instrumented exact-image stream then completed; the loaded
+transport image was verified against the local reviewed candidate by ARM64/OS
+metadata and matching rootfs-layer and image-config fingerprints.
+
+```text
+CAMPAIGN=8D1M-G
+STATUS=S2_PASS_READY_FOR_EXISTING_CONDITIONAL_G3
+SOURCE_SHA=5ec18386e8853d61ca0a77785fcac624b218ca39
+AUTHORIZED_CANDIDATE_IMAGE_ID=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+PRODUCTION_TRANSPORT_IMAGE_ID=sha256:5ef126ff62ccf466c0795c1c76b4bdf0a7b9657184eab1f09b7435deeedbab6d
+IMAGE_ARCH=arm64
+IMAGE_OS=linux
+IMAGE_ROOTFS_LAYER_FINGERPRINT=e96f58948c4487b17af31dac139c88fea7deb16c53efcdd841c1952e0ec43367
+IMAGE_CONFIG_FINGERPRINT=784da5f9a9a4e23ce5c60be77de566138b95d02721b3467c172309b8ce178c55
+IMAGE_FINGERPRINT_MATCH=YES
+INITIAL_STREAM=INCOMPLETE_TAG_UNOBSERVED
+INSTRUMENTED_STREAM=PASS
+LOAD_STREAM_CLEANUP=PASS
+PRODUCTION_ROOT_FREE_AFTER_LOAD_BYTES=1428484096
+ROLLBACK_IMAGE_PRESENT=YES
+CURRENT_PRODUCTION_IMAGE_UNCHANGED=YES
+PRODUCTION_SLATE=HEALTHY_RESTARTS_0
+PRODUCTION_MYSQL=HEALTHY_RESTARTS_0
+PRODUCTION_HEALTH_HTTP=200
+PRODUCTION_CHANGED=NO
+PRODUCTION_RESTARTED=NO
+NEW_PROVIDER_SESSIONS_USED=1_OF_2
+G3_PROVIDER_SESSION=1_CONDITIONAL_REMAINING
+PROTECTED_SECRET_METADATA=PASS_NO_VALUE_READ
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+NEXT_ACTION=CONTINUE_DIRECTLY_TO_NARROW_C3_PRODUCTION_SWAP_AND_G3
+```
+
+No credential was mounted or read during S2. The production image swap and
+the one remaining G3 provider session remain the already-authorized next
+stage; no additional provider budget was created.
