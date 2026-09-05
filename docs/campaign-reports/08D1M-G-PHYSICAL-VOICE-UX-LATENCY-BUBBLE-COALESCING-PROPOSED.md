@@ -301,3 +301,31 @@ The four full-regression failures and five errors match the pre-existing
 Nest/Bun decorator baseline recorded by the repository; no unrelated repair
 was made. Exact independent Grok 4.6 review remains the next authorized
 stage.
+
+## U4 — ARM64 provider-disabled qualification checkpoint
+
+```text
+SOURCE_SHA=931103bb96e05f38ebfbf4b4c10f3ebd932fb201
+ARM64_IMAGE_ID=sha256:97fe79b0cfce5d7b6b17eef67395c9890a7ab7af1443e375f53a3c016fcb7f8b
+ARM64_IMAGE_PLATFORM=linux/arm64
+ARM64_DOCKER_BUILD=PASS
+ARM64_NODE_LIVE_SDK_LOAD=PASS
+ARM64_NETWORK=NONE
+ARM64_PROVIDER_CALLS=0
+ARM64_FULL_ADAPTER_MOCK_E2E=6_PASS_0_FAIL
+ARM64_XIAOZHI_COALESCING_TESTS=10_PASS_0_FAIL
+ARM64_CREDENTIAL=NOT_MOUNTED
+ARM64_AUDIO=NOT_CAPTURED_OR_RETAINED
+```
+
+The image was built from the exact Dockerfile and source commit with `.env`,
+firmware, build output, and runtime data excluded by the existing build
+context. The test run used only a disposable tmpfs synthetic test file for
+the provider-disabled credential seam; it did not mount or read any Gemini
+credential. The production daemon, image store, network, backend, MySQL, and
+device were untouched.
+
+```text
+READY_FOR_EXACT_GROK_REVIEW=YES
+READY_FOR_DEPLOY_AND_PHYSICAL_RETEST=NO_GROK_REVIEW_PENDING
+```
