@@ -14,6 +14,7 @@
 #include "scenes/core/scene_stack.h"
 #include "scenes/settings/settings_scene.h"
 #include "ui/theme.h"
+#include "utils/timing_trace.h"
 #include "utils/utf8_utils.h"
 #include "xiaozhi/service/xiaozhi_service.h"
 
@@ -105,7 +106,6 @@ std::string StatusTitle(const xiaozhi::XiaozhiSnapshot& snap) {
         case xiaozhi::XiaozhiState::kConnecting:
         case xiaozhi::XiaozhiState::kStopping:
         case xiaozhi::XiaozhiState::kCheckingConfig:
-        case xiaozhi::XiaozhiState::kAwaitingActivation:
         case xiaozhi::XiaozhiState::kError:
             return snap.status.empty() ? "Voice AI" : snap.status;
     }
@@ -354,6 +354,7 @@ void XiaozhiScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
 void XiaozhiScene::Render(SceneContext& ctx, bool full) {
     if (!root_)
         return;
+    SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
     SyncRender(ctx, [this]() { RenderContent(); }, full);
 }
 
@@ -387,11 +388,6 @@ void XiaozhiScene::RenderContent() {
         switch (snap.state) {
             case xiaozhi::XiaozhiState::kCheckingConfig:
                 RenderSystemMessage("Loading voice configuration...", false, "");
-                break;
-            case xiaozhi::XiaozhiState::kAwaitingActivation:
-                RenderSystemMessage(
-                    snap.activation_message.empty() ? "Enter the activation code in the voice console" : DisplayText(snap.activation_message),
-                    true, snap.activation_code);
                 break;
             case xiaozhi::XiaozhiState::kReadyIdle:
                 lv_obj_clear_flag(standby_icon_label_, LV_OBJ_FLAG_HIDDEN);

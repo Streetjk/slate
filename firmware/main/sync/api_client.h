@@ -7,6 +7,7 @@
 //   POST /api/v1/devices/current/poll
 //   POST /api/v1/devices/current/group/next|prev
 //   PUT  /api/v1/devices/current/group
+//   GET  /api/v1/devices/current/voice/config
 //   GET  /api/v1/groups/:gid/manifest
 //   GET  /api/v1/contents/:contentId/image|audio
 
@@ -61,6 +62,11 @@ struct RegisterResult {
     std::string pair_code;
 };
 
+struct VoiceConfig {
+    std::string websocket_path;
+    int32_t     version = 0;
+};
+
 struct Manifest {
     std::string              group_id;
     std::string              group_name;
@@ -96,6 +102,7 @@ class ApiClient {
     void ResetConnection();
 
     bool Register(RegisterResult& out);
+    bool GetVoiceConfig(VoiceConfig& out);
     bool Poll(const Telemetry& tel, DeviceState& out);
     bool CycleGroup(const std::string& direction, DeviceState& out);
     bool SelectGroup(const std::string& gid, DeviceState& out);
@@ -146,6 +153,7 @@ void SetUnauthorizedHandler(UnauthorizedCb cb);
 void ResetConnection();
 
 bool Register(RegisterResult& out);
+bool GetVoiceConfig(VoiceConfig& out);
 bool Poll(const Telemetry& tel, DeviceState& out);
 bool CycleGroup(const std::string& direction, DeviceState& out);
 bool SelectGroup(const std::string& gid, DeviceState& out);

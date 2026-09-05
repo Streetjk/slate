@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import type { LiveServerMessage, Session } from '@google/genai';
 import { GeminiLiveService } from './gemini-live.service';
-import type { GeminiConfig } from './gemini.config';
-import type { GeminiClient } from './gemini.client';
+import { DEVELOPER_API_LIVE_MODEL, type GeminiConfig } from './gemini.config';
+import { GeminiCredentialError, type GeminiClient } from './gemini.client';
+import type { NodeGeminiLiveBridgeFactory } from './gemini-live-node-bridge';
 
 function config(): GeminiConfig {
   return {
@@ -11,11 +12,73 @@ function config(): GeminiConfig {
     textModel: 'gemini-3.7-flash',
     liveModel: 'gemini-live-2.5-flash-native-audio',
     liveConnectTimeoutMs: 15_000,
+    authMode: 'vertex_adc',
+    apiKeyFile: undefined,
+    clientOptions: () => ({
+      vertexai: true,
+      project: 'test-project',
+      location: 'australia-southeast1',
+    }),
+    configurationErrorMessage: () =>
+      'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode',
     isConfigured: () => true,
   } as GeminiConfig;
 }
 
 describe('GeminiLiveService', () => {
+  it('routes only explicitly selected Live sessions through the Node bridge', async () => {
+    const bridgeCalls: unknown[] = [];
+    const bridgeConnection = {
+      sendAudio: () => undefined,
+      sendText: () => undefined,
+      endAudio: () => undefined,
+      respondToToolCalls: () => undefined,
+      rejectToolCalls: () => undefined,
+      reconnect: async () => undefined,
+      close: () => undefined,
+    };
+    const bridgeFactory: NodeGeminiLiveBridgeFactory = (() => ({
+      connect: async (...args: unknown[]) => {
+        bridgeCalls.push(args);
+        return bridgeConnection;
+      },
+    })) as never;
+    const nodeConfig = {
+      ...config(),
+      liveRuntime: 'node_bridge',
+      liveModel: DEVELOPER_API_LIVE_MODEL,
+      authMode: 'developer_api_key',
+      developerApiKeyEnabled: true,
+      nodeBridgeOptions: () => ({
+        executable: 'node',
+        script: './bridge.mjs',
+        authMode: 'developer_api_key' as const,
+        apiKeyFile: '/run/secrets/gemini_api_key',
+      }),
+    } as GeminiConfig;
+
+    const service = new GeminiLiveService(
+      nodeConfig,
+      () => {
+        throw new Error('Bun client must not be selected');
+      },
+      bridgeFactory
+    );
+    const connection = await service.connect('ja', () => undefined, undefined, false);
+
+    expect(connection).toBe(bridgeConnection);
+    expect(bridgeCalls).toHaveLength(1);
+    expect(bridgeCalls[0]).toEqual([
+      'ja',
+      expect.any(Function),
+      expect.any(Function),
+      DEVELOPER_API_LIVE_MODEL,
+      expect.stringContaining('Slate assistant'),
+      15_000,
+      false,
+    ]);
+  });
+
   it('configures the approved live model and manages PCM session lifecycle', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const clientOptions: Record<string, unknown>[] = [];
@@ -29,6 +92,7 @@ describe('GeminiLiveService', () => {
         closed = true;
       },
     } as unknown as Session;
+    const errors: Error[] = [];
     const client = {
       live: {
         connect: async (parameters: Record<string, unknown>) => {
@@ -45,10 +109,16 @@ describe('GeminiLiveService', () => {
     } as unknown as GeminiClient;
     const service = new GeminiLiveService(config(), () => client);
 
-    const connection = await service.connect('ja', ({ message }) => events.push(message));
+    const connection = await service.connect(
+      'ja',
+      ({ message }) => events.push(message),
+      (error) => errors.push(error)
+    );
     connection.sendAudio(new Uint8Array([1, 2, 3]));
     connection.sendText('こんにちは');
     connection.endAudio();
+    (clientOptions[0]?.callbacks as { onclose: () => void }).onclose();
+    expect(errors).toEqual([new Error('Gemini Live session closed')]);
     await connection.reconnect();
     connection.close();
 
@@ -77,6 +147,53 @@ describe('GeminiLiveService', () => {
     expect(closed).toBe(true);
   });
 
+  it('does not let a stale provider close clear a newly reconnected session', async () => {
+    const callbacks: Array<{ onclose: () => void }> = [];
+    const sentTexts: string[] = [];
+    const sessions = [
+      {
+        sendRealtimeInput: () => {},
+        sendClientContent: (input: { turns: Array<{ parts: Array<{ text: string }> }> }) =>
+          sentTexts.push(input.turns[0]?.parts[0]?.text ?? ''),
+        sendToolResponse: () => {},
+        close: () => {},
+      },
+      {
+        sendRealtimeInput: () => {},
+        sendClientContent: (input: { turns: Array<{ parts: Array<{ text: string }> }> }) =>
+          sentTexts.push(input.turns[0]?.parts[0]?.text ?? ''),
+        sendToolResponse: () => {},
+        close: () => {},
+      },
+    ] as unknown as Session[];
+    let connectionCount = 0;
+    const errors: Error[] = [];
+    const client = {
+      live: {
+        connect: async (parameters: Record<string, unknown>) => {
+          callbacks.push(parameters.callbacks as { onclose: () => void });
+          return sessions[connectionCount++];
+        },
+      },
+      models: {},
+    } as unknown as GeminiClient;
+    const service = new GeminiLiveService(config(), () => client);
+    const connection = await service.connect(
+      'en',
+      () => {},
+      (error) => errors.push(error)
+    );
+
+    await connection.reconnect();
+    callbacks[0]?.onclose();
+    connection.sendText('still connected');
+    expect(sentTexts).toEqual(['still connected']);
+    expect(errors).toEqual([]);
+
+    callbacks[1]?.onclose();
+    expect(errors).toEqual([new Error('Gemini Live session closed')]);
+  });
+
   it('fails closed when OAuth/ADC configuration is missing', async () => {
     const service = new GeminiLiveService(
       { ...config(), project: undefined, isConfigured: () => false } as GeminiConfig,
@@ -86,6 +203,80 @@ describe('GeminiLiveService', () => {
     );
 
     await expect(service.connect('en', () => {})).rejects.toThrow('GOOGLE_CLOUD_PROJECT');
+  });
+
+  it('uses the explicitly selected Developer API runtime options without changing Live semantics', async () => {
+    const clientOptions: Record<string, unknown>[] = [];
+    const session = {
+      sendRealtimeInput: () => {},
+      sendClientContent: () => {},
+      sendToolResponse: () => {},
+      close: () => {},
+    } as unknown as Session;
+    const service = new GeminiLiveService(
+      {
+        ...config(),
+        project: undefined,
+        location: undefined,
+        authMode: 'developer_api_key',
+        apiKeyFile: '/run/secrets/gemini_api_key',
+        clientOptions: () => ({ apiKeyFile: '/run/secrets/gemini_api_key' }),
+      } as GeminiConfig,
+      (options) => {
+        clientOptions.push(options);
+        return {
+          models: {},
+          live: { connect: async () => session },
+        } as unknown as GeminiClient;
+      }
+    );
+
+    await service.connect('en', () => {});
+
+    expect(clientOptions).toEqual([{ apiKeyFile: '/run/secrets/gemini_api_key' }]);
+    expect(JSON.stringify(clientOptions)).not.toContain('synthetic');
+  });
+
+  it('maps credential initialization failures to a generic configuration error', async () => {
+    const service = new GeminiLiveService(config(), () => {
+      throw new GeminiCredentialError('synthetic-secret-value');
+    });
+
+    await expect(service.connect('en', () => {})).rejects.toMatchObject({
+      name: 'GeminiConfigurationError',
+      message: 'Gemini runtime client could not be initialized',
+    });
+  });
+
+  it('redacts provider details before invoking the device-facing error callback', async () => {
+    let providerError: ((event: unknown) => void) | undefined;
+    const clientOptions: Record<string, unknown>[] = [];
+    const session = { close: () => {} } as unknown as Session;
+    const service = new GeminiLiveService(config(), (options) => {
+      clientOptions.push(options);
+      return {
+        models: {},
+        live: {
+          connect: async (parameters: Record<string, unknown>) => {
+            providerError = (parameters.callbacks as { onerror: (event: unknown) => void }).onerror;
+            return session;
+          },
+        },
+      } as unknown as GeminiClient;
+    });
+    const errors: Error[] = [];
+
+    await service.connect(
+      'en',
+      () => {},
+      (error) => errors.push(error)
+    );
+    providerError?.(new Error('provider detail synthetic-secret-value'));
+
+    expect(clientOptions).toHaveLength(1);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.message).toBe('Gemini Live connection error');
+    expect(errors[0]?.message).not.toContain('synthetic-secret-value');
   });
 
   it('aborts a connection that exceeds the configured timeout', async () => {

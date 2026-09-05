@@ -66,6 +66,18 @@ export const EnvSchema = z.object({
   TTS_DEFAULT_VOICE: TtsVoice.default(DEFAULT_TTS_VOICE),
   GOOGLE_CLOUD_PROJECT: OptionalEnv(z.string().min(1)),
   GOOGLE_CLOUD_LOCATION: OptionalEnv(z.string().min(1)),
+  GOOGLE_APPLICATION_CREDENTIALS: OptionalEnv(z.string().min(1)),
+  GEMINI_AUTH_MODE: z.enum(['vertex_adc', 'developer_api_key']).default('vertex_adc'),
+  GEMINI_API_KEY_FILE: OptionalEnv(z.string().min(1)),
+  GEMINI_DEVELOPER_API_KEY_ENABLED: BooleanEnv.default(false),
+  GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: BooleanEnv.default(false),
+  GEMINI_LIVE_RUNTIME: z.enum(['bun_sdk', 'node_bridge']).default('bun_sdk'),
+  GEMINI_NODE_EXECUTABLE: z.string().trim().min(1).default('node'),
+  GEMINI_NODE_BRIDGE_SCRIPT: z
+    .string()
+    .trim()
+    .min(1)
+    .default('./src/modules/assistant/gemini-live-node-bridge-runtime.mjs'),
   GEMINI_TEXT_MODEL: z.string().min(1).default('gemini-3.7-flash'),
   GEMINI_LIVE_MODEL: z.string().min(1).default('gemini-live-2.5-flash-native-audio'),
   GEMINI_LIVE_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(15_000),

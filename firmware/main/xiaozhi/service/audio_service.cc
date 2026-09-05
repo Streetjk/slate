@@ -15,6 +15,7 @@
 
 #include "drivers/audio/audio_player.h"
 #include "utils/time_utils.h"
+#include "utils/timing_trace.h"
 
 namespace {
 constexpr char kTag[]            = "xiaozhi_audio";
@@ -246,6 +247,8 @@ bool AudioService::Begin() {
         return false;
     active_.store(true, std::memory_order_relaxed);
     voice_processing_.store(false, std::memory_order_relaxed);
+    first_playback_timing_emitted_.store(false, std::memory_order_relaxed);
+    first_audio_timing_emitted_.store(false, std::memory_order_relaxed);
     return true;
 }
 
@@ -296,6 +299,9 @@ std::unique_ptr<AudioStreamPacket> AudioService::PopPacketFromSendQueue() {
     send_queue_.pop_front();
     AUDIO_DIAG(diag_.send_pop_count.fetch_add(1, std::memory_order_relaxed));
     AUDIO_DIAG(diag_.last_send_pop_ms.store(time_utils::NowMs(), std::memory_order_relaxed));
+    bool expected = false;
+    if (first_audio_timing_emitted_.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+        SLATE_TIMING_LOG(kTag, "T_FIRST_DEVICE_AUDIO_SENT");
     if (decode_notify_)
         xSemaphoreGive(decode_notify_);
     return packet;
@@ -428,6 +434,9 @@ void AudioService::OutputTask() {
             continue;
 
         playback_active_.store(true, std::memory_order_relaxed);
+        bool expected = false;
+        if (first_playback_timing_emitted_.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+            SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK");
         player_->WriteXiaozhiPcm(task->pcm.data(), task->pcm.size());
         AUDIO_DIAG(diag_.playback_write_count.fetch_add(1, std::memory_order_relaxed));
         playback_active_.store(false, std::memory_order_relaxed);

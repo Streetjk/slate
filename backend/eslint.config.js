@@ -4,7 +4,17 @@ import globals from 'globals';
 import prettierConfig from 'eslint-config-prettier';
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'eslint.config.js', 'prisma.config.ts', 'prisma/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'eslint.config.js',
+      'prisma.config.ts',
+      'prisma/**',
+      'src/modules/assistant/gemini-live-node-bridge-runtime.mjs',
+      'src/modules/assistant/gemini-live-node-bridge-session.mjs',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

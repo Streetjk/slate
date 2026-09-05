@@ -1,0 +1,201 @@
+import type { VoiceLanguageT } from 'shared';
+
+export const GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION = 1 as const;
+export const GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES = 2 * 1024 * 1024;
+
+export const GEMINI_LIVE_FAILURE_STAGES = [
+  'CONFIG_REJECTED_BEFORE_CHILD',
+  'CHILD_SPAWN_FAILED',
+  'BRIDGE_CREDENTIAL_UNAVAILABLE',
+  'BRIDGE_PROTOCOL_REJECTED',
+  'PROVIDER_CONNECT_FAILED_BEFORE_READY',
+  'READY_THEN_PROVIDER_ERROR',
+  'READY_THEN_TEXT_SEND_ERROR',
+  'SESSION_CLOSED_UNEXPECTEDLY',
+  'CONNECT_TIMEOUT',
+  'UNKNOWN_SAFE_FAILURE',
+] as const;
+
+export type GeminiLiveFailureStage = (typeof GEMINI_LIVE_FAILURE_STAGES)[number];
+
+export class GeminiLiveBridgeFailure extends Error {
+  constructor(
+    readonly failureStage: GeminiLiveFailureStage,
+    message: string
+  ) {
+    super(message);
+    this.name = 'GeminiLiveBridgeFailure';
+  }
+}
+
+export type GeminiLiveBridgeOpen = {
+  type: 'open';
+  version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+  epoch: number;
+  model: string;
+  language: VoiceLanguageT;
+  systemInstruction: string;
+  connectTimeoutMs: number;
+  enableWebSearch: boolean;
+  tools: unknown[];
+};
+
+export type GeminiLiveBridgeRequest =
+  | GeminiLiveBridgeOpen
+  | { type: 'audio'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; data: string }
+  | { type: 'text'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; text: string }
+  | { type: 'audio_end'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION }
+  | {
+      type: 'tool_response';
+      version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+      calls: Array<{ id: string; name: string; response: Record<string, unknown> }>;
+    }
+  | { type: 'reconnect'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number }
+  | { type: 'close'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number };
+
+export type GeminiLiveBridgeResponse =
+  | { type: 'ready'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number }
+  | {
+      type: 'server_message';
+      version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+      epoch: number;
+      message: unknown;
+    }
+  | {
+      type: 'error';
+      version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION;
+      epoch: number;
+      code: GeminiLiveBridgeErrorCode;
+    }
+  | { type: 'closed'; version: typeof GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION; epoch: number };
+
+export type GeminiLiveBridgeErrorCode =
+  | 'BRIDGE_NOT_READY'
+  | 'BRIDGE_ALREADY_OPEN'
+  | 'BRIDGE_RUNTIME_UNAVAILABLE'
+  | 'BRIDGE_CREDENTIAL_UNAVAILABLE'
+  | 'BRIDGE_PROVIDER_CONNECTION_FAILED'
+  | 'BRIDGE_PROVIDER_ERROR'
+  | 'BRIDGE_PROTOCOL_REJECTED'
+  | 'BRIDGE_SHUTDOWN';
+
+export class GeminiLiveBridgeProtocolError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GeminiLiveBridgeProtocolError';
+  }
+}
+
+export function encodeGeminiLiveBridgeFrame(frame: GeminiLiveBridgeRequest): string {
+  const encoded = `${JSON.stringify(frame)}\n`;
+  if (Buffer.byteLength(encoded, 'utf8') > GEMINI_LIVE_BRIDGE_MAX_FRAME_BYTES) {
+    throw new GeminiLiveBridgeProtocolError('bridge frame is too large');
+  }
+  return encoded;
+}
+
+export function parseGeminiLiveBridgeResponse(line: string): GeminiLiveBridgeResponse {
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    throw new GeminiLiveBridgeProtocolError('bridge response was not valid JSON');
+  }
+
+  if (!isRecord(value) || value.version !== GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION) {
+    throw new GeminiLiveBridgeProtocolError('bridge response version is unsupported');
+  }
+  if (typeof value.type !== 'string') {
+    throw new GeminiLiveBridgeProtocolError('bridge response type is missing');
+  }
+
+  switch (value.type) {
+    case 'ready':
+    case 'closed':
+      assertOnlyKeys(value, ['type', 'version', 'epoch']);
+      assertResponseEpoch(value);
+      return value as GeminiLiveBridgeResponse;
+    case 'server_message':
+      assertOnlyKeys(value, ['type', 'version', 'epoch', 'message']);
+      assertResponseEpoch(value);
+      if (!('message' in value))
+        throw new GeminiLiveBridgeProtocolError('server message is missing');
+      return value as GeminiLiveBridgeResponse;
+    case 'error':
+      assertOnlyKeys(value, ['type', 'version', 'epoch', 'code']);
+      assertResponseEpoch(value);
+      if (!isBridgeErrorCode(value.code)) {
+        throw new GeminiLiveBridgeProtocolError('bridge error code is unsupported');
+      }
+      return value as GeminiLiveBridgeResponse;
+    default:
+      throw new GeminiLiveBridgeProtocolError('bridge response type is unsupported');
+  }
+}
+
+export function assertGeminiLiveBridgeOpen(value: unknown): asserts value is GeminiLiveBridgeOpen {
+  if (!isRecord(value)) throw new GeminiLiveBridgeProtocolError('open frame must be an object');
+  assertOnlyKeys(value, [
+    'type',
+    'version',
+    'epoch',
+    'model',
+    'language',
+    'systemInstruction',
+    'connectTimeoutMs',
+    'enableWebSearch',
+    'tools',
+  ]);
+  const epoch = value.epoch;
+  if (
+    value.type !== 'open' ||
+    value.version !== GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION ||
+    typeof epoch !== 'number' ||
+    !Number.isInteger(epoch) ||
+    epoch <= 0 ||
+    typeof value.model !== 'string' ||
+    value.model.length === 0 ||
+    (value.language !== 'en' && value.language !== 'ja') ||
+    typeof value.systemInstruction !== 'string' ||
+    typeof value.connectTimeoutMs !== 'number' ||
+    !Number.isInteger(value.connectTimeoutMs) ||
+    value.connectTimeoutMs <= 0 ||
+    typeof value.enableWebSearch !== 'boolean' ||
+    !Array.isArray(value.tools)
+  ) {
+    throw new GeminiLiveBridgeProtocolError('open frame is invalid');
+  }
+}
+
+function isBridgeErrorCode(value: unknown): value is GeminiLiveBridgeErrorCode {
+  return (
+    typeof value === 'string' &&
+    [
+      'BRIDGE_NOT_READY',
+      'BRIDGE_ALREADY_OPEN',
+      'BRIDGE_RUNTIME_UNAVAILABLE',
+      'BRIDGE_CREDENTIAL_UNAVAILABLE',
+      'BRIDGE_PROVIDER_CONNECTION_FAILED',
+      'BRIDGE_PROVIDER_ERROR',
+      'BRIDGE_PROTOCOL_REJECTED',
+      'BRIDGE_SHUTDOWN',
+    ].includes(value)
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function assertOnlyKeys(value: Record<string, unknown>, keys: string[]): void {
+  const allowed = new Set(keys);
+  if (Object.keys(value).some((key) => !allowed.has(key))) {
+    throw new GeminiLiveBridgeProtocolError('bridge frame contains an unknown field');
+  }
+}
+
+function assertResponseEpoch(value: Record<string, unknown>): void {
+  if (!Number.isInteger(value.epoch) || (value.epoch as number) < 0) {
+    throw new GeminiLiveBridgeProtocolError('bridge response epoch is invalid');
+  }
+}

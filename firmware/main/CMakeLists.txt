@@ -49,7 +49,7 @@ set(SOURCES
     "sync/sync_manifest.cc"
     "sync/sync_poll.cc"
 
-    "xiaozhi/config/activation_client.cc"
+    "xiaozhi/config/slate_voice_config_client.cc"
     "xiaozhi/config/settings.cc"
     "xiaozhi/mcp/mcp_dispatcher.cc"
     "xiaozhi/mcp/mcp_tools.cc"

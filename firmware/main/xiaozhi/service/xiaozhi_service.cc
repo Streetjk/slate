@@ -9,10 +9,11 @@
 #include "drivers/audio/audio_player.h"
 #include "events/event_bus.h"
 #include "storage/nvs/volume_store.h"
-#include "xiaozhi/config/activation_client.h"
+#include "xiaozhi/config/slate_voice_config_client.h"
 #include "xiaozhi/config/settings.h"
 #include "xiaozhi/service/audio_service.h"
 #include "xiaozhi/service/message_handler.h"
+#include "utils/timing_trace.h"
 #include "xiaozhi/service/xiaozhi_phase.h"
 
 namespace {
@@ -22,8 +23,6 @@ const char* XiaozhiStateName(xiaozhi::XiaozhiState state) {
     switch (state) {
         case xiaozhi::XiaozhiState::kCheckingConfig:
             return "checking_config";
-        case xiaozhi::XiaozhiState::kAwaitingActivation:
-            return "awaiting_activation";
         case xiaozhi::XiaozhiState::kReadyIdle:
             return "ready_idle";
         case xiaozhi::XiaozhiState::kConnecting:
@@ -54,6 +53,20 @@ const char* XiaozhiPhaseName(xiaozhi::XiaozhiPhase phase) {
             return "start_pending";
     }
     return "unknown";
+}
+
+std::string MergeTranscriptFragment(const std::string& previous, const std::string& incoming) {
+    if (previous.empty())
+        return incoming;
+    if (incoming.empty() || incoming == previous)
+        return previous;
+    if (incoming.rfind(previous, 0) == 0)
+        return incoming;
+    if (previous.size() >= incoming.size() &&
+        previous.compare(previous.size() - incoming.size(), incoming.size(), incoming) == 0)
+        return previous;
+
+    return previous + incoming;
 }
 }  // namespace
 
@@ -159,7 +172,6 @@ void XiaozhiService::ToggleXiaozhi() {
             }
             break;
         case XiaozhiState::kCheckingConfig:
-        case XiaozhiState::kAwaitingActivation:
             break;
     }
 }
@@ -441,8 +453,8 @@ void XiaozhiService::ConfigTask() {
     while (in_mode_.load(std::memory_order_relaxed) && !config_stop_requested_.load(std::memory_order_relaxed) &&
            !settings::HasProtocolConfig()) {
         SetState(XiaozhiState::kCheckingConfig, "Loading voice configuration...");
-        ActivationClient       client;
-        ActivationConfigResult result = client.Fetch();
+        SlateVoiceConfigClient client;
+        SlateVoiceConfigResult result = client.Fetch();
         if (config_stop_requested_.load(std::memory_order_relaxed) || !in_mode_.load(std::memory_order_relaxed))
             return;
         {
@@ -454,24 +466,13 @@ void XiaozhiService::ConfigTask() {
             SetState(XiaozhiState::kReadyIdle, "Voice ready");
             return;
         }
-        if (result.has_activation_challenge) {
-            if (!result.activation_code.empty())
-                SetActivation(result.activation_message, result.activation_code);
-            esp_err_t activate_err = client.Activate(result.activation_challenge);
-            if (activate_err != ESP_OK && activate_err != ESP_ERR_TIMEOUT)
-                ESP_LOGW(kTag, "activation challenge failed err=%s", esp_err_to_name(activate_err));
-        }
-        if (result.has_activation) {
-            SetActivation(result.activation_message, result.activation_code);
-        } else if (!result.ok) {
+        if (!result.ok) {
             SetError(result.error.empty() ? "Voice configuration failed" : result.error);
-        } else if (result.has_activation_challenge) {
-            SetState(XiaozhiState::kCheckingConfig, "Confirming voice activation...");
         } else {
-            SetError("Voice service returned no protocol configuration");
+            SetError("Slate voice service returned no protocol configuration");
         }
 
-        const int delay_steps = result.has_activation ? 30 : 100;
+        const int delay_steps = 100;
         for (int i = 0; i < delay_steps && in_mode_.load(std::memory_order_relaxed) &&
                         !config_stop_requested_.load(std::memory_order_relaxed) && !settings::HasProtocolConfig();
              ++i)
@@ -648,6 +649,7 @@ void XiaozhiService::ConversationTask() {
         return;
     }
     xiaozhi_phase_.store(XiaozhiPhase::kRunning, std::memory_order_relaxed);
+    SLATE_TIMING_LOG(kTag, "T_DEVICE_LISTEN_START");
     active_protocol->SendStartListening(ListeningMode::kAutoStop);
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
     audio_->EnableVoiceProcessing(true);
@@ -660,6 +662,7 @@ void XiaozhiService::ConversationTask() {
             break;
 
         if (pending_listen_after_playback_.load(std::memory_order_relaxed) && audio_->WaitForPlaybackQueueEmpty(0)) {
+            SLATE_TIMING_LOG(kTag, "T_DEVICE_LISTEN_START");
             active_protocol->SendStartListening(ListeningMode::kAutoStop);
             pending_listen_after_playback_.store(false, std::memory_order_relaxed);
             audio_->EnableVoiceProcessing(true);
@@ -830,10 +833,6 @@ void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
             snapshot_.assistant_text.clear();
             snapshot_.calendar_proposal = {};
         }
-        if (state != XiaozhiState::kAwaitingActivation) {
-            snapshot_.activation_message.clear();
-            snapshot_.activation_code.clear();
-        }
         if (state != XiaozhiState::kError)
             snapshot_.error.clear();
     }
@@ -853,41 +852,48 @@ void XiaozhiService::SetError(const std::string& error) {
     PostChanged();
 }
 
-void XiaozhiService::SetActivation(const std::string& message, const std::string& code) {
-    {
-        std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.state              = XiaozhiState::kAwaitingActivation;
-        snapshot_.status             = "Voice activation";
-        snapshot_.emotion            = "thinking";
-        snapshot_.activation_message = message;
-        snapshot_.activation_code    = code;
-        snapshot_.has_protocol       = false;
-        snapshot_.error.clear();
-        ClearAlertLocked();
-    }
-    PostChanged();
-}
-
 void XiaozhiService::SetUserText(const std::string& text) {
+    bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.user_text = text;
-        if (!text.empty())
-            snapshot_.messages.push_back({"user", text});
+        const std::string previous = !snapshot_.messages.empty() && snapshot_.messages.back().role == "user"
+                                         ? snapshot_.messages.back().text
+                                         : "";
+        const std::string merged = MergeTranscriptFragment(previous, text);
+        changed               = merged != snapshot_.user_text;
+        snapshot_.user_text   = merged;
+        if (!merged.empty())
+            UpsertMessageLocked("user", merged);
         TrimMessagesLocked();
     }
-    PostChanged();
+    if (changed)
+        PostChanged();
 }
 
 void XiaozhiService::SetAssistantText(const std::string& text) {
+    bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.assistant_text = text;
-        if (!text.empty())
-            snapshot_.messages.push_back({"assistant", text});
+        const std::string previous = !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant"
+                                         ? snapshot_.messages.back().text
+                                         : "";
+        const std::string merged = MergeTranscriptFragment(previous, text);
+        changed                  = merged != snapshot_.assistant_text;
+        snapshot_.assistant_text = merged;
+        if (!merged.empty())
+            UpsertMessageLocked("assistant", merged);
         TrimMessagesLocked();
     }
-    PostChanged();
+    if (changed)
+        PostChanged();
+}
+
+void XiaozhiService::UpsertMessageLocked(const std::string& role, const std::string& text) {
+    if (!snapshot_.messages.empty() && snapshot_.messages.back().role == role) {
+        snapshot_.messages.back().text = text;
+        return;
+    }
+    snapshot_.messages.push_back({role, text});
 }
 
 void XiaozhiService::SetAlert(const std::string& status, const std::string& message, const std::string& emotion) {
