@@ -206,3 +206,47 @@ with Slate and MySQL healthy and both restart counts at zero; the read-only
 health endpoint returned HTTP 200. No G3 action is authorized or possible
 until the exact candidate image can be made available without a new
 destructive host/storage decision.
+
+## G2 NVMe-isolated daemon recovery and retained runtime boundary
+
+The human-authorized storage recovery used a disposable Docker daemon whose
+data-root and exec-root were bind-mounted only under
+`/mnt/ssd-tmp/slate-tools`. The production Docker socket and data-root were
+not mounted. The exact candidate loaded into the isolated `overlay2` daemon
+and matched the reviewed digest. The protected source was mounted read-only
+only in the disposable container specification; its contents were never read
+by the recovery commands or harness.
+
+```text
+G2_ISOLATED_DAEMON=PASS_DOCKER_29_1_3_OVERLAY2
+G2_ISOLATED_DATA_ROOT=/mnt/ssd-tmp/slate-tools/g2-isolated-root-overlay
+G2_ISOLATED_EXEC_ROOT=/mnt/ssd-tmp/slate-tools/g2-isolated-run6
+G2_EXACT_IMAGE_LOAD=PASS
+G2_EXACT_IMAGE_DIGEST=sha256:213a6aea997b896211838649b078a1ac487136f9572d2b7d0caee611c3502956
+G2_PRODUCTION_DOCKER_DAEMON=UNCHANGED
+G2_PROVIDER_CALL=NOT_STARTED
+G2_PROVIDER_SESSIONS_USED_FROM_ACTIVATION=0
+G_PROVIDER_SESSIONS_USED=2_OF_3
+G_PROVIDER_SESSIONS_REMAINING=1
+G2_BASE_IMAGE_RUNTIME_CONTROL=FAIL_SAME_RUNC_BOUNDARY
+G2_FAILURE_CLASS=ISOLATED_CONTAINER_RUNTIME_RUNC_BOOTSTRAP_BROKEN_PIPE
+G2_APPLICATION_PROCESS_STARTED=NO
+G2_DURABLE_RESULT=NOT_CREATED_BEFORE_PROCESS_START
+G2_CREDENTIAL_VALUE_READ=NO
+G2_CREDENTIAL_VALUE_LOGGED=NO
+G2_PROVIDER_PAYLOAD_RETAINED=NO
+G2_PRODUCTION_MUTATION=NO
+G3_STATUS=NOT_RUN_G2_RUNTIME_FAILED
+G2_DISPOSABLE_CLEANUP=PASS_FAILED_CONTAINERS_AND_HELPER_REMOVED
+```
+
+Both the exact candidate and an independent trivial `oven/bun:1-slim`
+control failed before process start with `runc create failed: unable to start
+container process: can't copy bootstrap data to pipe: write init-p: broken
+pipe`. This classifies the remaining blocker as the isolated nested runtime,
+not Gemini, the credential, the reviewed source, or the provider. The
+temporary helper and failed containers were removed after evidence capture;
+historical Docker images, the production Docker root, Deluge paths, Slate,
+MySQL, and the rollback image were preserved. G2 cannot safely consume the
+authorized provider session until a human-approved runtime mechanism fixes
+this host-specific boundary.
