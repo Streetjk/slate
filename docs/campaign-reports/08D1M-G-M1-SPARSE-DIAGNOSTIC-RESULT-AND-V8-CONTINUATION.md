@@ -140,3 +140,21 @@ M2 exact reviewed UX backend deployment
 Do not stop at successful checkpoints. Stop only for a genuinely new authority/safety boundary or a fail-closed result requiring another root/operator action.
 
 No model change, billing/Vertex change, credential replacement, Search/tool invocation, Calendar write, Outlook payload use, destructive Docker-tree cleanup, Deluge change or PR #2 merge is authorized by this directive.
+
+## V8 reviewed-install checkpoint
+
+```text
+V8_STATUS=EXACT_GROK_REVIEW_PASS_INSTALLED_OBSERVER_ARMED
+V8_SCRIPT_SHA256=52819f0829ffbf68df5d1af37297e3c223310a2f8d44d65191a1e3f9de2326d2
+V8_GROK_REVIEW=PASS_NO_P0_P1_P2
+V8_REMOTE_TYPE=regular_file
+V8_REMOTE_MODE=700
+V8_REMOTE_BASH_N=PASS
+M1_OBSERVER=ARMED
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+NEXT_ACTION=ONE_MANUAL_V8_SUDO_ROOT_STEP
+```
+
+The exact nested-mount enumeration correction was re-reviewed by Grok 4.6;
+no further source correction is required before the manual root boundary.
