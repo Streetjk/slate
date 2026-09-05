@@ -237,3 +237,36 @@ root step.
 
 No provider call, firmware flash, credential access, production mutation or
 PR merge occurred. V7 has not yet been executed on the Orange Pi.
+
+## V7 installation and observer-armed checkpoint
+
+The exact reviewed V7 script was installed without sudo at
+`/home/pi/slate-m1-rootstep-v7-signal-safe-rollback-verify.sh`.
+
+```text
+V7_REMOTE_TYPE=regular_file
+V7_REMOTE_MODE=700
+V7_REMOTE_SHA256=f0c8daaa030e9b04fde60d713a5da2a849114f9ebee442892644f1626d02c49e
+V7_REMOTE_BASH_N=PASS
+V7_LOCAL_REMOTE_MATCH=YES
+M1_OBSERVER=ARMED
+```
+
+The sanitized observer baseline is:
+
+```text
+DOCKER_ROOT=/var/lib/docker
+DOCKER_DAEMON=active
+SLATE=running/healthy/restarts=2
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+NVME_COPY_PRESENT=YES
+EXPECTED_IMAGES=YES
+EXPECTED_NETWORK=YES
+```
+
+No provider call, firmware flash, credential access, production mutation or
+PR merge occurred. The next action is the single operator-executed V7 sudo
+command; the observer will classify either healthy NVMe activation or healthy
+original-root rollback.
