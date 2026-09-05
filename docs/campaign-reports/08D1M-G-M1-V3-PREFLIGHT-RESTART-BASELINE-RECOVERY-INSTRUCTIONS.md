@@ -140,7 +140,7 @@ V4 is the only new script prepared for this correction:
 V3_SCRIPT=/home/pi/slate-m1-rootstep-v3-startup-wait.sh
 V3_SCRIPT_SHA256=ab130ebbd16fa2e4f028ffc5eb1e315b524dbf4c12f42449c44c3a1a0cbb801a
 V4_SCRIPT=/home/pi/slate-m1-rootstep-v4-restart-baseline.sh
-V4_SCRIPT_SHA256=25957f86d4c6e66854175aae6f26ea18124a5bb7eb725e931f36d3b13c32567f
+V4_SCRIPT_SHA256=5b2d7c23244d34fea0ed248d33516e15c34d3f7a8d4f4ed4f1faec6ea433bfb3
 V4_LOCAL_BASH_N=PASS
 V4_LOCAL_NONROOT_FAIL_CLOSED=PASS class=NOT_ROOT
 V4_REMOTE_MODE=700
