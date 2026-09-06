@@ -51,6 +51,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
 
     settings::WebsocketConfig cfg;
     if (!settings::LoadWebsocket(cfg)) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=WS_CONFIG_MISSING");
         SetError("WebSocket configuration was not received");
         return false;
     }
@@ -60,6 +61,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
     error_occurred_.store(false, std::memory_order_release);
     mcp_accepting_.store(true, std::memory_order_relaxed);
     audio_channel_ready_.store(false, std::memory_order_relaxed);
+    mic_stream_marker_emitted_ = false;
     ClearSessionId();
     ResetIncomingTimeout();
     {
@@ -75,14 +77,17 @@ bool WebsocketProtocol::OpenAudioChannel() {
     auto network   = std::make_unique<EspNetwork>();
     auto websocket = network->CreateWebSocket(1);
     if (!websocket) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=WS_INIT_FAIL");
         SetError("WebSocket initialization failed");
         return false;
     }
     // Always use the current Slate identity. Never reuse a token persisted by
     // an older/vendor configuration response, even if its URL looks valid.
     std::string token = cred::GetDeviceSecret();
-    if (token.empty())
+    if (token.empty()) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=DEVICE_SECRET_UNAVAILABLE");
         return close_failed_channel("Slate device secret is unavailable");
+    }
     if (!token.empty()) {
         if (token.find(' ') == std::string::npos)
             token = "Bearer " + token;
@@ -97,6 +102,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
     websocket->OnData([this](const char* data, size_t len, bool binary) { HandleIncomingData(data, len, binary); });
     websocket->OnDisconnected([this]() {
         ESP_LOGW(kTag, "disconnected transport=websocket");
+        ESP_LOGI(kTag, "VOICE_WS_CLOSE_CODE=unknown");
         bool notify_closed = false;
         {
             std::lock_guard<std::mutex> lock(channel_mutex_);
@@ -109,9 +115,20 @@ bool WebsocketProtocol::OpenAudioChannel() {
         if (notify_closed)
             PostChannelClosedEvent();
     });
-    websocket->OnError([this](int err) { ESP_LOGW(kTag, "error transport=websocket err=%d", err); });
+    websocket->OnError([this](int err) {
+        ESP_LOGW(kTag, "error transport=websocket err=%d", err);
+    });
 
-    if (!websocket->Connect(cfg.url.c_str())) {
+    ESP_LOGI(kTag, "VOICE_WS_CONNECT_START");
+    const bool connected = websocket->Connect(cfg.url.c_str());
+    if (connected) {
+        ESP_LOGI(kTag, "VOICE_WS_CONNECT_RESULT=OPEN");
+    } else {
+        // The transport exposes no stable HTTP/TLS status contract. Keep the
+        // classification truthful rather than guessing from provider-specific
+        // integer error values.
+        ESP_LOGI(kTag, "VOICE_WS_CONNECT_RESULT=TRANSPORT_FAIL");
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=WS_CONNECT_FAIL");
         SetError("Failed to connect to voice WebSocket");
         return false;
     }
@@ -123,12 +140,17 @@ bool WebsocketProtocol::OpenAudioChannel() {
         websocket_ = std::move(websocket);
     }
     const std::string hello = GetHelloMessage();
-    if (!SendText(hello))
+    const bool hello_sent = SendText(hello);
+    ESP_LOGI(kTag, "VOICE_SESSION_INIT_SENT=%s", hello_sent ? "YES" : "NO");
+    if (!hello_sent) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=HELLO_SEND_FAIL");
         return close_failed_channel("Failed to send voice WebSocket hello");
+    }
 
     const EventBits_t bits = xEventGroupWaitBits(event_group_, kServerHelloEvent | kChannelClosedEvent, pdTRUE, pdFALSE,
                                                  pdMS_TO_TICKS(10000));
     if (bits & kChannelClosedEvent) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=WS_CLOSED_BEFORE_READY");
         // ParseServerHello 失败时已 SetError 具体原因,这里只在还未设过 error 时
         // 兜底报"连接已断开",避免覆盖具体诊断信息。
         if (!IsAudioChannelCloseRequested() && !error_occurred_.load(std::memory_order_acquire))
@@ -136,6 +158,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
         return close_failed_channel(nullptr);
     }
     if (!(bits & kServerHelloEvent)) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=SERVER_HELLO_TIMEOUT");
         ESP_LOGW(kTag, "hello timeout transport=websocket connected=%d",
                  websocket_ && websocket_->IsConnected() ? 1 : 0);
         return close_failed_channel("Voice WebSocket response timed out");
@@ -158,6 +181,10 @@ bool WebsocketProtocol::OpenAudioChannel() {
 
 void WebsocketProtocol::CloseAudioChannel(bool send_goodbye) {
     MarkAudioChannelCloseRequested();
+    if (!mic_stream_marker_emitted_) {
+        mic_stream_marker_emitted_ = true;
+        ESP_LOGI(kTag, "VOICE_MIC_STREAM_STARTED=NO");
+    }
     if (event_group_)
         xEventGroupSetBits(event_group_, kChannelClosedEvent);
     mcp_accepting_.store(false, std::memory_order_relaxed);
@@ -201,11 +228,18 @@ bool WebsocketProtocol::SendAudio(std::unique_ptr<AudioStreamPacket> packet) {
     if (!websocket_ || !websocket_->IsConnected() || !packet)
         return false;
     const int version = version_.load(std::memory_order_acquire);
+    bool sent = false;
     if (version == 2)
-        return SendProtocol2Audio(*packet);
-    if (version == 3)
-        return SendProtocol3Audio(*packet);
-    return websocket_->Send(packet->payload.data(), packet->payload.size(), true);
+        sent = SendProtocol2Audio(*packet);
+    else if (version == 3)
+        sent = SendProtocol3Audio(*packet);
+    else
+        sent = websocket_->Send(packet->payload.data(), packet->payload.size(), true);
+    if (sent && !mic_stream_marker_emitted_) {
+        mic_stream_marker_emitted_ = true;
+        ESP_LOGI(kTag, "VOICE_MIC_STREAM_STARTED=YES");
+    }
+    return sent;
 }
 
 bool WebsocketProtocol::SendText(const std::string& text) {
@@ -323,7 +357,8 @@ std::string WebsocketProtocol::GetHelloMessage() const {
 void WebsocketProtocol::ParseServerHello(const cJSON* root) {
     // 失败路径走 SetError + setBits(kChannelClosedEvent),让 OpenAudioChannel 立刻
     // 退出等待并保留具体错误原因,不再等满 10s 才报"响应超时"。
-    auto fail = [this](const char* reason) {
+    auto fail = [this](const char* reason, const char* branch) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=%s", branch);
         SetError(reason);
         xEventGroupSetBits(event_group_, kChannelClosedEvent);
     };
@@ -331,7 +366,7 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
     if (!cJSON_IsString(transport) || std::strcmp(transport->valuestring, "websocket") != 0) {
         ESP_LOGW(kTag, "server hello ignored reason=transport transport=%s",
                  cJSON_IsString(transport) ? transport->valuestring : "(missing)");
-        fail("Voice WebSocket protocol mismatch");
+        fail("Voice WebSocket protocol mismatch", "PROTOCOL_MISMATCH");
         return;
     }
     cJSON* sid = cJSON_GetObjectItem(root, "session_id");
@@ -350,7 +385,7 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
         if (cJSON_IsNumber(sample_rate_item)) {
             if (!IsSupportedOpusSampleRate(sample_rate_item->valueint)) {
                 ESP_LOGW(kTag, "server hello ignored reason=sample_rate sample_rate=%d", sample_rate_item->valueint);
-                fail("Voice WebSocket audio sample rate is not supported");
+                fail("Voice WebSocket audio sample rate is not supported", "SAMPLE_RATE_UNSUPPORTED");
                 return;
             }
             sample_rate = sample_rate_item->valueint;
@@ -358,8 +393,8 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
         if (cJSON_IsNumber(frame_duration_item)) {
             if (!IsSupportedOpusFrameDuration(frame_duration_item->valueint)) {
                 ESP_LOGW(kTag, "server hello ignored reason=frame_duration frame_duration=%d",
-                         frame_duration_item->valueint);
-                fail("Voice WebSocket audio frame length is not supported");
+                          frame_duration_item->valueint);
+                fail("Voice WebSocket audio frame length is not supported", "FRAME_LENGTH_UNSUPPORTED");
                 return;
             }
             frame_duration = frame_duration_item->valueint;

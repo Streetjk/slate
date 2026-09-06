@@ -1,7 +1,9 @@
+import { Logger } from '@nestjs/common';
 import type { LiveServerMessage } from '@google/genai';
 import { randomUUID } from 'node:crypto';
 import type { RawData, WebSocket } from 'ws';
 import { GeminiLiveService, type GeminiLiveConnection } from './gemini-live.service';
+import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
 import { OpusPcmCodec, type VoiceCodec } from './opus-pcm-codec';
 
 export interface VoiceCalendarActions {
@@ -15,6 +17,7 @@ export interface VoiceCalendarActions {
 }
 
 export class XiaozhiVoiceSession {
+  private readonly logger = new Logger(XiaozhiVoiceSession.name);
   private readonly sessionId = randomUUID();
   private readonly codec: VoiceCodec;
   private readonly timing = new VoiceTimingTrace();
@@ -24,6 +27,7 @@ export class XiaozhiVoiceSession {
   private pendingInputTranscript = '';
   private pendingOutputTranscript = '';
   private operation = Promise.resolve();
+  private micFrameMarkerEmitted = false;
 
   constructor(
     private readonly socket: WebSocket,
@@ -86,6 +90,10 @@ export class XiaozhiVoiceSession {
   }
 
   close(): void {
+    if (!this.micFrameMarkerEmitted) {
+      this.micFrameMarkerEmitted = true;
+      this.logger.log('FIRST_MIC_FRAME_RECEIVED=NO');
+    }
     this.live?.close();
     this.live = undefined;
     this.pendingInputTranscript = '';
@@ -111,19 +119,36 @@ export class XiaozhiVoiceSession {
   private handleAudio(packet: Uint8Array): void {
     if (!this.handshaken || !this.live)
       throw new Error('voice audio received before session start');
+    if (!this.micFrameMarkerEmitted) {
+      this.micFrameMarkerEmitted = true;
+      this.logger.log('FIRST_MIC_FRAME_RECEIVED=YES');
+    }
     this.timing.mark('T_FIRST_DEVICE_AUDIO_SENT');
     this.timing.mark('T_BACKEND_FIRST_AUDIO_RECEIVED');
     this.live.sendAudio(this.codec.decodeDevicePacket(packet));
   }
 
   private async ensureLive(): Promise<void> {
-    if (this.live) return;
-    this.live = await this.liveService.connect(
-      'en',
-      ({ message }) => this.handleGeminiMessage(message),
-      () => this.handleLiveFailure()
-    );
-    this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
+    if (this.live) {
+      this.logger.log('PROVIDER_SESSION_CREATE_START=NO');
+      return;
+    }
+    this.logger.log('PROVIDER_SESSION_CREATE_START=YES');
+    try {
+      this.live = await this.liveService.connect(
+        'en',
+        ({ message }) => this.handleGeminiMessage(message),
+        () => this.handleLiveFailure()
+      );
+      this.logger.log('PROVIDER_SESSION_CREATE_RESULT=PASS');
+      this.logger.log('PROVIDER_SESSION_STARTED=YES');
+      this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
+    } catch (error) {
+      const sanitizedClass = classifyProviderFailure(error);
+      this.logger.log(`PROVIDER_SESSION_CREATE_RESULT=${sanitizedClass}`);
+      this.logger.log('PROVIDER_SESSION_STARTED=NO');
+      throw error;
+    }
   }
 
   private handleGeminiMessage(message: LiveServerMessage): void {
@@ -304,4 +329,33 @@ class VoiceTimingTrace {
     this.emitted.add(stage);
     console.info(`[slate-voice-timing] stage=${stage} t_ms=${Date.now()}`);
   }
+}
+
+export function classifyProviderFailure(error: unknown): string {
+  if (error instanceof GeminiLiveBridgeFailure) {
+    return error.failureStage;
+  }
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  if (name === 'GeminiCredentialError' || message.includes('credential')) {
+    return 'CREDENTIAL_ERROR';
+  }
+  if (name === 'GeminiConfigurationError' || message.includes('not configured')) {
+    return 'CONFIG_ERROR';
+  }
+  if (name === 'AbortError' || message.includes('timeout')) {
+    return 'CONNECT_TIMEOUT';
+  }
+  if (
+    name === 'TypeError' ||
+    message.includes('fetch') ||
+    message.includes('network') ||
+    message.includes('econnrefused')
+  ) {
+    return 'NETWORK_ERROR';
+  }
+  if (name === 'GeminiProtocolError' || message.includes('protocol')) {
+    return 'PROTOCOL_ERROR';
+  }
+  return 'UNKNOWN_SAFE_FAILURE';
 }

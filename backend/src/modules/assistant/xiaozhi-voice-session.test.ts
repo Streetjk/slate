@@ -1,7 +1,12 @@
 import { EventEmitter } from 'node:events';
 import { describe, expect, it } from 'bun:test';
 import type { WebSocket } from 'ws';
-import { mergeTranscriptFragment, XiaozhiVoiceSession } from './xiaozhi-voice-session';
+import {
+  classifyProviderFailure,
+  mergeTranscriptFragment,
+  XiaozhiVoiceSession,
+} from './xiaozhi-voice-session';
+import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
 import type { GeminiLiveConnection, GeminiLiveEvent } from './gemini-live.service';
 import type { VoiceCodec } from './opus-pcm-codec';
 
@@ -35,6 +40,18 @@ function codec(): VoiceCodec {
 }
 
 describe('XiaozhiVoiceSession', () => {
+  it('classifies provider failures without exposing error details', () => {
+    expect(
+      classifyProviderFailure(new GeminiLiveBridgeFailure('CONNECT_TIMEOUT', 'synthetic detail'))
+    ).toBe('CONNECT_TIMEOUT');
+    expect(classifyProviderFailure(new Error('synthetic credential detail'))).toBe(
+      'CREDENTIAL_ERROR'
+    );
+    expect(classifyProviderFailure(new Error('synthetic provider detail'))).toBe(
+      'UNKNOWN_SAFE_FAILURE'
+    );
+  });
+
   it('speaks the Xiaozhi handshake and bridges device audio to Gemini Live', async () => {
     const ws = socket() as unknown as FakeSocket;
     const sentAudio: Uint8Array[] = [];

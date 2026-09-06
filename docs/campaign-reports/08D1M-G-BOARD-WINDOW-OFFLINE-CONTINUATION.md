@@ -230,3 +230,51 @@ A disconnected NOTE4 board may leave `WAITING_DEVICE_COUNT > 0` while Codex cont
 Only return to the human when an actual physical-board action is the sole remaining useful node, or a genuine credential/provider/private-data/security/P0/P1/merge/release authority boundary is reached.
 
 Keep PR #2 open, draft, and unmerged.
+
+## Execution checkpoint — sanitized observability candidate
+
+The board-window continuation was reconciled against live PR head
+`061fdb6f60781daeb6fca070239cf93ea525680e`. The board was not enumerated on
+the controller host (`/dev/cu.usb*` absent), so no flash, serial capture,
+button action, microphone action, or provider session was attempted.
+
+AGY produced a bounded candidate and Codex integrated only evidence-backed
+corrections. The candidate emits structural markers for authenticated config,
+WebSocket auth/acceptance, provider-session creation/start/result, first
+backend microphone frame, firmware config request/status/parser outcomes,
+WebSocket connect/init/close status, first firmware microphone stream, and
+stable generic failure branches. It does not log credentials, tokens, raw
+audio, transcript text, provider payloads, Calendar/Outlook data, or private
+content. WebSocket close codes remain `unknown` because the current firmware
+transport API does not expose a stable close-code callback; the candidate does
+not infer a code from transport error integers.
+
+```text
+SOURCE_BUNDLE_SHA256=e0b89e0a26edf9e4cd9c05f8835684993d3f6fe8d7a3146578ad786418650de0
+BACKEND_TYPECHECK=PASS
+BACKEND_LINT=PASS
+BACKEND_FORMAT=PASS
+BACKEND_TARGETED_TESTS=13_PASS_0_FAIL
+BACKEND_ASSISTANT_SUITE=83_PASS_5_SKIP_1_EXISTING_BUN_NEST_HARNESS_ERROR
+FIRMWARE_NO_VENDOR_TEST=PASS
+FIRMWARE_BUILD=BLOCKED_LOCAL_IDF_TOOLCHAIN_UNAVAILABLE
+SECRET_SCAN=PASS
+ZAI_REVIEW_PROFILE=zai-glm53-reviewer
+ZAI_REVIEW_MODEL=glm-5.3-flash
+ZAI_REVIEW_ATTEMPTED_TARGET_SHA256=815aa1a31244f26c1eb805a179dad906103b8df6bab537579933405edbec013a
+ZAI_REVIEW_STATUS=BLOCKED_INSUFFICIENT_BALANCE_OR_RESOURCE_PACKAGE
+ZAI_REVIEW_VERDICT=NOT_OBTAINED
+GEMINI_PROVIDER_CALLS_THIS_STAGE=0
+PRODUCTION_CHANGED=NO
+FIRMWARE_FLASHED_THIS_STAGE=NO
+DEVICE_STATUS=OFFLINE_OR_NOT_ENUMERATED
+OBSERVABILITY_BACKEND_READY=LOCAL_QUALIFIED_UNREVIEWED
+OBSERVABILITY_FIRMWARE_READY=SOURCE_QUALIFIED_BUILD_UNAVAILABLE
+NEXT_PHYSICAL_ACTION=EXACT_REVIEW_THEN_APP_ONLY_FLASH_THEN_ONE_COMBINED_M4_DIAGNOSTIC_SESSION
+```
+
+The exact ZAI route was reachable but rejected the review request with the
+sanitized result `Insufficient balance or no resource package. Please
+recharge.` No billing change, reviewer substitution, or retry was performed.
+The existing Bun/Nest controller decorator harness error remains unrelated to
+the changed voice files; changed voice typecheck/lint/tests are green.

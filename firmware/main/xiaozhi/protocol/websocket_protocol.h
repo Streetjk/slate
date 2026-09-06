@@ -35,6 +35,7 @@ class WebsocketProtocol : public Protocol {
     std::unique_ptr<WebSocket>  websocket_;
     mutable std::mutex          channel_mutex_;
     bool                        channel_open_notified_ = false;
+    bool                        mic_stream_marker_emitted_ = false;
     std::atomic<int>            version_{1};
     std::string                 send_buffer_;
 

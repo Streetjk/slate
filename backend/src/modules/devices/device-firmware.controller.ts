@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post, Put, UseGuards } from '@nestjs/common';
 import { MacAddress, type DeviceStateT, type RegisterDeviceResponseT } from 'shared';
 import { CurrentDevice, Public } from '../../common/nest/decorators/auth-context.decorators';
 import { DeviceAuthGuard } from '../../common/nest/guards/device-auth.guard';
@@ -13,6 +13,8 @@ import { deviceRegisterRateLimit } from './device-rate-limits';
 
 @Controller()
 export class DeviceFirmwareController {
+  private readonly logger = new Logger(DeviceFirmwareController.name);
+
   constructor(
     private readonly devices: DeviceFirmwareService,
     private readonly groups: GroupsService
@@ -51,6 +53,7 @@ export class DeviceFirmwareController {
   @UseGuards(DeviceAuthGuard)
   @Get('devices/current/voice/config')
   voiceConfig(): { websocket: { path: string; version: number } } {
+    this.logger.log('VOICE_CONFIG_RESPONSE_CLASS=2xx');
     return {
       websocket: {
         path: '/api/v1/voice/websocket',

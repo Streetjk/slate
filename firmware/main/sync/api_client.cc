@@ -542,14 +542,37 @@ bool ApiClient::Register(RegisterResult& out) {
 }
 
 bool ApiClient::GetVoiceConfig(VoiceConfig& out) {
-    std::string resp;
+    ESP_LOGI(kTag, "VOICE_CONFIG_REQUEST_START");
+    std::vector<uint8_t> bytes;
+    int status = 0;
     const std::string path = std::string(kApiPrefix) + "/devices/current/voice/config";
-    if (!DoRequestJson(path, HTTP_METHOD_GET, "", resp, /*need_auth=*/true))
-        return false;
+    const bool ok = DoRequest(path, HTTP_METHOD_GET, "", bytes, &status, "", nullptr, /*need_auth=*/true, kDefaultTimeoutMs);
 
-    cJSON* root = cJSON_Parse(resp.c_str());
-    if (!root)
+    const char* result_str = "transport_error";
+    if (status >= 200 && status < 300) {
+        result_str = "2xx";
+    } else if (status >= 400 && status < 500) {
+        result_str = "4xx";
+    } else if (status >= 500 && status < 600) {
+        result_str = "5xx";
+    }
+    ESP_LOGI(kTag, "VOICE_CONFIG_RESULT=%s", result_str);
+
+    if (!ok || status == 0) {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_TRANSPORT");
         return false;
+    }
+    if (status < 200 || status >= 300) {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_HTTP_STATUS");
+        return false;
+    }
+
+    std::string resp(bytes.begin(), bytes.end());
+    cJSON* root = cJSON_Parse(resp.c_str());
+    if (!root) {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_JSON_INVALID");
+        return false;
+    }
     cJSON* websocket = cJSON_GetObjectItemCaseSensitive(root, proto::kWebsocket);
     cJSON* path_item = cJSON_IsObject(websocket) ? cJSON_GetObjectItemCaseSensitive(websocket, proto::kPath) : nullptr;
     cJSON* version   = cJSON_IsObject(websocket) ? cJSON_GetObjectItemCaseSensitive(websocket, proto::kVersion) : nullptr;
@@ -559,6 +582,9 @@ bool ApiClient::GetVoiceConfig(VoiceConfig& out) {
     if (valid) {
         out.websocket_path = path_item->valuestring;
         out.version        = version->valueint;
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=PASS");
+    } else {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_SCHEMA_INVALID");
     }
     cJSON_Delete(root);
     return valid;

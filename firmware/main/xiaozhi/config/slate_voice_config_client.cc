@@ -31,12 +31,14 @@ namespace xiaozhi {
 SlateVoiceConfigResult SlateVoiceConfigClient::Fetch() {
     SlateVoiceConfigResult result;
     if (cred::GetDeviceSecret().empty()) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=DEVICE_SECRET_UNAVAILABLE");
         result.error = "Slate device identity is unavailable";
         return result;
     }
 
     api::VoiceConfig config;
     if (!api::GetVoiceConfig(config)) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=VOICE_CONFIG_REQUEST_FAIL");
         result.error = "Slate voice configuration request failed";
         return result;
     }
@@ -44,6 +46,7 @@ SlateVoiceConfigResult SlateVoiceConfigClient::Fetch() {
     result.websocket_url = WebsocketUrlFromSlateServer(cred::GetServerUrl());
     result.protocol_ver  = config.version;
     if (result.websocket_url.empty() || config.websocket_path != "/api/v1/voice/websocket" || config.version != 1) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=VOICE_CONFIG_SCHEMA_REJECT");
         result.error = "Slate voice configuration was invalid";
         return result;
     }
@@ -55,6 +58,7 @@ SlateVoiceConfigResult SlateVoiceConfigClient::Fetch() {
     // WebSocket handshake obtains the current secret from slate.net NVS.
     websocket.token.clear();
     if (!settings::SaveWebsocket(websocket)) {
+        ESP_LOGI(kTag, "VOICE_GENERIC_FAILURE_BRANCH=VOICE_CONFIG_SAVE_FAIL");
         result.error = "Slate voice configuration could not be saved";
         return result;
     }
