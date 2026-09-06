@@ -453,3 +453,80 @@ HUMAN_ACTION_REQUIRED=YES
 HUMAN_ACTION_REASON=ONE_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
 TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 ```
+
+## V5 `DOCKER_START_FAILED` attribution and V6 repair basis
+
+The operator result was ingested as a safe fail-closed child result:
+
+```text
+M2_ROOT_STEP_V5 stage=preflight status=PASS
+M2_ROOT_STEP_V5 stage=copy status=PASS
+M2_ROOT_STEP_V5 rollback=PASS containerd_root=/var/lib/containerd docker_root=/mnt/ssd-tmp/slate-tools/docker-data health=PASS
+M2_ROOT_STEP_V5 stage=switch status=FAIL class=DOCKER_START_FAILED
+```
+
+Read-only reconciliation after rollback passed. Production is healthy on the
+original containerd root and the active Docker data-root remains NVMe. The
+fresh V5 candidate and V5 backup remain preserved; the earlier archived root
+and backup remain preserved; no cleanup or rerun occurred.
+
+The candidate-switch journal mechanically proves the endpoint mismatch:
+
+```text
+CANDIDATE_START=2026-09-06T15:43:28+08:00
+CANDIDATE_CONTAINERD_MAINPID=3237671
+CANDIDATE_CONTAINERD_ACTIVE=YES
+CANDIDATE_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root
+CANDIDATE_STATE=/run/containerd-v5
+CANDIDATE_CRI_STATE_DIR=/run/containerd-v5/io.containerd.grpc.v1.cri
+CANDIDATE_SERVING_SOCKET=/run/containerd/containerd.sock
+CANDIDATE_EXPECTED_DOCKER_SOCKET=/run/containerd-v5/containerd.sock
+CANDIDATE_SOCKET_ENDPOINT_MATCH=NO
+DOCKER_SOCKET_START=2026-09-06T15:43:30+08:00
+DOCKER_START=2026-09-06T15:43:30+08:00
+DOCKER_CANDIDATE_CLIENT_ADDRESS=/run/containerd-v5/containerd.sock
+DOCKER_ERROR=failed_to_get_containerd_plugins_transport_dial_timeout
+DOCKER_EXECMAINSTATUS=1
+DOCKER_RESULT=exit-code
+DOCKER_START_FAILURE=2026-09-06T15:43:34+08:00
+ROLLBACK_CONTAINERD_START=2026-09-06T15:43:34+08:00
+ROLLBACK_CONTAINERD_SOCKET=/run/containerd/containerd.sock
+ROLLBACK_DOCKER_START=2026-09-06T15:43:35+08:00
+ROLLBACK_HEALTH=PASS
+```
+
+The V5 drop-in contains `containerd --root "$DEST" --state "$STATE"`, but
+not `--address "$CONTAINERD_SOCKET"`. The installed containerd binary exposes
+an explicit `--address` flag, and the non-mutating `ctr --address
+/run/containerd/containerd.sock version` control succeeds on the healthy
+rollback endpoint. The candidate journal shows normal plugin initialization,
+snapshotter initialization and `Started containerd.service`; the candidate
+failure is therefore not a containerd service crash, plugin initialization
+failure, root ownership failure, or a Docker socket activation race. The
+primary hypothesis is `CASE_B/CANDIDATE_ENDPOINT_CONFIGURATION`, with a
+readiness gate still required to prevent Docker from starting before the
+correct candidate socket/API is usable.
+
+The systemd dependency topology remains unchanged and expected:
+
+```text
+CONTAINERD_BEFORE=docker.service
+DOCKER_AFTER=containerd.service,docker.socket
+DOCKER_REQUIRES=docker.socket
+DOCKER_WANTS=containerd.service
+DOCKER_SOCKET_NON_ACTIVATING_OBSERVER=YES
+```
+
+```text
+R1_STATUS=PASS_DOCKER_ENDPOINT_MISMATCH_PROVEN
+R1_PRIMARY_CASE=CASE_B_CANDIDATE_CONTAINERD_ADDRESS_CONFIGURATION
+R1_READINESS_ONLY=DISPROVEN_AS_PRIMARY_CAUSE
+R1_ROLLBACK=PASS
+R1_PRODUCTION_HEALTH=PASS
+R1_PROVIDER_CALLS=0
+R1_PRODUCTION_MUTATION=NO
+R2_STATUS=IN_PROGRESS_V6_BOUNDED_REPAIR
+R2_REPAIR=ADD_CONTAINERD_ADDRESS_AND_NONMUTATING_CTR_READINESS_GATE
+R2_RESTART_GATE_WEAKENING=NO
+R2_HEALTH_GATE_WEAKENING=NO
+```
