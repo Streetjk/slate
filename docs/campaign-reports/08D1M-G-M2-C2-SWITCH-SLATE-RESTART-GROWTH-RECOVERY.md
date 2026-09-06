@@ -866,3 +866,71 @@ local and public health are HTTP 200; the expected network and NVMe Docker
 root remain active; the candidate image is the exact loaded ARM64 image; and
 the Gemini credential destination is a read-only bind mount. The provider,
 model, billing, and production credential configuration were not changed.
+
+## M3 exact app-only NOTE4 firmware PASS; M4 preparation
+
+After C3 PASS, the exact prequalified app artifact was reconciled locally:
+`firmware/build/slate.bin` is a regular 2,502,640-byte file with the pinned
+SHA below. The protected app-only rollback artifact also remained present and
+matched its recorded SHA.
+
+The attached serial device was read-only reconciled before writing. Sanitized
+esptool output identified ESP32-S3 revision v0.2, 16 MB flash, and flash ID
+`46/4018`, matching the qualified NOTE4 target. No MAC address or other
+device-secret value was persisted.
+
+The single authorized write used esptool 5.2.0 at app offset `0x10000` with
+`--flash-mode dio --flash-freq 80m --flash-size 16MB`. It did not invoke full
+erase, partition-table, NVS, LittleFS, pairing, or server-address operations.
+Esptool completed its post-write data hash verification successfully.
+
+```text
+M3_STATUS=PASS_EXACT_APP_ONLY_FIRMWARE_FLASH
+M3_DEVICE_PORT=/dev/cu.usbmodem31201
+M3_DEVICE_TARGET=ESP32-S3_REV_V0.2
+M3_DEVICE_FLASH_SIZE=16MB
+M3_DEVICE_FLASH_ID=46_4018
+M3_FIRMWARE_APP=firmware/build/slate.bin
+M3_FIRMWARE_BYTES=2502640
+M3_FIRMWARE_APP_SHA256=edf94e0c4f78b1f6f40475679eeffd16aeb629cd50127beb25c2ab1f6a122abb
+M3_FLASH_OFFSET=0x10000
+M3_FLASH_TOOL=esptool_v5.2.0
+M3_FLASH_VERIFY=PASS_HASH_OF_DATA_VERIFIED
+M3_FULL_ERASE=NO
+M3_PARTITION_TABLE_WRITE=NO
+M3_NVS_WRITE=NO
+M3_LITTLEFS_WRITE=NO
+M3_PAIRING_RESET=NO
+M3_SERVER_ADDRESS_RESET=NO
+M3_ROLLBACK_APP=/Users/ollama/NOTE4-backups/campaign8-physical-20260905/rollback-bca05819-app.bin
+M3_ROLLBACK_APP_SHA256=61baf54af122f8188e75d30d07068d95679be21d378ba9740d4d33487983fbfa
+M3_SERIAL_CAPTURE=SANITIZED_COUNTS_ONLY
+M3_SERIAL_WIFI_CONNECTION_MARKERS=4
+M3_SERIAL_SYNC_POLL_MARKERS=4
+M3_SERIAL_FATAL_MARKERS=0
+M3_BACKEND_LOCAL_HEALTH=HTTP_200
+M3_BACKEND_PUBLIC_HEALTH=HTTP_200
+M3_SLATE=running/healthy/restart=0
+M3_MYSQL=running/healthy/restart=0
+M3_PROVIDER_CALLS=0
+M3_MODEL_CHANGED=NO
+M3_BILLING_CHANGED=NO
+M3_PRODUCTION_CONTAINER_MUTATION=NO
+READY_NODE_COUNT=1
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=NO
+HUMAN_ACTION_REASON=NONE
+TERMINAL_REASON=NONE_CAMPAIGN_CONTINUES
+NEXT_ACTION=PREPARE_ONE_COMBINED_M4_EN_JA_PHYSICAL_UX_SESSION
+```
+
+Post-flash sanitized serial capture observed four Wi-Fi/connection markers,
+four sync/poll markers, and zero fatal markers. Backend verification after the
+write showed Slate and MySQL healthy with zero restarts, local and public
+`/healthz` HTTP 200, the exact C3 image active, the read-only Gemini mount
+intact, and no provider call. M4 remains the single combined physical UX
+acceptance session: English and Japanese turns, exit/re-entry or reconnect as
+applicable, button behavior, one-turn/one-bubble coalescing, and sanitized
+latency observations only.
