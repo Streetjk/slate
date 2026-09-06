@@ -486,6 +486,64 @@ TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 NEXT_ACTION=INGEST_COMPLETE_V6_OPERATOR_RESULT_AND_CONTINUE_R9
 ```
 
+## R9 post-root verification and C3 frontier
+
+The pasted V6 child result was ingested as a terminal PASS. Independent
+read-only verification confirmed the exact systemd process topology:
+
+```text
+R9_STATUS=PASS_CONTAINERD_NVME_CANDIDATE_ACTIVE
+CONTAINERD_EXEC=/usr/bin/containerd --root /mnt/ssd-tmp/slate-tools/containerd-root --state /run/containerd-v5 --address /run/containerd-v5/containerd.sock
+CONTAINERD_ACTIVE=YES
+CANDIDATE_SOCKET_LISTENING=YES
+DOCKER_EXEC=/usr/bin/dockerd -H fd:// --containerd=/run/containerd-v5/containerd.sock
+DOCKER_ACTIVE=YES
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DOCKER_DRIVER=overlayfs
+SLATE=running/healthy/restarts_0
+MYSQL=running/healthy/restarts_0
+MYSQL_IDENTITY=slate-note4-mysql
+LOCAL_PUBLIC_HEALTH=HTTP_200
+EXPECTED_IMAGES_NETWORK=PASS
+ORIGINAL_ROOTS_PRESERVED=YES
+ROLLBACK_ARCHIVES_PRESERVED=YES
+NVME_RESERVE_BYTES=175311822848
+NVME_RESERVE=PASS
+DELUGE_UNCHANGED=YES
+R9_STABILITY_WINDOW=PASS_60S_SCRIPT_PLUS_14M_LIVE
+```
+
+The first armed observer ended with `TIMEOUT_NO_TERMINAL_RESULT` because its
+non-root `systemctl show` path did not expose ExecStart arguments. This was an
+observer observability limitation, not a Docker/containerd failure. A fresh
+one-shot observer using only `systemctl is-active`, process arguments and
+`ss -xl` passed without Docker CLI, Docker socket access, HTTP calls, or
+mutation:
+
+```text
+R9_SYSTEMD_PROCESS_SOCKET_OBSERVER=PASS
+OBSERVER_NONACTIVATING=YES
+CONTAINERD_ROOT=NVME_CANDIDATE
+CONTAINERD_STATE=/run/containerd-v5
+CANDIDATE_SOCKET=LISTENING
+DOCKER_ENDPOINT=/run/containerd-v5/containerd.sock
+```
+
+The containerd configuration-file dump still shows its baseline file values;
+the authoritative active CLI override is the systemd ExecStart above. Docker
+is demonstrably connected to that candidate endpoint and both containers are
+healthy. No provider call occurred. C3 may now load the already-qualified
+exact ARM64 image from the preserved local tar:
+
+```text
+C3_STATUS=READY_EXACT_IMAGE_LOAD_PENDING
+C3_SOURCE_SHA=aae1c1fefce5e6c4ca4dbc2cd4d50f44ed4863d3
+C3_ARM64_IMAGE=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+C3_IMAGE_TAR=.m2-image-transfer.Fsbu9H/slate-ux-candidate.tar
+C3_IMAGE_TAR_SHA256=cf47b8c4bb6aec65161d1c54e766bbf62f9a4ada1430fb5b86766231d7074865
+C3_ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+```
+
 ## V5 `DOCKER_START_FAILED` attribution and V6 repair basis
 
 The operator result was ingested as a safe fail-closed child result:
