@@ -1,5 +1,82 @@
 # Campaign 8D1M-G — Exact Reviewed Image Identity Recovery
 
+## Execution checkpoint — canonical identity equivalence PASS; deployment frontier active
+
+The bounded exact-archive search found no file matching the historical reviewed
+tar SHA in the authorized local or Orange Pi artifact locations:
+
+```text
+ORIGINAL_REVIEWED_TAR_FOUND=NO
+ORIGINAL_REVIEWED_TAR_SHA256=844800c09b0fb04898d6de8edfa565845f94f27b636d7b439733ef22a0998fc4
+```
+
+Read-only Docker-save/load forensics established the portable identity mapping
+without changing the reviewed source, image bytes, production services, or
+firmware. The regenerated archive was transferred byte-for-byte to the unused
+Orange Pi candidate tag. The local archive config digest was `5589...` and the
+remote daemon loaded config/image digest was `63db...`, while the following
+identity evidence matched exactly:
+
+```text
+IDENTITY_DRIFT_CLASS=LOCAL_CONTAINERD_STORE_ID_SEMANTICS_DIFFER_FROM_DOCKER_ARCHIVE_CONFIG_DIGEST
+REGENERATED_ARCHIVE_SHA256=ff6331bfcfb9451eb6b59c1f5abce94ee42d273749cc7104126c2d4e8b5307c9
+ARCHIVE_CONFIG_DIGEST=sha256:5589dfe2ce9c539bfd82334e2c169a7cff962d62a00daca4456ddec6e1576199
+REMOTE_LOADED_CONFIG_DIGEST=sha256:63db9b2133af17d0a755a7149c0fb22e9cfa0fcaad19df31fbac2ebf344def17
+PLATFORM=linux/arm64
+ARCHIVE_CONFIG_CANONICAL_HASH=sha256:f15bea2d41cfc535edd42150fa3afbaedbb6910b3ff5166e7267e85a09455a4f
+REMOTE_CONFIG_CANONICAL_HASH=sha256:f15bea2d41cfc535edd42150fa3afbaedbb6910b3ff5166e7267e85a09455a4f
+RELEVANT_CONFIG_FIELD_SET_HASH=sha256:5b34d93f82c0d07546fa33a1efb06a224715c47788f56c48041246029420ba2d
+ORDERED_ROOTFS_DIFF_ID_COUNT=26
+ORDERED_ROOTFS_DIFF_ID_HASH=sha256:dbcdee9594159f482be677efb5ce5b0ae934855a6a17ebc4f7048f648b4702e1
+LOCAL_IMAGE_HISTORY_COUNT=39
+LOCAL_IMAGE_HISTORY_HASH=sha256:eb2111d437b77483f95500dfa025ac51f80510eb50f6632fdcee1edb47e7b7a6
+IMAGE_REVIEWED_BACKEND_FILE_COUNT=6
+IMAGE_REVIEWED_BACKEND_FILES_MATCH_SOURCE_COMMIT=YES
+IMAGE_REVIEWED_BACKEND_FILE_HASH_MANIFEST_SHA256=sha256:768f39e520c16c7ca56e2deca49347dad7c43d8912176771858b8617512fca01
+```
+
+The six reviewed backend files extracted read-only from the exact local image
+matched their corresponding files at source commit `e331...`. No credential,
+environment value, private data, or provider payload was inspected or retained.
+
+The first identity review correctly identified the missing source-provenance
+binding (`REVISE`, P1=1). After adding the image-internal source-file hash
+evidence, the same exact reviewer returned:
+
+```text
+REVIEWER=glm-5.3-flash
+SOURCE_REVIEW_TARGET_SHA=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+IDENTITY_PROOF_TAR_SHA256=844800c09b0fb04898d6de8edfa565845f94f27b636d7b439733ef22a0998fc4
+IDENTITY_EQUIVALENCE_VERDICT=PASS
+P0=0
+P1=0
+P2=0
+SECURITY_FINDINGS=NONE
+FINDINGS=NONE
+```
+
+Accordingly, the remote `63db...` candidate is authorized only under this
+exact canonical identity tuple; the daemon-local ID mismatch is not silently
+waived. Backend deployment is now the sole ready action. The production image
+and service/compose state remain unchanged, and firmware remains unflashed.
+
+```text
+CANONICAL_IDENTITY_PROOF_STATUS=PASS
+ZAI_IDENTITY_EQUIVALENCE_STATUS=PASS
+BACKEND_DEPLOYMENT_STATUS=READY_CANONICAL_IDENTITY_PROVEN
+FIRMWARE_FLASH_STATUS=PENDING_BACKEND_DEPLOYMENT_PASS
+M4_STATUS=PENDING_BACKEND_AND_FIRMWARE
+PRODUCTION_CHANGED=NO_AT_CHECKPOINT
+FIRMWARE_FLASHED=NO_AT_CHECKPOINT
+GEMINI_PROVIDER_CALLS_THIS_ACTION=0
+READY_NODE_COUNT=1
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=NO
+NEXT_ACTION=DEPLOY_PROVEN_REMOTE_CANDIDATE_THEN_VERIFY
+```
+
 ## Mission
 
 Resume Campaign 8D1M-G from the live exact-ZAI-PASS checkpoint without repeating completed qualification and without treating the current backend image-transfer identity drift as a human-authority boundary before technical recovery is exhausted.
