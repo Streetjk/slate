@@ -1,5 +1,74 @@
 # Campaign 8D1M-G — NOTE4 Board Reconnected Action Directive
 
+## Execution checkpoint — board identity verified; exact ZAI route blocked
+
+Recorded after reconciling PR #2 at remote head `e719e56947a8b3c08bc2af4ca258dd519616e1f5`.
+
+```text
+CAMPAIGN=8D1M_G_BOARD_RECONNECTED_ACTION
+MODE=FRONTIER_DRIVEN_LONGRUN
+CURRENT_HEAD_AT_ACTION=e719e56947a8b3c08bc2af4ca258dd519616e1f5
+PR_NUMBER=2
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+DEVICE_STATUS=CONNECTED_IDENTITY_VERIFIED
+DEVICE_PORT=/dev/cu.usbmodem31201
+DEVICE_IDENTITY_VERIFIED=YES
+DEVICE_TARGET=ESP32-S3_REV_V0.2
+DEVICE_FLASH_SIZE=16MB
+DEVICE_FLASH_ID=46_4018
+DEVICE_IDENTITY_EVIDENCE=HISTORICAL_QUALIFIED_DEVICE_MATCH
+DEVICE_WRITE=NO
+SOURCE_BUNDLE_SHA256=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+BACKEND_SOURCE_SHA=e3319313c65bc300a45b07570957ff22f05952ce
+FIRMWARE_SOURCE_SHA=e3319313c65bc300a45b07570957ff22f05952ce
+BACKEND_IMAGE_ID=sha256:5589dfe2ce9c539bfd82334e2c169a7cff962d62a00daca4456ddec6e1576199
+FIRMWARE_APP_SHA256=8d0dcaba542ddba1447812ca45cb136fcd2a43e2dfbe938e9560d425d9d4f61a
+ZAI_REVIEW_PROFILE=zai-glm53-reviewer
+ZAI_REVIEW_MODEL=glm-5.3-flash
+ZAI_REVIEW_TARGET_SHA256=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+ZAI_REVIEW_ATTEMPTED=YES_ONE_BOUNDED_ATTEMPT
+ZAI_REVIEW_STATUS=EXTERNALLY_BLOCKED_TIMEOUT_NO_VALID_FINAL_VERDICT
+ZAI_REVIEW_VERDICT=NOT_OBTAINED
+ZAI_REVIEW_OUTPUT_PERSISTED=NO_FINAL_MESSAGE
+ZAI_REVIEW_RETRY=NO
+PROVIDER_CALLS_THIS_ACTION=0
+GEMINI_PROVIDER_CALLS_THIS_ACTION=0
+BACKEND_DEPLOYED_THIS_ACTION=NO
+FIRMWARE_FLASHED_THIS_ACTION=NO
+PRODUCTION_CHANGED=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_DEVICE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=1
+CURRENT_BLOCKED_NODE=EXACT_ZAI_REVIEW
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=EXACT_ZAI_REVIEW_ROUTE_RETURNED_NO_VALID_VERDICT_WITHIN_BOUNDED_TIMEOUT; DO_NOT_FLASH_UNREVIEWED_BYTES
+TERMINAL_REASON=BOARD_IDENTITY_VERIFIED_AND_ALL_OTHER_READY_FRONTIER_EXHAUSTED; EXACT_ZAI_REVIEW_REMAINS_BLOCKED
+NEXT_ACTION=RESTORE_EXISTING_ZAI_REVIEW_RESOURCE_OR_PROVIDE_NEW_AUTHORITY; THEN_REVIEW_BEFORE_BACKEND_DEPLOYMENT_AND_APP_ONLY_FLASH
+```
+
+The read-only enumeration found two USB modem candidates. Both identified as
+ESP32-S3 revision v0.2 with 16MB flash and flash ID `46_4018`; only
+`/dev/cu.usbmodem31201` matched the previously qualified device identity.
+No firmware, NVS, LittleFS, pairing, or production action occurred.
+
+The first local launcher normalization exited before starting the reviewer
+because the protected auth file contains CRLF line endings. The corrected
+in-memory normalization launched exactly one bounded
+`zai-glm53-reviewer` / `glm-5.3-flash` review. It reached read-only artifact
+inspection but timed out at the bounded limit with no persisted final message
+and no valid exact-SHA verdict. The attempt is therefore not PASS and is not
+retried. No credential value was printed or persisted.
+
+The accepted production read-only baseline remained unchanged: containerd and
+Docker healthy on the NVMe topology, Slate/MySQL healthy with restart count
+zero, local/public health HTTP 200, original roots preserved, NVMe reserve
+passing, and Deluge unchanged. The qualified backend image and firmware
+artifact remain frozen and un-deployed/unflashed for this action.
+
 ## Mission
 
 Resume Campaign 8D1M-G from the completed overnight nonphysical qualification checkpoint with the NOTE4 ESP32-S3 board now physically connected to the Mac again. Operate in `FRONTIER_DRIVEN_LONGRUN`. Live GitHub state is authoritative. Keep PR #2 open, draft, and unmerged. Preserve rollback roots/assets, Docker/containerd NVMe topology, MySQL identity/data, Deluge data, credentials, production Gemini model authority, and all existing provider/privacy boundaries.
