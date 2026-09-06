@@ -165,3 +165,39 @@ TERMINAL_REASON=
 Exit only if the exact route is not recoverable under current authority, a genuine reviewer finding blocks, or the next required action is the one manual sudo boundary after a clean exact review.
 
 PR #2 remains open/draft/unmerged.
+
+## R2 bounded invocation result — no exact verdict retained
+
+The existing route was recovered from the protected local configuration and
+the inherited environment was confirmed to contain a non-empty
+`ZAI_API_KEY` without printing its value. A single read-only reviewer process
+was launched using the exact `zai-glm53-reviewer` profile, provider `ZAI`, and
+model `glm-5.3-flash`.
+
+The local invocation wrapper contained a prompt-construction error: the
+embedded target identity was malformed even though the shell preflight had
+verified the artifact's actual SHA. The process inspected the artifact but
+returned no final message, created no result file, and was terminated after a
+bounded wait. Therefore no verdict is accepted and no installation or
+execution is permitted.
+
+```text
+REVIEW_PROVIDER=ZAI
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_MODE=READ_ONLY
+ARTIFACT_SHA_PRECHECK=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+REVIEW_PROCESS=TERMINATED_AFTER_NO_FINAL_MESSAGE
+REVIEW_RESULT_FILE=NOT_FOUND
+REVIEW_TARGET_BINDING=INVALID_PROMPT_TARGET
+VERDICT=NO_FINAL_VERDICT
+REVIEW_RETRY=AUTHORIZED_BOUNDED_INVOCATION_CORRECTION
+PRODUCTION_MUTATION=NO
+V2_INSTALL=NO
+V2_EXECUTION=NO
+```
+
+This is a recoverable controller invocation defect, not evidence against the
+reviewer route. After publishing this checkpoint, the controller will
+reconcile the directive and issue one corrected exact-SHA read-only review;
+no other reviewer or provider will be used.
