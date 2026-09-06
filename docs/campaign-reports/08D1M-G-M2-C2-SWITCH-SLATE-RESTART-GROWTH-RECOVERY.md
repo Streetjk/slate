@@ -916,14 +916,27 @@ M3_PROVIDER_CALLS=0
 M3_MODEL_CHANGED=NO
 M3_BILLING_CHANGED=NO
 M3_PRODUCTION_CONTAINER_MUTATION=NO
-READY_NODE_COUNT=1
+M4_STATUS=READY_COMBINED_EN_JA_PHYSICAL_UX_SESSION
+M4_MONITORING=SANITIZED_SERIAL_BACKEND_LATENCY_OBSERVER_READY
+M4_PRIVATE_MIC_AUTHORITY=EXISTING_SINGLE_BOUNDED_SESSION
+M4_MAX_PROVIDER_SESSIONS=1
+M4_SEARCH=OFF
+M4_TOOLS=OFF
+M4_CALENDAR_WRITES=OFF
+M4_OUTLOOK_DATA=NO
+M4_RAW_AUDIO_RETENTION=NO
+M4_RAW_PROVIDER_PAYLOAD_RETENTION=NO
+M4_TRANSCRIPT_CONTENT_RETENTION=NO
+M4_DEVICE_NORMAL_BOOT=PASS_SANITIZED_POST_FLASH_SYNC
+M4_AUTHENTICATED_POLLING=PASS_SANITIZED_POST_FLASH_SYNC
+READY_NODE_COUNT=0
 READONLY_READY_NODE_COUNT=0
 WAITING_HUMAN_COUNT=0
 EXTERNALLY_BLOCKED_COUNT=0
 HUMAN_ACTION_REQUIRED=NO
 HUMAN_ACTION_REASON=NONE
 TERMINAL_REASON=NONE_CAMPAIGN_CONTINUES
-NEXT_ACTION=PREPARE_ONE_COMBINED_M4_EN_JA_PHYSICAL_UX_SESSION
+NEXT_ACTION=ONE_HUMAN_COMBINED_EN_JA_VOICE_UX_SESSION
 ```
 
 Post-flash sanitized serial capture observed four Wi-Fi/connection markers,
@@ -934,3 +947,41 @@ intact, and no provider call. M4 remains the single combined physical UX
 acceptance session: English and Japanese turns, exit/re-entry or reconnect as
 applicable, button behavior, one-turn/one-bubble coalescing, and sanitized
 latency observations only.
+
+## M4 monitoring-ready boundary
+
+The final read-only preflight passed before arming the physical observer:
+production health is green, the exact C3 image remains active, the app-only
+firmware write and digest verification passed, and the device emitted only
+sanitized connection/sync evidence after reset. The bounded M4 session is
+limited to one short non-sensitive English question followed by one short
+non-sensitive Japanese question, then Voice AI exit. Search, tools, Calendar
+writes, Outlook data, and sensitive/private subject matter are excluded.
+
+The observer retains structural counters and stage timestamps only. It does
+not retain audio, transcript content, provider payloads, credentials, or raw
+serial logs. The required physical assertions are one user bubble and one
+assistant bubble per logical turn, no fragment-created bubbles, no
+fragment-driven e-ink refresh churn, normal audio, no Tenclass/vendor
+fallback, and sanitized latency-stage deltas.
+
+```text
+M4_PRECHECK=PASS
+M4_PRODUCTION_HEALTH=PASS
+M4_DEVICE_NORMAL_BOOT=PASS_SANITIZED_POST_FLASH_SYNC
+M4_AUTHENTICATED_POLLING=PASS_SANITIZED_POST_FLASH_SYNC
+M4_VENDOR_FALLBACK_EXPECTED=ABSENT
+M4_SEARCH=OFF
+M4_TOOLS=OFF
+M4_CALENDAR_WRITES=OFF
+M4_OUTLOOK_DATA=NO
+M4_MAX_PROVIDER_SESSIONS=1
+M4_RAW_AUDIO_RETENTION=NO
+M4_RAW_PROVIDER_PAYLOAD_RETENTION=NO
+M4_TRANSCRIPT_CONTENT_RETENTION=NO
+M4_READY_NODE_COUNT=0
+M4_READONLY_READY_NODE_COUNT=0
+M4_WAITING_HUMAN_COUNT=1
+M4_HUMAN_ACTION_REQUIRED=ONE_COMBINED_PHYSICAL_SESSION
+M4_NEXT_ACTION=ENTER_VOICE_AI_EN_SHORT_QUESTION_THEN_JA_SHORT_QUESTION_THEN_EXIT
+```
