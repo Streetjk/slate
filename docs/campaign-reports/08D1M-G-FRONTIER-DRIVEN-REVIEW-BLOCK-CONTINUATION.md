@@ -291,3 +291,41 @@ F1_SAFE_FOR_MANUAL_SUDO=NO
 PRODUCTION_MUTATION=NO
 PROVIDER_CALLS=0
 ```
+
+## Frontier execution checkpoint — F2 live read-only revalidation
+
+The Orange Pi was queried through the existing SSH alias using non-secret
+read-only commands only. No sudo, service restart, Docker/containerd command,
+image load, credential access, provider call, or firmware operation occurred.
+
+```text
+F2_STATUS=PASS_READONLY
+HOST=orangepi5
+DOCKER_SERVICE=active
+CONTAINERD_SERVICE=active
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DOCKER_DRIVER=overlayfs
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH_HTTP=200
+PUBLIC_HEALTH_HTTP=200
+CURRENT_IMAGE=sha256:5ef126ff62ccf466c0795c1c76b4bdf0a7b9657184eab1f09b7435deeedbab6d
+MYSQL_IMAGE=sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+ROLLBACK_IMAGE_VISIBLE=YES
+EXPECTED_NETWORK_VISIBLE=YES
+ORIGINAL_DOCKER_ROOT_PRESENT=YES
+ORIGINAL_CONTAINERD_ROOT_PRESENT=YES
+CONTAINERD_DESTINATION_COLLISION=NO
+CONTAINERD_STATE_SOCKET=/run/containerd/containerd.sock
+CONTAINERD_ROOT_CONFIG=/var/lib/containerd
+CONTAINERD_STATE_CONFIG=/run/containerd
+NVME_FS=ext4
+NVME_MOUNT=rw
+ROOT_FREE_BYTES=276844544
+NVME_FREE_BYTES=177880481792
+NVME_RESERVE_150GB=PASS
+DELUGED=active
+DELUGE_WEB=active
+DELUGE_PATHS_PRESENT=YES
+PRODUCTION_MUTATION=NO
+```
