@@ -363,3 +363,41 @@ Deferred exact C3 sequence, to run only after a reviewed root migration PASS:
 ```
 
 No command in this sequence was executed during F3.
+
+## Frontier execution checkpoint — F4 firmware preflight readiness
+
+The firmware and device checks were read-only. `esptool chip-id` and
+`esptool flash-id` confirmed the already-connected target; neither command
+writes firmware. The write command was syntax-checked through the CLI help
+path only and was not executed.
+
+```text
+F4_STATUS=PASS_PREFLIGHT_READY_FLASH_NOT_RUN
+F4_APP=firmware/build/slate.bin
+F4_APP_BYTES=2502640
+F4_APP_SHA256=edf94e0c4f78b1f6f40475679eeffd16aeb629cd50127beb25c2ab1f6a122abb
+F4_TARGET=ESP32-S3_REV_V0.2
+F4_FLASH_SIZE=16MB
+F4_FLASH_ID=MANUFACTURER_46_DEVICE_4018_QUAD
+F4_SERIAL_PORT=/dev/cu.usbmodem31201
+F4_APP_OFFSET=0x10000
+F4_ROLLBACK_APP=/Users/ollama/NOTE4-backups/campaign8-physical-20260905/rollback-bca05819-app.bin
+F4_ROLLBACK_APP_SHA256=61baf54af122f8188e75d30d07068d95679be21d378ba9740d4d33487983fbfa
+F4_ROLLBACK_APP_MODE=600
+F4_WRITE_COMMAND_SYNTAX=PASS
+F4_ROLLBACK_COMMAND_SYNTAX=PASS
+F4_FULL_ERASE=NO
+F4_PARTITION_TABLE_WRITE=NO
+F4_NVS_LITTLEFS_WRITE=NO
+F4_PAIRING_SERVER_IDENTITY_RESET=NO
+F4_DEVICE_WRITE=NO
+F4_PROVIDER_CALLS=0
+F4_WAITING_HUMAN=NO_FOR_PREFLIGHT;FLASH_REMAINS_GATED_BY_M2
+```
+
+Documented deferred commands (not executed):
+
+```text
+esptool --chip esp32s3 --port /dev/cu.usbmodem31201 --baud 115200 --before usb-reset --after no-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 16MB 0x10000 firmware/build/slate.bin
+esptool --chip esp32s3 --port /dev/cu.usbmodem31201 --baud 115200 --before usb-reset --after no-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 16MB 0x10000 /Users/ollama/NOTE4-backups/campaign8-physical-20260905/rollback-bca05819-app.bin
+```
