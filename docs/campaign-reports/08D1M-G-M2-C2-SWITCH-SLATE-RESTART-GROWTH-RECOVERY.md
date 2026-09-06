@@ -530,3 +530,37 @@ R2_REPAIR=ADD_CONTAINERD_ADDRESS_AND_NONMUTATING_CTR_READINESS_GATE
 R2_RESTART_GATE_WEAKENING=NO
 R2_HEALTH_GATE_WEAKENING=NO
 ```
+
+## V6 exact candidate frozen; ZAI review in progress
+
+The evidence-backed correction is versioned as:
+
+```text
+V6_SCRIPT=scripts/slate-m2-containerd-rootstep-v6-isolated-state-slate-recreate.sh
+V6_SHA256=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40abd7ac0b879a
+V5_SHA256=5deee30cb8c9c8cd7605a430e5717d1f9358ac5e3f9519b53f89bb4c8b608acd
+V5_UNCHANGED=YES
+V6_SOURCE_DELTA=ADD_CONTAINERD_ADDRESS_AND_NONMUTATING_CTR_READINESS_GATE
+V6_BASH_N=PASS
+V6_STATIC_SCOPE=PASS
+V6_SECRET_SCAN=PASS
+V6_READINESS_STATE_MACHINE=PASS
+V6_PROVIDER_CALLS=0
+V6_PRODUCTION_MUTATION=NO
+R6_STATUS=PASS_V6_EXACT_SHA_FROZEN
+R7_STATUS=IN_PROGRESS_ZAI_GLM53_EXACT_REVIEW
+R7_REVIEW_PROFILE=zai-glm53-reviewer
+R7_REVIEW_PROVIDER=ZAI
+R7_REVIEW_MODEL=glm-5.3-flash
+R7_REVIEW_TARGET_SHA=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40abd7ac0b879a
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+HUMAN_ACTION_REQUIRED=NO
+TERMINAL_REASON=NONE_CAMPAIGN_CONTINUES
+```
+
+The V5 artifact remains byte-identical. The V6 readiness state-machine
+controls cover service inactive, absent socket, non-ready API, eventual API
+readiness, and successful readiness without using a provider or production
+mutation. The exact whole-artifact ZAI review is the next frontier node.
