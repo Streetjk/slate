@@ -120,3 +120,109 @@ Do not execute V2. Preserve both paths unchanged and report the exact failure.
 Report/checkpoint pushes are not stops. Continue all authorized READY/READONLY_READY work after each checkpoint. Stop only at the one explicit root command, a failed healthy rollback, an unexpected destination/config collision, a new credential/provider/billing/private-data boundary, destructive cleanup, new physical scope, or merge/release.
 
 PR #2 remains open/draft/unmerged.
+
+## E0 read-only attribution and E1 archival preparation
+
+Reconciled remote head before E0:
+
+```text
+REMOTE_HEAD=432b4425385f5639ecc5af352851f4a59c75a774
+INSTRUCTION_SHA=432b4425385f5639ecc5af352851f4a59c75a774
+```
+
+The exact remote V2 artifact remains unchanged and independently verified:
+
+```text
+V2_REMOTE_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+V2_REMOTE_TYPE=regular_file
+V2_REMOTE_MODE=700
+V2_REMOTE_BASH_N=PASS
+```
+
+The fixed backup path is attributable to the prior failed/rolled-back C2
+attempt. Its root-only metadata is:
+
+```text
+BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup
+BACKUP_TYPE=directory
+BACKUP_OWNER=0:0
+BACKUP_MODE=700
+BACKUP_SYMLINK=NO
+BACKUP_MTIME=2026-09-06 12:45:27.790520097 +0800
+```
+
+That timestamp is the prior V2 preflight/stop-window start recorded in the
+sanitized service journal. V2's deterministic preflight creates this directory
+and writes only its service-state evidence before reporting preflight PASS; the
+observed `CONTAINERD_STOP_FAILED` then occurred during the subsequent stop
+stage, and rollback preserved the directory. No later migration depends on its
+fixed pathname because the destination and containerd drop-in are both absent
+and the active root is the original root. Direct enumeration of the contents
+was not attempted as the SSH account cannot traverse a root-owned `0700`
+directory; non-interactive `sudo -n` correctly reported that a password would be
+required. No password was requested, and no file contents were read.
+
+```text
+BACKUP_CONTENT_ATTRIBUTION=DETERMINISTIC_V2_PREFLIGHT_EVIDENCE
+BACKUP_EXPECTED_PRESTOP_EVIDENCE=containerd-service-state.txt
+BACKUP_DELETE=NO
+BACKUP_OVERWRITE=NO
+BACKUP_ACTIVE_DEPENDENCY=NO
+```
+
+The complete live rollback revalidation passed:
+
+```text
+DEST=/mnt/ssd-tmp/slate-tools/containerd-root
+DEST_ABSENT=YES
+DROPIN=/etc/systemd/system/containerd.service.d/99-slate-m2-nvme-root.conf
+DROPIN_ABSENT=YES
+CONTAINERD_CONFIG_ROOT='/var/lib/containerd'
+CONTAINERD_ACTIVE=active
+DOCKER_ACTIVE=active
+DOCKER_SOCKET_ACTIVE=active
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=200
+PUBLIC_HEALTH=200
+NVME_FREE_BYTES=174205734912
+NVME_RESERVE_150GB=PASS
+DELUGE_SERVICES=active/running/NRestarts=0
+DELUGE_PATHS_PRESENT=YES
+DELUGE_MUTATION=NOT_OBSERVED
+PRODUCTION_MUTATION=NO
+```
+
+The D1 systemd-only observer remains safely armed in its foreground control
+session, with systemd-only baseline samples and no Docker API/curl/socket
+access during the stop window:
+
+```text
+OBSERVER=scripts/slate-m2-c2-systemd-observer-v1.sh
+OBSERVER_SHA256=c8cc1be296b18383af4a85550cf84310f47da7a0e3c1fcc330ae5f09ab99d59a
+OBSERVER_DIR=/tmp/slate-m2-c2-systemd-observer-v1.OZBjh9
+OBSERVER_CONTROL_SESSION=35315
+OBSERVER_RESULT=WAITING
+OBSERVER_ARMED=YES
+OBSERVER_SOCKET_SAFETY=PASS_NO_DOCKER_API_CURL_OR_SOCKET_REFERENCE
+```
+
+E0 is PASS. The selected archival path is proven absent and shares the
+`slate-tools` parent filesystem device with the fixed backup:
+
+```text
+ARCHIVE=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup.failed-containerd-stop-20260906
+ARCHIVE_ABSENT=YES
+BACKUP_PARENT_DEVICE=66305
+ARCHIVE_PARENT_DEVICE=66305
+ARCHIVE_RENAME=ATOMIC_SAME_FILESYSTEM_REQUIRED
+```
+
+The one fail-closed manual root boundary is prepared. It checks that the
+archive path is still unused, atomically renames the preserved backup, and
+executes the unchanged reviewed V2 only if the rename succeeds:
+
+```text
+ssh -t note4-orangepi 'sudo sh -c '\''test ! -e /mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup.failed-containerd-stop-20260906 && mv -- /mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup /mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup.failed-containerd-stop-20260906 && exec /home/pi/slate-m2-containerd-rootstep-v2-nvme-reversible.sh'\'''
+```
