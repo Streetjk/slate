@@ -230,3 +230,23 @@ The single manual command remains unchanged:
 ```text
 ssh -t note4-orangepi 'sudo /home/pi/slate-m2-containerd-rootstep-v2-nvme-reversible.sh'
 ```
+
+The second background observer also exited with one baseline sample when its
+launcher process group ended; it did not observe a migration. The observer
+was therefore re-armed in a live foreground control session so its lifetime
+is independent of the short launcher command. The file-backed result and
+sanitized samples remain local and contain no credentials or payload data.
+
+```text
+C2_OBSERVER_V2=EXITED_AFTER_ONE_BASELINE_SAMPLE
+C2_OBSERVER_V3_SCRIPT=/tmp/slate-m2-c2-observer-v2.sh
+C2_OBSERVER_V3_DIR=/tmp/slate-m2-c2-observer-v3.owrzN4
+C2_OBSERVER_V3_CONTROL_SESSION=42866
+C2_OBSERVER_V3_PID=57881
+C2_OBSERVER_V3_STATUS=RUNNING_FOREGROUND_CONTROL_SESSION
+C2_OBSERVER_V3_RESULT=WAITING
+C2_OBSERVER_V3_SCOPE=SANITIZED_SERVICE_ROOT_HEALTH_ONLY
+C2_OBSERVER_V3_SUDO=NO
+V2_EXECUTION=NO
+PRODUCTION_MUTATION=NO
+```
