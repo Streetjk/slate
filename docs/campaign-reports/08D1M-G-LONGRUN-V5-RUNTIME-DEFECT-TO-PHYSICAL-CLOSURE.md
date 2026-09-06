@@ -346,3 +346,93 @@ If a human action is finally required, provide **one compressed decision/action 
 ## End-state principle
 
 The controller is expected to remain work-conserving for hours if useful authorized work exists. Time elapsed is not a success metric. Human interventions per completed stage should be minimized. Routine engineering continuation belongs to Codex; the human is reserved for true authority, credential, physical-device, private-session, irreversible-action and release boundaries.
+
+## R1 forensic root-cause closure
+
+Reconciled remote head and consumed instruction:
+
+```text
+REMOTE_HEAD=deb4eb694d4780877ad6bcb73f372a6ef51dc45e
+INSTRUCTION_SHA=deb4eb694d4780877ad6bcb73f372a6ef51dc45e
+SOURCE_CHECKPOINT=34f0ec90816cbb055dd8b35316d64cfa1bcda8d7
+```
+
+The live rollback remains healthy and untouched. The failed candidate and both
+preserved backup paths remain present as root-owned derived artifacts; neither
+authoritative containerd/Docker tree, rollback image, MySQL data, nor Deluge
+path was removed or overwritten.
+
+```text
+ACTIVE_CONTAINERD_ROOT=/var/lib/containerd
+ACTIVE_CONTAINERD_STATE=/run/containerd
+FAILED_CANDIDATE_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root
+CURRENT_ATTEMPT_BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup
+PRIOR_BACKUP_ARCHIVE=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup.failed-containerd-stop-20260906
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_PUBLIC_HEALTH=HTTP_200
+NVME_FREE_BYTES=164580646912
+NVME_RESERVE_150GB=PASS
+DELUGE_SERVICES=active/running/NRestarts=0
+DELUGE_PATHS_PRESENT=YES
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION=NO
+```
+
+The decisive sanitized candidate-run evidence is:
+
+```text
+CANDIDATE_CONTAINERD_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root
+CANDIDATE_CONTAINERD_STATE=/run/containerd
+CANDIDATE_CONTAINERD_START=13:25:54
+CANDIDATE_CRI_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root/io.containerd.grpc.v1.cri
+CANDIDATE_SHIM_STATE=/run/containerd/s/[REDACTED-ID]
+DOCKER_RESTORE_WARNING=failed_to_determine_if_container_is_already_mounted
+SLATE_TASK_DELETE_EVENTS=13:26:02,13:26:05,13:26:08,13:26:10,13:26:13
+SLATE_RESTART_COUNT=5
+SLATE_RESTART_WINDOW=2m45.99761459s
+SLATE_RESTART_RESULT=RESTART_CANCELED_DURING_ROLLBACK
+MYSQL_RESTART_COUNT=0
+SLATE_OOM=false
+SLATE_ERROR_EMPTY=yes
+MYSQL_OOM=false
+MYSQL_ERROR_EMPTY=yes
+```
+
+The same Docker service loaded the copied root successfully and stayed up;
+the repeated task-delete/restart cycle was Slate-specific. MySQL was restored
+without the loop. On rollback, containerd returned to `/var/lib/containerd`
+and Docker returned to the NVMe data root; both containers became healthy.
+The systemd-only observer contains no Docker CLI, HTTP client, socket path or
+`DOCKER_HOST` access, so it cannot explain the candidate task loop.
+
+### Root-cause matrix
+
+| Hypothesis | Evidence | Result |
+| --- | --- | --- |
+| Slate application crash or OOM | OOM false, error empty, MySQL stable, no application payload collected | Not supported |
+| Generic containerd startup failure | Candidate containerd booted, CRI initialized, Docker loaded containers | Disproved |
+| Docker/socket activation race | No socket/API observer in this run; daemon lifecycle was clean | Disproved for this run |
+| Persistent-root copy corruption | Copy and checksum/itemized dry-run passed; containerd loaded the root | Not supported |
+| Reused ephemeral task/shim state with copied persistent root | Candidate used `/run/containerd`, connected to existing shims, emitted restore warning and repeated task deletes | Strongly supported |
+| Slate container identity/recreation incompatibility after root switch | Only Slate entered the repeated task loop; MySQL remained stable | Repair target |
+
+R1 adjudication:
+
+```text
+R1_STATUS=PASS_ROOT_CAUSE_NARROWED
+R1_ROOT_CAUSE=EPHEMERAL_CONTAINERD_STATE_REUSED_WITH_COPIED_PERSISTENT_ROOT
+R1_SLATE_ONLY=YES
+R1_MYSQL_IMPACT=NONE_OBSERVED
+R1_RESTART_GATE_WEAKENING=NO
+R1_REPAIR_HYPOTHESIS=ISOLATE_CANDIDATE_STATE_SOCKET_AND_RECREATE_SLATE_ONLY
+R1_PRODUCTION_MUTATION=NO
+R1_NEXT=R2_DETERMINISTIC_REPAIR_PROOF
+```
+
+The repair will keep the restart gate fail-closed. It will use a fresh
+candidate containerd state directory and matching Docker `--containerd`
+endpoint, then recreate only the Slate service through the existing Compose
+project after candidate startup. MySQL will not be recreated, restarted by an
+explicit command, or otherwise modified.
