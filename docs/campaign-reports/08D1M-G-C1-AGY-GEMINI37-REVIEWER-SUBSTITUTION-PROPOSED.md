@@ -141,3 +141,34 @@ SOURCE_CHANGED=NO
 PRODUCTION_MUTATION=NO
 RECOVERY_ACTION=DROP_RESTRICTED_FOR_SAME_EXACT_READ_ONLY_REVIEW
 ```
+
+## Authorized AGY attempt 2 — exact review PASS
+
+After publishing the restricted-mode recovery checkpoint, the same exact
+review was rerun in default unrestricted AGY mode as explicitly authorized by
+the companion's failure guidance. The complete V2 artifact was reviewed
+read-only and the result binds to the independently re-proved exact SHA.
+
+```text
+AGY_REVIEW_JOB=review-mtpb0rarq
+AGY_REVIEW_MODEL=gemini-3.7-flash-high
+AGY_REVIEW_PROFILE=unrestricted
+REVIEW_TARGET_SHA=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+VERDICT=PASS
+P0=0
+P1=0
+P2=0
+P3=0
+SECURITY_FINDINGS=NONE
+FINDINGS=NONE
+SOURCE_CHANGED=NO
+PRODUCTION_MUTATION=NO
+V2_INSTALL=NOT_YET
+V2_EXECUTION=NO
+```
+
+The reviewer specifically confirmed the normalized `TREE` metrics correction,
+all fail-closed preflight and copy gates, checksum/itemized rsync dry-run
+gate, reserve and service handling, health/restart checks, rollback/trap
+behavior, and no-delete protections. C2 is now authorized for install-only
+of this exact reviewed artifact.
