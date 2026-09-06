@@ -89,3 +89,37 @@ Do not silently substitute a reviewer and do not install or execute the unreview
 Until the human explicitly says `proceed`, this proposal authorizes no additional Grok attempt, reviewer change, production/containerd/Docker mutation, image load, firmware flash, provider call, credential change, destructive cleanup, or merge.
 
 PR #2 remains open/draft/unmerged.
+
+## Final plain-stdin attempt — retained human boundary
+
+The proposal was explicitly activated by the operator's `proceed` instruction.
+The exact artifact was reconciled immediately before transmission:
+
+```text
+ATTEMPT=4_FINAL_PLAIN_STDIN
+REVIEW_PROVIDER=GROK
+REVIEW_MODEL=grok-4.6
+ARTIFACT=scripts/slate-m2-containerd-rootstep-v1-nvme-reversible.sh
+ARTIFACT_SHA256=84ab71aa5f126eb58ff70f34dd89d92c3d72cc3ea0335c9f3f9f07a522a757cd
+INPUT=PLAIN_STDIN_COMPLETE_ARTIFACT
+FILE_READ_TOOL=NOT_USED
+JSON_ENVELOPE=NOT_USED
+REMOTE_FETCH=NOT_USED
+```
+
+The supported `grok agent stdio` process returned without any final reviewer
+verdict. No retry was made.
+
+```text
+PLAIN_STDIN_RESULT=NO_FINAL_VERDICT
+C1_REVIEW_TRANSPORT=EXHAUSTED
+C1_SAFE_FOR_MANUAL_SUDO=NO
+C1_REMOTE_INSTALL=NOT_PERFORMED
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION=NO
+NEXT_ACTION=HUMAN_DECISION_REVIEWER_SUBSTITUTION_OR_EXPLICIT_REVIEW_WAIVER
+```
+
+The exact script remains uninstalled and unexecuted. C2/C3/M3/M4 remain
+blocked. No credentials, private payloads, production services, Docker or
+containerd trees, firmware, or images were changed.
