@@ -805,3 +805,64 @@ HUMAN_ACTION_REASON=ONE_GUARDED_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
 TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 NEXT_ACTION=INGEST_COMPLETE_V6_OPERATOR_RESULT_AND_CONTINUE_R9
 ```
+
+## C3 corrected deployment PASS and M3 exact firmware preflight
+
+The operator completed the single guarded V6 root transaction. The exact
+reviewed V6 script passed, with the NVMe containerd root active and the
+previous V5 candidate and backup preserved under their recorded archival
+names. The full result was ingested as a child result; no second root attempt
+was made.
+
+The first C3 deployment attempt had already failed safely and rolled back
+because a controller-side Docker template used for the secret-mount health
+gate was incorrectly quoted. This was not a product or image defect. The
+same frozen, already-qualified ARM64 artifact was redeployed once with the
+gate expressed through sanitized `docker inspect --format` JSON piped to
+`jq`; no source or image bytes changed.
+
+```text
+C3_FIRST_ATTEMPT=FAIL_SAFE_ROLLBACK
+C3_FIRST_FAILURE_CLASS=DEPLOYMENT_HEALTH_GATE_TEMPLATE_QUOTING
+C3_FIRST_ROLLBACK=PASS_PRODUCTION_HEALTH_RESTORED
+C3_CORRECTED_DEPLOYMENT=PASS_SAME_REVIEWED_ARTIFACT
+C3_SOURCE_SHA=aae1c1fefce5e6c4ca4dbc2cd4d50f44ed4863d3
+C3_IMAGE_TAR_SHA256=cf47b8c4bb6aec65161d1c54e766bbf62f9a4ada1430fb5b86766231d7074865
+C3_PINNED_CONFIG_SHA=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+C3_ACTIVE_DOCKER_IMAGE=sha256:e2a116a21624043ccf3a2b1578de060637bb1e91206b2989eeef95bd98309871
+C3_PROVIDER_DISABLED_ARTIFACT_CONTROL=PASS
+C3_MYSQL_RECREATED=NO
+C3_MYSQL_IDENTITY=57daa908973e7e2ea8db4ab209738ae27310cae4f3c6a8c71dc7f205a5c26ea5
+C3_SECRET_MOUNT_DESTINATION=/run/secrets/gemini_api_key
+C3_SECRET_MOUNT_RW=false
+C3_LOCAL_PUBLIC_HEALTH=HTTP_200
+C3_SLATE=running/healthy/restarts_0
+C3_MYSQL=running/healthy/restarts_0
+C3_STABILITY=PASS_15S
+C3_ROLLBACK_IMAGE_PRESERVED=YES
+C3_PROVIDER_CALLS=0
+C3_MODEL_CHANGED=NO
+C3_BILLING_CHANGED=NO
+M3_STATUS=READY_EXACT_APP_ONLY_FIRMWARE_PREFLIGHT
+M3_FIRMWARE_APP_SHA256=edf94e0c4f78b1f6f40475679eeffd16aeb629cd50127beb25c2ab1f6a122abb
+M3_FLASH_OFFSET=0x10000
+M3_FULL_ERASE=NO
+M3_NVS_LITTLEFS_PARTITION_WRITE=NO
+M3_PAIRING_RESET=NO
+M3_PROVIDER_CALLS=0
+READY_NODE_COUNT=1
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=NO
+HUMAN_ACTION_REASON=NONE
+TERMINAL_REASON=NONE_CAMPAIGN_CONTINUES
+NEXT_ACTION=RECONCILE_EXACT_NOTE4_DEVICE_AND_APP_ONLY_FIRMWARE_PREFLIGHT
+```
+
+The corrected deployment read-only verification passed: Slate and MySQL are
+running and healthy with restart count zero; the MySQL identity is unchanged;
+local and public health are HTTP 200; the expected network and NVMe Docker
+root remain active; the candidate image is the exact loaded ARM64 image; and
+the Gemini credential destination is a read-only bind mount. The provider,
+model, billing, and production credential configuration were not changed.
