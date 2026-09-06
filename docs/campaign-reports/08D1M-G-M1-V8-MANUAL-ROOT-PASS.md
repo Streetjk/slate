@@ -71,3 +71,56 @@ M2 exact reviewed UX backend deployment
 ```
 
 Checkpoint pushes are not stops. Keep PR #2 open/draft/unmerged. Do not delete either Docker tree. No new model, billing, credential, Search/tool, Calendar, Outlook or merge authority is granted by this report.
+
+## Codex M1 closure and M2 storage boundary
+
+```text
+M1_STATUS=PASS_NVME_DOCKER_ROOT_ACTIVE
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DOCKER_DRIVER=overlayfs
+DOCKER_DAEMON=active
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+CURRENT_IMAGE_VISIBLE=YES
+ROLLBACK_IMAGE_VISIBLE=YES
+MYSQL_IMAGE_VISIBLE=YES
+EXPECTED_NETWORK=YES
+ORIGINAL_ROOT_PRESENT=YES
+NVME_ROOT_PRESENT=YES
+NVME_FREE_BYTES=190239313920
+NVME_RESERVE_FLOOR=PASS
+DELUGE_MUTATION=NOT_OBSERVED
+PROVIDER_CALLS=0
+PRODUCTION_CHANGED=NO
+```
+
+M2 then attempted to load the exact reviewed ARM64 candidate. The first
+streaming load stalled without a registered candidate. The bounded compressed
+recovery also failed to register the candidate. The durable NVMe-local tar was
+independently transferred with matching SHA-256, but its separate load failed
+before Slate recreation:
+
+```text
+M2_STATUS=HARD_STOP_CONTAINERD_ROOT_CAPACITY
+M2_CANDIDATE_IMAGE=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+M2_TRANSFER_TAR=/mnt/ssd-tmp/slate-tools/m2-ux-candidate.tar
+M2_TRANSFER_TAR_BYTES=1183010304
+M2_TRANSFER_TAR_SHA256=cf47b8c4bb6aec65161d1c54e766bbf62f9a4ada1430fb5b86766231d7074865
+M2_LOAD_RESULT=FAIL_NO_SPACE_IN_VAR_LIB_CONTAINERD
+M2_CANDIDATE_REGISTERED=NO
+M2_SLATE_RECREATED=NO
+M2_PRODUCTION_ROLLBACK_REQUIRED=NO
+PRODUCTION_ROOT_STILL=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=running/healthy
+MYSQL=running/healthy
+LOCAL_PUBLIC_HEALTH=HTTP_200
+```
+
+The load error identifies `/var/lib/containerd` on the original root as a
+separate capacity boundary. Root free space was subsequently measured at
+`8065024` bytes, while NVMe free space remained `181218619392` bytes. No
+Docker tree, daemon configuration, Deluge path, credential, provider, or
+application container was modified by the failed M2 load. M3 and M4 remain
+blocked until this storage boundary is separately authorized and resolved.
