@@ -379,3 +379,29 @@ R4_HUMAN_ACTION_REASON=ONE_MANUAL_SUDO_ROOT_TRANSACTION
 R4_TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 R4_NEXT_ACTION=INGEST_V5_ROOT_RESULT_THEN_CONTINUE_R5_TO_R10
 ```
+
+## V5 execution packet reissued from the latest remote checkpoint
+
+Origin was fetched and fast-forward reconciled to
+`d8f5f7d0c4936a6abd382723ddc5f737efa16e7b`. The authoritative execution
+packet confirms that the single password-bearing command below is the only
+current human boundary. It verifies the exact remote V5 SHA before preserving
+both failed derived artifacts by same-filesystem atomic rename and executing
+V5. No separate cleanup, root, Docker, provider, firmware or production
+command is authorized. The systemd-only observer remains active in its
+foreground control session and production remains healthy and untouched.
+
+```text
+EXECUTION_DIRECTIVE_SHA=d8f5f7d0c4936a6abd382723ddc5f737efa16e7b
+EXECUTION_COMMAND=EXACT_DIRECTIVE_COMMAND_WITH_SHA_GUARD
+V5_SHA256=5deee30cb8c9c8cd7605a430e5717d1f9358ac5e3f9519b53f89bb4c8b608acd
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
+TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
+NEXT_ACTION=INGEST_PASTED_V5_OUTPUT_AND_AUTO_RESUME_R5_TO_R10
+```
