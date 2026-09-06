@@ -172,3 +172,37 @@ all fail-closed preflight and copy gates, checksum/itemized rsync dry-run
 gate, reserve and service handling, health/restart checks, rollback/trap
 behavior, and no-delete protections. C2 is now authorized for install-only
 of this exact reviewed artifact.
+
+## C2 exact reviewed artifact installed — observer armed
+
+The exact reviewed V2 artifact was transferred to the Orange Pi without sudo
+and without executing it. Remote identity and syntax checks passed. A local
+sanitized observer is running independently of the manual sudo terminal and
+records only service/root/health status; it does not read credentials,
+application payloads, or private data.
+
+```text
+C2_STATUS=REVIEWED_V2_INSTALLED_OBSERVER_ARMED_MANUAL_SUDO_PENDING
+C2_REMOTE_HOST=note4-orangepi
+C2_REMOTE_PATH=/home/pi/slate-m2-containerd-rootstep-v2-nvme-reversible.sh
+C2_REMOTE_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+C2_REMOTE_TYPE=regular_file
+C2_REMOTE_MODE=700
+C2_REMOTE_BASH_N=PASS
+C2_OBSERVER_DIR=/tmp/slate-m2-c2-observer.I8Pyu8
+C2_OBSERVER_STATUS=RUNNING
+C2_OBSERVER_RESULT=WAITING
+V2_EXECUTION=NO
+PRODUCTION_MUTATION=NO
+```
+
+The one manual operator command, using only the exact reviewed V2, is:
+
+```text
+ssh -t note4-orangepi 'sudo /home/pi/slate-m2-containerd-rootstep-v2-nvme-reversible.sh'
+```
+
+The operator enters any SSH/sudo password only in their own terminal. Codex
+does not request, receive, store, or transmit it. After this command, the
+observer result will be ingested and C3 will continue automatically only if
+the migration reports PASS; otherwise healthy rollback evidence is required.
