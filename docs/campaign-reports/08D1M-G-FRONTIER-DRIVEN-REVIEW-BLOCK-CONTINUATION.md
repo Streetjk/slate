@@ -401,3 +401,37 @@ Documented deferred commands (not executed):
 esptool --chip esp32s3 --port /dev/cu.usbmodem31201 --baud 115200 --before usb-reset --after no-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 16MB 0x10000 firmware/build/slate.bin
 esptool --chip esp32s3 --port /dev/cu.usbmodem31201 --baud 115200 --before usb-reset --after no-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 16MB 0x10000 /Users/ollama/NOTE4-backups/campaign8-physical-20260905/rollback-bca05819-app.bin
 ```
+
+## Frontier execution checkpoint — F5 M4 observability preparation
+
+The timing observer was validated locally with synthetic sanitized events only.
+The source and firmware marker coverage was checked without provider access,
+microphone capture, device writes, SSH, or production mutation. The backend
+trace emits one line per stage per voice session using only a stage name and
+timestamp; no transcript, audio, provider payload, credential, or user data is
+included.
+
+```text
+F5_STATUS=PASS_READONLY_OBSERVER_READY
+F5_MARKER_SOURCE_COVERAGE=PASS
+F5_SYNTHETIC_MARKER_CAPTURE=PASS
+F5_DEDUPLICATION=PASS
+F5_TIMING_PAYLOAD_SANITIZED=PASS
+F5_RAW_AUDIO_RETAINED=NO
+F5_RAW_TRANSCRIPT_RETAINED=NO
+F5_PROVIDER_CALLS=0
+F5_MICROPHONE_SESSION=NOT_STARTED
+F5_PHYSICAL_ACTION=NOT_STARTED
+```
+
+Deferred combined operator instruction, not yet issued:
+
+```text
+After M2 and M3 PASS, run one bounded session: one short English turn, wait
+for completion, then one short Japanese turn. Capture only the listed stage
+markers and pass/fail UX observations. Do not retain audio or transcript text;
+do not invoke Search, tools, Calendar, Outlook, or any additional provider
+session. Verify one user bubble and one assistant bubble per logical turn,
+normal audio, no vendor activation fallback, and green Slate/MySQL/local/public
+health.
+```
