@@ -372,3 +372,127 @@ NEXT_ACTION=
 The ideal terminal overnight state is not `campaign complete`; it is `all nonphysical work exhausted, exact artifacts/review/deployment maximally advanced, only true device or ZAI-resource human boundaries remaining`.
 
 Keep PR #2 open, draft, and unmerged.
+
+## Overnight execution checkpoint — nonphysical frontier exhausted
+
+Execution reconciled the live branch at source parent `35e49473e9ccee4d84300c6fbd48a2023f77f95b` and kept PR #2 OPEN / DRAFT / UNMERGED. The NOTE4 device was not enumerated and no provider, microphone, firmware-flash, production-deploy, credential, billing, or model action occurred.
+
+### O2/O4 — deterministic qualification
+
+```text
+BACKEND_SOURCE_SHA=e3319313c65bc300a45b07570957ff22f05952ce
+SOURCE_BUNDLE_SHA256=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+BACKEND_TYPECHECK=PASS
+BACKEND_LINT=PASS
+BACKEND_FORMAT=PASS
+BACKEND_TARGETED_TESTS=13_PASS_0_FAIL
+BACKEND_ASSISTANT_SUITE=83_PASS_5_SKIP_1_EXISTING_BUN_NEST_HARNESS_ERROR_UNRELATED
+FIRMWARE_NO_VENDOR_TEST=PASS
+SECRET_SCAN=PASS
+GEMINI_PROVIDER_CALLS_THIS_STAGE=0
+```
+
+The existing Bun/Nest decorator-harness error remains unrelated baseline behavior and was not repaired. Structural markers remain sanitized: no credentials, auth headers, raw audio, transcript content, provider payloads, Calendar/Outlook data, or private user data are recorded.
+
+### O3 — exact pinned ESP-IDF build recovery
+
+The official image `espressif/idf:v5.5.2@sha256:05cbfc42ed2e987b8026722c15bf1d8523d3e4fd1b4ac04d2e4056f5e0918b99` was pulled and used with `--network none` in an isolated `firmware/build-overnight` output directory. The exact ESP32-S3 build completed all 2,002 steps.
+
+```text
+FIRMWARE_SOURCE_SHA=e3319313c65bc300a45b07570957ff22f05952ce
+FIRMWARE_BUILD_STATUS=PASS
+ESP_IDF_VERSION=5.5.2
+FIRMWARE_APP_PATH=firmware/build-overnight/slate.bin
+FIRMWARE_APP_SHA256=8d0dcaba542ddba1447812ca45cb136fcd2a43e2dfbe938e9560d425d9d4f61a
+FIRMWARE_APP_BYTES=2505008
+FIRMWARE_BOOTLOADER_SHA256=c94bd23d5fdfab16eefc505efd714d800bbf4399d5a52e19515a6d362addb5c3
+FIRMWARE_PARTITION_TABLE_SHA256=6f0657eb6b8007c0dbfed6f64cf7a0d59f8ee1752af898e2f66dd218846b1835
+FIRMWARE_NETWORK=NONE
+FIRMWARE_FLASHED=NO
+```
+
+### O5 — exact ARM64 backend artifact preparation
+
+The candidate image was built locally from the exact source with the existing Dockerfile using `linux/arm64`. The first network-disabled attempt correctly failed closed because the local BuildKit dependency cache was incomplete; the bounded recovery build then completed using package-network access only. No provider endpoint or credential was used.
+
+```text
+BACKEND_IMAGE_TAG=slate:overnight-observability-e0b89e0a
+BACKEND_IMAGE_ID=sha256:5589dfe2ce9c539bfd82334e2c169a7cff962d62a00daca4456ddec6e1576199
+BACKEND_IMAGE_PLATFORM=linux/arm64
+BACKEND_IMAGE_SIZE_BYTES=1130650409
+BACKEND_IMAGE_TAR_SHA256=844800c09b0fb04898d6de8edfa565845f94f27b636d7b439733ef22a0998fc4
+BACKEND_CONFIG_IDENTITY=fa200c812d62672db94715115eb50b5fa04ad87d47fa53a6e5d3b8723148fbf3
+BACKEND_IMAGE_SECRET_SCAN=PASS
+BACKEND_IMAGE_NODE_BRIDGE_SYNTAX=PASS
+BACKEND_IMAGE_FILE_BOUNDARY_SCAN=PASS
+BACKEND_PROVIDER_DISABLED_IMAGE_TESTS=13_PASS_0_FAIL_NETWORK_NONE_READONLY
+BACKEND_PRODUCTION_DEPLOYED=NO
+```
+
+The image contains no `.env`, secret mount, or credential file. Its history and relevant source were scanned for credential patterns without printing any secret values.
+
+### O6 — exact ZAI review packet and resource boundary
+
+The exact review target is the ten-file source bundle identified by the deterministic `sha256sum` manifest aggregate below, with the exact ARM64 image and firmware identities recorded above. The complete changed-file list is: `backend/src/common/nest/filters/app-exception.filter.ts`, `backend/src/common/nest/guards/device-auth.guard.ts`, `backend/src/modules/assistant/xiaozhi-voice-session.test.ts`, `backend/src/modules/assistant/xiaozhi-voice-session.ts`, `backend/src/modules/assistant/xiaozhi-voice.gateway.ts`, `backend/src/modules/devices/device-firmware.controller.ts`, `firmware/main/sync/api_client.cc`, `firmware/main/xiaozhi/config/slate_voice_config_client.cc`, `firmware/main/xiaozhi/protocol/websocket_protocol.cc`, and `firmware/main/xiaozhi/protocol/websocket_protocol.h`. Their complete bytes are frozen in source commit `e3319313c65bc300a45b07570957ff22f05952ce`; the manifest aggregate and test/privacy invariants are recorded here. The required final contract remains:
+
+```text
+REVIEWER=glm-5.3-flash
+REVIEW_TARGET_SHA=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+VERDICT=PASS|REVISE
+P0=<n>
+P1=<n>
+P2=<n>
+P3=<n>
+SECURITY_FINDINGS=<NONE or concise findings>
+FINDINGS=<NONE or concise findings>
+```
+
+The existing `zai-glm53-reviewer` route was attempted once against ZAI and returned the sanitized resource result `1113: Insufficient balance or no resource package`. The credential-free endpoint check returned HTTP 401. A bounded metadata-only discovery found no new existing authorized reviewer resource/profile. No billing change, credential replacement, reviewer substitution, or retry was performed.
+
+```text
+ZAI_REVIEW_PROFILE=zai-glm53-reviewer
+ZAI_REVIEW_MODEL=glm-5.3-flash
+ZAI_REVIEW_TARGET_SHA256=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+ZAI_REVIEW_STATUS=EXTERNALLY_BLOCKED_INSUFFICIENT_BALANCE_OR_RESOURCE_PACKAGE
+ZAI_REVIEW_VERDICT=NOT_OBTAINED
+ZAI_REVIEW_RESOURCE_DISCOVERY=NO_NEW_AUTHORIZED_PROFILE_OR_RESOURCE
+```
+
+### O9 — read-only production/platform verification
+
+The Orange Pi was queried read-only. Sanitized results: `containerd` and Docker active; containerd command line matched the NVMe root and isolated state; Docker root `/mnt/ssd-tmp/slate-tools/docker-data` with `overlayfs`; Slate and MySQL healthy with restart count 0; local and public `/healthz` both HTTP 200; original `/var/lib/containerd` and `/var/lib/docker` present; active NVMe roots present; expected Docker network present; 150 GiB reserve passed with 173,189,738,496 available bytes; Deluge services active and unchanged. No production mutation was performed.
+
+```text
+PRODUCTION_BACKEND_STATUS=UNCHANGED_HEALTHY
+SLATE_HEALTH=PASS_RESTART_0
+MYSQL_HEALTH=PASS_RESTART_0
+NVME_CONTAINERD_STATUS=PASS
+NVME_DOCKER_STATUS=PASS
+DELUGE_STATUS=ACTIVE_UNCHANGED
+NVME_RESERVE_BYTES=173189738496
+PRODUCTION_CHANGED=NO
+```
+
+### O12 — morning frontier checkpoint
+
+```text
+CURRENT_HEAD_AT_CHECKPOINT=35e49473e9ccee4d84300c6fbd48a2023f77f95b
+CURRENT_STAGE=OVERNIGHT_OFFLINE_NONPHYSICAL_FRONTIER_EXHAUSTED
+DEVICE_STATUS=OFFLINE_OR_NOT_ENUMERATED
+DEVICE_REQUIRED_NODE_COUNT=2
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_DEVICE_COUNT=2
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=1
+CURRENT_BLOCKED_NODE=EXACT_ZAI_REVIEW_AND_NOTE4_PHYSICAL_FLASH_RETEST
+NONPHYSICAL_REQUALIFICATION_STATUS=PASS_LOCAL_AND_ARM64_PROVIDER_DISABLED
+NEXT_APP_ONLY_FLASH_READY=NO_PENDING_EXACT_ZAI_PASS_AND_DEVICE
+NEXT_M4_PROTOCOL_READY=YES_SANITIZED_ONE_COMBINED_SESSION_PACKET
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=RESTORE_EXISTING_ZAI_REVIEW_RESOURCE_WITHOUT_BILLING_CHANGE_AND_RECONNECT_NOTE4
+TERMINAL_REASON=ALL_NONPHYSICAL_READY_FRONTIER_EXHAUSTED; ZAI_RESOURCE_AND_DEVICE_BOUNDARIES_REMAIN
+NEXT_ACTION=WHEN_ZAI_RESOURCE_AND_NOTE4_RETURN; EXACT_REVIEW_THEN_BACKEND_DEPLOYMENT_AND_APP_ONLY_FLASH_THEN_ONE_COMBINED_M4_RETEST
+```
+
+This is a durable checkpoint, not a deployment or physical handoff. PR #2 remains OPEN / DRAFT / UNMERGED.
