@@ -219,3 +219,28 @@ the original persistent root as rollback, verifies the stopped trees with
 structure metrics and checksum/itemized rsync dry-run, preserves the Docker
 NVMe root, and leaves the candidate image load for C3. No provider call,
 credential access, Docker-tree deletion, or production mutation occurred.
+
+## C1 exact reviewer boundary
+
+The exact Grok CLI authentication preflight passed (`grok models` reported
+`grok-4.6` available), and an independent one-turn smoke prompt returned
+success. However, every bounded exact-artifact invocation that attempted to
+read or receive the V1 review terminated or remained stalled before producing
+a verdict. The raw reviewer output was not retained because it contained no
+review result; no credentials or private payloads were involved.
+
+```text
+C1_GROK_AUTH=PASS
+C1_GROK_MODEL=grok-4.6
+C1_GROK_EXACT_REVIEW=NO_FINAL_VERDICT
+C1_GROK_FAILURE_CLASS=REVIEW_TRANSPORT_OR_FILE_TOOL_STALL
+C1_GROK_SMOKE=PASS
+C1_SAFE_FOR_MANUAL_SUDO=NO
+C1_REMOTE_INSTALL=NOT_PERFORMED
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION=NO
+NEXT_ACTION=RETAINED_GROK_EXACT_REVIEW_BOUNDARY
+```
+
+The V1 script remains durably committed for a later exact review. No manual
+sudo command was issued, and C2/C3/M3/M4 were not started.
