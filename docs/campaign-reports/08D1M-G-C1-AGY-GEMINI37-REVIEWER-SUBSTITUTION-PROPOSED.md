@@ -206,3 +206,27 @@ The operator enters any SSH/sudo password only in their own terminal. Codex
 does not request, receive, store, or transmit it. After this command, the
 observer result will be ingested and C3 will continue automatically only if
 the migration reports PASS; otherwise healthy rollback evidence is required.
+
+The initial inline observer launcher exited before producing samples because
+its background stdin lifecycle was not durable. It did not observe a
+migration, and the manual command had not been issued. A replacement
+file-backed disposable observer was syntax-checked and armed successfully:
+
+```text
+C2_OBSERVER_V1=EXITED_BEFORE_SAMPLES
+C2_OBSERVER_V2_SCRIPT=/tmp/slate-m2-c2-observer-v2.sh
+C2_OBSERVER_V2_DIR=/tmp/slate-m2-c2-observer-v2.idebXg
+C2_OBSERVER_V2_PID=41109
+C2_OBSERVER_V2_STATUS=RUNNING
+C2_OBSERVER_V2_RESULT=WAITING
+C2_OBSERVER_V2_SCOPE=SANITIZED_SERVICE_ROOT_HEALTH_ONLY
+C2_OBSERVER_V2_SUDO=NO
+V2_EXECUTION=NO
+PRODUCTION_MUTATION=NO
+```
+
+The single manual command remains unchanged:
+
+```text
+ssh -t note4-orangepi 'sudo /home/pi/slate-m2-containerd-rootstep-v2-nvme-reversible.sh'
+```
