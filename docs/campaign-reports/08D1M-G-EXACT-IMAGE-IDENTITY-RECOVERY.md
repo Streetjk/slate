@@ -77,6 +77,49 @@ HUMAN_ACTION_REQUIRED=NO
 NEXT_ACTION=DEPLOY_PROVEN_REMOTE_CANDIDATE_THEN_VERIFY
 ```
 
+## Execution checkpoint — exact canonical backend deployment PASS
+
+The proven candidate was deployed by recreating Slate only with `--no-deps`;
+MySQL was not recreated. The first launcher lost SSH during Compose progress,
+so deployment was not accepted from launcher output. Independent read-only
+verification then established the final state, including a second check after
+a bounded stability interval:
+
+```text
+BACKEND_DEPLOYMENT_STATUS=PASS_CANONICAL_IDENTITY_CANDIDATE_ACTIVE
+ACTIVE_BACKEND_IMAGE_ID=sha256:63db9b2133af17d0a755a7149c0fb22e9cfa0fcaad19df31fbac2ebf344def17
+ACTIVE_BACKEND_IDENTITY_PROOF=PASS
+SLATE_STATUS=running
+SLATE_HEALTH=PASS
+SLATE_RESTART_COUNT=0_STABLE
+MYSQL_STATUS=running
+MYSQL_HEALTH=PASS
+MYSQL_IDENTITY_PRESERVED=YES
+MYSQL_RESTART_COUNT=0_STABLE
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+SECRET_MOUNT_READ_ONLY=YES
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+PRODUCTION_MODEL_CHANGED=NO
+CREDENTIALS_CHANGED=NO
+BILLING_CHANGED=NO
+PROVIDER_SESSION_CREATED_BY_VALIDATION=NO
+BACKEND_DEPLOYMENT_ROLLBACK=NOT_REQUIRED
+```
+
+The exact app-only firmware remains the next authorized action. No full erase,
+partition-table, bootloader, NVS, LittleFS, pairing, or identity write has
+occurred.
+
+```text
+READY_NODE_COUNT=1
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=NO
+NEXT_ACTION=VERIFY_DEVICE_THEN_APP_ONLY_FLASH_EXACT_FROZEN_FIRMWARE
+```
+
 ## Mission
 
 Resume Campaign 8D1M-G from the live exact-ZAI-PASS checkpoint without repeating completed qualification and without treating the current backend image-transfer identity drift as a human-authority boundary before technical recovery is exhausted.
