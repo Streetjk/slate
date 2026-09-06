@@ -435,3 +435,53 @@ session. Verify one user bubble and one assistant bubble per logical turn,
 normal audio, no vendor activation fallback, and green Slate/MySQL/local/public
 health.
 ```
+
+## Frontier execution checkpoint — F6 exhausted frontier and decision packet
+
+The control plane was refreshed from the exact directive commit
+`56d641167120ebbb814344bf57c8b9a54c15328d9`. F1 through F5 are complete or
+durably staged. The V2 correction is the only artifact eligible for the next
+review gate; it is not installed or executable in the production path.
+
+The historically validated `zai-glm53-reviewer` route remains the preferred
+human-approved substitution candidate, with historical `ZAI_AUTH=PASS`,
+provider `ZAI`, and model `glm-5.3-flash`. No substitute review was invoked.
+The local executable was not present in this controller environment, so this
+is a proposal for human-approved orchestration recovery, not an availability
+claim beyond the preserved authenticated evidence.
+
+```text
+F6_STATUS=FRONTIER_EXHAUSTED
+INSTRUCTION_SHA=56d641167120ebbb814344bf57c8b9a54c15328d9
+CURRENT_C1_ARTIFACT=scripts/slate-m2-containerd-rootstep-v2-nvme-reversible.sh
+CURRENT_C1_ARTIFACT_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+TERMINAL_REASON=SOLE_C1_EXACT_INDEPENDENT_REVIEW_BLOCKED_AFTER_FRONTIER_EXHAUSTION
+PRODUCTION_MUTATION=NO
+PROVIDER_CALLS=0
+PR2_OPEN_DRAFT_UNMERGED=YES
+```
+
+Compressed reviewer-policy decision packet:
+
+```text
+DECISION_REQUIRED=INDEPENDENT_REVIEW_POLICY_FOR_C1
+EXACT_ARTIFACT=scripts/slate-m2-containerd-rootstep-v2-nvme-reversible.sh
+EXACT_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+PRIOR_V1_SHA256=84ab71aa5f126eb58ff70f34dd89d92c3d72cc3ea0335c9f3f9f07a522a757cd
+GROK46_AUTH=PASS
+GROK46_TRANSPORTS_EXHAUSTED=YES
+PRODUCTION_MUTATION=NO
+RECOMMENDED_OPTION=HUMAN_APPROVE_EXISTING_ZAI_GLM53_REVIEWER_IF_REESTABLISHED
+RECOMMENDED_PROVIDER=ZAI
+RECOMMENDED_MODEL=glm-5.3-flash
+ALTERNATIVE_1=EXPLICIT_INDEPENDENT_REVIEW_WAIVER_WITH_CODEX_PROOF_PACKAGE
+ALTERNATIVE_2=WAIT_FOR_GROK46_TRANSPORT_RECOVERY
+CONSEQUENCES=No root-script install, sudo execution, containerd migration, C3 load, firmware flash, or M4 physical session until V2 receives an authorized exact independent review or explicit waiver.
+APPROVAL_TEXT=Authorize one exact read-only zai-glm53-reviewer GLM-5.3-Flash review of scripts/slate-m2-containerd-rootstep-v2-nvme-reversible.sh at SHA 09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd; no reviewer substitution beyond this profile and no production/containerd/firmware/provider mutation.
+REJECTION_TEXT=Keep C1 blocked; do not install or execute the unreviewed root script.
+```
