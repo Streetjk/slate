@@ -278,3 +278,104 @@ daemon evidence and is not inferred from private application logs. The failed
 candidate destination and both backups are preserved as forensic artifacts.
 No further root attempt, candidate load, firmware action, provider session,
 or production mutation is authorized by this result.
+
+## V5 runtime-defect repair and reviewed root-boundary preparation
+
+Campaign V5 accepted the G0 evidence as a genuine Slate-only restart loop
+under the copied containerd root: the candidate reused persistent state with
+the live ephemeral runtime state. The repair remains fail-closed and does not
+weaken the restart gate. It isolates candidate state at `/run/containerd-v5`,
+quiesces `docker.socket` before the stop window, switches both containerd and
+Docker to the candidate endpoint, recreates Slate exactly once after the
+existing MySQL container is observable and healthy, and requires a continuous
+60-second healthy window with Slate restart count zero. MySQL recreation and
+restart growth remain hard failures. The checksum/itemized rsync dry-run is a
+hard pre-switch gate and rollback removes only the newly-created service
+drop-ins and exact candidate runtime state.
+
+```text
+V5_SCRIPT=scripts/slate-m2-containerd-rootstep-v5-isolated-state-slate-recreate.sh
+V5_LOCAL_SHA256=5deee30cb8c9c8cd7605a430e5717d1f9358ac5e3f9519b53f89bb4c8b608acd
+V5_LOCAL_BASH_N=PASS
+V5_STATIC_SAFETY=PASS
+V5_SECRET_SCAN=PASS_NO_SECRET_PATTERN
+V2_REVIEWED_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+V2_UNCHANGED=YES
+V5_EXACT_REVIEWER=AGY_GEMINI_3_7_FLASH_HIGH
+V5_EXACT_REVIEW_JOB=review-mtpf7j3rd
+V5_INITIAL_REVIEW=REQUEST_CHANGES_TRANSIENT_INSPECT_POLLING
+V5_CORRECTION_WRITER=GEMINI_3_8_FLASH
+V5_CORRECTION=TRANSIENT_MYSQL_AND_SLATE_INSPECT_OUTPUT_POLLS_WITHIN_TIMEOUT
+V5_REVIEW_REVALIDATION_JOB=review-mtpfhwdw0
+V5_REVIEW_VERDICT=PASS
+V5_REVIEW_P0=0
+V5_REVIEW_P1=0
+V5_REVIEW_P2=0
+V5_REVIEW_P3=0
+V5_REVIEW_FINDINGS=NONE_NIT_ONLY
+V5_REMOTE_PATH=/home/pi/slate-m2-containerd-rootstep-v5-isolated-state-slate-recreate.sh
+V5_REMOTE_SHA256=5deee30cb8c9c8cd7605a430e5717d1f9358ac5e3f9519b53f89bb4c8b608acd
+V5_REMOTE_TYPE=regular_file
+V5_REMOTE_MODE=700
+V5_REMOTE_BASH_N=PASS
+V5_LIVE_PREFLIGHT=PASS_READONLY
+ACTIVE_CONTAINERD_ROOT=/var/lib/containerd
+ACTIVE_CONTAINERD_STATE=/run/containerd
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DOCKER_DRIVER=overlayfs
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_PUBLIC_HEALTH=HTTP_200
+EXPECTED_IMAGES_NETWORK=YES
+ORIGINAL_ROOTS_PRESENT=YES
+FAILED_DERIVED_ROOT_PRESENT=YES
+FAILED_BACKUP_PRESENT=YES
+V5_DROPINS_ABSENT=YES
+V5_CANDIDATE_STATE_ABSENT=YES
+NVME_FREE_BYTES=170550177792
+NVME_RESERVE_150GB=PASS
+DELUGE_ACTIVE_RUNNING_RESTARTS_ZERO=YES
+DELUGE_PATHS_PRESENT=YES
+PROTECTED_SECRET_MOUNT_DESTINATION=/run/secrets/gemini_api_key
+PROTECTED_SECRET_MOUNT_RW=false
+PRODUCTION_MUTATION=NO
+PROVIDER_CALLS=0
+```
+
+The exact same-filesystem archival destinations were read-only verified
+absent and are ready for the single manual root transaction:
+
+```text
+ARCHIVE_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root.failed-slate-restart-growth-20260906
+ARCHIVE_BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup.failed-slate-restart-growth-20260906
+V5_BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v5-backup
+CANDIDATE_STATE=/run/containerd-v5
+ARCHIVE_DESTINATIONS=ABSENT
+```
+
+The first non-root reserve calculation could not read the root-owned
+`/var/lib/containerd` byte count without sudo; this is intentionally left to
+the reviewed V5 preflight, which fails closed if its exact reserve calculation
+does not pass. The NVMe free-space snapshot was independently
+`170550177792` bytes before the handoff. No credential value, production
+`.env`, provider payload, audio or private data was read.
+
+The systemd-only observer was re-armed at
+`/tmp/slate-m2-v5-systemd-observer.fyrlGx` in foreground control session
+`22262`; its exact SHA is
+`c8cc1be296b18383af4a85550cf84310f47da7a0e3c1fcc330ae5f09ab99d59a`. It uses
+only systemd state queries and cannot access the Docker API, HTTP endpoints or
+Docker socket. It will persist a sanitized transition result independently.
+
+```text
+R4_STATUS=PASS_REVIEWED_V5_ROOT_BOUNDARY_READY
+R4_PROVIDER_CALLS=0
+R4_PRODUCTION_MUTATION=NO
+R4_READY_NODE_COUNT=0
+R4_READONLY_READY_NODE_COUNT=0
+R4_WAITING_HUMAN_COUNT=1
+R4_HUMAN_ACTION_REQUIRED=YES
+R4_HUMAN_ACTION_REASON=ONE_MANUAL_SUDO_ROOT_TRANSACTION
+R4_TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
+R4_NEXT_ACTION=INGEST_V5_ROOT_RESULT_THEN_CONTINUE_R5_TO_R10
+```
