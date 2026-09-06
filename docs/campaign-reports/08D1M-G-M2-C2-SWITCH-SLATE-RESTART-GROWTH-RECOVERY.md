@@ -454,6 +454,38 @@ HUMAN_ACTION_REASON=ONE_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
 TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 ```
 
+## Final R8 reconciliation before the single root transaction
+
+The live remote state was fetched and reconciled again at the current PR
+head. PR #2 remains open, draft, and unmerged. The exact V6 remote artifact
+still matches the reviewed SHA, is a regular mode-700 file, and passes
+`bash -n`. Read-only production checks remain green: active containerd uses
+`/var/lib/containerd` with state `/run/containerd`, Docker uses the NVMe
+data-root and overlayfs, Slate and `slate-note4-mysql` are healthy with zero
+restarts, local and public health are HTTP 200, both V6 drop-ins and
+`/run/containerd-v5` are absent, both V5 failure artifacts remain present,
+both selected archive destinations remain absent, Deluge is active with zero
+restarts, and the NVMe reserve remains above 150 GiB.
+
+```text
+CURRENT_HEAD=4cd8a55eda44cb27d2239567e0142cda3f893887
+R8_FINAL_LIVE_RECONCILIATION=PASS
+R8_REMOTE_SHA256=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40abd7ac0b879a
+R8_OBSERVER_NONACTIVATING=YES
+R8_OBSERVER_RESULT=ARMED_NOT_TERMINAL
+R8_PROVIDER_CALLS=0
+R8_PRODUCTION_MUTATION=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+CURRENT_BLOCKED_NODE=NONE
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_GUARDED_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
+TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
+NEXT_ACTION=INGEST_COMPLETE_V6_OPERATOR_RESULT_AND_CONTINUE_R9
+```
+
 ## V5 `DOCKER_START_FAILED` attribution and V6 repair basis
 
 The operator result was ingested as a safe fail-closed child result:
