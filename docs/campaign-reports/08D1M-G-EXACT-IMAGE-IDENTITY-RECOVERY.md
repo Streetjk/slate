@@ -120,6 +120,68 @@ HUMAN_ACTION_REQUIRED=NO
 NEXT_ACTION=VERIFY_DEVICE_THEN_APP_ONLY_FLASH_EXACT_FROZEN_FIRMWARE
 ```
 
+## Execution checkpoint — exact app-only firmware PASS; combined M4 boundary armed
+
+The historically qualified NOTE4 identity was reverified immediately before
+the write as ESP32-S3 revision v0.2 with 16MB flash. The frozen app image was
+written only at the application offset; no erase command was used and the
+bootloader, partition table, NVS, LittleFS, pairing, and device identity were
+not targeted. Esptool verified the written app hash, and a subsequent normal
+reset produced sanitized boot and Wi-Fi evidence with no fatal markers.
+
+```text
+FIRMWARE_FLASH_STATUS=PASS_APP_ONLY
+FIRMWARE_APP_PATH=firmware/build-overnight/slate.bin
+FIRMWARE_APP_SHA256=8d0dcaba542ddba1447812ca45cb136fcd2a43e2dfbe938e9560d425d9d4f61a
+FIRMWARE_APP_BYTES=2505008
+FIRMWARE_FLASH_OFFSET=0x10000
+FLASH_SCOPE=APP_ONLY
+DEVICE_TARGET=ESP32-S3_REV_V0.2
+DEVICE_FLASH_SIZE=16MB
+DEVICE_IDENTITY_PROBE=PASS
+DEVICE_BOOT=PASS_SANITIZED
+DEVICE_WIFI=PASS_SANITIZED
+DEVICE_FATAL_MARKER_COUNT=0
+SERIAL_OBSERVER=ARMED_SANITIZED
+BACKEND_OBSERVER=ARMED_SANITIZED
+```
+
+The post-flash production check remains clean:
+
+```text
+ACTIVE_BACKEND_IMAGE_ID=sha256:63db9b2133af17d0a755a7149c0fb22e9cfa0fcaad19df31fbac2ebf344def17
+SLATE_HEALTH=PASS_RESTART_0
+MYSQL_HEALTH=PASS_RESTART_0_IDENTITY_PRESERVED
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SECRET_MOUNT_READ_ONLY=YES
+BACKEND_STRUCTURAL_LOG_ERRORS=0
+PRODUCTION_MODEL_CHANGED=NO
+CREDENTIALS_CHANGED=NO
+BILLING_CHANGED=NO
+GEMINI_PROVIDER_CALLS_THIS_ACTION=0
+```
+
+All automated work in this identity-recovery sequence is exhausted. The sole
+remaining boundary is one combined physical M4 session. Observers retain
+structural markers, status classes, close codes, counters, and latency values
+only; they do not retain audio, transcript text, provider payloads, secrets,
+or private data.
+
+```text
+M4_STATUS=READY_FOR_ONE_COMBINED_PHYSICAL_SESSION
+M4_PROVIDER_SESSION_STARTED=NOT_STARTED_BY_CONTROLLER
+M4_PROVIDER_CALL_COUNT=0_CONTROLLER_CALLS
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_COMBINED_PHYSICAL_M4_EN_JA_VOICE_SESSION
+NEXT_ACTION=HUMAN_ENTER_VOICE_AI_ENGLISH_SHORT_TURN_JAPANESE_SHORT_TURN_THEN_EXIT
+```
+
 ## Mission
 
 Resume Campaign 8D1M-G from the live exact-ZAI-PASS checkpoint without repeating completed qualification and without treating the current backend image-transfer identity drift as a human-authority boundary before technical recovery is exhausted.
