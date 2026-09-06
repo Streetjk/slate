@@ -544,6 +544,41 @@ C3_IMAGE_TAR_SHA256=cf47b8c4bb6aec65161d1c54e766bbf62f9a4ada1430fb5b86766231d707
 C3_ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
 ```
 
+## C3 first bounded deployment attempt — safe rollback and controller-gate defect
+
+The exact image was loaded into the active NVMe-backed Docker store and
+validated as ARM64 with the expected pinned OCI config digest. The first
+Slate-only compose recreation was attempted with `--no-deps`; MySQL was not
+recreated. The candidate gate returned failure, and the automatic rollback
+restored the pre-UX production image. Read-only verification after rollback
+passed: Slate and MySQL are healthy with zero restarts, local/public health
+are HTTP 200, Docker/containerd are active, and the rollback image is
+`sha256:5ef126ff...` as expected.
+
+The exact failure class was a controller command defect, not a product/image
+failure: the shell-embedded Docker Go-template secret-mount predicate was
+quoted incorrectly and returned `template parsing error: unexpected "/" in
+operand`. The same invalid predicate was used by the rollback gate, producing
+a false rollback failure despite the rollback being healthy. No credential
+value was read; the existing mount metadata independently shows RW=false.
+
+```text
+C3_FIRST_ATTEMPT=FAIL_SAFE_ROLLBACK
+C3_FAILURE_CLASS=DEPLOYMENT_HEALTH_GATE_TEMPLATE_QUOTING
+C3_ROLLBACK=PASS_PRODUCTION_HEALTH_RESTORED
+C3_CANDIDATE_MANIFEST_ID=sha256:e2a116a21624043ccf3a2b1578de060637bb1e91206b2989eeef95bd98309871
+C3_PINNED_CONFIG_SHA=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+C3_PROVIDER_DISABLED_ARTIFACT_CONTROL=PASS
+C3_SOURCE_OR_IMAGE_CHANGED=NO
+C3_MYSQL_RECREATED=NO
+C3_PRODUCTION_HEALTH_AFTER_ROLLBACK=PASS
+C3_NEXT_ACTION=SAME_ARTIFACT_CORRECTED_GATE_RETRY
+```
+
+The bounded correction replaces the fragile Go-template predicate with a
+sanitized JSON mount metadata predicate. It does not alter V6, product
+source, the exact image, the model, credentials, or reviewer evidence.
+
 ## V5 `DOCKER_START_FAILED` attribution and V6 repair basis
 
 The operator result was ingested as a safe fail-closed child result:
