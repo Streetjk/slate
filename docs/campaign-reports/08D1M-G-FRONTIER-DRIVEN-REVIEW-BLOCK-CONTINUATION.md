@@ -248,3 +248,46 @@ Codex may exit only when one of these is actually true:
 Before exit, persist and push the frontier counts and exact terminal reason.
 
 PR #2 remains open/draft/unmerged. Reports are checkpoints, not stops.
+
+## Frontier execution checkpoint — F1 deterministic proof and bounded correction
+
+The exact V1 artifact was revalidated without modification before the static
+audit. The independent Grok node remains externally blocked and was not
+retried. A separate temporary harness used synthetic source/destination trees
+only; it did not invoke Docker, containerd, systemd, SSH, production health
+endpoints, credentials, or provider sessions.
+
+```text
+INSTRUCTION_SHA=56d641167120ebbb814344bf57c8b9a54c15328d9
+F1_V1_SHA256=84ab71aa5f126eb58ff70f34dd89d92c3d72cc3ea0335c9f3f9f07a522a757cd
+F1_V1_BASH_N=PASS
+F1_V1_DIFF_CHECK=PASS
+F1_V1_SECRET_SCAN=PASS
+F1_STATIC_AUDIT=COMPLETE
+F1_OPTIONAL_SHELLCHECK=NOT_INSTALLED
+F1_HARNESS_LIVE_STATE_TOUCHED=NO
+F1_HARNESS_PREFIX_BUG=REPRODUCED
+F1_HARNESS_CORRECTED_COMPARISON=PASS
+```
+
+Static audit confirmed the V1 preflight, stop order, faithful copy,
+checksum/itemized dry-run, drop-in, startup, health/restart, reserve,
+signal, and rollback gates. It also found one real bounded defect: the
+source metrics were emitted with `SRC_` labels and destination metrics with
+`DST_` labels before a byte-for-byte diff, making every equivalent copy fail.
+
+The bounded V2 correction keeps V1 intact and changes only both metric call
+sites to use the same `TREE` label. The temporary Gemini 3.8 writer request
+returned no patch output; Codex applied only this mechanically proven,
+two-line correction as integrator. V2 receives a new identity and remains
+blocked from installation pending exact independent review.
+
+```text
+F1_V2_SCRIPT=scripts/slate-m2-containerd-rootstep-v2-nvme-reversible.sh
+F1_V2_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+F1_V2_SCOPE=METRIC_LABEL_NORMALIZATION_ONLY
+F1_V2_GROK_REVIEW=REQUIRED
+F1_SAFE_FOR_MANUAL_SUDO=NO
+PRODUCTION_MUTATION=NO
+PROVIDER_CALLS=0
+```
