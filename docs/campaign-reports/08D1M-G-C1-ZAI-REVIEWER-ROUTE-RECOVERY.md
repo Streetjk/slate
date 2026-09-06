@@ -201,3 +201,48 @@ This is a recoverable controller invocation defect, not evidence against the
 reviewer route. After publishing this checkpoint, the controller will
 reconcile the directive and issue one corrected exact-SHA read-only review;
 no other reviewer or provider will be used.
+
+## R2 corrected exact review — retained transport boundary
+
+After publishing the prior invocation checkpoint, the controller reconciled
+the directive, re-proved the artifact SHA, confirmed the existing ZAI auth was
+present without exposing its value, and issued the corrected exact-SHA
+read-only review through the recovered profile. The request inspected the
+artifact but produced no final message or result file during the six-minute
+bounded wait and was then terminated. No verdict is accepted.
+
+```text
+REVIEW_PROVIDER=ZAI
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_MODE=READ_ONLY
+REVIEW_TARGET_SHA=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+ZAI_AUTH_PRESENT=YES
+CORRECTED_REVIEW_REQUEST=YES
+REVIEW_PROCESS=TERMINATED_AFTER_360S_NO_FINAL_MESSAGE
+REVIEW_RESULT_FILE=NOT_FOUND
+VERDICT=NO_FINAL_VERDICT
+P0=UNKNOWN
+P1=UNKNOWN
+P2=UNKNOWN
+P3=UNKNOWN
+PRODUCTION_MUTATION=NO
+V2_INSTALL=NO
+V2_EXECUTION=NO
+RETRY_OR_SUBSTITUTE=NO
+```
+
+This is now a genuine reviewer transport boundary: the existing profile and
+auth are present, but the exact review cannot be durably completed without a
+further reviewer transport decision. No blind retry, reviewer substitution,
+waiver, root-script install, containerd mutation, candidate load, firmware
+flash, provider session, or production action is authorized by this result.
+
+```text
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+TERMINAL_REASON=ZAI_GLM53_EXACT_REVIEW_NO_FINAL_VERDICT_AFTER_CORRECTED_BOUNDED_REQUEST
+```
