@@ -985,3 +985,165 @@ M4_WAITING_HUMAN_COUNT=1
 M4_HUMAN_ACTION_REQUIRED=ONE_COMBINED_PHYSICAL_SESSION
 M4_NEXT_ACTION=ENTER_VOICE_AI_EN_SHORT_QUESTION_THEN_JA_SHORT_QUESTION_THEN_EXIT
 ```
+
+## M4 human result and terminal acceptance
+
+The operator completed the one combined physical session. The human result
+reported one user bubble and one assistant bubble for each English and
+Japanese turn, no fragment-created extra bubbles, no excessive e-ink redraw
+churn, normal audio, and successful Voice AI exit. No transcript content or
+audio was requested or retained.
+
+The armed observer ran for approximately ten minutes and retained only
+structural counters. Backend and MySQL stayed running/healthy with restart
+count zero; local and public health stayed HTTP 200. Its final counters were
+80 connection markers, 16 bubble/UI markers, zero vendor-fallback markers,
+and zero fatal markers. The repository's vendor-activation dependency test
+also passed. Together with the reviewed firmware/backend routing evidence,
+this supports `UNEXPECTED_VENDOR_FALLBACK=NO` for the accepted session.
+
+No numeric latency value was supplied: the operator left both perceived
+latency fields as `<approximate>`. The dossier therefore records latency as
+`UNQUANTIFIED_OPERATOR_PLACEHOLDER`; it does not claim an improvement or
+invent stage deltas. The previously published stage-separated latency
+instrumentation remains available for a separately authorized measurement.
+
+```text
+M4_STATUS=PASS_EN_JA_ONE_TURN_ONE_BUBBLE
+M4_EN_USER_BUBBLES=1
+M4_EN_ASSISTANT_BUBBLES=1
+M4_EN_FRAGMENT_EXTRA_BUBBLES=NO
+M4_EN_EINK_REDRAW_CHURN=NO
+M4_EN_AUDIO=NORMAL
+M4_JA_USER_BUBBLES=1
+M4_JA_ASSISTANT_BUBBLES=1
+M4_JA_FRAGMENT_EXTRA_BUBBLES=NO
+M4_JA_EINK_REDRAW_CHURN=NO
+M4_JA_AUDIO=NORMAL
+M4_VOICE_AI_EXIT=PASS
+M4_UNEXPECTED_VENDOR_FALLBACK=NO_STATIC_AND_OBSERVER_EVIDENCE
+M4_OBSERVER_FINAL=CONNECTION_80_BUBBLE_UI_16_VENDOR_0_FATAL_0
+M4_BACKEND_STABILITY=PASS_596S_HEALTH_GREEN
+M4_PHYSICAL_LATENCY=UNQUANTIFIED_OPERATOR_PLACEHOLDER
+M4_PROVIDER_SESSIONS_USED=1
+M4_PROVIDER_SESSIONS_MAX=1
+M4_SEARCH=OFF
+M4_TOOLS=OFF
+M4_CALENDAR_WRITES=NO
+M4_OUTLOOK_DATA=NO
+M4_RAW_AUDIO_RETAINED=NO
+M4_RAW_PROVIDER_PAYLOAD_RETAINED=NO
+M4_TRANSCRIPT_CONTENT_RETAINED=NO
+M4_PROVIDER_CALLS_BY_CONTROLLER=0
+M4_PRODUCTION_MODEL_CHANGED=NO
+M4_CREDENTIAL_CHANGED=NO
+M4_BILLING_CHANGED=NO
+M4_VERTEX_CHANGED=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=NO
+TERMINAL_REASON=CAMPAIGN_CLOSURE_PUBLISHED_PR_REMAINS_UNMERGED
+NEXT_ACTION=HUMAN_REVIEW_ONLY_NO_AUTOMATED_ACTION
+```
+
+## M4 correction — voice service unavailable retained hard stop
+
+After the provisional M4 acceptance evidence was recorded, the operator
+reported `voice service unavailable`. That report supersedes terminal
+acceptance. The prior bubble/audio observations remain preserved as evidence,
+but M4 is now classified as failed/incomplete because the voice-service
+availability assertion was not cleanly satisfied.
+
+Safe zero-provider attribution was exhausted without a blind retry. Final
+backend/MySQL health remained green with zero restarts and local/public health
+remained HTTP 200. A correctly formed unauthenticated WebSocket upgrade probe
+returned HTTP 101 both locally and through the public endpoint, while the
+unauthenticated voice-config probe returned the expected HTTP 401. The
+backend error-marker count and sanitized serial error-marker count were both
+zero. The repository no-vendor dependency test passed. This proves that the
+route/proxy is reachable and no vendor fallback is evidenced, but it does not
+prove why the physical voice attempt displayed the generic error; the firmware
+maps several distinct config/protocol failures to that same screen.
+
+No tracked source defect is proven, so no writer correction, redeploy, or
+reflash was performed. The available evidence cannot determine whether a
+provider session was created or whether microphone audio reached the
+provider. The session is therefore not counted, and no second provider
+session was made. A new physical attempt remains gated until the zero-private
+data requalification is complete and the human boundary is reached.
+
+```text
+M4_STATUS=FAIL_VOICE_SERVICE_UNAVAILABLE
+M4_HUMAN_RESULT=VOICE_SERVICE_UNAVAILABLE
+M4_PRIOR_BUBBLE_RESULT=PRESERVED_NOT_TERMINAL
+M4_OBSERVER_FINAL=CONNECTION_80_BUBBLE_UI_16_VENDOR_0_FATAL_0
+M4_BACKEND_HEALTH_DURING_OBSERVER=PASS_596S
+M4_LOCAL_WS_UPGRADE_PROBE=HTTP_101
+M4_PUBLIC_WS_UPGRADE_PROBE=HTTP_101
+M4_VOICE_CONFIG_UNAUTH_PROBE=HTTP_401
+M4_BACKEND_LOG_ERROR_MARKERS=0
+M4_SERIAL_ERROR_MARKERS=0
+M4_NO_VENDOR_STATIC_TEST=PASS
+M4_SOURCE_DEFECT=NOT_PROVEN
+M4_PROVIDER_SESSION_STARTED=UNKNOWN
+M4_PROVIDER_CALL_COUNT=UNKNOWN
+M4_MIC_AUDIO_REACHED_PROVIDER=UNKNOWN
+M4_PROVIDER_SESSION_COUNTED=NO_PENDING_ATTRIBUTION
+M4_PROVIDER_RETRY=NO
+M4_PHYSICAL_LATENCY=UNQUANTIFIED_OPERATOR_PLACEHOLDER
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_COMBINED_PHYSICAL_RETEST_AFTER_ZERO_PRIVATE_DATA_REQUALIFICATION
+TERMINAL_REASON=GENERIC_VOICE_FAILURE_UNATTRIBUTED_WITHOUT_SANITIZED_STAGE_OBSERVABILITY
+NEXT_ACTION=HUMAN_BOUNDARY_FOR_ONE_REQUALIFIED_COMBINED_M4_RETEST
+```
+
+## R15 zero-private-data attribution and requalification
+
+The accepted baseline remains intact: the exact C3 image is active, the
+production container is healthy, MySQL was not recreated, the NVMe
+containerd/Docker topology is unchanged, and the exact M3 app-only firmware
+digest remains the qualified artifact. Safe controls passed: the static
+no-vendor test, the backend voice/WebSocket route controls, the device-firmware
+schema test, the deterministic Gemini bridge guard/control tests, and the
+existing provider-disabled qualification. The targeted deterministic test run
+passed 14 tests with 5 expected skips and 0 failures.
+
+The sanitized live evidence is insufficient to select Case A, B, C, D, E, or
+F conclusively. One physical-attempt voice-config route marker and six
+WebSocket route markers were present, but no status-bearing application log
+or stage timing was enabled. A correctly formed unauthenticated WebSocket
+upgrade reached HTTP 101 locally and publicly, and the unauthenticated
+voice-config request returned HTTP 401 as expected. These controls establish
+route reachability and guard behavior, not successful device authentication
+or provider creation.
+
+```text
+M4_PROVIDER_SESSION_STARTED=UNKNOWN
+M4_PROVIDER_CALL_COUNT=UNKNOWN
+M4_MIC_AUDIO_REACHED_PROVIDER=UNKNOWN
+M4_VOICE_CONFIG_AUTHENTICATED_RESULT=UNKNOWN
+M4_VOICE_WEBSOCKET_AUTHENTICATED_RESULT=UNKNOWN
+M4_PROVIDER_SESSION_CREATE_RESULT=UNKNOWN
+M4_PROVIDER_RESPONSE_CLASS=NOT_OBSERVED
+M4_SESSION_COUNTING=NOT_COUNTED_PENDING_ATTRIBUTION
+M4_PRODUCTION_TIMING_ENV=ABSENT
+M4_SOURCE_DEFECT=NOT_PROVEN
+M4_REPAIR=NOT_PERFORMED
+M4_PROVIDER_RETRY=NO
+M4_REQUALIFICATION=ZERO_PRIVATE_DATA_PASS_WITH_STAGE_OBSERVABILITY_GAP
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+CURRENT_BLOCKED_NODE=M4_RETEST_REQUIRES_ATTRIBUTION_AND_REQUALIFICATION
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_COMBINED_PHYSICAL_RETEST_AFTER_ZERO_PRIVATE_DATA_REQUALIFICATION
+TERMINAL_REASON=GENERIC_VOICE_FAILURE_UNATTRIBUTED_WITHOUT_SANITIZED_STAGE_OBSERVABILITY
+NEXT_ACTION=HUMAN_BOUNDARY_FOR_ONE_REQUALIFIED_COMBINED_M4_RETEST
+```
