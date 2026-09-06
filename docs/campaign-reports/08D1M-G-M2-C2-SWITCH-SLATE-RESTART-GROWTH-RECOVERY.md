@@ -563,4 +563,41 @@ TERMINAL_REASON=NONE_CAMPAIGN_CONTINUES
 The V5 artifact remains byte-identical. The V6 readiness state-machine
 controls cover service inactive, absent socket, non-ready API, eventual API
 readiness, and successful readiness without using a provider or production
-mutation. The exact whole-artifact ZAI review is the next frontier node.
+mutation. The exact whole-artifact ZAI review then returned a valid exact
+verdict:
+
+```text
+REVIEWER=glm-5.3-flash
+REVIEW_TARGET_SHA=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40abd7ac0b879a
+VERDICT=PASS
+P0=0
+P1=0
+P2=0
+P3=3
+SECURITY_FINDINGS=NONE
+FINDINGS=P3_NONBLOCKING_ONLY
+REVIEW_EXIT=0
+```
+
+The three P3 notes are non-blocking: preserved V5 path identifiers require
+the planned atomic archival rename before a rerun; an inert temporary drop-in
+file is a rare failure residue; and the single timeout class is less granular
+than the readiness predicates. No source change is required by the review.
+
+The independent read-only live preflight also passed without production
+mutation: containerd and Docker are active on the original containerd root,
+Docker remains on the NVMe data-root with overlayfs, Slate and MySQL are
+healthy with zero observed restarts, local and public health return HTTP 200,
+V5 drop-ins and `/run/containerd-v5` are absent, all preserved failed
+artifacts remain present, Deluge is active with zero restarts, and the NVMe
+reserve remains above the 150 GiB floor. The MySQL container identity is
+`slate-note4-mysql`.
+
+```text
+R7_STATUS=PASS_EXACT_ZAI_GLM53_REVIEW
+R8_STATUS=LIVE_PREFLIGHT_PASS_EXACT_REMOTE_INSTALL_PENDING
+R8_REMOTE_PATH=/home/pi/slate-m2-containerd-rootstep-v6-isolated-state-slate-recreate.sh
+R8_REMOTE_SHA256_REQUIRED=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40abd7ac0b879a
+R8_PROVIDER_CALLS=0
+R8_PRODUCTION_MUTATION=NO
+```
