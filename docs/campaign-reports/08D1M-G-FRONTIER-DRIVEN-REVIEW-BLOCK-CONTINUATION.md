@@ -329,3 +329,37 @@ DELUGE_WEB=active
 DELUGE_PATHS_PRESENT=YES
 PRODUCTION_MUTATION=NO
 ```
+
+## Frontier execution checkpoint — F3 exact-candidate offline readiness
+
+The exact durable tar and image identity were verified on the Orange Pi with
+read-only commands. The candidate was not imported into production containerd
+or Docker. The post-containerd C3 sequence is prepared below and was not
+executed:
+
+```text
+F3_STATUS=PASS_OFFLINE_READY
+F3_TAR=/mnt/ssd-tmp/slate-tools/m2-ux-candidate.tar
+F3_TAR_BYTES=1183010304
+F3_TAR_SHA256=cf47b8c4bb6aec65161d1c54e766bbf62f9a4ada1430fb5b86766231d7074865
+F3_EXPECTED_IMAGE=sha256:fcfa4b8deaeb4321becddffe6d9cb9bc30bd180a72c49ce9e9b95193aadd45c4
+F3_CANDIDATE_REGISTERED=NO
+F3_ROLLBACK_IMAGE_VISIBLE=YES
+F3_LOAD_EXECUTED=NO
+F3_PRODUCTION_MUTATION=NO
+```
+
+Deferred exact C3 sequence, to run only after a reviewed root migration PASS:
+
+```text
+1. sha256sum /mnt/ssd-tmp/slate-tools/m2-ux-candidate.tar and require the pinned SHA above.
+2. docker load --input /mnt/ssd-tmp/slate-tools/m2-ux-candidate.tar.
+3. docker image inspect the resulting image and require the pinned image ID above.
+4. preserve/tag the current production image as the immediate application rollback.
+5. run the existing production compose/deployment operation for Slate only, with MySQL, volumes, network, public routing, protected read-only credential mount, Gemini 2.5 configuration, and private Node bridge unchanged.
+6. run provider-disabled deterministic checks before any provider-dependent action.
+7. require Slate/MySQL running and healthy, restart stability, local/public HTTP 200, expected network, and authenticated device polling/routing.
+8. on any failure, restore the pinned application rollback image and re-prove all health gates; do not load another candidate.
+```
+
+No command in this sequence was executed during F3.
