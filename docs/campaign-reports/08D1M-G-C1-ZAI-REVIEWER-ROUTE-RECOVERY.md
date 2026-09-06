@@ -246,3 +246,59 @@ EXTERNALLY_BLOCKED_COUNT=1
 HUMAN_ACTION_REQUIRED=YES
 TERMINAL_REASON=ZAI_GLM53_EXACT_REVIEW_NO_FINAL_VERDICT_AFTER_CORRECTED_BOUNDED_REQUEST
 ```
+
+## Final authorized ZAI attempt — terminal review boundary
+
+The human-authorized final long-wait attempt was run through the existing
+`zai-glm53-reviewer` route with the exact V2 target and the minimal output
+contract. The process exited before the 20-minute ceiling without producing a
+final message or result file. Captured stderr contained only sanitized Codex
+route metadata and model-metadata warnings; no credential or sensitive value
+was exposed. No verdict is accepted.
+
+```text
+FINAL_ZAI_REVIEW_ATTEMPT=ONE
+REVIEW_PROVIDER=ZAI
+REVIEW_PROFILE=zai-glm53-reviewer
+REVIEW_MODEL=glm-5.3-flash
+REVIEW_MODE=READ_ONLY
+REVIEW_TARGET_SHA=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+ZAI_AUTH_PRESENT=YES
+REVIEW_PROCESS=EXITED_EARLY
+REVIEW_STDOUT_BYTES=0
+REVIEW_RESULT_FILE=NOT_FOUND
+VERDICT=NO_FINAL_VERDICT
+P0=UNKNOWN
+P1=UNKNOWN
+P2=UNKNOWN
+P3=UNKNOWN
+PRODUCTION_MUTATION=NO
+V2_INSTALL=NO
+V2_EXECUTION=NO
+```
+
+The existing ZAI review transport is now terminally unresolved under the
+authorized attempts. No further reviewer retry, substitute reviewer, review
+waiver, root-script install, containerd mutation, candidate load, firmware
+flash, provider session, or production action is authorized automatically.
+
+Compressed human decision packet:
+
+```text
+STATUS=HARD_STOP_ZAI_REVIEW_NO_FINAL_VERDICT
+EXACT_ARTIFACT=scripts/slate-m2-containerd-rootstep-v2-nvme-reversible.sh
+EXACT_SHA256=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+OPTION_1=AUTHORIZE_DIFFERENT_INDEPENDENT_REVIEWER_FOR_EXACT_ARTIFACT
+OPTION_2=EXPLICITLY_WAIVE_INDEPENDENT_REVIEW_AND_RELY_ON_CODEX_PROOF
+OPTION_3=KEEP_C1_BLOCKED_AND_WAIT_FOR_ZAI_TRANSPORT_RECOVERY
+NEXT_ACTION=HUMAN_SELECT_ONE_REVIEW_POLICY_OPTION
+```
+
+```text
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+TERMINAL_REASON=FINAL_AUTHORIZED_ZAI_REVIEW_EXITED_WITHOUT_EXACT_VERDICT
+```
