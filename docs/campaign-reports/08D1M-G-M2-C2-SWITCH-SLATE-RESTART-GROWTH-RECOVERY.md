@@ -405,3 +405,51 @@ HUMAN_ACTION_REASON=ONE_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
 TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 NEXT_ACTION=INGEST_PASTED_V5_OUTPUT_AND_AUTO_RESUME_R5_TO_R10
 ```
+
+## Quoting-failure reconciliation — corrected handoff ready
+
+Origin was fetched and reconciled to
+`d8f5f7d0c4936a6abd382723ddc5f737efa16e7b`. The operator-reported
+`sh: 1: 1: parameter not set` occurred in the wrapper SHA guard before either
+archive rename or V5 execution. The required short read-only reconciliation
+passed:
+
+```text
+V5_EXECUTED=NO_FROM_PRIOR_WRAPPER
+ACTIVE_CONTAINERD_ROOT=/var/lib/containerd
+ACTIVE_CONTAINERD_STATE=/run/containerd
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=200
+PUBLIC_HEALTH=200
+ROOT_PRESENT=YES
+BAK_PRESENT=YES
+ROOT_ARCHIVE_ABSENT=YES
+BAK_ARCHIVE_ABSENT=YES
+V5_BACKUP_ABSENT=YES
+CANDIDATE_STATE_ABSENT=YES
+V5_REMOTE_SHA256=5deee30cb8c9c8cd7605a430e5717d1f9358ac5e3f9519b53f89bb4c8b608acd
+NVME_FREE_BYTES=170018529280
+NVME_RESERVE_150GB=PASS
+DELUGE_SERVICES=active/running/NRestarts=0
+DELUGE_PATHS_PRESENT=YES
+PRODUCTION_MUTATION=NO
+PROVIDER_CALLS=0
+```
+
+The corrected handoff changes only the wrapper SHA guard to
+`sha256sum | grep -q` and removes the nested `awk`/`$1` expansion. V5 bytes,
+its exact review, and all protection gates remain unchanged.
+
+```text
+CORRECTION_INSTRUCTION_SHA=f927c50d9edbb95dec96f05680dd6cfe9977d0f8
+CORRECTED_COMMAND_READY=YES
+NEXT_ACTION=INGEST_PASTED_CORRECTED_V5_OUTPUT_AND_AUTO_RESUME_R5_TO_R10
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
+TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
+```
