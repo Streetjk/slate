@@ -681,3 +681,34 @@ WAITING_HUMAN_COUNT=1
 HUMAN_ACTION_REQUIRED=YES
 TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
 ```
+
+## R8 live reconciliation after remote-head refresh
+
+Origin and PR #2 were fetched again. The authoritative remote head is
+`002af80bfa38d016f669e35f8f8974122221ff5a`; PR #2 remains open, draft, and
+unmerged. The exact remote V6 file still passes regular-file, non-symlink,
+SHA, mode-700, and `bash -n` checks. Read-only host checks again pass for
+the original containerd root/state, NVMe Docker root, active Docker and
+docker.socket, healthy Slate and `slate-note4-mysql` with zero restarts,
+local/public HTTP 200, absent V6 drop-ins and `/run/containerd-v5`, preserved
+V5 artifacts, absent archive destinations, Deluge active, and the 150 GiB
+reserve. The observer remains the exact non-activating systemd-only observer
+and has no terminal result yet.
+
+```text
+CURRENT_HEAD=002af80bfa38d016f669e35f8f8974122221ff5a
+R8_FINAL_LIVE_RECONCILIATION=PASS
+R8_OBSERVER_NONACTIVATING=YES
+R8_OBSERVER_RESULT=ARMED_NOT_TERMINAL
+R8_PROVIDER_CALLS=0
+R8_PRODUCTION_MUTATION=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+CURRENT_BLOCKED_NODE=NONE
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_GUARDED_PASSWORD_BEARING_SUDO_ROOT_TRANSACTION
+TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
+NEXT_ACTION=INGEST_COMPLETE_V6_OPERATOR_RESULT_AND_CONTINUE_R9
+```
