@@ -601,3 +601,51 @@ R8_REMOTE_SHA256_REQUIRED=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40ab
 R8_PROVIDER_CALLS=0
 R8_PRODUCTION_MUTATION=NO
 ```
+
+## V6 remote installation and single root handoff
+
+The reviewed V6 artifact was installed at the new remote path and verified
+without root mutation beyond setting the script mode:
+
+```text
+REMOTE_PATH=/home/pi/slate-m2-containerd-rootstep-v6-isolated-state-slate-recreate.sh
+REMOTE_TYPE=regular_file
+REMOTE_MODE=700
+REMOTE_OWNER=1000:1000
+REMOTE_SHA256=c2e08d435d5509b6081013cf9780f983476876b36e1ad68b9b40abd7ac0b879a
+REMOTE_BASH_N=PASS
+```
+
+The strictly systemd-only observer is armed at
+`/tmp/slate-m2-v6-systemd-observer.OVpOjU`; its exact SHA is
+`c8cc1be296b18383af4a85550cf84310f47da7a0e3c1fcc330ae5f09ab99d59a`. It
+uses only `systemctl show`, `systemctl is-active`, SSH, and sanitized state
+files; it does not call Docker, access the Docker socket, or use Docker HTTP.
+
+The two existing V5 failure artifacts are preserved by same-filesystem
+atomic rename in the one guarded root transaction. The selected unused
+destinations were read-only verified absent:
+
+```text
+ARCHIVE_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root.failed-docker-start-endpoint-20260906
+ARCHIVE_BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v5-backup.failed-docker-start-endpoint-20260906
+```
+
+The transaction also guards the exact V6 SHA, required source paths, both
+archive destinations, the fresh V6 destination, V6 backup destination, and
+candidate runtime state before executing V6. No provider call or production
+mutation has occurred. The only remaining frontier node is the operator's
+one password-bearing root transaction; after its complete output is pasted,
+R9 must ingest it and continue automatically.
+
+```text
+R8_STATUS=PASS_REMOTE_INSTALL_PREFLIGHT_OBSERVER_ARMED
+R8_ROOT_COMMAND=ATOMIC_ARCHIVE_RENAME_THEN_EXEC_EXACT_V6
+R8_PROVIDER_CALLS=0
+R8_PRODUCTION_MUTATION=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+TERMINAL_REASON=MANUAL_SUDO_BOUNDARY
+```
