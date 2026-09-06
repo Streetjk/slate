@@ -163,3 +163,59 @@ Checkpoint/report pushes are not stops.
 ## Explicit non-authority while proposed
 
 Until the human says `proceed`, this file authorizes **no** containerd stop, migration, configuration change, 180->150 GB reserve change, image retry, firmware flash, provider call, destructive cleanup or merge.
+
+## Activated C0/C1 checkpoint
+
+The human `proceed` activation was received. C0 was performed read-only and
+confirmed the live topology supports the proposed reversible path:
+
+```text
+C0_STATUS=TOPOLOGY_COMPATIBLE
+CONTAINERD_VERSION=2.2.1
+CONTAINERD_SERVICE=containerd.service:active:enabled
+CONTAINERD_EXECSTART=/usr/bin/containerd
+CONTAINERD_ROOT=/var/lib/containerd
+CONTAINERD_STATE=/run/containerd
+DOCKER_CONTAINERD_SOCKET=/run/containerd/containerd.sock
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DESTINATION_COLLISION=NONE
+NVME_FILESYSTEM=ext4
+NVME_FREE_BYTES=179743141888
+TRANSFER_TAR_BYTES=1183010304
+PROJECTED_FREE_AFTER_CONTAINERD_COPY_AND_TAR=178560131584
+PROJECTED_RESERVE_150GB=PASS
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTHZ=HTTP_200
+PUBLIC_HEALTHZ=HTTP_200
+DELUGE_SERVICE=active
+DELUGE_WEB_SERVICE=active
+DELUGE_PATHS_PRESENT=YES
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION_BY_C0=NO
+```
+
+`/var/lib/containerd` is mode 700 and its exact byte size was not readable by
+the unprivileged C0 probe. V1 therefore treats the size as an explicit
+root-only preflight gate and fails closed before stopping either service if
+root accounting is unavailable. No privileged command was run by Codex.
+
+The bounded C1 artifact is present locally and passes deterministic syntax,
+diff, and secret checks:
+
+```text
+C1_SCRIPT=scripts/slate-m2-containerd-rootstep-v1-nvme-reversible.sh
+C1_SCRIPT_SHA256=84ab71aa5f126eb58ff70f34dd89d92c3d72cc3ea0335c9f3f9f07a522a757cd
+C1_LOCAL_BASH_N=PASS
+C1_LOCAL_DIFF_CHECK=PASS
+C1_LOCAL_SECRET_SCAN=PASS
+C1_GROK_REVIEW=REQUIRED_BEFORE_INSTALL
+C1_MANUAL_SUDO=NOT_YET_READY
+```
+
+The script uses a systemd drop-in with only `--root
+/mnt/ssd-tmp/slate-tools/containerd-root` and `--state /run/containerd`, keeps
+the original persistent root as rollback, verifies the stopped trees with
+structure metrics and checksum/itemized rsync dry-run, preserves the Docker
+NVMe root, and leaves the candidate image load for C3. No provider call,
+credential access, Docker-tree deletion, or production mutation occurred.
