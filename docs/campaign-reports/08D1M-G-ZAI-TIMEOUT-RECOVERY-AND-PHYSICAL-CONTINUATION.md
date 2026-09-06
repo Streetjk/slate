@@ -38,6 +38,38 @@ FIRMWARE_FLASHED=NO_AT_CHECKPOINT
 NEXT_ACTION=VERIFY_EXACT_ARM64_IMAGE_AND_EXISTING_DEPLOYMENT_TOPOLOGY_THEN_DEPLOY
 ```
 
+## Execution checkpoint — exact image transfer identity blocked
+
+The exact local image was verified as ARM64 with ID
+`sha256:5589dfe2ce9c539bfd82334e2c169a7cff962d62a00daca4456ddec6e1576199`.
+Its locally regenerated Docker-save archive was transferred to the Orange Pi
+and loaded under a unique non-production tag. The remote daemon reported the
+same complete layer set and build metadata but resolved a different image
+config identity, `sha256:63db9b2133af17d0a755a7149c0fb22e9cfa0fcaad19df31fbac2ebf344def17`.
+The frozen reviewed identity therefore could not be proven after transfer.
+
+```text
+IMAGE_TRANSFER_LOCAL_TAR_SHA256=ff6331bfcfb9451eb6b59c1f5abce94ee42d273749cc7104126c2d4e8b5307c9
+IMAGE_TRANSFER_REMOTE_TAR_SHA256=ff6331bfcfb9451eb6b59c1f5abce94ee42d273749cc7104126c2d4e8b5307c9
+IMAGE_EXPECTED_ID=sha256:5589dfe2ce9c539bfd82334e2c169a7cff962d62a00daca4456ddec6e1576199
+IMAGE_REMOTE_LOADED_ID=sha256:63db9b2133af17d0a755a7149c0fb22e9cfa0fcaad19df31fbac2ebf344def17
+IMAGE_LAYER_SET=IDENTICAL
+IMAGE_CONFIG_IDENTITY=NOT_IDENTICAL_AFTER_CROSS_DAEMON_LOAD
+BACKEND_DEPLOYMENT_STATUS=BLOCKED_EXACT_IMAGE_ID_MISMATCH
+SLATE_RECREATED=NO
+MYSQL_RECREATED=NO
+FIRMWARE_FLASH_STATUS=NOT_STARTED
+PRODUCTION_IMAGE_REMAINED=sha256:e2a116a21624043ccf3a2b1578de060637bb1e91206b2989eeef95bd98309871
+PRODUCTION_HEALTH=PASS_LOCAL_200_PUBLIC_200
+PRODUCTION_RESTARTS=SLATE_0_MYSQL_0
+PRODUCTION_CHANGED=NO_SERVICE_OR_COMPOSE_MUTATION
+```
+
+The candidate was not deployed and the firmware was not written. The loaded
+non-production tag is retained for evidence; no cleanup or destructive image
+operation was performed. Exact reviewed artifact recovery is required before
+any deployment or app-only flash can proceed.
+
 ## Mission
 
 Resume Campaign 8D1M-G from the latest live checkpoint without repeating exhausted work. Operate in `FRONTIER_DRIVEN_LONGRUN`. Keep PR #2 open, draft, and unmerged. Live GitHub state is authoritative.
