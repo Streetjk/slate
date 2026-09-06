@@ -1,5 +1,43 @@
 # Campaign 8D1M-G — ZAI Timeout Recovery and Physical Continuation
 
+## Execution checkpoint — exact ZAI review PASS; deployment/flash frontier active
+
+Reconciled PR #2 at remote head `4e52a48c0955f9afb7d8a45fbd2bb83a420fd648`.
+The prior reviewer process was confirmed dead with no final output. One
+longer bounded recovery attempt then returned the following valid exact-SHA
+verdict:
+
+```text
+REVIEWER=glm-5.3-flash
+REVIEW_TARGET_SHA=390f831e9e43588d4d9670ffea40fc2b0094cbe0aab3832d6c97509db8c54ca6
+VERDICT=PASS
+P0=0
+P1=0
+P2=2
+P3=2
+SECURITY_FINDINGS=P2_HARDENING_ONLY_AUTHENTICATED_HTTP_BASE_URLS_AND_REDIRECTS_MUST_REMAIN_HTTPS_FAIL_CLOSED_AND_AUTH_SAFE
+FINDINGS=P2_UNSYNCHRONIZED_MIC_STREAM_MARKER_FLAG; P3_BROAD_VOICE_CONFIG_MATCH; P3_PROTOCOL_MISMATCH_TRANSPORT_LOG_STRING
+```
+
+The P2/P3 findings are recorded as nonblocking observations under the
+reviewer's explicit PASS. They do not authorize unrelated source changes and
+the frozen bytes remain unchanged. The qualified ARM64 image and ESP-IDF
+5.5.2 app binary still match their recorded identities. The exact backend is
+now authorized for the bounded deployment sequence; the exact app-only
+firmware remains pending backend deployment verification.
+
+```text
+ZAI_REVIEW_ATTEMPTS_TOTAL_FOR_TIMEOUT_RECOVERY=2
+ZAI_REVIEW_STATUS=PASS_EXACT_SHA
+ZAI_REVIEW_VERDICT=PASS
+BACKEND_DEPLOYMENT_STATUS=PENDING_EXACT_IMAGE_RECONCILIATION
+FIRMWARE_FLASH_STATUS=PENDING_BACKEND_PASS
+M4_STATUS=PENDING_BACKEND_AND_FIRMWARE
+PRODUCTION_CHANGED=NO_AT_CHECKPOINT
+FIRMWARE_FLASHED=NO_AT_CHECKPOINT
+NEXT_ACTION=VERIFY_EXACT_ARM64_IMAGE_AND_EXISTING_DEPLOYMENT_TOPOLOGY_THEN_DEPLOY
+```
+
 ## Mission
 
 Resume Campaign 8D1M-G from the latest live checkpoint without repeating exhausted work. Operate in `FRONTIER_DRIVEN_LONGRUN`. Keep PR #2 open, draft, and unmerged. Live GitHub state is authoritative.
