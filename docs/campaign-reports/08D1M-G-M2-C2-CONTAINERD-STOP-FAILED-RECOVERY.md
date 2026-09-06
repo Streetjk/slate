@@ -105,3 +105,106 @@ C3 exact candidate load/deploy
 ```
 
 Reports/checkpoints are not stops. PR #2 remains open/draft/unmerged.
+
+## D0 attribution and D1 observer recovery
+
+Reconciled remote head before attribution:
+
+```text
+REMOTE_HEAD=6f5d2da9712044f9e8c0121393124c493b3c0bf3
+INSTRUCTION_SHA=6f5d2da9712044f9e8c0121393124c493b3c0bf3
+V2_REVIEWED_SHA=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+V2_SOURCE_CHANGED=NO
+```
+
+The foreground V3 observer did not produce a terminal migration result. Its
+durable result was `C2_OBSERVER=TIMEOUT_NO_TERMINAL_RESULT`; its samples
+continued to show the restored original root and healthy production after the
+operator's fail-closed rollback. The observer process/control session is no
+longer running and was disarmed before the replacement was armed.
+
+```text
+C2_OBSERVER_V3_RESULT=TIMEOUT_NO_TERMINAL_RESULT
+C2_OBSERVER_V3_SAMPLES=BASELINE_ONLY_AFTER_ROLLBACK
+C2_OBSERVER_V3_DISARMED=YES
+```
+
+The exact observer source was inspected. Every sample executed the Docker CLI
+(`docker info` plus two `docker inspect` calls) and two HTTP probes. It did not
+open the socket by pathname, but those Docker API calls use Docker's configured
+socket and can activate `docker.socket`. This was unsafe during the V2 stop
+window.
+
+The Orange Pi systemd evidence pins the race:
+
+```text
+DOCKER_SERVICE=Requires=docker.socket; TriggeredBy=docker.socket; Restart=always
+DOCKER_SOCKET=Listen=/run/docker.sock; ActiveState=active; SubState=running
+CONTAINERD_REVERSE_DEPENDENCY=docker.service
+```
+
+The sanitized journal window shows the relevant ordering:
+
+```text
+2026-09-06T12:45:27+08:00 systemd[1]: Stopping docker.service
+2026-09-06T12:45:42+08:00 systemd[1]: docker.service: Deactivated successfully
+2026-09-06T12:45:42+08:00 systemd[1]: Stopped docker.service
+2026-09-06T12:45:42+08:00 systemd[1]: Starting docker.service
+2026-09-06T12:45:42+08:00 systemd[1]: Stopping containerd.service
+2026-09-06T12:45:51+08:00 systemd[1]: docker.service: Main process exited, status=1/FAILURE
+2026-09-06T12:45:53+08:00 systemd[1]: docker.service: Scheduled restart job, restart counter is at 1
+2026-09-06T12:46:47+08:00 systemd[1]: containerd.service: Deactivated successfully
+2026-09-06T12:46:47+08:00 systemd[1]: Stopped containerd.service
+```
+
+Therefore:
+
+```text
+D0_ATTRIBUTION=OBSERVER_DOCKER_API_SOCKET_ACTIVATION_PROVEN
+D0_START_JOB_BETWEEN_STOP_OPERATIONS=YES
+D0_CONTAINERD_STOP_FAILURE_CAUSED_BY_OBSERVER_RACE=STRONGLY_PINNED
+D0_SOURCE_DEFECT=NO
+V2_BLIND_RERUN=NO
+```
+
+The post-rollback read-only health check passed: Docker root remained
+`/mnt/ssd-tmp/slate-tools/docker-data`, Slate and MySQL were running/healthy
+with restart count zero, and local/public health returned HTTP 200. No
+production mutation occurred.
+
+## D1 non-activating observer
+
+The replacement is the tracked, executable observer
+`scripts/slate-m2-c2-systemd-observer-v1.sh`. Its remote sampling command uses
+only `systemctl is-active`, `systemctl show`, and SSH. It has no Docker CLI,
+HTTP client, Docker socket path, or `DOCKER_HOST` reference. Docker/API health
+checks are intentionally not part of the stop-window observer; the observer
+reports only systemd state and defers application health verification until
+after the operator's command completes.
+
+```text
+D1_OBSERVER=scripts/slate-m2-c2-systemd-observer-v1.sh
+D1_OBSERVER_SHA256=c8cc1be296b18383af4a85550cf84310f47da7a0e3c1fcc330ae5f09ab99d59a
+D1_OBSERVER_MODE=755
+D1_OBSERVER_BASH_N=PASS
+D1_OBSERVER_SOCKET_SAFETY=PASS_NO_DOCKER_API_CURL_OR_SOCKET_REFERENCE
+D1_OBSERVER_REMOTE_MUTATION=NO
+D1_OBSERVER_CREDENTIAL_ACCESS=NO
+D1_OBSERVER_DIR=/tmp/slate-m2-c2-systemd-observer-v1.OZBjh9
+D1_OBSERVER_CONTROL_SESSION=35315
+D1_OBSERVER_SAMPLE=SYSTEMD_ONLY_BASELINE
+D1_OBSERVER_ARMED=YES
+D1_OBSERVER_RESULT=WAITING
+```
+
+Static inspection is the relevant safety proof: while Docker is inactive the
+replacement can issue no Docker API request and cannot touch
+`/run/docker.sock`; its only remote executable is `systemctl`. The exact
+reviewed V2 remains unchanged at SHA
+`09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd`.
+
+The next and only operator command is:
+
+```text
+ssh -t note4-orangepi 'sudo /home/pi/slate-m2-containerd-rootstep-v2-nvme-reversible.sh'
+```
