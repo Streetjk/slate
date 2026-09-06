@@ -244,3 +244,51 @@ NEXT_ACTION=RETAINED_GROK_EXACT_REVIEW_BOUNDARY
 
 The V1 script remains durably committed for a later exact review. No manual
 sudo command was issued, and C2/C3/M3/M4 were not started.
+
+## C1 exact-review transport recovery — retained hard stop
+
+The recovery directive authorized three materially different, bounded
+transport attempts using only the existing authenticated Grok CLI. The exact
+artifact SHA was reconciled before the attempts and remained unchanged:
+
+```text
+RECOVERY_ARTIFACT=scripts/slate-m2-containerd-rootstep-v1-nvme-reversible.sh
+RECOVERY_ARTIFACT_SHA256=84ab71aa5f126eb58ff70f34dd89d92c3d72cc3ea0335c9f3f9f07a522a757cd
+REVIEW_PROVIDER=GROK
+REVIEW_MODEL=grok-4.6
+GROK_AUTH=grok.com_authenticated
+RECOVERY_ATTEMPTS=3_OF_3
+```
+
+The attempts were deliberately distinct and produced no final verdict:
+
+```text
+ATTEMPT_1=STRUCTURED_JSON_FULL_ARTIFACT_EMBEDDED
+ATTEMPT_1_RESULT=BOUNDED_TIMEOUT_NO_FINAL_VERDICT
+ATTEMPT_2=STRUCTURED_JSON_MULTIPART_LINE_RANGED_CHUNKS
+ATTEMPT_2_RESULT=BOUNDED_TIMEOUT_NO_FINAL_VERDICT
+ATTEMPT_3=DOCUMENTED_PROMPT_FILE_READ_FILE_ALLOWLIST
+ATTEMPT_3_RESULT=BOUNDED_TIMEOUT_NO_FINAL_VERDICT
+```
+
+No raw stalled output was retained. No credential, private payload, provider
+session, Docker/containerd state, production service, firmware, or image was
+accessed or changed by recovery. Because all three authorized supported
+transports failed to produce a final exact-artifact verdict, the directive's
+hard stop is retained. The unreviewed script was not installed and no manual
+sudo command was issued.
+
+```text
+C1_GROK_EXACT_REVIEW=NO_FINAL_VERDICT
+C1_GROK_FAILURE_CLASS=THREE_SUPPORTED_TRANSPORTS_TIMEOUT_NO_VERDICT
+C1_SCRIPT_IDENTITY=PROVEN
+C1_SAFE_FOR_MANUAL_SUDO=NO
+C1_REMOTE_INSTALL=NOT_PERFORMED
+C2_STATUS=BLOCKED_C1_REVIEW_HARD_STOP
+C3_STATUS=BLOCKED_C1_REVIEW_HARD_STOP
+M3_STATUS=BLOCKED_M2_NOT_PASS
+M4_STATUS=BLOCKED_M2_NOT_PASS
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION=NO
+NEXT_ACTION=NEW_GROK_REVIEW_TRANSPORT_OR_HUMAN_AUTHORITY
+```
