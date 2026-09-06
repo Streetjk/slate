@@ -160,3 +160,121 @@ C3 exact candidate load/deploy
 ```
 
 Reports/checkpoints are not stops. PR #2 remains open/draft/unmerged. No merge/release is authorized.
+
+## G0 read-only attribution — genuine candidate-root restart instability
+
+Reconciled remote head before G0:
+
+```text
+REMOTE_HEAD=ba2422ebeeef715c83a01a4f2414297ff91f4bb5
+INSTRUCTION_SHA=ba2422ebeeef715c83a01a4f2414297ff91f4bb5
+V2_RERUN=NO
+PROVIDER_CALLS=0
+```
+
+The V2 operator result was ingested exactly as reported:
+
+```text
+M2_ROOT_STEP_V1 stage=preflight status=PASS
+M2_ROOT_STEP_V1 stage=copy status=PASS
+M2_ROOT_STEP_V1 rollback=PASS containerd_root=/var/lib/containerd docker_root=/mnt/ssd-tmp/slate-tools/docker-data health=PASS
+M2_ROOT_STEP_V1 stage=switch status=FAIL class=SLATE_RESTART_GROWTH
+```
+
+Rollback and preservation checks pass. Both the failed candidate destination
+and the current attempt backup remain present and root-owned; the prior backup
+archive also remains present. No path was deleted or overwritten.
+
+```text
+FAILED_SWITCH_DEST=/mnt/ssd-tmp/slate-tools/containerd-root
+FAILED_SWITCH_DEST_PRESENT=YES
+FAILED_SWITCH_DEST_OWNER_MODE=0:0_700
+FAILED_SWITCH_BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup
+FAILED_SWITCH_BACKUP_PRESENT=YES
+FAILED_SWITCH_BACKUP_OWNER_MODE=0:0_700
+PRIOR_ARCHIVED_BACKUP=/mnt/ssd-tmp/slate-tools/m2-containerd-rootstep-v1-backup.failed-containerd-stop-20260906
+PRIOR_ARCHIVED_BACKUP_PRESENT=YES
+DROPIN_ABSENT=YES
+ACTIVE_CONTAINERD_ROOT=/var/lib/containerd
+ACTIVE_CONTAINERD_STATE=/run/containerd
+FAILED_ARTIFACTS_DELETED=NO
+```
+
+The live rollback is healthy and unchanged:
+
+```text
+CONTAINERD_ACTIVE=active
+DOCKER_ACTIVE=active
+DOCKER_SOCKET_ACTIVE=active
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DOCKER_DRIVER=overlayfs
+SLATE=running/healthy/restarts=0
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTH=200
+PUBLIC_HEALTH=200
+CURRENT_IMAGE_VISIBLE=YES
+ROLLBACK_IMAGE_VISIBLE=YES
+MYSQL_IMAGE_VISIBLE=YES
+EXPECTED_NETWORK=YES
+NVME_FREE_BYTES=164580646912
+NVME_RESERVE_150GB=PASS
+DELUGE_SERVICES=active/running/NRestarts=0
+DELUGE_PATHS_PRESENT=YES
+DELUGE_MUTATION=NOT_OBSERVED
+PRODUCTION_MUTATION=NO
+```
+
+Both containers use `unless-stopped` with `MaximumRetryCount=0`; this is the
+existing policy and was not changed. Current post-rollback state has no OOM,
+error, or restart-count growth. The candidate-run Docker journal provides the
+decisive historical evidence:
+
+```text
+CANDIDATE_DOCKER_START=2026-09-06T13:25:57+08:00
+CANDIDATE_DOCKER_LOADING_CONTAINERS=13:25:57_to_13:26:00
+SLATE_TASK_DELETE_EVENTS=13:26:02,13:26:05,13:26:08,13:26:10,13:26:13
+SLATE_SHOULD_RESTART=2026-09-06T13:29:01+08:00
+SLATE_DAEMON_SHUTTING_DOWN=TRUE
+SLATE_RESTART_COUNT_OBSERVED=5
+SLATE_EXEC_DURATION=2m45.99761459s
+SLATE_RESTART_RESULT=RESTART_CANCELED_DURING_ROLLBACK
+MYSQL_SHOULD_RESTART=2026-09-06T13:29:05+08:00
+MYSQL_DAEMON_SHUTTING_DOWN=TRUE
+MYSQL_RESTART_COUNT_OBSERVED=0
+MYSQL_RESTART_RESULT=RESTART_CANCELED_DURING_ROLLBACK
+```
+
+The systemd ordering was one planned stop/start lifecycle with no repeated
+daemon start failures: Docker and containerd stopped cleanly at 13:29:05,
+containerd started at 13:29:06, and Docker started at 13:29:06. The repeated
+Slate task-delete/restart evidence occurred while the candidate containerd
+root was active, before rollback. MySQL did not exhibit the loop.
+
+The systemd-only observer is statically non-activating: its exact SHA remains
+`c8cc1be296b18383af4a85550cf84310f47da7a0e3c1fcc330ae5f09ab99d59a`, and it
+contains no Docker CLI, HTTP client, Docker socket path, or `DOCKER_HOST`
+reference. Its prior foreground run ended with a sanitized timeout and did not
+touch the Docker API. It was not reintroduced as a Docker-API observer.
+
+Adjudication:
+
+```text
+G0_CASE=CASE_B_GENUINE_CRASH_RESTART_INSTABILITY
+G0_SLATE_RESTART_PATTERN=REPEATED_UNEXPECTED_RESTARTS
+G0_SLATE_RESTART_COUNT=5
+G0_MYSQL_RESTART_COUNT=0
+G0_RESTART_GATE_WEAKENING=NO
+V3_CREATED=NO
+V3_REVIEW=NOT_APPLICABLE
+C2_RUNTIME_DEFECT=SLATE_TASK_RESTART_LOOP_UNDER_CANDIDATE_CONTAINERD_ROOT
+C2_FAILURE_CLASS=SLATE_RESTART_GROWTH
+ROLLBACK=PASS
+READY_FOR_V3=NO
+HUMAN_ACTION_REQUIRED=YES_RUNTIME_DEFECT_DECISION
+```
+
+The exact lower-level application exit cause is not exposed by the sanitized
+daemon evidence and is not inferred from private application logs. The failed
+candidate destination and both backups are preserved as forensic artifacts.
+No further root attempt, candidate load, firmware action, provider session,
+or production mutation is authorized by this result.
