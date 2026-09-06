@@ -124,3 +124,49 @@ separate capacity boundary. Root free space was subsequently measured at
 Docker tree, daemon configuration, Deluge path, credential, provider, or
 application container was modified by the failed M2 load. M3 and M4 remain
 blocked until this storage boundary is separately authorized and resolved.
+
+## Latest independent rollback revalidation
+
+After reconciling the branch to the latest remote head, Codex independently
+queried only sanitized live metadata. The initially attempted probe used the
+wrong container names, network name, and public endpoint; it did not mutate
+the host. The corrected probe used the deployed Compose names and `/healthz`:
+
+```text
+REMOTE_CHECK=PASS
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+DOCKER_DRIVER=overlayfs
+DOCKER_DAEMON=active
+SLATE_CONTAINER=slate-note4
+SLATE=running/healthy/restarts=0
+MYSQL_CONTAINER=slate-note4-mysql
+MYSQL=running/healthy/restarts=0
+LOCAL_HEALTHZ=HTTP_200
+PUBLIC_HEALTHZ=HTTP_200
+CURRENT_IMAGE=sha256:5ef126ff62ccf466c0795c1c76b4bdf0a7b9657184eab1f09b7435deeedbab6d
+CURRENT_IMAGE_VISIBLE=YES
+ROLLBACK_IMAGE=sha256:3d5254ee95f6324d4a0a4621396ea0adeea7ea3ed3c9cb8ca7aa3baa8da18ec3
+ROLLBACK_IMAGE_VISIBLE=YES
+MYSQL_IMAGE=sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+MYSQL_IMAGE_VISIBLE=YES
+EXPECTED_NETWORK=slate-note4-deploy_default
+EXPECTED_NETWORK=YES
+ORIGINAL_ROOT_PRESENT=YES
+NVME_ROOT_PRESENT=YES
+ROOT_FREE_BYTES=279789568
+NVME_FREE_BYTES=180548829184
+NVME_RESERVE_FLOOR_150GB=PASS
+CONTAINERD_ROOT_PRESENT=YES
+TRANSFER_TAR_PRESENT=YES
+DELUGE_SERVICE=active
+DELUGE_WEB_SERVICE=active
+DELUGE_PATHS_PRESENT=YES
+PROVIDER_CALLS=0
+PRODUCTION_MUTATION_THIS_CHECK=NO
+```
+
+The armed observer’s purpose and sanitized scope remain recorded in the V8
+safety evidence; the independent result above is the authoritative current
+M1 verification. M1 remains closed as
+`M1_STATUS=PASS_NVME_DOCKER_ROOT_ACTIVE`. The exact M2 candidate load was not
+retried.

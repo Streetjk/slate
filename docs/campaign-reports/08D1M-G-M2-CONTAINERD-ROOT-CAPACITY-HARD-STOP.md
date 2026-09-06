@@ -37,6 +37,46 @@ M4_STATUS=BLOCKED_M2_NOT_PASS
 NEXT_ACTION=HUMAN_DECISION_ON_CONTAINERD_STORAGE_BOUNDARY
 ```
 
+## Latest read-only rollback revalidation
+
+The requested older checkpoint `cd45fbbd82cdf41ac153bcd525d25304ddf1e21a`
+was an ancestor. The active branch was reconciled to the latest remote head
+`435d02d340c462a859246f1a1921176ced0f2359`. A corrected, read-only probe
+confirmed the rollback remains healthy without retrying the candidate load:
+
+```text
+REVALIDATION=PASS
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=slate-note4 running/healthy/restarts=0
+MYSQL=slate-note4-mysql running/healthy/restarts=0
+LOCAL_HEALTHZ=HTTP_200
+PUBLIC_HEALTHZ=HTTP_200
+CURRENT_IMAGE_VISIBLE=YES
+ROLLBACK_IMAGE_VISIBLE=YES
+MYSQL_IMAGE_VISIBLE=YES
+EXPECTED_NETWORK=slate-note4-deploy_default:YES
+ORIGINAL_ROOT_PRESENT=YES
+NVME_ROOT_PRESENT=YES
+ROOT_FREE_BYTES=279789568
+NVME_FREE_BYTES=180548829184
+NVME_RESERVE_FLOOR_150GB=PASS
+CONTAINERD_ROOT_PRESENT=YES
+TRANSFER_TAR_PRESENT=YES
+DELUGE_SERVICE=active
+DELUGE_WEB_SERVICE=active
+DELUGE_PATHS_PRESENT=YES
+CANDIDATE_REGISTERED=NO
+SLATE_RECREATED=NO
+PRODUCTION_CHANGED_BY_REVALIDATION=NO
+```
+
+The storage hard stop is unchanged: loading the exact candidate still
+requires persistent containerd capacity under `/var/lib/containerd`. The
+later proposed containerd-NVMe migration is `PROPOSED_NOT_AUTHORIZED`; no
+containerd stop, configuration change, cleanup, image retry, deployment,
+firmware flash, provider call, or PR merge is authorized by this
+revalidation.
+
 The exact candidate tar was transferred to the NVMe Slate tools path and
 loaded independently. The load failed with a sanitized Docker/containerd
 capacity error under `/var/lib/containerd`; the candidate did not register and
