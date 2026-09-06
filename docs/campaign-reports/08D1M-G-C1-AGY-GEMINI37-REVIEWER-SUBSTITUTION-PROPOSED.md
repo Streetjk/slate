@@ -113,3 +113,31 @@ keep C1 blocked
 ```
 
 PR #2 remains open/draft/unmerged.
+
+## Authorized AGY attempt 1 — restricted headless permission failure
+
+The exact V2 SHA was re-proved and one AGY `gemini-3.7-flash-high` review job
+was started with the existing OAuth route in restricted read-only mode. The
+job returned no review content because headless restricted mode denied an
+unlisted command permission before evidence collection. No source, provider
+payload, credential, production, Docker, containerd, or firmware state was
+changed.
+
+The companion's sanitized failure classification identifies dropping
+`--restricted` as the recoverable remedy. This does not constitute a review
+verdict; the same exact review will be retried once using default unrestricted
+AGY mode, with the read-only task prohibiting mutation.
+
+```text
+AGY_REVIEW_JOB=review-mtpayqxj4
+AGY_REVIEW_MODEL=gemini-3.7-flash-high
+AGY_REVIEW_PROFILE=restricted
+REVIEW_TARGET_SHA=09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd
+AGY_RESULT=EMPTY_RESPONSE
+AGY_FAILURE_CLASS=RESTRICTED_HEADLESS_COMMAND_PERMISSION_DENIED
+VERDICT=NO_VERDICT
+REVIEW_CONTENT_SENT=NO
+SOURCE_CHANGED=NO
+PRODUCTION_MUTATION=NO
+RECOVERY_ACTION=DROP_RESTRICTED_FOR_SAME_EXACT_READ_ONLY_REVIEW
+```
