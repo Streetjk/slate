@@ -485,3 +485,38 @@ CONSEQUENCES=No root-script install, sudo execution, containerd migration, C3 lo
 APPROVAL_TEXT=Authorize one exact read-only zai-glm53-reviewer GLM-5.3-Flash review of scripts/slate-m2-containerd-rootstep-v2-nvme-reversible.sh at SHA 09b40568306daeeb36feb114ee17eede1dffd44c8e824a1022fbce36b2be7ebd; no reviewer substitution beyond this profile and no production/containerd/firmware/provider mutation.
 REJECTION_TEXT=Keep C1 blocked; do not install or execute the unreviewed root script.
 ```
+
+## Human-approved substitution attempt — exact profile unavailable
+
+The human supplied `proceed`, which authorizes only the narrow substitution
+defined above. The required non-secret availability check was completed
+without reading any credential value or production environment:
+
+```text
+SUBSTITUTE_REVIEWER_PROFILE=zai-glm53-reviewer
+SUBSTITUTE_PROVIDER=ZAI
+SUBSTITUTE_MODEL=glm-5.3-flash
+ZAI_REVIEWER_EXECUTABLE=NOT_FOUND
+ZAI_AUTH_CHECK=NOT_PERFORMED_PROFILE_UNAVAILABLE
+UNRELATED_LOCAL_GLM_WRAPPER=FOUND_NVIDIA_NIM_GLM52
+UNRELATED_REVIEWER_INVOKED=NO
+REVIEW_REQUEST_SENT=NO
+NEW_CREDENTIAL=NO
+PRODUCTION_MUTATION=NO
+```
+
+The local `glm` wrapper is explicitly not the authorized ZAI profile: it uses
+an NVIDIA NIM endpoint and GLM-5.2. It was not invoked. No exact ZAI review
+transport or approved orchestration endpoint is available in this controller
+environment, so the narrow substitution cannot proceed without a new human
+decision or re-establishment of the existing protected route. V2 remains
+unreviewed, uninstalled, and unexecuted.
+
+```text
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+TERMINAL_REASON=AUTHORIZED_ZAI_GLM53_REVIEWER_PROFILE_UNAVAILABLE_NO_REVIEW_REQUEST_SENT
+```
