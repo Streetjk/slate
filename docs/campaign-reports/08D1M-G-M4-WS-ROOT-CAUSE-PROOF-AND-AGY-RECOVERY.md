@@ -1,5 +1,49 @@
 # Campaign 8D1M-G — WebSocket Root-Cause Proof + AGY Writer Recovery
 
+## Stage 7 checkpoint — app-only reflash and sanitized observer requalification PASS
+
+Recorded 2026-09-07 after the exact reviewed firmware was written to the
+qualified NOTE4. No full erase or persistent-region operation was used.
+
+```text
+DEVICE_PORT=/dev/cu.usbmodem31201
+DEVICE_TARGET=ESP32-S3_REV_V0.2
+DEVICE_FLASH_SIZE=16MB
+DEVICE_FLASH_ID=46_4018
+FIRMWARE_APP_SHA256=640ab435c9ec2f69ad4465520a712405bc28b7b0849a96b16fcb8685693716da
+FIRMWARE_FLASH_OFFSET=0x10000
+FIRMWARE_FLASH_SCOPE=APP_ONLY
+FIRMWARE_FLASH_TOOL=esptool_v5.2.0
+FIRMWARE_FLASH_WRITE=PASS
+FIRMWARE_FLASH_VERIFY=PASS_HASH_OF_DATA_VERIFIED
+FULL_ERASE=NO
+PARTITION_TABLE_WRITE=NO
+NVS_WRITE=NO
+LITTLEFS_WRITE=NO
+PAIRING_RESET=NO
+DEVICE_IDENTITY_RESET=NO
+POST_FLASH_SERIAL_CAPTURE=SANITIZED_ONLY
+POST_FLASH_SERIAL_LINES=7
+POST_FLASH_WIFI_MARKERS=2
+POST_FLASH_POLL_OR_SYNC_MARKERS=4
+POST_FLASH_FATAL_MARKERS=0
+BACKEND_LOCAL_HEALTH=HTTP_200
+BACKEND_PUBLIC_HEALTH=HTTP_200
+SLATE=running/healthy/restart=0
+MYSQL=running/healthy/restart=0
+SANITIZED_OBSERVER=ARMED_LIVE_PTY
+SANITIZED_OBSERVER_RAW_CONTENT_RETAINED=NO
+```
+
+The read-only identity matched the previously qualified device before the
+write. The observer now emits only structural serial counts/events and
+sanitized backend health/restart/image fields plus approved `VOICE_*` enums;
+it does not retain raw serial lines, audio, transcripts, provider payloads,
+credentials, or auth headers.
+
+All nonphysical READY and READONLY_READY work is exhausted. The next and only
+remaining node is one combined physical M4 EN/JA Voice AI session.
+
 ## Stage 6 checkpoint — exact ZAI review PASS; app-only reflash authorized
 
 Recorded 2026-09-07 after the existing designated ZAI authentication was
