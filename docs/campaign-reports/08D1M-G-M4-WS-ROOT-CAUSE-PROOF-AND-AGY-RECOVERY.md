@@ -31,6 +31,41 @@ The Slate wrapper callback ordering was separately checked: its `OnData`,
 The correction therefore targets the lower transport lifecycle boundary, not
 the previously misstated send-versus-handler order.
 
+## Stage 2–4 checkpoint — AGY repair and deterministic qualification
+
+The same designated AGY Gemini 3.8 Flash route completed the bounded repair.
+The changed source registers the lower transport stream and disconnect
+callbacks, and resets handshake state, before `tcp_->Connect()` starts either
+transport receive task. No backend, model, provider, credential, billing,
+private-data, or unrelated firmware bytes were changed.
+
+```text
+AGY_IMPLEMENTATION_STATUS=PASS_SAME_DESIGNATED_ROUTE
+AGY_MODEL=gemini-3.8-flash-high
+CHANGED_SOURCE=firmware/managed_components/78__esp-ml307/src/web_socket.cc
+CHANGED_SOURCE_SHA256=98d471c65f14f90e89eaa78fbaf441b8e1549d67a6262ce0ede076fef9a0dd8c
+REGRESSION_TEST=firmware/test/websocket_event_loss_regression_test.sh
+REGRESSION_TEST_SHA256=d6672b3fc695d8406a69769ea90e2c89af911bb84d76ab829eb0690d2776dcff
+WEBSOCKET_EVENT_LOSS_REGRESSION=PASS
+NO_VENDOR_VOICE_DEPENDENCY_TEST=PASS
+FRAMEBUFFER_HOST_TEST=PASS
+PRIVACY_SECRET_SCAN=PASS_NO_MATCHES
+ESP_IDF=5.5.2
+FIRMWARE_TARGET=esp32s3
+FIRMWARE_BUILD=PASS_2002_OF_2002
+FIRMWARE_BUILD_IMAGE=espressif/idf@sha256:05cbfc42ed2e987b8026722c15bf1d8523d3e4fd1b4ac04d2e4056f5e0918b99
+FIRMWARE_APP_PATH=build-ws-repair/slate.bin
+FIRMWARE_APP_SHA256=640ab435c9ec2f69ad4465520a712405bc28b7b0849a96b16fcb8685693716da
+FIRMWARE_APP_SIZE_BYTES=2505008
+SOURCE_BYTES_CHANGED=YES
+ZAI_REVIEW_STATUS=PENDING_FRESH_EXACT_REVIEW
+```
+
+The regression combines source-order assertions with a deterministic mock
+transport: the pre-fix order drops an immediate event when the callback is
+unset, while the repaired order delivers it. The isolated build compiled the
+changed `78__esp-ml307` component and completed without network access.
+
 ## Authority and live-state rule
 
 This instruction was issued after reconciling live PR #2 at:
