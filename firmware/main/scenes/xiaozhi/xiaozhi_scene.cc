@@ -45,6 +45,19 @@ std::string MessagesKey(const xiaozhi::XiaozhiSnapshot& snap) {
     return key;
 }
 
+std::string MessagesPrefixKey(const xiaozhi::XiaozhiSnapshot& snap) {
+    if (snap.messages.size() <= 1)
+        return "";
+    std::string key;
+    for (size_t i = 0; i + 1 < snap.messages.size(); ++i) {
+        key += snap.messages[i].role;
+        key.push_back('\x1F');
+        key += util::SanitizeForScreen(snap.messages[i].text);
+        key.push_back('\x1E');
+    }
+    return key;
+}
+
 const char* EmotionIcon(const std::string& emotion, xiaozhi::XiaozhiState state) {
     if (state == xiaozhi::XiaozhiState::kCheckingConfig || state == xiaozhi::XiaozhiState::kConnecting ||
         state == xiaozhi::XiaozhiState::kStopping)
@@ -192,6 +205,11 @@ void XiaozhiScene::OnExit(SceneContext& ctx) {
         hint_label_             = nullptr;
         rendered_message_count_ = 0;
         rendered_messages_key_.clear();
+        rendered_prefix_key_.clear();
+        last_bubble_row_        = nullptr;
+        last_bubble_            = nullptr;
+        last_label_             = nullptr;
+        last_bubble_role_.clear();
     });
     if (service_entered_) {
         if (auto* service = Service(ctx))
@@ -446,7 +464,33 @@ void XiaozhiScene::RenderXiaozhiMessages(const xiaozhi::XiaozhiSnapshot& snap) {
     lv_obj_clear_flag(xiaozhi_area_, LV_OBJ_FLAG_HIDDEN);
     const bool        state_changed = rendered_state_ != static_cast<int>(snap.state);
     const std::string messages_key  = MessagesKey(snap);
-    const bool        should_rebuild =
+    const std::string prefix_key    = MessagesPrefixKey(snap);
+
+    const bool can_update_in_place =
+        last_label_ && last_bubble_ && last_bubble_row_ &&
+        rendered_message_count_ == snap.messages.size() &&
+        !snap.messages.empty() &&
+        snap.messages.back().role == "assistant" &&
+        last_bubble_role_ == "assistant" &&
+        prefix_key == rendered_prefix_key_;
+
+    if (can_update_in_place) {
+        if (rendered_messages_key_ != messages_key) {
+            const std::string display_text = DisplayText(snap.messages.back().text);
+            if (!display_text.empty()) {
+                LayoutBubble(last_bubble_, last_label_, display_text);
+                lv_obj_set_height(last_bubble_row_, lv_obj_get_height(last_bubble_) + 2);
+                lv_obj_scroll_to_view_recursive(last_bubble_row_, LV_ANIM_OFF);
+            }
+            rendered_messages_key_ = messages_key;
+        }
+        if (xiaozhi_content_ && lv_obj_get_child_cnt(xiaozhi_content_) > 0 && xiaozhi_empty_label_)
+            lv_obj_add_flag(xiaozhi_empty_label_, LV_OBJ_FLAG_HIDDEN);
+        rendered_state_ = static_cast<int>(snap.state);
+        return;
+    }
+
+    const bool should_rebuild =
         state_changed || rendered_message_count_ != snap.messages.size() || rendered_messages_key_ != messages_key;
     if (state_changed && snap.state == xiaozhi::XiaozhiState::kListening && snap.messages.empty())
         ClearXiaozhiMessages();
@@ -457,10 +501,13 @@ void XiaozhiScene::RenderXiaozhiMessages(const xiaozhi::XiaozhiSnapshot& snap) {
             AppendXiaozhiBubble(msg.role, msg.text);
         rendered_message_count_ = snap.messages.size();
         rendered_messages_key_  = messages_key;
+        rendered_prefix_key_    = prefix_key;
     }
 
     if (xiaozhi_content_ && lv_obj_get_child_cnt(xiaozhi_content_) == 0)
         ShowEmptyXiaozhiHint();
+    else if (xiaozhi_empty_label_)
+        lv_obj_add_flag(xiaozhi_empty_label_, LV_OBJ_FLAG_HIDDEN);
 
     rendered_state_ = static_cast<int>(snap.state);
 }
@@ -471,6 +518,11 @@ void XiaozhiScene::ClearXiaozhiMessages() {
     lv_obj_clean(xiaozhi_content_);
     rendered_message_count_ = 0;
     rendered_messages_key_.clear();
+    rendered_prefix_key_.clear();
+    last_bubble_row_  = nullptr;
+    last_bubble_      = nullptr;
+    last_label_       = nullptr;
+    last_bubble_role_.clear();
 }
 
 void XiaozhiScene::ShowEmptyXiaozhiHint() {
@@ -514,6 +566,11 @@ void XiaozhiScene::AppendXiaozhiBubble(const std::string& role, const std::strin
         lv_obj_align(bubble, LV_ALIGN_LEFT_MID, 18, 0);
 
     lv_obj_scroll_to_view_recursive(row, LV_ANIM_OFF);
+
+    last_bubble_row_  = row;
+    last_bubble_      = bubble;
+    last_label_       = label;
+    last_bubble_role_ = role;
 }
 
 void XiaozhiScene::LayoutBubble(lv_obj_t* bubble, lv_obj_t* label, const std::string& text) {

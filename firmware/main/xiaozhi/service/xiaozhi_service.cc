@@ -705,8 +705,11 @@ void XiaozhiService::ConfigureProtocolCallbacks(Protocol* protocol) {
     protocol->OnIncomingAudio([this, token](std::unique_ptr<AudioStreamPacket> packet) {
         if (token != conversation_token_.load(std::memory_order_acquire))
             return;
-        if (CurrentState() == XiaozhiState::kSpeaking)
+        if (CurrentState() == XiaozhiState::kSpeaking) {
             audio_->PushPacketToDecodeQueue(std::move(packet));
+        } else {
+            ESP_LOGD(kTag, "audio_pkt_gate_rejected state=%d", static_cast<int>(CurrentState()));
+        }
     });
     protocol->OnIncomingJson([this, token](const cJSON* root) {
         if (token != conversation_token_.load(std::memory_order_acquire))

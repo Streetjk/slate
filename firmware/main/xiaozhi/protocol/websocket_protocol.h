@@ -38,6 +38,8 @@ class WebsocketProtocol : public Protocol {
     bool                        mic_stream_marker_emitted_ = false;
     std::atomic<int>            version_{1};
     std::string                 send_buffer_;
+    std::atomic<uint32_t>       rx_audio_packets_{0};
+    std::atomic<bool>           rx_audio_timing_emitted_{false};
 
     bool        SendText(const std::string& text) override;
     std::string GetHelloMessage() const;

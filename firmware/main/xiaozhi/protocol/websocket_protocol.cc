@@ -11,6 +11,7 @@
 #include "utils/byte_utils.h"
 #include "utils/json_utils.h"
 #include "utils/mac_utils.h"
+#include "utils/timing_trace.h"
 #include "network/cred_store.h"
 #include "xiaozhi/config/settings.h"
 
@@ -62,6 +63,8 @@ bool WebsocketProtocol::OpenAudioChannel() {
     mcp_accepting_.store(true, std::memory_order_relaxed);
     audio_channel_ready_.store(false, std::memory_order_relaxed);
     mic_stream_marker_emitted_ = false;
+    rx_audio_packets_.store(0, std::memory_order_relaxed);
+    rx_audio_timing_emitted_.store(false, std::memory_order_relaxed);
     ClearSessionId();
     ResetIncomingTimeout();
     {
@@ -262,6 +265,14 @@ void WebsocketProtocol::HandleIncomingData(const char* data, size_t len, bool bi
 bool WebsocketProtocol::HandleIncomingBinary(const char* data, size_t len) {
     if (!on_incoming_audio_)
         return false;
+
+    const uint32_t pkt_idx = rx_audio_packets_.fetch_add(1, std::memory_order_relaxed) + 1;
+    ESP_LOGD(kTag, "audio_pkt_recv count=%lu bytes=%u", static_cast<unsigned long>(pkt_idx),
+             static_cast<unsigned>(len));
+    bool expected_rx = false;
+    if (rx_audio_timing_emitted_.compare_exchange_strong(expected_rx, true, std::memory_order_relaxed)) {
+        SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_RECEIVED");
+    }
 
     int sample_rate    = 0;
     int frame_duration = 0;

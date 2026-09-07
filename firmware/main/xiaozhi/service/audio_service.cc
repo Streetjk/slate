@@ -249,6 +249,11 @@ bool AudioService::Begin() {
     voice_processing_.store(false, std::memory_order_relaxed);
     first_playback_timing_emitted_.store(false, std::memory_order_relaxed);
     first_audio_timing_emitted_.store(false, std::memory_order_relaxed);
+    first_decode_timing_emitted_.store(false, std::memory_order_relaxed);
+    decode_enqueued_count_.store(0, std::memory_order_relaxed);
+    decode_enqueue_dropped_count_.store(0, std::memory_order_relaxed);
+    decode_success_count_.store(0, std::memory_order_relaxed);
+    decode_failure_count_.store(0, std::memory_order_relaxed);
     return true;
 }
 
@@ -271,15 +276,24 @@ void AudioService::EnableVoiceProcessing(bool enable) {
 }
 
 bool AudioService::PushPacketToDecodeQueue(std::unique_ptr<AudioStreamPacket> packet) {
-    if (!packet || !active_.load(std::memory_order_relaxed))
+    if (!packet || !active_.load(std::memory_order_relaxed)) {
+        decode_enqueue_dropped_count_.fetch_add(1, std::memory_order_relaxed);
+        ESP_LOGD(kTag, "audio_pkt_enqueued_fail reason=%s", !packet ? "null" : "inactive");
         return false;
+    }
     packet->epoch = queue_epoch_.load(std::memory_order_relaxed);
     {
         std::lock_guard<std::mutex> lock(queue_mutex_);
-        if (decode_queue_.size() >= kMaxDecodePackets)
+        if (decode_queue_.size() >= kMaxDecodePackets) {
+            decode_enqueue_dropped_count_.fetch_add(1, std::memory_order_relaxed);
+            ESP_LOGW(kTag, "audio_pkt_enqueued_fail reason=queue_full qsize=%u",
+                     static_cast<unsigned>(decode_queue_.size()));
             return false;
+        }
         decode_queue_.push_back(std::move(packet));
     }
+    const uint32_t enq = decode_enqueued_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+    ESP_LOGD(kTag, "audio_pkt_enqueued count=%lu", static_cast<unsigned long>(enq));
     AUDIO_DIAG(diag_.decode_push_count.fetch_add(1, std::memory_order_relaxed));
     xSemaphoreGive(decode_notify_);
     return true;
@@ -437,8 +451,11 @@ void AudioService::OutputTask() {
         bool expected = false;
         if (first_playback_timing_emitted_.compare_exchange_strong(expected, true, std::memory_order_relaxed))
             SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK");
-        player_->WriteXiaozhiPcm(task->pcm.data(), task->pcm.size());
+        const bool write_ok = player_->WriteXiaozhiPcm(task->pcm.data(), task->pcm.size());
         AUDIO_DIAG(diag_.playback_write_count.fetch_add(1, std::memory_order_relaxed));
+        if (!write_ok) {
+            ESP_LOGW(kTag, "audio_playback_write_fail samples=%u", static_cast<unsigned>(task->pcm.size()));
+        }
         playback_active_.store(false, std::memory_order_relaxed);
     }
     playback_active_.store(false, std::memory_order_relaxed);
@@ -492,10 +509,23 @@ bool AudioService::ProcessDecodePacket() {
             esp_audio_dec_info_t info = {};
             auto                 ret  = esp_opus_dec_decode(opus_decoder_, &raw, &frame, &info);
             if (ret != ESP_AUDIO_ERR_OK || frame.decoded_size == 0) {
-                ESP_LOGW(kTag, "decode failed ret=%d", ret);
+                const uint32_t fails = decode_failure_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+                ESP_LOGW(kTag, "audio_decode_fail ret=%d fail_count=%lu", ret, static_cast<unsigned long>(fails));
             } else {
                 task->pcm.resize(frame.decoded_size / sizeof(int16_t));
                 decoded = ResampleToDeviceRateLocked(task->pcm, decode_packet->sample_rate);
+                if (decoded) {
+                    const uint32_t oks = decode_success_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+                    ESP_LOGD(kTag, "audio_decode_ok count=%lu samples=%u",
+                             static_cast<unsigned long>(oks), static_cast<unsigned>(task->pcm.size()));
+                    bool expected_dec = false;
+                    if (first_decode_timing_emitted_.compare_exchange_strong(expected_dec, true, std::memory_order_relaxed)) {
+                        SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_DECODED");
+                    }
+                } else {
+                    const uint32_t fails = decode_failure_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+                    ESP_LOGW(kTag, "audio_decode_resample_fail fail_count=%lu", static_cast<unsigned long>(fails));
+                }
             }
         }
     }

@@ -357,6 +357,8 @@ bool AudioPlayer::BeginXiaozhi() {
     if (!initialized_)
         return false;
     Stop();
+    write_xiaozhi_ok_count_.store(0, std::memory_order_relaxed);
+    write_xiaozhi_fail_count_.store(0, std::memory_order_relaxed);
     xiaozhi_active_.store(true, std::memory_order_relaxed);
     if (!EnsureCodecOpen()) {
         xiaozhi_active_.store(false, std::memory_order_relaxed);
@@ -387,15 +389,31 @@ bool AudioPlayer::ReadXiaozhiPcm(int16_t* dest, size_t samples) {
 }
 
 bool AudioPlayer::WriteXiaozhiPcm(const int16_t* data, size_t samples) {
-    if (!initialized_ || !xiaozhi_active_.load(std::memory_order_relaxed) || !data || samples == 0)
+    if (!initialized_ || !xiaozhi_active_.load(std::memory_order_relaxed) || !data || samples == 0) {
+        write_xiaozhi_fail_count_.fetch_add(1, std::memory_order_relaxed);
+        ESP_LOGD(kTag, "audio_player_write_fail reason=invalid_or_inactive");
         return false;
-    if (!EnsureCodecOpen())
+    }
+    if (!EnsureCodecOpen()) {
+        write_xiaozhi_fail_count_.fetch_add(1, std::memory_order_relaxed);
+        ESP_LOGW(kTag, "audio_player_write_fail reason=codec_not_open");
         return false;
+    }
     xSemaphoreTake(codec_mutex_, portMAX_DELAY);
     // esp_audio_codec 的 C API 没有 const-correct；当前 ES8311 write path 不会修改输入 PCM。
     const int ret = esp_codec_dev_write(dev_, const_cast<int16_t*>(data), static_cast<int>(samples * sizeof(int16_t)));
     xSemaphoreGive(codec_mutex_);
-    return ret == ESP_OK;
+    const bool ok = (ret == ESP_OK);
+    if (ok) {
+        const uint32_t oks = write_xiaozhi_ok_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+        ESP_LOGD(kTag, "audio_player_write_ok count=%lu samples=%u", static_cast<unsigned long>(oks),
+                 static_cast<unsigned>(samples));
+    } else {
+        const uint32_t fails = write_xiaozhi_fail_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+        ESP_LOGW(kTag, "audio_player_write_fail ret=0x%x fail_count=%lu", ret,
+                 static_cast<unsigned long>(fails));
+    }
+    return ok;
 }
 
 void AudioPlayer::TaskEntry(void* arg) {

@@ -6,6 +6,10 @@ import { GeminiLiveService, type GeminiLiveConnection } from './gemini-live.serv
 import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
 import { OpusPcmCodec, type VoiceCodec } from './opus-pcm-codec';
 
+const MAX_PRE_PROVIDER_MIC_FRAMES = 50;
+const MAX_PRE_PROVIDER_MIC_BYTES = 100 * 1024;
+const TRANSCRIPT_STREAM_DELAY_MS = 100;
+
 export interface VoiceCalendarActions {
   propose(proposal: unknown): Promise<{
     ticket: string;
@@ -22,12 +26,20 @@ export class XiaozhiVoiceSession {
   private readonly codec: VoiceCodec;
   private readonly timing = new VoiceTimingTrace();
   private live: GeminiLiveConnection | undefined;
+  private connectingPromise: Promise<GeminiLiveConnection | undefined> | undefined;
+  private connectGeneration = 0;
   private handshaken = false;
+  private listening = false;
+  private closed = false;
   private speaking = false;
   private pendingInputTranscript = '';
   private pendingOutputTranscript = '';
+  private lastSentOutputTranscript = '';
+  private transcriptTimer: ReturnType<typeof setTimeout> | undefined;
   private operation = Promise.resolve();
   private micFrameMarkerEmitted = false;
+  private micQueue: Uint8Array[] = [];
+  private micQueueBytes = 0;
 
   constructor(
     private readonly socket: WebSocket,
@@ -40,6 +52,14 @@ export class XiaozhiVoiceSession {
 
   start(): void {
     this.socket.on('message', (data, isBinary) => {
+      if (isBinary) {
+        try {
+          this.handleAudio(toBuffer(data));
+        } catch (error: unknown) {
+          this.fail(error);
+        }
+        return;
+      }
       this.operation = this.operation
         .then(() => this.handleMessage(data, isBinary))
         .catch((error: unknown) => this.fail(error));
@@ -61,20 +81,38 @@ export class XiaozhiVoiceSession {
       case 'listen':
         if (!this.handshaken) throw new Error('voice session not initialized; hello required');
         if (message.state === 'start') {
-          this.pendingInputTranscript = '';
-          this.pendingOutputTranscript = '';
+          this.listening = true;
+          this.clearTranscriptState();
           this.timing.mark('T_DEVICE_LISTEN_START');
-          await this.ensureLive();
+          void this.ensureLive().catch((error: unknown) => {
+            if (!this.closed && this.listening) {
+              this.fail(error);
+            }
+          });
         } else if (message.state === 'stop') {
-          this.live?.endAudio();
+          this.listening = false;
+          if (this.live) {
+            this.live.endAudio();
+          } else if (this.connectingPromise) {
+            this.connectingPromise
+              .then((conn) => {
+                if (conn && !this.closed) {
+                  conn.endAudio();
+                }
+              })
+              .catch(() => {});
+          }
         }
         return;
       case 'abort':
+        this.connectGeneration++;
+        this.clearMicQueue();
+        this.clearTranscriptState();
+        this.listening = false;
+        this.connectingPromise = undefined;
         this.live?.close();
         this.live = undefined;
         this.speaking = false;
-        this.pendingInputTranscript = '';
-        this.pendingOutputTranscript = '';
         this.codec.reset();
         return;
       case 'calendar':
@@ -90,14 +128,18 @@ export class XiaozhiVoiceSession {
   }
 
   close(): void {
+    this.closed = true;
+    this.listening = false;
+    this.connectGeneration++;
+    this.clearMicQueue();
+    this.clearTranscriptState();
     if (!this.micFrameMarkerEmitted) {
       this.micFrameMarkerEmitted = true;
       this.logger.log('FIRST_MIC_FRAME_RECEIVED=NO');
     }
     this.live?.close();
     this.live = undefined;
-    this.pendingInputTranscript = '';
-    this.pendingOutputTranscript = '';
+    this.connectingPromise = undefined;
     this.codec.close();
   }
 
@@ -117,7 +159,7 @@ export class XiaozhiVoiceSession {
   }
 
   private handleAudio(packet: Uint8Array): void {
-    if (!this.handshaken || !this.live)
+    if (!this.handshaken || (!this.live && !this.connectingPromise && !this.listening))
       throw new Error('voice audio received before session start');
     if (!this.micFrameMarkerEmitted) {
       this.micFrameMarkerEmitted = true;
@@ -125,30 +167,97 @@ export class XiaozhiVoiceSession {
     }
     this.timing.mark('T_FIRST_DEVICE_AUDIO_SENT');
     this.timing.mark('T_BACKEND_FIRST_AUDIO_RECEIVED');
-    this.live.sendAudio(this.codec.decodeDevicePacket(packet));
+    if (this.live) {
+      this.live.sendAudio(this.codec.decodeDevicePacket(packet));
+    } else {
+      this.enqueueMicFrame(packet);
+    }
   }
 
-  private async ensureLive(): Promise<void> {
+  private enqueueMicFrame(packet: Uint8Array): void {
+    while (
+      this.micQueue.length >= MAX_PRE_PROVIDER_MIC_FRAMES ||
+      this.micQueueBytes + packet.byteLength > MAX_PRE_PROVIDER_MIC_BYTES
+    ) {
+      const dropped = this.micQueue.shift();
+      if (!dropped) break;
+      this.micQueueBytes -= dropped.byteLength;
+    }
+    this.micQueue.push(packet);
+    this.micQueueBytes += packet.byteLength;
+  }
+
+  private flushMicQueue(): void {
+    if (!this.live || this.micQueue.length === 0) return;
+    const frames = this.micQueue;
+    this.micQueue = [];
+    this.micQueueBytes = 0;
+    for (const frame of frames) {
+      this.live.sendAudio(this.codec.decodeDevicePacket(frame));
+    }
+  }
+
+  private clearMicQueue(): void {
+    this.micQueue = [];
+    this.micQueueBytes = 0;
+  }
+
+  private isCurrentAttempt(generation: number): boolean {
+    return !this.closed && generation === this.connectGeneration;
+  }
+
+  private async ensureLive(): Promise<GeminiLiveConnection | undefined> {
     if (this.live) {
       this.logger.log('PROVIDER_SESSION_CREATE_START=NO');
-      return;
+      return this.live;
+    }
+    if (this.connectingPromise) {
+      return this.connectingPromise;
     }
     this.logger.log('PROVIDER_SESSION_CREATE_START=YES');
-    try {
-      this.live = await this.liveService.connect(
-        'en',
-        ({ message }) => this.handleGeminiMessage(message),
-        () => this.handleLiveFailure()
-      );
-      this.logger.log('PROVIDER_SESSION_CREATE_RESULT=PASS');
-      this.logger.log('PROVIDER_SESSION_STARTED=YES');
-      this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
-    } catch (error) {
-      const sanitizedClass = classifyProviderFailure(error);
-      this.logger.log(`PROVIDER_SESSION_CREATE_RESULT=${sanitizedClass}`);
-      this.logger.log('PROVIDER_SESSION_STARTED=NO');
-      throw error;
-    }
+    const generation = ++this.connectGeneration;
+    const connectPromise = (async () => {
+      try {
+        const live = await this.liveService.connect(
+          'en',
+          ({ message }) => {
+            if (this.isCurrentAttempt(generation)) {
+              this.handleGeminiMessage(message);
+            }
+          },
+          () => {
+            if (this.isCurrentAttempt(generation)) {
+              this.handleLiveFailure();
+            }
+          }
+        );
+        if (!this.isCurrentAttempt(generation)) {
+          live.close();
+          return undefined;
+        }
+        this.live = live;
+        this.logger.log('PROVIDER_SESSION_CREATE_RESULT=PASS');
+        this.logger.log('PROVIDER_SESSION_STARTED=YES');
+        this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
+        this.flushMicQueue();
+        return live;
+      } catch (error) {
+        if (this.isCurrentAttempt(generation)) {
+          this.clearMicQueue();
+          const sanitizedClass = classifyProviderFailure(error);
+          this.logger.log(`PROVIDER_SESSION_CREATE_RESULT=${sanitizedClass}`);
+          this.logger.log('PROVIDER_SESSION_STARTED=NO');
+          throw error;
+        }
+        return undefined;
+      } finally {
+        if (this.connectGeneration === generation) {
+          this.connectingPromise = undefined;
+        }
+      }
+    })();
+    this.connectingPromise = connectPromise;
+    return connectPromise;
   }
 
   private handleGeminiMessage(message: LiveServerMessage): void {
@@ -169,6 +278,7 @@ export class XiaozhiVoiceSession {
           this.pendingOutputTranscript,
           outputText
         );
+        this.scheduleOutputTranscript();
       }
 
       if (message.serverContent?.turnComplete) {
@@ -188,6 +298,7 @@ export class XiaozhiVoiceSession {
       if (message.serverContent?.turnComplete && this.speaking) {
         this.sendJson({ type: 'tts', state: 'stop' });
         this.speaking = false;
+        this.lastSentOutputTranscript = '';
         this.codec.reset();
       }
 
@@ -258,24 +369,60 @@ export class XiaozhiVoiceSession {
   }
 
   private handleLiveFailure(): void {
+    this.connectGeneration++;
     const live = this.live;
     this.live = undefined;
+    this.connectingPromise = undefined;
+    this.clearMicQueue();
+    this.clearTranscriptState();
     live?.close();
     this.speaking = false;
-    this.pendingInputTranscript = '';
-    this.pendingOutputTranscript = '';
     this.codec.reset();
     this.sendAlert('Voice service error', 'Voice service error');
   }
 
+  private scheduleOutputTranscript(): void {
+    if (this.transcriptTimer) return;
+    this.transcriptTimer = setTimeout(() => {
+      this.transcriptTimer = undefined;
+      this.emitStreamedOutputTranscript();
+    }, TRANSCRIPT_STREAM_DELAY_MS);
+  }
+
+  private emitStreamedOutputTranscript(): void {
+    const text = this.pendingOutputTranscript.trim();
+    if (text && text !== this.lastSentOutputTranscript) {
+      this.startSpeaking();
+      this.sendJson({ type: 'tts', state: 'sentence_start', text });
+      this.lastSentOutputTranscript = text;
+    }
+  }
+
+  private clearTranscriptState(): void {
+    if (this.transcriptTimer) {
+      clearTimeout(this.transcriptTimer);
+      this.transcriptTimer = undefined;
+    }
+    this.pendingInputTranscript = '';
+    this.pendingOutputTranscript = '';
+    this.lastSentOutputTranscript = '';
+  }
+
   private flushPendingTranscripts(): void {
+    if (this.transcriptTimer) {
+      clearTimeout(this.transcriptTimer);
+      this.transcriptTimer = undefined;
+    }
     const inputText = this.pendingInputTranscript.trim();
     const outputText = this.pendingOutputTranscript.trim();
     if (inputText || outputText) this.timing.mark('T_TRANSCRIPT_FINALIZED');
     if (inputText) this.sendJson({ type: 'stt', text: inputText });
     if (outputText) {
       this.startSpeaking();
-      this.sendJson({ type: 'tts', state: 'sentence_start', text: outputText });
+      if (outputText !== this.lastSentOutputTranscript) {
+        this.sendJson({ type: 'tts', state: 'sentence_start', text: outputText });
+        this.lastSentOutputTranscript = outputText;
+      }
     }
     this.pendingInputTranscript = '';
     this.pendingOutputTranscript = '';
@@ -289,6 +436,8 @@ export class XiaozhiVoiceSession {
     // Provider and parser details are server-side diagnostics only. Never put
     // arbitrary exception text on the device-facing protocol.
     void error;
+    this.clearMicQueue();
+    this.clearTranscriptState();
     this.sendAlert('Voice service error', 'Voice service error');
     this.close();
     if (this.socket.readyState === this.socket.OPEN)
