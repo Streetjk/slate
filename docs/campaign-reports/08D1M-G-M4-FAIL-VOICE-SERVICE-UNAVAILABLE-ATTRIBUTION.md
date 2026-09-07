@@ -1,5 +1,60 @@
 # Campaign 8D1M-G — M4 Voice Service Unavailable Attribution and Recovery
 
+## Attribution checkpoint — authenticated WebSocket reached, no microphone/provider stage
+
+The failed attempt was correlated against retained backend structural logs at
+the physical-attempt timestamp. The prior one-hour serial observer had already
+expired before this attempt, so no firmware-side marker is being inferred.
+Only marker names, timestamps, status classes and counters were retained:
+
+```text
+BACKEND_EVENT_1=2026-09-07T08:50:28.577544028Z VOICE_WS_UPGRADE_ATTEMPT=YES
+BACKEND_EVENT_2=2026-09-07T08:50:28.656143838Z VOICE_WS_AUTH_RESULT=PASS
+BACKEND_EVENT_3=2026-09-07T08:50:28.656317669Z VOICE_WS_ACCEPTED=YES
+BACKEND_EVENT_4=2026-09-07T08:50:46.638671281Z FIRST_MIC_FRAME_RECEIVED=NO
+VOICE_CONFIG_AUTHENTICATED_RESULT=UNKNOWN
+VOICE_CONFIG_PARSE_RESULT=UNKNOWN
+VOICE_WEBSOCKET_AUTHENTICATED_RESULT=PASS
+VOICE_WEBSOCKET_OPEN_RESULT=ACCEPTED
+VOICE_WEBSOCKET_CLOSE_CODE=UNKNOWN
+VOICE_SESSION_INIT_SENT=UNKNOWN
+PROVIDER_SESSION_CREATE_START=NOT_OBSERVED
+PROVIDER_SESSION_CREATE_RESULT=NOT_OBSERVED
+PROVIDER_SESSION_STARTED=UNKNOWN
+MIC_AUDIO_REACHED_PROVIDER=NO
+FIRMWARE_GENERIC_FAILURE_BRANCH=UNKNOWN_SERIAL_OBSERVER_EXPIRED
+SANITIZED_STAGE_LATENCY_DELTAS=WS_ACCEPT_TO_BACKEND_CLOSE_18.0S_APPROX
+SLATE_RESTART_COUNT=0
+MYSQL_RESTART_COUNT=0
+BACKEND_HEALTH=PASS_LOCAL_200_PUBLIC_200
+FAILURE_STAGE=FIRMWARE_POST_AUTHENTICATED_WEBSOCKET_BEFORE_FIRST_MIC_FRAME
+ROOT_CAUSE_CLASS=CASE_B_OR_CASE_E_PRE_MIC_FAILURE_WITH_OBSERVER_CAPTURE_GAP
+SOURCE_DEFECT=NOT_PROVEN
+M4_PROVIDER_SESSION_STARTED=UNKNOWN
+M4_PROVIDER_CALL_COUNT=0_OBSERVED_PROVIDER_MARKERS
+M4_MIC_AUDIO_REACHED_PROVIDER=NO
+```
+
+The backend markers prove that device authentication and WebSocket acceptance
+passed. No provider-session marker was emitted in the retained three-hour
+window, and the backend received no first microphone frame; therefore this
+attempt did not reach provider audio. The exact firmware-side branch remains
+unknown because the serial observer was not alive during the attempt. This is
+an attribution/observer-coverage boundary, not evidence for changing the
+model, credential, billing, or provider.
+
+The deployed source already contains the required fixed structural markers.
+No product bytes require repair at this checkpoint. Targeted backend voice
+tests passed `13/13`, and the firmware no-vendor dependency test passed. A new
+sanitized observer is now attached to a live PTY session for the next physical
+boundary; it records no audio, transcript, payload, credential, or private
+content.
+
+```text
+REQUALIFICATION_STATUS=PASS_ZERO_PRIVATE_DATA_NO_BYTES_CHANGED
+NEXT_PHYSICAL_ATTEMPT=ONE_COMBINED_M4_EN_JA_SESSION_AFTER_OBSERVER_CAPTURE
+```
+
 ## Operator result
 
 The sole combined physical M4 attempt failed immediately with the operator-visible result:
