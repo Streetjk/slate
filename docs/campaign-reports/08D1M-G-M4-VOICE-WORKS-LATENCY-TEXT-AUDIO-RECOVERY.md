@@ -1,5 +1,53 @@
 # Campaign 8D1M-G — Voice Works, But Latency / Text Refresh / Audio Are Broken
 
+## Authoritative checkpoint — latest instrumented physical attempt ingested
+
+Reconciled live PR #2 at `172172464e3095c583d8a4fb1d5d4e9b23a82e2c`. The
+corrected sanitized observer was live before the single physical attempt and
+was ingested afterward. The USB serial process ended when the device
+disconnected after the attempt; no raw serial, audio, transcript, provider
+payload, credential, or private data was retained.
+
+```text
+LATEST_INSTRUMENTED_ATTEMPT_INGESTED=YES
+POST_REFLASH_OLD_BRANCH_REPRODUCED=NO
+OLD_WS_TRANSPORT_FIX_STATUS=FIXED_IN_DEPLOYED_FIRMWARE
+VOICE_WS_CONNECT_RESULT=OPEN
+VOICE_WS_AUTH_RESULT=PASS
+VOICE_WS_ACCEPTED=YES
+VOICE_SESSION_INIT_SENT=YES
+VOICE_MIC_STREAM_STARTED=YES
+BACKEND_WS_UPGRADE=PASS
+PROVIDER_SESSION_CREATE_RESULT=UNKNOWN_NOT_CAPTURED
+FIRST_MIC_FRAME_RECEIVED=UNKNOWN_NOT_CAPTURED
+PROVIDER_FIRST_OUTPUT_EVENT=UNKNOWN_NOT_CAPTURED
+PROVIDER_FIRST_AUDIO_EVENT=UNKNOWN_NOT_CAPTURED
+BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE=UNKNOWN_NOT_CAPTURED
+FIRMWARE_FIRST_AUDIO_PACKET_RECEIVED=UNKNOWN_NOT_CAPTURED
+FIRMWARE_FIRST_DECODED_PCM=UNKNOWN_NOT_CAPTURED
+AUDIO_PLAYER_FIRST_WRITE=UNKNOWN_NOT_CAPTURED
+ASSISTANT_RESPONSE_VISIBLE=YES
+RESPONSE_LATENCY=UNACCEPTABLY_SLOW
+TEXT_DISPLAY_LATENCY=UNACCEPTABLY_SLOW
+AUDIO_OUTPUT=NO_AUDIBLE_SOUND
+SLATE_HEALTH=PASS_HEALTHY_RESTART_0
+MYSQL_HEALTH=PASS_HEALTHY_RESTART_0
+LOCAL_PUBLIC_HEALTH=HTTP_200_HTTP_200
+OBSERVER_STATUS=INGESTED_SESSION_ENDED_ON_DEVICE_DISCONNECT
+M4_PROVIDER_SESSION_STARTED=UNKNOWN
+M4_PROVIDER_CALL_COUNT=UNKNOWN_PHYSICAL_OBSERVER_GAP
+M4_MIC_AUDIO_REACHED_PROVIDER=UNKNOWN
+```
+
+The observed sequence mechanically proves that the previously repaired lower
+WebSocket transport failure is absent in the deployed firmware for this
+attempt: the backend accepted the authenticated upgrade, the firmware reached
+`OPEN`, sent session init, and started microphone streaming. It does not prove
+provider audio delivery or playback because those downstream markers were not
+available from the current observer. The campaign therefore continues with
+zero-provider latency/text/audio tracing and deterministic qualification; no
+new physical retry is requested at this checkpoint.
+
 ## Live reconciliation at instruction issue
 
 Issued after reconciling PR #2 at:
