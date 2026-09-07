@@ -1,5 +1,59 @@
 # Campaign 8D1M-G — Voice Works, But Latency / Text Refresh / Audio Are Broken
 
+## Authoritative zero-provider repair checkpoint — corrected lifecycle candidate reviewed
+
+The first exact review response was malformed because it omitted the required
+final verdict contract. A bounded same-reviewer recovery was performed without
+changing the frozen bytes. The second exact ZAI route returned a valid verdict
+bound to the candidate below.
+
+```text
+SOURCE_CANDIDATE_COMMIT=f10ade66e75522d27f023573f2aad03d39f4d8a2
+PROVIDER_CALLS_THIS_STAGE=0
+PRODUCTION_CHANGED=NO
+FIRMWARE_FLASHED_THIS_STAGE=NO
+GEMINI_PROVIDER_SESSION_STARTED_THIS_STAGE=NO
+PROVIDER_CONNECT_BLOCKS_MIC_PROCESSING=YES_CODE_PROVEN
+PRE_PROVIDER_MIC_QUEUE=BOUNDED_50_FRAMES_100_KIB
+TEXT_STREAM_COALESCING=100MS_TESTED
+ONE_LOGICAL_ASSISTANT_BUBBLE=YES_HOST_TEST_PASS
+EPD_IN_PLACE_BUBBLE_UPDATE=YES_HOST_TEST_PASS
+AUDIO_STRUCTURAL_MARKERS=ADDED_IN_29C58F4
+STALE_CONNECT_GUARD=PASS
+LISTEN_STOP_GENERATION_GUARD=PASS
+CONNECT_FAILURE_RECONNECT_GUARD=PASS
+TARGETED_BACKEND_TESTS=60_PASS_0_FAIL
+FULL_BACKEND_TESTS=346_PASS_5_SKIP_0_FAIL
+BACKEND_LINT=PASS
+BACKEND_TYPECHECK=PASS
+CHANGED_FILE_FORMAT=PASS
+FIRMWARE_HOST_TESTS=PASS
+SECRET_SCAN=PASS_NO_MATCHES
+ROOT_FORMAT_CHECK=BLOCKED_ONLY_BY_PRESERVED_GENERATED_BUILD_WS_REPAIR_JSON
+AUDIO_ROOT_CAUSE=NOT_PROVEN_DOWNSTREAM_PHYSICAL_MARKERS_STILL_REQUIRED
+REVIEWER=glm-5.3-flash
+REVIEW_TARGET_SHA=f10ade66e75522d27f023573f2aad03d39f4d8a2
+VERDICT=PASS
+P0=0
+P1=0
+P2=0
+P3=0
+SECURITY_FINDINGS=NONE
+FINDINGS=NONE
+DEPLOYMENT=NOT_YET
+FLASH=NOT_YET
+OBSERVER=REARM_REQUIRED_AFTER_QUALIFICATION
+```
+
+The exact reviewer inspected the complete frozen candidate and independently
+confirmed the guarded connect/listen generations, stale callback suppression,
+bounded queue clearing, transcript handling, privacy sanitization and tests.
+The repository-wide format check remains blocked only by pre-existing,
+user-preserved generated JSON under `build-ws-repair`; all changed source files
+pass the same formatter check. No provider session or production mutation was
+used for this checkpoint.
+
+
 ## Authoritative checkpoint — latest instrumented physical attempt ingested
 
 Reconciled live PR #2 at `172172464e3095c583d8a4fb1d5d4e9b23a82e2c`. The
