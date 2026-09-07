@@ -105,6 +105,41 @@ The exact committed candidate is the only artifact eligible for fresh ZAI
 `glm-5.3-flash` review; no physical retry is authorized until that review and
 all subsequent nonphysical qualification are complete.
 
+## Exact independent review — 2026-09-08
+
+The first supported `codex review --commit` transport did not return a verdict
+after its repository inspection and was classified as a reviewer result-return
+timeout. The exact request and candidate were preserved. One materially
+different same-reviewer route (`codex exec`, read-only, profile
+`zai-glm53-reviewer`) then completed after local generated-session storage was
+recovered. No candidate bytes changed between attempts.
+
+```text
+REVIEWER=glm-5.3-flash
+REVIEW_TARGET_SHA=dd8b5b48067933e5431f196bb474c22eb657ad75
+VERDICT=PASS
+P0=0
+P1=0
+P2=0
+P3=0
+SECURITY_FINDINGS=NONE
+FINDINGS=NONE
+REVIEW_TRANSPORT_RECOVERY=PASS_SAME_REVIEWER_MATERIALLY_DISTINCT_ROUTE
+```
+
+The independent review verified exact byte identity, lifecycle-generation
+guards, provider create/error/close distinction, bridge/runtime and codec/
+device-socket classification, expected-close handling, bounded mic queue,
+transcript coalescing, one-bubble/e-ink behavior, and observer privacy
+allow-listing. The fallback reviewer process encountered only a local session
+recorder storage exhaustion; two inactive generated Codex session logs were
+removed to restore workspace capacity. No repository, production, Docker,
+credential, firmware, or private-data artifact was removed or changed.
+
+The exact reviewed commit is now frozen for impacted image build and
+provider-disabled qualification. A fresh review is required for any later
+runtime byte change.
+
 ## Live reconciliation at instruction issue
 
 Issued after reconciling PR #2 at live head:
