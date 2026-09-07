@@ -140,6 +140,45 @@ The exact reviewed commit is now frozen for impacted image build and
 provider-disabled qualification. A fresh review is required for any later
 runtime byte change.
 
+## Exact ARM64 build and provider-disabled image qualification — 2026-09-08
+
+The exact reviewed commit was built in the disposable local Colima ARM64
+Docker environment after recovering a local BuildKit I/O fault. The daemon
+was restarted locally only; the Orange Pi production daemon and production
+containers were not restarted or changed.
+
+```text
+BUILD_SOURCE_COMMIT=dd8b5b48067933e5431f196bb474c22eb657ad75
+BACKEND_TAG=slate:m4-voice-attribution-dd8b5b4
+BACKEND_IMAGE_ID=sha256:144c4b14107fb6266445c51465e89cbfb43b0c6c7e62548fbd49374d8e02ed3d
+BACKEND_IMAGE_PLATFORM=linux/arm64
+BACKEND_IMAGE_SIZE_BYTES=1130723761
+BACKEND_IMAGE_TAR=/tmp/slate-m4-attribution-artifacts/slate-m4-voice-attribution-dd8b5b4.tar
+BACKEND_IMAGE_TAR_SHA256=0333345ce78e963d8f2bdf91d090f0f021d8f10971e1ea00476752d2521e6d16
+```
+
+The image was exercised without a Gemini credential and without network
+access, using a read-only root filesystem, tmpfs-only writable paths, and a
+synthetic provider-disabled file at `/run/secrets/slate-test`:
+
+```text
+IN_IMAGE_ATTRIBUTION_TESTS=33_PASS_0_FAIL
+IN_IMAGE_ADAPTER_TESTS=6_PASS_0_FAIL
+IN_IMAGE_NETWORK=NONE
+IN_IMAGE_ROOTFS=READ_ONLY
+IN_IMAGE_SECRET= SYNTHETIC_ONLY
+PROVIDER_SESSION_CREATED=NO
+GEMINI_PROVIDER_CALLS=0
+```
+
+The first adapter invocation was intentionally rejected by the image's
+trusted-secret-path guard because its synthetic file was placed under `/tmp`;
+the corrected disposable invocation placed only the synthetic file under the
+approved `/run/secrets` path with mode 0600 and passed all six tests. No
+production credential was mounted, read, copied, or exposed. The exact image
+is ready for the already-authorized bounded backend deployment/requalification
+step; firmware remains unchanged.
+
 ## Live reconciliation at instruction issue
 
 Issued after reconciling PR #2 at live head:
