@@ -1,5 +1,73 @@
 # Campaign 8D1M-G — Voice Works, But Latency / Text Refresh / Audio Are Broken
 
+## Zero-provider artifact qualification checkpoint — cumulative runtime candidate
+
+The complete frozen runtime candidate was independently reviewed after the
+backend lifecycle correction, including the cumulative firmware changes from
+the parent repair. No Gemini provider session, microphone session, production
+deployment, credential access, or firmware flash was used.
+
+```text
+SOURCE_CANDIDATE_COMMIT=f10ade66e75522d27f023573f2aad03d39f4d8a2
+PROVIDER_CALLS_THIS_STAGE=0
+PRODUCTION_CHANGED=NO
+FIRMWARE_FLASHED_THIS_STAGE=NO
+BACKEND_IMAGE_TAG=slate:m4-voice-repair-f10ade6
+BACKEND_IMAGE_ID=sha256:14aad6490d63236776c89e1aeff1b1c630f21de13f65a6c9b6b99023cf52087c
+BACKEND_IMAGE_PLATFORM=linux/arm64
+BACKEND_IMAGE_SIZE_BYTES=1130677690
+BACKEND_IMAGE_TAR_SHA256=4ad2a5f49e893dbfbbc02dbc6f5056d6359a7b0a176be444744f0a494dd5d156
+BACKEND_PROVIDER_DISABLED_TESTS=6_PASS_0_FAIL_NETWORK_NONE_READONLY_SYNTHETIC_SECRET
+FIRMWARE_BUILD=PASS_ESP_IDF_5_5_2_ESP32S3
+FIRMWARE_APP_SHA256=dc7669190bb17fa2a62958427e152ae8697887beae8fa4618058d2515ba7dc91
+FIRMWARE_FULL_IMAGE_SHA256=d92a5c1465a75f803a3ba2b363be62ac9a49b5bc535aba3e0708f65b4360b753
+FIRMWARE_BOOTLOADER_SHA256=c8bdf749de7240e872c4869e765dbd9f4017ee3c56640c52916265050525bc42
+FIRMWARE_PARTITION_TABLE_SHA256=6f0657eb6b8007c0dbfed6f64cf7a0d59f8ee1752af898e2f66dd218846b1835
+FIRMWARE_HOST_TESTS=PASS
+TARGETED_BACKEND_TESTS=60_PASS_0_FAIL
+FULL_BACKEND_TESTS=346_PASS_5_SKIP_0_FAIL
+BACKEND_LINT=PASS
+BACKEND_TYPECHECK=PASS
+CHANGED_FILE_FORMAT=PASS
+SECRET_SCAN=PASS_NO_MATCHES
+ZAI_REVIEWER=glm-5.3-flash
+ZAI_REVIEW_TARGET_SHA=f10ade66e75522d27f023573f2aad03d39f4d8a2
+ZAI_REVIEW_VERDICT=PASS
+ZAI_REVIEW_P0=0
+ZAI_REVIEW_P1=0
+ZAI_REVIEW_P2=0
+ZAI_REVIEW_P3=0
+ZAI_REVIEW_SECURITY_FINDINGS=NONE
+ZAI_REVIEW_FINDINGS=NONE
+AUDIO_ROOT_CAUSE=NOT_PROVEN_PHYSICAL_DOWNSTREAM_MARKERS_REQUIRED
+BACKEND_DEPLOYMENT=NOT_YET
+FIRMWARE_FLASH=NOT_YET
+OBSERVER=REARM_REQUIRED_AFTER_DEPLOYMENT_QUALIFICATION
+```
+
+The ARM64 image was built and loaded through the disposable local Colima
+builder, then exercised with `--network none`, read-only rootfs, tmpfs and a
+synthetic-only secret file. The firmware was built and merged with ESP-IDF
+5.5.2 for ESP32-S3. No credential value was read or persisted. The cumulative
+review’s required exact contract was:
+
+```text
+REVIEWER=glm-5.3-flash
+REVIEW_TARGET_SHA=f10ade66e75522d27f023573f2aad03d39f4d8a2
+VERDICT=PASS
+P0=0
+P1=0
+P2=0
+P3=0
+SECURITY_FINDINGS=NONE
+FINDINGS=NONE
+```
+
+The repository-wide format check remains blocked only by preserved generated
+JSON under the user-owned `build-ws-repair` directory; all changed source
+files pass the formatter check. No provider-side audio root cause is claimed
+from deterministic tests alone.
+
 ## Authoritative zero-provider repair checkpoint — corrected lifecycle candidate reviewed
 
 The first exact review response was malformed because it omitted the required
