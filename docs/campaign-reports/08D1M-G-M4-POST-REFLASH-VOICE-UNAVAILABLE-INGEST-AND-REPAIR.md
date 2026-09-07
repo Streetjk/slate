@@ -1,5 +1,30 @@
 # Campaign 8D1M-G — Post-Reflash `Voice service unavailable`: Ingest, Re-Attribute, Repair
 
+## Stage 2 checkpoint — corrected observer ready; NOTE4 currently disconnected
+
+The durable observer repair passed its parser/self-test and was invoked on
+the previously qualified port. The port is now absent because NOTE4 was
+disconnected after the physical attempt; no reflash, provider call, or
+second Voice AI attempt was made.
+
+```text
+OBSERVER_REPAIR=scripts/slate-m4-sanitized-observer-v2.py
+OBSERVER_REPAIR_SHA256=325f4f24f8c831b7fb0c342246bde678c49216de5dfe204b1de44158116559a6
+OBSERVER_SELF_TEST=PASS
+OBSERVER_LIVE_REARM=WAITING_DEVICE
+DEVICE_PORT=/dev/cu.usbmodem31201
+DEVICE_ENUMERATION_CURRENT=ABSENT
+RAW_CONTENT_RETAINED=NO
+PRODUCTION_BYTES_CHANGED=NO
+POST_REFLASH_OLD_BRANCH_REPRODUCED=UNKNOWN
+PREVIOUS_REPAIR_EFFECTIVE=INCONCLUSIVE
+```
+
+The observer is now capable of capturing exact allow-listed values, but an
+attached NOTE4 is required to prove live readiness and distinguish the old
+`WS_CONNECT_FAIL` branch from a downstream failure. Reconnect only the same
+qualified NOTE4; do not perform another Voice AI interaction yet.
+
 ## Stage 1 checkpoint — post-reflash observer ingestion incomplete; durable value capture repaired
 
 Recorded 2026-09-07 from the already-armed live PTY observer. The physical
