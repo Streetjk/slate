@@ -153,13 +153,13 @@ def main() -> int:
                 try:
                     device = serial.Serial(port=args.port, baudrate=115200, timeout=0.2)
                     print(json.dumps({"observer": "SERIAL_CONNECTED"}), flush=True)
-                except SerialException:
+                except (SerialException, OSError):
                     print(json.dumps({"observer": "SERIAL_DISCONNECTED"}), flush=True)
                     time.sleep(1.0)
                     continue
             try:
                 raw = device.readline()
-            except SerialException:
+            except (SerialException, OSError):
                 device.close()
                 device = None
                 print(json.dumps({"observer": "SERIAL_DISCONNECTED"}), flush=True)
