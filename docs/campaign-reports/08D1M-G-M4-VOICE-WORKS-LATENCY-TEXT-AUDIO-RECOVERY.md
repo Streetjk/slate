@@ -68,6 +68,54 @@ JSON under the user-owned `build-ws-repair` directory; all changed source
 files pass the formatter check. No provider-side audio root cause is claimed
 from deterministic tests alone.
 
+## Nonphysical deployment/requalification checkpoint — exact runtime active
+
+The reviewed backend tarball was transferred without credentials and verified
+by SHA-256 on the Orange Pi. The local Docker image ID is the config digest;
+the loaded OCI manifest digest is the canonical remote Docker image ID. The
+mapping was verified from the exact tarball `index.json`, not inferred from a
+tag.
+
+```text
+BACKEND_TAR_SHA256=4ad2a5f49e893dbfbbc02dbc6f5056d6359a7b0a176be444744f0a494dd5d156
+BACKEND_LOCAL_CONFIG_ID=sha256:14aad6490d63236776c89e1aeff1b1c630f21de13f65a6c9b6b99023cf52087c
+BACKEND_REMOTE_CANONICAL_IMAGE_ID=sha256:7cd37e6a48382f87b01ef731d8d0d8c76822d323fc651fa52ce712b0cd648ccb
+BACKEND_TAG=slate:m4-voice-repair-f10ade6
+BACKEND_DEPLOYMENT=PASS_FAIL_CLOSED_HEALTH_GATED
+SLATE_IMAGE_ACTIVE=YES
+SLATE_HEALTH=HEALTHY
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=HEALTHY
+MYSQL_RESTART_COUNT=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+PROVIDER_DISABLED_DEPLOYED_IMAGE_TESTS=6_PASS_0_FAIL_NETWORK_NONE
+PRODUCTION_MODEL_CHANGED=NO
+CREDENTIAL_CHANGED=NO
+BILLING_CHANGED=NO
+
+DEVICE_PORT=/dev/cu.usbmodem31101
+DEVICE_TARGET=ESP32-S3_REV_V0.2
+DEVICE_FLASH_SIZE=16MB
+DEVICE_FLASH_ID=46_4018
+FIRMWARE_APP_SHA256=dc7669190bb17fa2a62958427e152ae8697887beae8fa4618058d2515ba7dc91
+FIRMWARE_FLASH=PASS_APP_ONLY_OFFSET_0x10000
+FIRMWARE_WRITE_HASH_VERIFICATION=PASS
+FIRMWARE_FULL_ERASE=NO
+FIRMWARE_NVS_LITTLEFS_PAIRING_WRITE=NO
+OBSERVER_SELF_TEST=PASS
+OBSERVER=ARMED_CORRECTED_RECONNECT_SAFE_AUDIO_TIMING_MARKERS
+OBSERVER_LOG_RAW_CONTENT=NOT_RETAINED
+AUDIO_ROOT_CAUSE=NOT_PROVEN_REQUIRES_ONE_INSTRUMENTED_PHYSICAL_SESSION
+```
+
+The deployed-image provider-disabled adapter differential passed all 6 tests
+with `--network none`, a read-only root filesystem and a synthetic-only secret
+mount. The corrected observer now captures only allow-listed structural voice,
+audio-counter and timing markers, reconnects after USB serial availability
+changes, and never persists serial lines, audio, transcripts, payloads or
+secrets. No physical Voice AI attempt has been made after this requalification.
+
 ## Authoritative zero-provider repair checkpoint — corrected lifecycle candidate reviewed
 
 The first exact review response was malformed because it omitted the required

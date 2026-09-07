@@ -10,6 +10,7 @@ import subprocess
 import time
 
 import serial
+from serial import SerialException
 
 
 VOICE_PATTERNS = {
@@ -43,6 +44,19 @@ SERIAL_MARKERS = {
     "POLL": re.compile(r"(?i)(poll|sync|authenticated|heartbeat)"),
     "FATAL": re.compile(r"(?i)(guru meditation|abort\(|panic|assert failed|fatal error|stack overflow)"),
 }
+STRUCTURAL_PATTERNS = {
+    "AUDIO_PACKET_RECEIVED": re.compile(r"\baudio_pkt_recv count=(\d+) bytes=(\d+)"),
+    "AUDIO_PACKET_GATE_REJECTED": re.compile(r"\baudio_pkt_gate_rejected(?: count=(\d+))?"),
+    "AUDIO_PACKET_ENQUEUED": re.compile(r"\baudio_pkt_enqueued(?: count=(\d+))?"),
+    "AUDIO_DECODE_OK": re.compile(r"\baudio_decode_ok(?: count=(\d+))?"),
+    "AUDIO_DECODE_FAIL": re.compile(r"\baudio_decode_fail(?: count=(\d+))?"),
+    "AUDIO_PLAYER_WRITE_OK": re.compile(r"\baudio_player_write_ok(?: count=(\d+))?"),
+    "AUDIO_PLAYER_WRITE_FAIL": re.compile(r"\baudio_player_write_fail(?: count=(\d+))?"),
+    "TIMING_MARKER": re.compile(
+        r"\b(T_(?:DEVICE|BACKEND|PROVIDER|FIRST|TRANSCRIPT|AUDIO|EPD|UI|LVGL|WS)[A-Z0-9_]*)\b"
+    ),
+    "REFRESH_MARKER": re.compile(r"\b(refresh_(?:start|done))\b(?: path=(full|partial))?"),
+}
 
 
 def extract_voice_events(line: str) -> list[dict[str, str]]:
@@ -51,6 +65,18 @@ def extract_voice_events(line: str) -> list[dict[str, str]]:
     for key, pattern in VOICE_REGEX.items():
         for match in pattern.finditer(line):
             events.append({"event": key, "value": match.group(1)})
+    return events
+
+
+def extract_structural_events(line: str) -> list[dict[str, str]]:
+    """Return only allow-listed numeric/enum audio and timing markers."""
+    events: list[dict[str, str]] = []
+    for event, pattern in STRUCTURAL_PATTERNS.items():
+        match = pattern.search(line)
+        if not match:
+            continue
+        values = [value for value in match.groups() if value is not None]
+        events.append({"event": event, "value": "|".join(values) if values else "YES"})
     return events
 
 
@@ -63,7 +89,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE 'VOICE_[A-Z0-9_]+=[A-Za-z0-9_.-]+' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE '(VOICE|PROVIDER|FIRST_MIC_FRAME_RECEIVED|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
 """
     try:
         completed = subprocess.run(
@@ -96,6 +122,12 @@ def self_test() -> int:
     assert "DO_NOT_RETAIN" not in json.dumps(events)
     assert extract_voice_events("VOICE_MIC_STREAM_STARTED=NO") == [{"event": "VOICE_MIC_STREAM_STARTED", "value": "NO"}]
     assert extract_voice_events("VOICE_WS_CLOSE_CODE=1006") == [{"event": "VOICE_WS_CLOSE_CODE", "value": "1006"}]
+    assert extract_structural_events("audio_pkt_recv count=3 bytes=120") == [
+        {"event": "AUDIO_PACKET_RECEIVED", "value": "3|120"}
+    ]
+    assert extract_structural_events("T_DEVICE_FIRST_AUDIO_DECODED") == [
+        {"event": "TIMING_MARKER", "value": "T_DEVICE_FIRST_AUDIO_DECODED"}
+    ]
     print("slate-m4-sanitized-observer-v2: PASS")
     return 0
 
@@ -114,27 +146,43 @@ def main() -> int:
     last_backend = 0.0
     started = time.monotonic()
     print(json.dumps({"observer": "ARMED", "serial_port": args.port, "raw_content": "NOT_RETAINED"}), flush=True)
+    device = None
     try:
-        with serial.Serial(port=args.port, baudrate=115200, timeout=0.2) as device:
-            while time.monotonic() - started < args.duration:
+        while time.monotonic() - started < args.duration:
+            if device is None:
+                try:
+                    device = serial.Serial(port=args.port, baudrate=115200, timeout=0.2)
+                    print(json.dumps({"observer": "SERIAL_CONNECTED"}), flush=True)
+                except SerialException:
+                    print(json.dumps({"observer": "SERIAL_DISCONNECTED"}), flush=True)
+                    time.sleep(1.0)
+                    continue
+            try:
                 raw = device.readline()
-                if raw:
-                    line_count += 1
-                    line = raw.decode("utf-8", "replace")
-                    for name, pattern in SERIAL_MARKERS.items():
-                        if pattern.search(line):
-                            counts[name] += 1
-                    events = extract_voice_events(line)
-                    if events:
-                        print(json.dumps({"serial_line_count": line_count, "events": events}, sort_keys=True), flush=True)
-                now = time.monotonic()
-                if now - last_backend >= args.interval:
-                    last_backend = now
-                    print(json.dumps({"serial_counts": {"lines": line_count, **counts}}, sort_keys=True), flush=True)
-                    print(json.dumps({"backend": backend_snapshot()}, sort_keys=True), flush=True)
+            except SerialException:
+                device.close()
+                device = None
+                print(json.dumps({"observer": "SERIAL_DISCONNECTED"}), flush=True)
+                continue
+            if raw:
+                line_count += 1
+                line = raw.decode("utf-8", "replace")
+                for name, pattern in SERIAL_MARKERS.items():
+                    if pattern.search(line):
+                        counts[name] += 1
+                events = extract_voice_events(line) + extract_structural_events(line)
+                if events:
+                    print(json.dumps({"serial_line_count": line_count, "events": events}, sort_keys=True), flush=True)
+            now = time.monotonic()
+            if now - last_backend >= args.interval:
+                last_backend = now
+                print(json.dumps({"serial_counts": {"lines": line_count, **counts}}, sort_keys=True), flush=True)
+                print(json.dumps({"backend": backend_snapshot()}, sort_keys=True), flush=True)
     except KeyboardInterrupt:
         pass
     finally:
+        if device is not None:
+            device.close()
         print(json.dumps({"observer": "STOPPED", "serial_counts": {"lines": line_count, **counts}}, sort_keys=True), flush=True)
     return 0
 
