@@ -1,5 +1,38 @@
 # Campaign 8D1M-G — WebSocket Root-Cause Proof + AGY Writer Recovery
 
+## Stage 6 checkpoint — exact ZAI review PASS; app-only reflash authorized
+
+Recorded 2026-09-07 after the existing designated ZAI authentication was
+restored. The exact frozen artifacts remained byte-identical through review.
+
+```text
+ZAI_REVIEW_PROFILE=zai-glm53-reviewer
+ZAI_REVIEW_PROVIDER=ZAI
+ZAI_REVIEW_MODEL=glm-5.3-flash
+ZAI_REVIEW_TARGET_SOURCE_SHA256=68d232f23a21a05aab8b51cec4e4733268137d8584b90681c30535dc1618efae
+ZAI_REVIEW_TARGET_REGRESSION_SHA256=d6672b3fc695d8406a69769ea90e2c89af911bb84d76ab829eb0690d2776dcff
+ZAI_REVIEW_TARGET_FIRMWARE_APP_SHA256=640ab435c9ec2f69ad4465520a712405bc28b7b0849a96b16fcb8685693716da
+ZAI_REVIEW_STATUS=PASS_EXACT_IDENTITIES
+ZAI_REVIEW_VERDICT=PASS
+ZAI_REVIEW_P0=0
+ZAI_REVIEW_P1=0
+ZAI_REVIEW_P2=2
+ZAI_REVIEW_P3=4
+ZAI_REVIEW_SECURITY=NONE
+ZAI_REVIEW_HTTP_STATUS=200
+```
+
+The valid review was obtained through the same designated ZAI route after
+auth restoration. The first authenticated result-return attempts were
+malformed/empty; a bounded same-route recovery with reasoning disabled
+returned the valid exact contract above. No source, regression-test,
+firmware, backend, credential, model, billing, provider, or private-data
+bytes changed during review recovery.
+
+The next authorized action is read-only NOTE4 identity verification followed
+by the exact app-only write at `0x10000`, preserving bootloader, partition
+table, NVS, pairing, LittleFS/user data, and device identity.
+
 ## Stage 5 checkpoint — exact ZAI review blocked by existing authentication
 
 Recorded 2026-09-07 after the repaired source and ESP32-S3 artifact were
