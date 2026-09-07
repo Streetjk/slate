@@ -1,5 +1,55 @@
 # Campaign 8D1M-G — Second M4 Failure with Live Observer: Attribution and Repair Continuation
 
+## Attribution checkpoint — exact firmware transport branch; AGY implementation blocked
+
+The live PTY observer captured the second physical attempt's firmware-side
+branch without retaining serial contents:
+
+```text
+SERIAL_MARKER=VOICE_WS_CONNECT_START
+SERIAL_MARKER=VOICE_WS_CONNECT_RESULT=TRANSPORT_FAIL
+SERIAL_MARKER=VOICE_GENERIC_FAILURE_BRANCH=WS_CONNECT_FAIL
+SERIAL_MARKER=VOICE_MIC_STREAM_STARTED=NO
+BACKEND_WS_UPGRADE_DURING_SECOND_ATTEMPT=NOT_OBSERVED
+PROVIDER_SESSION_CREATE_DURING_SECOND_ATTEMPT=NOT_OBSERVED
+MIC_AUDIO_REACHED_PROVIDER=NO
+FAILURE_STAGE=FIRMWARE_WEBSOCKET_TRANSPORT_OR_HANDSHAKE_BEFORE_BACKEND_UPGRADE
+ROOT_CAUSE_CLASS=CASE_H_FIRMWARE_WEBSOCKET_TRANSPORT_FAILURE_BEFORE_BACKEND_UPGRADE
+```
+
+This closes the prior attribution gap. Static inspection proves the narrow
+source defect: the WebSocket receive callback is installed after the
+handshake request is sent, so a fast response can be discarded and surfaced
+as the generic transport failure branch. No credential, model, billing,
+provider, or private-data change is indicated.
+
+The designated AGY `gemini-3.8-flash-high` implementation attempt was started
+with the exact bounded repair request but returned no patch. Its terminal
+result was:
+
+```text
+agy-staff error: agy reported an error (status ERROR, exit 1).
+agy error: timeout waiting for response
+```
+
+The working tree confirms no tracked source bytes changed. Per the AGY
+implementer failure protocol, no alternate writer, reviewer substitution, or
+altered retry is being attempted in this controller turn.
+
+```text
+AGY_IMPLEMENTATION_STATUS=EXTERNALLY_BLOCKED_TIMEOUT
+SOURCE_BYTES_CHANGED=NO
+PROVIDER_CALLS_THIS_ACTION=0
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=1
+CURRENT_BLOCKED_NODE=AGY_BOUNDED_WEBSOCKET_CALLBACK_ORDER_REPAIR
+HUMAN_ACTION_REQUIRED=NO
+TERMINAL_REASON=AGY_IMPLEMENTER_TIMEOUT_PER_REQUIRED_SKILL_FAILURE_PROTOCOL
+NEXT_ACTION=RECOVER_DESIGNATED_AGY_WRITER_ROUTE_THEN_APPLY_BOUNDED_REPAIR
+```
+
 ## Operator result
 
 The operator performed the next authorized physical M4 attempt after the live sanitized PTY observer had been armed.
