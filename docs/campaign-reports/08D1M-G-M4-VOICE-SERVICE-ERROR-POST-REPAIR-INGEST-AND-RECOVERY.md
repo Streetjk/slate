@@ -179,6 +179,75 @@ production credential was mounted, read, copied, or exposed. The exact image
 is ready for the already-authorized bounded backend deployment/requalification
 step; firmware remains unchanged.
 
+## Backend deployment and nonphysical requalification — 2026-09-08
+
+The first image-only deployment attempt was rejected from acceptance because
+the temporary Compose override omitted the existing protected secret bind. It
+was rolled back immediately to `slate:m4-voice-repair-f10ade6`, and the known
+good health and read-only secret-mount gates passed. This was a deployment
+invocation defect, not a source defect. The candidate was then deployed with
+the exact historical host-local protected source bound read-only at the
+existing destination.
+
+```text
+FIRST_DEPLOYMENT_ATTEMPT=REJECTED_MISSING_SECRET_MOUNT
+FIRST_DEPLOYMENT_ROLLBACK=PASS
+CORRECTED_DEPLOYMENT=PASS
+ACTIVE_BACKEND_TAG=slate:m4-voice-attribution-dd8b5b4
+ACTIVE_BACKEND_DAEMON_IMAGE_ID=sha256:63275954b49c147eae65189515655f33517b29d50bf5d582c229f90acec522c9
+CANONICAL_META_SHA256=0b61f041b94199fa5499b6410fa636eba8b49957bb49416b880a6e65e72a5855
+BACKEND_TAR_SHA256=0333345ce78e963d8f2bdf91d090f0f021d8f10971e1ea00476752d2521e6d16
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_MOUNT_RW=false
+SLATE_HEALTH=healthy
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=healthy
+MYSQL_RESTART_COUNT=0
+MYSQL_RECREATED=NO
+LOCAL_HEALTH=200
+PUBLIC_HEALTH=200
+VOICE_CONFIG_UNAUTH=401
+PROVIDER_SESSION_CREATED_BY_VALIDATION=NO
+```
+
+The exact loaded candidate then passed the provider-disabled adapter suite on
+the Orange Pi with network disabled, a read-only root filesystem, tmpfs-only
+writable paths, and a synthetic-only file under `/run/secrets`. The protected
+production source was not mounted into this test container and no provider
+session was opened.
+
+```text
+REMOTE_PROVIDER_DISABLED_ADAPTER_TESTS=6_PASS_0_FAIL
+REMOTE_PROVIDER_DISABLED_NETWORK=NONE
+REMOTE_PROVIDER_DISABLED_ROOTFS=READ_ONLY
+REMOTE_PROVIDER_DISABLED_SECRET=SYNTHETIC_ONLY
+```
+
+The corrected sanitized observer was rearmed after deployment and verified
+running against the candidate. Its latest structural snapshot reports
+Slate/MySQL healthy, local/public health `200,200`, zero fatal serial markers,
+and no retained raw serial content. The already-qualified app-only firmware
+was not changed.
+
+```text
+OBSERVER_LABEL=com.streetjk.slate.m4observer
+OBSERVER_STATE=RUNNING
+OBSERVER_PORT=/dev/cu.usbmodem31101
+OBSERVER_RAW_CONTENT=NO
+OBSERVER_FATAL_MARKERS=0
+OBSERVER_ACTIVE_BACKEND=slate:m4-voice-attribution-dd8b5b4
+OBSERVER_HEALTH=200,200
+OBSERVER_MYSQL=running|healthy|0
+OBSERVER_SLATE=running|healthy|0
+OBSERVER_REARM=PASS
+```
+
+All nonphysical attribution, review, build, deployment, provider-disabled
+qualification, and observer-rearm work is complete. No provider call or
+microphone session was consumed by this recovery. The next action is one
+combined instrumented physical EN/JA Voice AI session to capture the now
+distinguishable earliest failure boundary and audio/latency markers.
+
 ## Live reconciliation at instruction issue
 
 Issued after reconciling PR #2 at live head:
