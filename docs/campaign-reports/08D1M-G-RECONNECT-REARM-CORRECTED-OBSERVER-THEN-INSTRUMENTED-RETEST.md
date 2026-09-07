@@ -1,5 +1,33 @@
 # Campaign 8D1M-G — Reconnect NOTE4, Re-arm Corrected Observer, Then Instrumented Retest
 
+## Stage 3 checkpoint — corrected observer live; one minimal instrumented attempt authorized
+
+The same qualified NOTE4 was reconnected on a changed USB path and verified
+read-only. No firmware write or persistent-device operation occurred.
+
+```text
+DEVICE_IDENTITY_VERIFIED=YES
+DEVICE_PORT_CURRENT=/dev/cu.usbmodem31101
+DEVICE_TARGET=ESP32-S3_REV_V0.2
+DEVICE_FLASH_SIZE=16MB
+DEVICE_FLASH_ID=46_4018
+CORRECTED_OBSERVER_PROCESS=RUNNING
+CORRECTED_OBSERVER_SERIAL_PORT_OPEN=YES
+CORRECTED_OBSERVER_VALUE_CAPTURE_SELF_TEST=PASS
+CORRECTED_OBSERVER_RAW_CONTENT_RETAINED=NO
+BACKEND_SANITIZED_OBSERVER=RUNNING
+BACKEND_HEALTH=PASS_LOCAL_200_PUBLIC_200
+MYSQL_HEALTH=PASS_HEALTHY_RESTART_0
+SLATE_HEALTH=PASS_HEALTHY_RESTART_0
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+```
+
+All nonphysical work is exhausted. The next human action is exactly one
+minimal instrumented Voice AI initiation, only to capture the earliest
+failure branch. Do not perform a second question, EN/JA acceptance sequence,
+Search, Calendar, Outlook, or any other tool action during this attempt.
+
 ## Live reconciliation at instruction issue
 
 This instruction was issued after reconciling live PR #2 at:
