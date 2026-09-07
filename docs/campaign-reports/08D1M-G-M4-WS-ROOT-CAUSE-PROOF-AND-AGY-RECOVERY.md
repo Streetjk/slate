@@ -1,5 +1,43 @@
 # Campaign 8D1M-G — WebSocket Root-Cause Proof + AGY Writer Recovery
 
+## Stage 5 checkpoint — exact ZAI review blocked by existing authentication
+
+Recorded 2026-09-07 after the repaired source and ESP32-S3 artifact were
+frozen and qualified. No production deployment, firmware flash, provider
+session, microphone session, credential mutation, model change, billing
+change, or private-data action occurred.
+
+```text
+ZAI_REVIEW_PROFILE=zai-glm53-reviewer
+ZAI_REVIEW_PROVIDER=ZAI
+ZAI_REVIEW_MODEL=glm-5.3-flash
+ZAI_REVIEW_TARGET_SOURCE_SHA256=68d232f23a21a05aab8b51cec4e4733268137d8584b90681c30535dc1618efae
+ZAI_REVIEW_TARGET_REGRESSION_SHA256=d6672b3fc695d8406a69769ea90e2c89af911bb84d76ab829eb0690d2776dcff
+ZAI_REVIEW_TARGET_FIRMWARE_APP_SHA256=640ab435c9ec2f69ad4465520a712405bc28b7b0849a96b16fcb8685693716da
+ZAI_REVIEW_STATUS=BLOCKED_EXISTING_AUTH_REJECTED
+ZAI_REVIEW_VERDICT=NONE
+ZAI_REVIEW_HTTP_STATUS=401
+ZAI_REVIEW_FAILURE_CLASS=AUTH_REJECTED
+ZAI_REVIEW_SECRET_EXPOSED=NO
+ZAI_REVIEW_CREDENTIAL_MUTATED=NO
+ZAI_REVIEW_VALID_FINAL_VERDICT=NO
+```
+
+The designated route was attempted without changing provider, model, or
+credential. The first local transport attempt had no valid verdict because
+the Python runtime lacked a usable CA bundle. A materially different system
+curl transport then reached the exact ZAI endpoint but returned HTTP 401.
+The protected file was used only in memory; its value was not printed,
+persisted, copied, or included in this report. The prohibited NVIDIA NIM
+wrapper and all reviewer substitutions were not used.
+
+This is a genuine reviewer-authentication boundary. The existing designated
+ZAI/glm-5.3-flash authentication must be restored out-of-band before the
+exact changed source can be independently reviewed. Credential creation,
+replacement, migration, or exposure is not authorized. No physical M4 retry
+is authorized or useful before that exact review and any required
+app-only reflash/requalification complete.
+
 ## Stage 1 proof checkpoint — concrete lower-transport callback race
 
 Recorded 2026-09-07 after reconciling PR #2 at `95a037d5cee707df654ad1609e1aba81ff23f6e0`.
