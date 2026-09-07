@@ -28,6 +28,7 @@ export class XiaozhiVoiceSession {
   private live: GeminiLiveConnection | undefined;
   private connectingPromise: Promise<GeminiLiveConnection | undefined> | undefined;
   private connectGeneration = 0;
+  private listenGeneration = 0;
   private handshaken = false;
   private listening = false;
   private closed = false;
@@ -82,21 +83,32 @@ export class XiaozhiVoiceSession {
         if (!this.handshaken) throw new Error('voice session not initialized; hello required');
         if (message.state === 'start') {
           this.listening = true;
+          const turn = ++this.listenGeneration;
+          this.clearMicQueue();
           this.clearTranscriptState();
           this.timing.mark('T_DEVICE_LISTEN_START');
           void this.ensureLive().catch((error: unknown) => {
-            if (!this.closed && this.listening) {
+            if (!this.closed && this.listening && this.listenGeneration === turn) {
               this.fail(error);
             }
           });
         } else if (message.state === 'stop') {
           this.listening = false;
+          this.clearMicQueue();
           if (this.live) {
             this.live.endAudio();
           } else if (this.connectingPromise) {
+            const stopConnectGeneration = this.connectGeneration;
+            const stopListenGeneration = this.listenGeneration;
             this.connectingPromise
               .then((conn) => {
-                if (conn && !this.closed) {
+                if (
+                  conn &&
+                  !this.closed &&
+                  !this.listening &&
+                  this.connectGeneration === stopConnectGeneration &&
+                  this.listenGeneration === stopListenGeneration
+                ) {
                   conn.endAudio();
                 }
               })
@@ -106,6 +118,7 @@ export class XiaozhiVoiceSession {
         return;
       case 'abort':
         this.connectGeneration++;
+        this.listenGeneration++;
         this.clearMicQueue();
         this.clearTranscriptState();
         this.listening = false;
@@ -131,6 +144,7 @@ export class XiaozhiVoiceSession {
     this.closed = true;
     this.listening = false;
     this.connectGeneration++;
+    this.listenGeneration++;
     this.clearMicQueue();
     this.clearTranscriptState();
     if (!this.micFrameMarkerEmitted) {
@@ -159,7 +173,7 @@ export class XiaozhiVoiceSession {
   }
 
   private handleAudio(packet: Uint8Array): void {
-    if (!this.handshaken || (!this.live && !this.connectingPromise && !this.listening))
+    if (!this.handshaken || !this.listening || (!this.live && !this.connectingPromise))
       throw new Error('voice audio received before session start');
     if (!this.micFrameMarkerEmitted) {
       this.micFrameMarkerEmitted = true;
@@ -216,7 +230,8 @@ export class XiaozhiVoiceSession {
     }
     this.logger.log('PROVIDER_SESSION_CREATE_START=YES');
     const generation = ++this.connectGeneration;
-    const connectPromise = (async () => {
+    let connectPromise: Promise<GeminiLiveConnection | undefined> | undefined = undefined;
+    connectPromise = (async () => {
       try {
         const live = await this.liveService.connect(
           'en',
@@ -243,6 +258,7 @@ export class XiaozhiVoiceSession {
         return live;
       } catch (error) {
         if (this.isCurrentAttempt(generation)) {
+          this.connectGeneration++;
           this.clearMicQueue();
           const sanitizedClass = classifyProviderFailure(error);
           this.logger.log(`PROVIDER_SESSION_CREATE_RESULT=${sanitizedClass}`);
@@ -251,7 +267,7 @@ export class XiaozhiVoiceSession {
         }
         return undefined;
       } finally {
-        if (this.connectGeneration === generation) {
+        if (this.connectingPromise === connectPromise) {
           this.connectingPromise = undefined;
         }
       }

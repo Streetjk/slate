@@ -576,15 +576,23 @@ describe('XiaozhiVoiceSession', () => {
   });
 
   it('handles cumulative, delta, and duplicate fragments across languages with authoritative turnComplete', () => {
-    expect(mergeTranscriptFragment('The weather', 'The weather is fine')).toBe('The weather is fine');
-    expect(mergeTranscriptFragment('The weather is fine', ' today')).toBe('The weather is fine today');
-    expect(mergeTranscriptFragment('The weather is fine today', 'today')).toBe('The weather is fine today');
+    expect(mergeTranscriptFragment('The weather', 'The weather is fine')).toBe(
+      'The weather is fine'
+    );
+    expect(mergeTranscriptFragment('The weather is fine', ' today')).toBe(
+      'The weather is fine today'
+    );
+    expect(mergeTranscriptFragment('The weather is fine today', 'today')).toBe(
+      'The weather is fine today'
+    );
     expect(mergeTranscriptFragment('The weather is fine today', 'The weather is fine today')).toBe(
       'The weather is fine today'
     );
     expect(mergeTranscriptFragment('東京の', '東京の天気は')).toBe('東京の天気は');
     expect(mergeTranscriptFragment('東京の天気は', '晴れです')).toBe('東京の天気は晴れです');
-    expect(mergeTranscriptFragment('東京の天気は晴れです', '晴れです')).toBe('東京の天気は晴れです');
+    expect(mergeTranscriptFragment('東京の天気は晴れです', '晴れです')).toBe(
+      '東京の天気は晴れです'
+    );
   });
 
   it('handles abort and clean reconnect without orphaned sessions or state leakage', async () => {
@@ -892,5 +900,234 @@ describe('XiaozhiVoiceSession', () => {
       expect((pkt.data as Buffer).length).toBeGreaterThan(0);
     }
     expect(textMessages.at(-1)).toEqual({ type: 'tts', state: 'stop' });
+  });
+
+  it('resets connectingPromise and generation on connect failure so subsequent listen start connects cleanly', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let connectCount = 0;
+    let rejectFirstConnect!: (err: Error) => void;
+    let resolveSecondConnect!: (conn: GeminiLiveConnection) => void;
+    let firstOnError: (() => void) | undefined;
+    let firstOnEvent: ((event: GeminiLiveEvent) => void) | undefined;
+    const firstConnectPromise = new Promise<GeminiLiveConnection>((_, reject) => {
+      rejectFirstConnect = reject;
+    });
+    const secondConnectPromise = new Promise<GeminiLiveConnection>((resolve) => {
+      resolveSecondConnect = resolve;
+    });
+
+    const secondSentAudio: Uint8Array[] = [];
+    const secondConnection: GeminiLiveConnection = {
+      sendAudio: (pcm) => secondSentAudio.push(pcm),
+      sendText: () => {},
+      endAudio: () => {},
+      respondToToolCalls: () => {},
+      rejectToolCalls: () => {},
+      reconnect: async () => {},
+      close: () => {},
+    };
+
+    const liveService = {
+      connect: async (
+        _language: 'en',
+        onEvent: (event: GeminiLiveEvent) => void,
+        onError?: () => void
+      ) => {
+        connectCount++;
+        if (connectCount === 1) {
+          firstOnEvent = onEvent;
+          firstOnError = onError;
+          return firstConnectPromise;
+        }
+        return secondConnectPromise;
+      },
+    } as never;
+
+    const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+    // Initial handshake
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+
+    // Turn 1 starts: connect attempt 1 begins
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    expect(connectCount).toBe(1);
+
+    // Stop Turn 1 while connect is pending
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+      false
+    );
+
+    // Connect attempt 1 fails
+    rejectFirstConnect(new GeminiLiveBridgeFailure('CONNECT_TIMEOUT', 'synthetic timeout'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Socket should remain open because session was stopped, not active listening
+    expect(ws.closed).toBeUndefined();
+
+    // Stale callback from attempt 1 should be safely ignored (no alert sent)
+    firstOnError?.();
+    firstOnEvent?.({ message: { text: 'stale message' } as never });
+    const alerts = ws.sent.filter(
+      (item) => !item.binary && JSON.parse(String(item.data)).type === 'alert'
+    );
+    expect(alerts).toHaveLength(0);
+
+    // Turn 2 starts: begins connect attempt 2 without being blocked by resolved connectingPromise
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    expect(connectCount).toBe(2);
+
+    // Turn 2 audio sent
+    await session.handleMessage(Buffer.from([7, 8]), true);
+
+    // Connect attempt 2 resolves
+    resolveSecondConnect(secondConnection);
+    await secondConnectPromise;
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Second connection receives audio
+    expect(secondSentAudio).toEqual([Buffer.from([7, 8])]);
+  });
+
+  it('prevents pending listen stop from sending stale endAudio to new turn or session on start stop start', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let connectCount = 0;
+    let resolveFirstConnect!: (conn: GeminiLiveConnection) => void;
+    const firstConnectPromise = new Promise<GeminiLiveConnection>((resolve) => {
+      resolveFirstConnect = resolve;
+    });
+
+    let firstEndAudioCalls = 0;
+    const firstConnection: GeminiLiveConnection = {
+      sendAudio: () => {},
+      sendText: () => {},
+      endAudio: () => {
+        firstEndAudioCalls++;
+      },
+      respondToToolCalls: () => {},
+      rejectToolCalls: () => {},
+      reconnect: async () => {},
+      close: () => {},
+    };
+
+    const liveService = {
+      connect: async () => {
+        connectCount++;
+        return firstConnectPromise;
+      },
+    } as never;
+
+    const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+    // Initial handshake
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+
+    // Turn 1 starts
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+    expect(connectCount).toBe(1);
+
+    // Turn 1 stops while connect is pending
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+      false
+    );
+
+    // Turn 2 starts immediately (start -> stop -> start)
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+
+    // Provider connection resolves
+    resolveFirstConnect(firstConnection);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Stale endAudio from turn 1 stop MUST NOT have been delivered to turn 2
+    expect(firstEndAudioCalls).toBe(0);
+
+    // When turn 2 stops, endAudio is delivered exactly once
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+      false
+    );
+    expect(firstEndAudioCalls).toBe(1);
+  });
+
+  it('rejects and clears mic frames arriving after listen stop while provider connect is pending', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    let resolveConnect!: (conn: GeminiLiveConnection) => void;
+    const connectPromise = new Promise<GeminiLiveConnection>((resolve) => {
+      resolveConnect = resolve;
+    });
+
+    const sentAudio: Uint8Array[] = [];
+    const connection: GeminiLiveConnection = {
+      sendAudio: (pcm) => sentAudio.push(pcm),
+      sendText: () => {},
+      endAudio: () => {},
+      respondToToolCalls: () => {},
+      rejectToolCalls: () => {},
+      reconnect: async () => {},
+      close: () => {},
+    };
+
+    const liveService = {
+      connect: async () => connectPromise,
+    } as never;
+
+    const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+    // Initial handshake
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+      false
+    );
+
+    // Turn 1 starts
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+      false
+    );
+
+    // Valid mic frame sent while listening
+    await session.handleMessage(Buffer.from([1, 2]), true);
+
+    // Turn 1 stops while provider connection is still pending
+    await session.handleMessage(
+      Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+      false
+    );
+
+    // Mic frame arriving AFTER listen stop must be rejected
+    await expect(session.handleMessage(Buffer.from([3, 4]), true)).rejects.toThrow(
+      'before session start'
+    );
+
+    // Provider connect resolves
+    resolveConnect(connection);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Queued frames from stopped listen were cleared and rejected frame was never flushed
+    expect(sentAudio).toHaveLength(0);
   });
 });
