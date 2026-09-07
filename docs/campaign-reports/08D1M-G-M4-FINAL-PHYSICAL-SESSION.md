@@ -1,5 +1,44 @@
 # Campaign 8D1M-G — Final M4 Physical Session and Post-Session Continuation
 
+## Live reconciliation — sanitized observers re-armed; physical boundary preserved
+
+The live PR branch was reconciled at `09ba8e24ebd3282418116e836818537e85d239e9`.
+The intervening change adds this final-session directive only; the reviewed
+backend and V6 migration artifact remain unchanged. Read-only host checks and
+the re-armed sanitized observers confirm the accepted deployment boundary:
+
+```text
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+CONTAINERD_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root
+CONTAINERD_STATE=/run/containerd-v5
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=running/healthy/restart=0
+MYSQL=running/healthy/restart=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+ACTIVE_BACKEND_IMAGE=sha256:63db9b2133af17d0a755a7149c0fb22e9cfa0fcaad19df31fbac2ebf344def17
+FIRMWARE_APP_SHA256=8d0dcaba542ddba1447812ca45cb136fcd2a43e2dfbe938e9560d425d9d4f61a
+NVME_RESERVE=PASS
+ORIGINAL_ROOTS_PRESERVED=YES
+V5_DROPINS=ABSENT
+SERIAL_OBSERVER=ARMED_SANITIZED_PORT_OPEN
+BACKEND_OBSERVER=ARMED_SANITIZED_REPEATED_HEALTHY_SAMPLES
+GEMINI_PROVIDER_CALLS_THIS_RECONCILIATION=0
+M4_STATUS=READY_FOR_ONE_COMBINED_PHYSICAL_SESSION
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+```
+
+The observer records only fixed structural serial markers and sanitized
+backend status/health/restart/image fields. It does not retain audio,
+transcript text, provider payloads, credentials, auth headers, or private
+data. No provider call, firmware write, deployment, or production mutation
+was initiated by this reconciliation.
+
 ## Mission
 
 Execute the sole remaining human boundary for Campaign 8D1M-G: one combined NOTE4 physical English/Japanese Voice AI session with the exact reviewed backend and exact app-only firmware already active.
