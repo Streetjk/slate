@@ -1,5 +1,36 @@
 # Campaign 8D1M-G — WebSocket Root-Cause Proof + AGY Writer Recovery
 
+## Stage 1 proof checkpoint — concrete lower-transport callback race
+
+Recorded 2026-09-07 after reconciling PR #2 at `95a037d5cee707df654ad1609e1aba81ff23f6e0`.
+No production, provider, credential, or physical-device state was changed.
+
+```text
+ROOT_CAUSE_PROOF=PASS_VULNERABLE_ORDERING_MECHANICALLY_PROVEN
+ROOT_CAUSE_CLASS=CASE_H_FIRMWARE_WEBSOCKET_TRANSPORT_EVENT_DROP_BEFORE_BACKEND_UPGRADE
+SOURCE_COMPONENT=78/esp-ml307
+SOURCE_COMPONENT_VERSION=3.6.5
+SOURCE_COMPONENT_REPOSITORY_COMMIT=ab4de7c28c8b8f809eba2f56f38090d57fce984d
+SOURCE_COMPONENT_REGISTRY_HASH=5231991281a2f48f0e34ec705c2982936264d8b14f6f9373e60b153fd4b62123
+SOURCE_FILE=firmware/managed_components/78__esp-ml307/src/web_socket.cc
+SOURCE_FUNCTION=WebSocket::Connect
+SOURCE_FILE_SHA256=66dcf3bb8b2ebca77d4e3ab18de6cda01c599d84d2aac2f1a8f4ff70a4e36061
+LOWER_TRANSPORT_FILES=src/esp/esp_tcp.cc,src/esp/esp_ssl.cc
+LOWER_TRANSPORT_FILE_SHA256=esp_tcp:0e3647b95261a98a1dc952df41fcb4606fa51bbfb508ce0a802bc07d6b70e11b,esp_ssl:d37ffe4b1dca5cdaba5059c44c606d93972adc5ed0f1d1e5610fbdf4e7b2e700
+OFFENDING_ORDER=WebSocket::Connect calls tcp_->Connect; EspTcp::Connect/EspSsl::Connect marks connected and starts ReceiveTask; WebSocket::Connect assigns tcp_->OnStream and tcp_->OnDisconnected only after Connect returns
+MECHANICAL_FAILURE_MECHANISM=ReceiveTask invokes stream_callback_ only when non-null and otherwise discards received bytes; the transport therefore has an event-loss window before WebSocket installs its callback
+OBSERVED_FAILURE_CORRELATION=VOICE_WS_CONNECT_START followed by TRANSPORT_FAIL/WS_CONNECT_FAIL, no backend WS upgrade, no provider session, and no microphone stream
+CAUSALITY_LIMIT=The observed server handshake response is not directly captured at the discarded callback boundary; the proof establishes the concrete lower-layer loss window and its exact elimination point, not an unsupported claim that a particular byte was observed there
+SOURCE_BYTES_CHANGED=NO
+AGY_IMPLEMENTATION_STATUS=RECOVERY_PENDING
+DETERMINISTIC_REGRESSION_STATUS=PENDING
+```
+
+The Slate wrapper callback ordering was separately checked: its `OnData`,
+`OnDisconnected`, and `OnError` handlers are assigned before `tcp_->Send()`.
+The correction therefore targets the lower transport lifecycle boundary, not
+the previously misstated send-versus-handler order.
+
 ## Authority and live-state rule
 
 This instruction was issued after reconciling live PR #2 at:
