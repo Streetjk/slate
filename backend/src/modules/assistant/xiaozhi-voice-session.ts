@@ -3,12 +3,68 @@ import type { LiveServerMessage } from '@google/genai';
 import { randomUUID } from 'node:crypto';
 import type { RawData, WebSocket } from 'ws';
 import { GeminiLiveService, type GeminiLiveConnection } from './gemini-live.service';
-import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
+import {
+  GEMINI_LIVE_FAILURE_STAGES,
+  GeminiLiveBridgeFailure,
+  GeminiLiveBridgeProtocolError,
+} from './gemini-live-bridge.protocol';
 import { OpusPcmCodec, type VoiceCodec } from './opus-pcm-codec';
 
 const MAX_PRE_PROVIDER_MIC_FRAMES = 50;
 const MAX_PRE_PROVIDER_MIC_BYTES = 100 * 1024;
 const TRANSCRIPT_STREAM_DELAY_MS = 100;
+
+export type LiveFailureSource =
+  | 'CONNECT_REJECT'
+  | 'PROVIDER_ONERROR'
+  | 'PROVIDER_ONCLOSE'
+  | 'BRIDGE_ERROR'
+  | 'MESSAGE_HANDLER_EXCEPTION'
+  | 'AUDIO_CODEC_EXCEPTION'
+  | 'SOCKET_SEND_EXCEPTION'
+  | 'OTHER_SAFE_CLASS';
+
+export class AudioCodecError extends Error {
+  constructor(message = 'Audio codec error') {
+    super(message);
+    this.name = 'AudioCodecError';
+  }
+}
+
+export class SocketSendError extends Error {
+  constructor(message = 'WebSocket send error') {
+    super(message);
+    this.name = 'SocketSendError';
+  }
+}
+
+export class MessageHandlerError extends Error {
+  constructor(message = 'Message handler error') {
+    super(message);
+    this.name = 'MessageHandlerError';
+  }
+}
+
+export class ProviderOnError extends Error {
+  constructor(message = 'Provider error') {
+    super(message);
+    this.name = 'ProviderOnError';
+  }
+}
+
+export class ProviderOnClose extends Error {
+  constructor(message = 'Provider session closed') {
+    super(message);
+    this.name = 'ProviderOnClose';
+  }
+}
+
+export class ConnectRejectError extends Error {
+  constructor(message = 'Provider connect rejected') {
+    super(message);
+    this.name = 'ConnectRejectError';
+  }
+}
 
 export interface VoiceCalendarActions {
   propose(proposal: unknown): Promise<{
@@ -21,7 +77,7 @@ export interface VoiceCalendarActions {
 }
 
 export class XiaozhiVoiceSession {
-  private readonly logger = new Logger(XiaozhiVoiceSession.name);
+  private readonly logger: Logger;
   private readonly sessionId = randomUUID();
   private readonly codec: VoiceCodec;
   private readonly timing = new VoiceTimingTrace();
@@ -33,6 +89,8 @@ export class XiaozhiVoiceSession {
   private listening = false;
   private closed = false;
   private speaking = false;
+  private failing = false;
+  private expectedProviderClose = false;
   private pendingInputTranscript = '';
   private pendingOutputTranscript = '';
   private lastSentOutputTranscript = '';
@@ -46,9 +104,11 @@ export class XiaozhiVoiceSession {
     private readonly socket: WebSocket,
     private readonly liveService: GeminiLiveService,
     codecFactory: () => VoiceCodec = () => new OpusPcmCodec(),
-    private readonly calendarActions?: VoiceCalendarActions
+    private readonly calendarActions?: VoiceCalendarActions,
+    logger?: Logger
   ) {
     this.codec = codecFactory();
+    this.logger = logger ?? new Logger(XiaozhiVoiceSession.name);
   }
 
   start(): void {
@@ -63,7 +123,11 @@ export class XiaozhiVoiceSession {
       }
       this.operation = this.operation
         .then(() => this.handleMessage(data, isBinary))
-        .catch((error: unknown) => this.fail(error));
+        .catch((error: unknown) => {
+          if (!this.failing && !this.closed) {
+            this.fail(error, 'MESSAGE_HANDLER_EXCEPTION');
+          }
+        });
     });
     this.socket.on('close', () => this.close());
     this.socket.on('error', () => this.close());
@@ -80,23 +144,38 @@ export class XiaozhiVoiceSession {
         this.handleHello(message);
         return;
       case 'listen':
-        if (!this.handshaken) throw new Error('voice session not initialized; hello required');
+        if (!this.handshaken)
+          throw new MessageHandlerError('voice session not initialized; hello required');
         if (message.state === 'start') {
           this.listening = true;
+          this.expectedProviderClose = false;
           const turn = ++this.listenGeneration;
           this.clearMicQueue();
           this.clearTranscriptState();
           this.timing.mark('T_DEVICE_LISTEN_START');
           void this.ensureLive().catch((error: unknown) => {
             if (!this.closed && this.listening && this.listenGeneration === turn) {
-              this.fail(error);
+              const source = isBridgeError(error) ? 'BRIDGE_ERROR' : 'CONNECT_REJECT';
+              this.fail(error, source, {
+                liveSessionPresent: false,
+                connectingPromisePresent: true,
+                listenGeneration: turn,
+              });
             }
           });
         } else if (message.state === 'stop') {
           this.listening = false;
           this.clearMicQueue();
           if (this.live) {
-            this.live.endAudio();
+            try {
+              this.live.endAudio();
+            } catch (error) {
+              const source: LiveFailureSource = isBridgeError(error)
+                ? 'BRIDGE_ERROR'
+                : 'OTHER_SAFE_CLASS';
+              this.fail(error, source);
+              return;
+            }
           } else if (this.connectingPromise) {
             const stopConnectGeneration = this.connectGeneration;
             const stopListenGeneration = this.listenGeneration;
@@ -109,7 +188,14 @@ export class XiaozhiVoiceSession {
                   this.connectGeneration === stopConnectGeneration &&
                   this.listenGeneration === stopListenGeneration
                 ) {
-                  conn.endAudio();
+                  try {
+                    conn.endAudio();
+                  } catch (error) {
+                    const source: LiveFailureSource = isBridgeError(error)
+                      ? 'BRIDGE_ERROR'
+                      : 'OTHER_SAFE_CLASS';
+                    this.fail(error, source);
+                  }
                 }
               })
               .catch(() => {});
@@ -123,6 +209,7 @@ export class XiaozhiVoiceSession {
         this.clearTranscriptState();
         this.listening = false;
         this.connectingPromise = undefined;
+        this.expectedProviderClose = true;
         this.live?.close();
         this.live = undefined;
         this.speaking = false;
@@ -143,6 +230,7 @@ export class XiaozhiVoiceSession {
   close(): void {
     this.closed = true;
     this.listening = false;
+    this.expectedProviderClose = true;
     this.connectGeneration++;
     this.listenGeneration++;
     this.clearMicQueue();
@@ -158,9 +246,9 @@ export class XiaozhiVoiceSession {
   }
 
   private handleHello(message: Record<string, unknown>): void {
-    if (this.handshaken) throw new Error('duplicate voice hello');
+    if (this.handshaken) throw new MessageHandlerError('duplicate voice hello');
     if (message.transport !== 'websocket' || message.version !== 1) {
-      throw new Error('unsupported voice WebSocket protocol');
+      throw new MessageHandlerError('unsupported voice WebSocket protocol');
     }
     this.handshaken = true;
     this.sendJson({
@@ -174,7 +262,7 @@ export class XiaozhiVoiceSession {
 
   private handleAudio(packet: Uint8Array): void {
     if (!this.handshaken || !this.listening || (!this.live && !this.connectingPromise))
-      throw new Error('voice audio received before session start');
+      throw new MessageHandlerError('voice audio received before session start');
     if (!this.micFrameMarkerEmitted) {
       this.micFrameMarkerEmitted = true;
       this.logger.log('FIRST_MIC_FRAME_RECEIVED=YES');
@@ -182,7 +270,20 @@ export class XiaozhiVoiceSession {
     this.timing.mark('T_FIRST_DEVICE_AUDIO_SENT');
     this.timing.mark('T_BACKEND_FIRST_AUDIO_RECEIVED');
     if (this.live) {
-      this.live.sendAudio(this.codec.decodeDevicePacket(packet));
+      let pcm: Uint8Array;
+      try {
+        pcm = this.codec.decodeDevicePacket(packet);
+      } catch {
+        throw new AudioCodecError();
+      }
+      try {
+        this.live.sendAudio(pcm);
+      } catch (error) {
+        const source: LiveFailureSource = isBridgeError(error)
+          ? 'BRIDGE_ERROR'
+          : 'OTHER_SAFE_CLASS';
+        this.fail(error, source);
+      }
     } else {
       this.enqueueMicFrame(packet);
     }
@@ -207,7 +308,22 @@ export class XiaozhiVoiceSession {
     this.micQueue = [];
     this.micQueueBytes = 0;
     for (const frame of frames) {
-      this.live.sendAudio(this.codec.decodeDevicePacket(frame));
+      let pcm: Uint8Array;
+      try {
+        pcm = this.codec.decodeDevicePacket(frame);
+      } catch {
+        this.fail(new AudioCodecError(), 'AUDIO_CODEC_EXCEPTION');
+        return;
+      }
+      try {
+        this.live.sendAudio(pcm);
+      } catch (error) {
+        const source: LiveFailureSource = isBridgeError(error)
+          ? 'BRIDGE_ERROR'
+          : 'OTHER_SAFE_CLASS';
+        this.fail(error, source);
+        return;
+      }
     }
   }
 
@@ -230,6 +346,7 @@ export class XiaozhiVoiceSession {
     }
     this.logger.log('PROVIDER_SESSION_CREATE_START=YES');
     const generation = ++this.connectGeneration;
+    let isConnected = false;
     let connectPromise: Promise<GeminiLiveConnection | undefined> | undefined = undefined;
     connectPromise = (async () => {
       try {
@@ -240,16 +357,28 @@ export class XiaozhiVoiceSession {
               this.handleGeminiMessage(message);
             }
           },
-          () => {
+          (error) => {
+            if (!isConnected) {
+              return;
+            }
             if (this.isCurrentAttempt(generation)) {
-              this.handleLiveFailure();
+              this.handleLiveFailure(error);
+            } else if (
+              this.expectedProviderClose &&
+              (isProviderOnclose(error) ||
+                (error instanceof GeminiLiveBridgeFailure &&
+                  error.failureStage === 'SESSION_CLOSED_UNEXPECTEDLY'))
+            ) {
+              this.handleExpectedProviderClose();
             }
           }
         );
         if (!this.isCurrentAttempt(generation)) {
+          this.expectedProviderClose = true;
           live.close();
           return undefined;
         }
+        isConnected = true;
         this.live = live;
         this.logger.log('PROVIDER_SESSION_CREATE_RESULT=PASS');
         this.logger.log('PROVIDER_SESSION_STARTED=YES');
@@ -305,9 +434,16 @@ export class XiaozhiVoiceSession {
       if (audio) {
         this.timing.mark('T_PROVIDER_FIRST_AUDIO_EVENT');
         this.startSpeaking();
-        for (const packet of this.codec.encodeModelPcm(Buffer.from(audio, 'base64'))) {
+        let packets: Uint8Array[];
+        try {
+          packets = this.codec.encodeModelPcm(Buffer.from(audio, 'base64'));
+        } catch {
+          this.fail(new AudioCodecError(), 'AUDIO_CODEC_EXCEPTION');
+          return;
+        }
+        for (const packet of packets) {
           this.timing.mark('T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE');
-          this.socket.send(packet, { binary: true });
+          this.sendBinary(packet);
         }
       }
 
@@ -320,10 +456,12 @@ export class XiaozhiVoiceSession {
 
       const calls = message.toolCall?.functionCalls ?? [];
       if (calls.length > 0 && this.live) {
-        void this.handleToolCalls(this.live, calls).catch((error: unknown) => this.fail(error));
+        void this.handleToolCalls(this.live, calls);
       }
     } catch (error) {
-      this.fail(error);
+      if (!this.failing && !this.closed) {
+        this.fail(error);
+      }
     }
   }
 
@@ -353,13 +491,20 @@ export class XiaozhiVoiceSession {
         accepted.push({ id, name, response: { ok: false, error: 'calendar proposal rejected' } });
       }
     }
-    if (accepted.length > 0) live.respondToToolCalls(accepted);
-    if (rejected.length > 0) live.rejectToolCalls(rejected);
+    try {
+      if (accepted.length > 0) live.respondToToolCalls(accepted);
+      if (rejected.length > 0) live.rejectToolCalls(rejected);
+    } catch (error) {
+      const source: LiveFailureSource = isBridgeError(error) ? 'BRIDGE_ERROR' : 'OTHER_SAFE_CLASS';
+      this.fail(error, source);
+    }
   }
 
   private async handleCalendarMessage(message: Record<string, unknown>): Promise<void> {
-    if (!this.handshaken) throw new Error('voice session not initialized; hello required');
-    if (!this.calendarActions) throw new Error('Google Calendar voice actions are unavailable');
+    if (!this.handshaken)
+      throw new MessageHandlerError('voice session not initialized; hello required');
+    if (!this.calendarActions)
+      throw new MessageHandlerError('Google Calendar voice actions are unavailable');
     const ticket = typeof message.ticket === 'string' ? message.ticket : '';
     if (message.action === 'confirm') {
       const event = await this.calendarActions.confirm(ticket);
@@ -371,7 +516,7 @@ export class XiaozhiVoiceSession {
       this.sendJson({ type: 'calendar', state: 'cancelled' });
       return;
     }
-    throw new Error('unsupported calendar action');
+    throw new MessageHandlerError('unsupported calendar action');
   }
 
   private startSpeaking(): void {
@@ -384,13 +529,44 @@ export class XiaozhiVoiceSession {
     this.sendJson({ type: 'alert', status, message, emotion: 'neutral' });
   }
 
-  private handleLiveFailure(): void {
+  private handleExpectedProviderClose(): void {
+    this.logger.log('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+    this.logger.log('PROVIDER_CLOSE_EXPECTED=YES');
+  }
+
+  private handleLiveFailure(error?: unknown): void {
+    const isBridge = isBridgeError(error);
+    const isClose = !isBridge && isProviderOnclose(error);
+
+    if (isClose) {
+      this.logger.log('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+      if (this.expectedProviderClose) {
+        this.logger.log('PROVIDER_CLOSE_EXPECTED=YES');
+        return;
+      }
+    } else {
+      this.logger.log('PROVIDER_LIVE_ERROR_CALLBACK=YES');
+    }
+
+    const failureSource: LiveFailureSource = isBridge
+      ? 'BRIDGE_ERROR'
+      : isClose
+        ? 'PROVIDER_ONCLOSE'
+        : 'PROVIDER_ONERROR';
+
+    this.logFailureMarkers(failureSource, {
+      providerCloseExpected: false,
+      liveSessionPresent: this.live !== undefined,
+      connectingPromisePresent: this.connectingPromise !== undefined,
+    });
+
     this.connectGeneration++;
     const live = this.live;
     this.live = undefined;
     this.connectingPromise = undefined;
     this.clearMicQueue();
     this.clearTranscriptState();
+    this.expectedProviderClose = true;
     live?.close();
     this.speaking = false;
     this.codec.reset();
@@ -444,14 +620,80 @@ export class XiaozhiVoiceSession {
     this.pendingOutputTranscript = '';
   }
 
-  private sendJson(message: Record<string, unknown>): void {
-    if (this.socket.readyState === this.socket.OPEN) this.socket.send(JSON.stringify(message));
+  private sendBinary(packet: Uint8Array): void {
+    if (this.socket.readyState === this.socket.OPEN) {
+      try {
+        this.socket.send(packet, { binary: true });
+      } catch {
+        if (!this.closed && !this.failing) {
+          this.fail(new SocketSendError(), 'SOCKET_SEND_EXCEPTION');
+        }
+      }
+    }
   }
 
-  private fail(error: unknown): void {
+  private sendJson(message: Record<string, unknown>): void {
+    if (this.socket.readyState === this.socket.OPEN) {
+      try {
+        this.socket.send(JSON.stringify(message));
+      } catch {
+        if (!this.closed && !this.failing) {
+          this.fail(new SocketSendError(), 'SOCKET_SEND_EXCEPTION');
+        }
+      }
+    }
+  }
+
+  private logFailureMarkers(
+    source: LiveFailureSource,
+    options?: {
+      providerCloseExpected?: boolean;
+      liveSessionPresent?: boolean;
+      connectingPromisePresent?: boolean;
+      listeningState?: boolean;
+      connectGeneration?: number;
+      listenGeneration?: number;
+    }
+  ): void {
+    const closeExpected = options?.providerCloseExpected ?? false;
+    const listening = options?.listeningState ?? this.listening;
+    const livePresent = options?.liveSessionPresent ?? this.live !== undefined;
+    const connectingPresent =
+      options?.connectingPromisePresent ?? this.connectingPromise !== undefined;
+    const connectGen = options?.connectGeneration ?? this.connectGeneration;
+    const listenGen = options?.listenGeneration ?? this.listenGeneration;
+
+    this.logger.log(`LIVE_FAILURE_SOURCE=${source}`);
+    this.logger.log(`PROVIDER_CLOSE_EXPECTED=${closeExpected ? 'YES' : 'NO'}`);
+    this.logger.log(`ACTIVE_CONNECT_GENERATION=${connectGen}`);
+    this.logger.log(`ACTIVE_LISTEN_GENERATION=${listenGen}`);
+    this.logger.log(`LISTENING_STATE_AT_FAILURE=${listening ? 'YES' : 'NO'}`);
+    this.logger.log(`LIVE_SESSION_PRESENT_AT_FAILURE=${livePresent ? 'YES' : 'NO'}`);
+    this.logger.log(`CONNECTING_PROMISE_PRESENT_AT_FAILURE=${connectingPresent ? 'YES' : 'NO'}`);
+  }
+
+  private fail(
+    error: unknown,
+    sourceOverride?: LiveFailureSource,
+    stateOverride?: {
+      liveSessionPresent?: boolean;
+      connectingPromisePresent?: boolean;
+      connectGeneration?: number;
+      listenGeneration?: number;
+    }
+  ): void {
+    if (this.failing) return;
+    this.failing = true;
     // Provider and parser details are server-side diagnostics only. Never put
     // arbitrary exception text on the device-facing protocol.
-    void error;
+    const source = sourceOverride ?? classifyLiveFailureSource(error);
+    this.logFailureMarkers(source, {
+      providerCloseExpected: false,
+      liveSessionPresent: stateOverride?.liveSessionPresent,
+      connectingPromisePresent: stateOverride?.connectingPromisePresent,
+      connectGeneration: stateOverride?.connectGeneration,
+      listenGeneration: stateOverride?.listenGeneration,
+    });
     this.clearMicQueue();
     this.clearTranscriptState();
     this.sendAlert('Voice service error', 'Voice service error');
@@ -462,9 +704,14 @@ export class XiaozhiVoiceSession {
 }
 
 function parseJson(value: string): Record<string, unknown> {
-  const parsed: unknown = JSON.parse(value);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new MessageHandlerError();
+  }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('voice message must be a JSON object');
+    throw new MessageHandlerError();
   }
   return parsed as Record<string, unknown>;
 }
@@ -496,9 +743,14 @@ class VoiceTimingTrace {
   }
 }
 
+const SAFE_PROVIDER_FAILURE_STAGES = new Set<string>(GEMINI_LIVE_FAILURE_STAGES);
+
 export function classifyProviderFailure(error: unknown): string {
   if (error instanceof GeminiLiveBridgeFailure) {
-    return error.failureStage;
+    if (SAFE_PROVIDER_FAILURE_STAGES.has(error.failureStage)) {
+      return error.failureStage;
+    }
+    return 'UNKNOWN_SAFE_FAILURE';
   }
   const name = error instanceof Error ? error.name : '';
   const message = error instanceof Error ? error.message.toLowerCase() : '';
@@ -523,4 +775,91 @@ export function classifyProviderFailure(error: unknown): string {
     return 'PROTOCOL_ERROR';
   }
   return 'UNKNOWN_SAFE_FAILURE';
+}
+
+function isBridgeError(error: unknown): boolean {
+  if (error instanceof GeminiLiveBridgeProtocolError) return true;
+  if (error instanceof GeminiLiveBridgeFailure) return true;
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return (
+    name === 'GeminiLiveBridgeFailure' ||
+    name === 'GeminiLiveBridgeProtocolError' ||
+    name === 'BridgeError' ||
+    message.includes('bridge')
+  );
+}
+
+function isProviderOnclose(error: unknown): boolean {
+  if (isBridgeError(error)) return false;
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return (
+    name === 'ProviderOnClose' ||
+    name === 'GeminiLiveSessionClosedError' ||
+    message.includes('session closed') ||
+    message.includes('onclose') ||
+    message.includes('provider closed')
+  );
+}
+
+function isProviderOnerror(error: unknown): boolean {
+  if (isBridgeError(error)) return false;
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return (
+    name === 'ProviderOnError' ||
+    name === 'GeminiLiveConnectionError' ||
+    message.includes('connection error') ||
+    message.includes('onerror') ||
+    message.includes('provider error')
+  );
+}
+
+function isAudioCodecException(error: unknown): boolean {
+  if (error instanceof AudioCodecError) return true;
+  const name = error instanceof Error ? error.name : '';
+  return name === 'AudioCodecError';
+}
+
+function isSocketSendException(error: unknown): boolean {
+  if (error instanceof SocketSendError) return true;
+  const name = error instanceof Error ? error.name : '';
+  return name === 'SocketSendError';
+}
+
+function isMessageHandlerException(error: unknown): boolean {
+  if (error instanceof MessageHandlerError || error instanceof SyntaxError) return true;
+  const name = error instanceof Error ? error.name : '';
+  return name === 'MessageHandlerError';
+}
+
+function isConnectReject(error: unknown): boolean {
+  if (error instanceof ConnectRejectError) return true;
+  const name = error instanceof Error ? error.name : '';
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return (
+    name === 'ConnectRejectError' ||
+    name === 'ConnectReject' ||
+    name === 'GeminiConfigurationError' ||
+    name === 'GeminiCredentialError' ||
+    message.includes('connect reject') ||
+    message.includes('connection failed') ||
+    message.includes('timeout')
+  );
+}
+
+export function classifyLiveFailureSource(
+  error: unknown,
+  context?: LiveFailureSource
+): LiveFailureSource {
+  if (context) return context;
+  if (isSocketSendException(error)) return 'SOCKET_SEND_EXCEPTION';
+  if (isAudioCodecException(error)) return 'AUDIO_CODEC_EXCEPTION';
+  if (isMessageHandlerException(error)) return 'MESSAGE_HANDLER_EXCEPTION';
+  if (isBridgeError(error)) return 'BRIDGE_ERROR';
+  if (isProviderOnclose(error)) return 'PROVIDER_ONCLOSE';
+  if (isProviderOnerror(error)) return 'PROVIDER_ONERROR';
+  if (isConnectReject(error)) return 'CONNECT_REJECT';
+  return 'OTHER_SAFE_CLASS';
 }

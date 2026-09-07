@@ -33,6 +33,19 @@ VOICE_PATTERNS = {
     "PROVIDER_SESSION_CREATE_RESULT": r"(?:PASS|[A-Z][A-Z0-9_]*)",
     "PROVIDER_SESSION_STARTED": r"(?:YES|NO)",
     "FIRST_MIC_FRAME_RECEIVED": r"(?:YES|NO)",
+    "LIVE_FAILURE_SOURCE": (
+        r"(?:CONNECT_REJECT|PROVIDER_ONERROR|PROVIDER_ONCLOSE|BRIDGE_ERROR|"
+        r"MESSAGE_HANDLER_EXCEPTION|AUDIO_CODEC_EXCEPTION|SOCKET_SEND_EXCEPTION|"
+        r"OTHER_SAFE_CLASS)"
+    ),
+    "PROVIDER_CLOSE_EXPECTED": r"(?:YES|NO)",
+    "ACTIVE_CONNECT_GENERATION": r"[0-9]+",
+    "ACTIVE_LISTEN_GENERATION": r"[0-9]+",
+    "LISTENING_STATE_AT_FAILURE": r"(?:YES|NO)",
+    "LIVE_SESSION_PRESENT_AT_FAILURE": r"(?:YES|NO)",
+    "CONNECTING_PROMISE_PRESENT_AT_FAILURE": r"(?:YES|NO)",
+    "PROVIDER_LIVE_ERROR_CALLBACK": r"YES",
+    "PROVIDER_LIVE_CLOSE_CALLBACK": r"YES",
 }
 VOICE_REGEX = {
     key: re.compile(rf"(?<![A-Z0-9_]){key}=({pattern})(?![A-Za-z0-9_.-])")
@@ -89,7 +102,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE '(VOICE|PROVIDER|FIRST_MIC_FRAME_RECEIVED|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE '(VOICE|PROVIDER|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
 """
     try:
         completed = subprocess.run(
@@ -128,6 +141,91 @@ def self_test() -> int:
     assert extract_structural_events("T_DEVICE_FIRST_AUDIO_DECODED") == [
         {"event": "TIMING_MARKER", "value": "T_DEVICE_FIRST_AUDIO_DECODED"}
     ]
+
+    # Verify LIVE_FAILURE_SOURCE with all allowed fixed enum values
+    allowed_sources = [
+        "CONNECT_REJECT",
+        "PROVIDER_ONERROR",
+        "PROVIDER_ONCLOSE",
+        "BRIDGE_ERROR",
+        "MESSAGE_HANDLER_EXCEPTION",
+        "AUDIO_CODEC_EXCEPTION",
+        "SOCKET_SEND_EXCEPTION",
+        "OTHER_SAFE_CLASS",
+    ]
+    for src in allowed_sources:
+        assert extract_voice_events(f"LIVE_FAILURE_SOURCE={src}") == [
+            {"event": "LIVE_FAILURE_SOURCE", "value": src}
+        ]
+
+    # Unsanitized / arbitrary values must NOT be captured
+    assert extract_voice_events("LIVE_FAILURE_SOURCE=RAW_UNSANITIZED_EXCEPTION") == []
+    assert extract_voice_events("LIVE_FAILURE_SOURCE=UNKNOWN_ERROR") == []
+
+    # Verify PROVIDER_CLOSE_EXPECTED YES/NO
+    assert extract_voice_events("PROVIDER_CLOSE_EXPECTED=YES") == [
+        {"event": "PROVIDER_CLOSE_EXPECTED", "value": "YES"}
+    ]
+    assert extract_voice_events("PROVIDER_CLOSE_EXPECTED=NO") == [
+        {"event": "PROVIDER_CLOSE_EXPECTED", "value": "NO"}
+    ]
+    assert extract_voice_events("PROVIDER_CLOSE_EXPECTED=MAYBE") == []
+
+    # Verify generation markers (digits only)
+    assert extract_voice_events("ACTIVE_CONNECT_GENERATION=42") == [
+        {"event": "ACTIVE_CONNECT_GENERATION", "value": "42"}
+    ]
+    assert extract_voice_events("ACTIVE_CONNECT_GENERATION=abc") == []
+    assert extract_voice_events("ACTIVE_LISTEN_GENERATION=7") == [
+        {"event": "ACTIVE_LISTEN_GENERATION", "value": "7"}
+    ]
+    assert extract_voice_events("ACTIVE_LISTEN_GENERATION=invalid") == []
+
+    # Verify failure state markers YES/NO
+    assert extract_voice_events("LISTENING_STATE_AT_FAILURE=YES") == [
+        {"event": "LISTENING_STATE_AT_FAILURE", "value": "YES"}
+    ]
+    assert extract_voice_events("LISTENING_STATE_AT_FAILURE=NO") == [
+        {"event": "LISTENING_STATE_AT_FAILURE", "value": "NO"}
+    ]
+    assert extract_voice_events("LIVE_SESSION_PRESENT_AT_FAILURE=YES") == [
+        {"event": "LIVE_SESSION_PRESENT_AT_FAILURE", "value": "YES"}
+    ]
+    assert extract_voice_events("LIVE_SESSION_PRESENT_AT_FAILURE=NO") == [
+        {"event": "LIVE_SESSION_PRESENT_AT_FAILURE", "value": "NO"}
+    ]
+    assert extract_voice_events("CONNECTING_PROMISE_PRESENT_AT_FAILURE=YES") == [
+        {"event": "CONNECTING_PROMISE_PRESENT_AT_FAILURE", "value": "YES"}
+    ]
+    assert extract_voice_events("CONNECTING_PROMISE_PRESENT_AT_FAILURE=NO") == [
+        {"event": "CONNECTING_PROMISE_PRESENT_AT_FAILURE", "value": "NO"}
+    ]
+
+    # Verify callback markers YES
+    assert extract_voice_events("PROVIDER_LIVE_ERROR_CALLBACK=YES") == [
+        {"event": "PROVIDER_LIVE_ERROR_CALLBACK", "value": "YES"}
+    ]
+    assert extract_voice_events("PROVIDER_LIVE_CLOSE_CALLBACK=YES") == [
+        {"event": "PROVIDER_LIVE_CLOSE_CALLBACK", "value": "YES"}
+    ]
+    assert extract_voice_events("PROVIDER_LIVE_ERROR_CALLBACK=NO") == []
+    assert extract_voice_events("PROVIDER_LIVE_CLOSE_CALLBACK=NO") == []
+
+    # Verify privacy preservation: raw details, transcripts, auth, urls must not be retained
+    line = (
+        "LIVE_FAILURE_SOURCE=BRIDGE_ERROR "
+        "transcript=user_said_hello password=secret_token url=https://example.com/api "
+        "stack=at /Users/ollama/secret.ts header=Bearer secret"
+    )
+    extracted = extract_voice_events(line)
+    assert extracted == [{"event": "LIVE_FAILURE_SOURCE", "value": "BRIDGE_ERROR"}]
+    dumped = json.dumps(extracted)
+    assert "user_said_hello" not in dumped
+    assert "password" not in dumped
+    assert "secret" not in dumped
+    assert "https://" not in dumped
+    assert "/Users" not in dumped
+
     print("slate-m4-sanitized-observer-v2: PASS")
     return 0
 

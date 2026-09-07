@@ -48,6 +48,63 @@ send markers for this consumed physical attempt, the generic device error is
 not mechanically attributable. No provider retry, deployment, reflash, or
 source change was performed during ingestion.
 
+## Sanitized attribution candidate — 2026-09-08
+
+The designated AGY writer produced a bounded attribution candidate after the
+observer evidence established that the existing marker surface could not
+distinguish the generic device error. Codex integrated and inspected the
+candidate. The candidate preserves the reviewed lifecycle guard, bounded
+50-frame/100 KiB pre-provider mic queue, 100 ms transcript coalescing, one
+logical assistant bubble, and in-place e-ink updates.
+
+Changed artifacts are limited to:
+
+```text
+backend/src/modules/assistant/xiaozhi-voice-session.ts
+backend/src/modules/assistant/xiaozhi-voice-session.test.ts
+scripts/slate-m4-sanitized-observer-v2.py
+```
+
+The runtime now emits only fixed structural enums and state markers for
+connect rejection, provider error/close callbacks, bridge errors, message
+handler failures, codec failures, device-socket send failures, generation
+state, listening state, live-session presence, and pending-connect presence.
+Provider callback errors and close events are classified separately from
+provider session creation; expected planned closes remain non-fatal. The
+observer allow-list and self-test accept only the fixed values and retain no
+raw exception, transcript, audio, provider payload, credential, URL, or auth
+header content.
+
+Validation before exact review:
+
+```text
+AGY_IMPLEMENTATION=PASS
+TARGETED_TESTS=33_PASS_0_FAIL
+BACKEND_FULL_TESTS=358_PASS_5_SKIP_0_FAIL
+TYPECHECK=PASS
+LINT=PASS
+FORMAT=PASS
+OBSERVER_SELF_TEST=PASS
+OBSERVER_PYTHON_SYNTAX=PASS
+DIFF_CHECK=PASS
+PRODUCTION_RUNTIME_SECRET_SCAN=PASS
+```
+
+Frozen working-tree artifact hashes before commit:
+
+```text
+SESSION_SOURCE_SHA256=19e827cddb6e191ad495cef1c10d0f0a29179055bdb745441f60ef0d3aef65c8
+SESSION_TEST_SHA256=9f652dc6166f3ac88a237c63bbeb20883a47b209a1b39840ec91d78198113a75
+OBSERVER_SHA256=f9d2fe645287fccfe69af0bb53f4e52f0726c624ad0537d1abf38bfbe20b8dd8
+EXACT_REVIEW_REQUIRED=YES
+```
+
+No production deployment, firmware write, provider session, credential
+operation, model change, billing change, or private-data operation occurred.
+The exact committed candidate is the only artifact eligible for fresh ZAI
+`glm-5.3-flash` review; no physical retry is authorized until that review and
+all subsequent nonphysical qualification are complete.
+
 ## Live reconciliation at instruction issue
 
 Issued after reconciling PR #2 at live head:

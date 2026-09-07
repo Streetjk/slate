@@ -1,9 +1,18 @@
 import { EventEmitter } from 'node:events';
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
+import { Logger } from '@nestjs/common';
 import type { WebSocket } from 'ws';
 import {
+  AudioCodecError,
+  classifyLiveFailureSource,
   classifyProviderFailure,
+  ConnectRejectError,
+  type LiveFailureSource,
   mergeTranscriptFragment,
+  MessageHandlerError,
+  ProviderOnClose,
+  ProviderOnError,
+  SocketSendError,
   XiaozhiVoiceSession,
 } from './xiaozhi-voice-session';
 import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
@@ -1129,5 +1138,980 @@ describe('XiaozhiVoiceSession', () => {
 
     // Queued frames from stopped listen were cleared and rejected frame was never flushed
     expect(sentAudio).toHaveLength(0);
+  });
+
+  it('classifies live failure sources deterministically for all safe categories', () => {
+    expect(classifyLiveFailureSource(new ConnectRejectError('connect error'))).toBe(
+      'CONNECT_REJECT'
+    );
+    expect(classifyLiveFailureSource(new Error('provider connect rejected'))).toBe(
+      'CONNECT_REJECT'
+    );
+    expect(classifyLiveFailureSource(new ProviderOnError('live error'))).toBe('PROVIDER_ONERROR');
+    expect(classifyLiveFailureSource(new Error('Gemini Live connection error'))).toBe(
+      'PROVIDER_ONERROR'
+    );
+    expect(
+      classifyLiveFailureSource(
+        new GeminiLiveBridgeFailure('READY_THEN_PROVIDER_ERROR', 'provider error')
+      )
+    ).toBe('BRIDGE_ERROR');
+    expect(classifyLiveFailureSource(new ProviderOnClose('live close'))).toBe('PROVIDER_ONCLOSE');
+    expect(classifyLiveFailureSource(new Error('Gemini Live session closed'))).toBe(
+      'PROVIDER_ONCLOSE'
+    );
+    expect(
+      classifyLiveFailureSource(
+        new GeminiLiveBridgeFailure('SESSION_CLOSED_UNEXPECTEDLY', 'closed')
+      )
+    ).toBe('BRIDGE_ERROR');
+    expect(
+      classifyLiveFailureSource(new GeminiLiveBridgeFailure('CHILD_SPAWN_FAILED', 'child failed'))
+    ).toBe('BRIDGE_ERROR');
+    expect(
+      classifyLiveFailureSource(
+        new GeminiLiveBridgeFailure('BRIDGE_PROTOCOL_REJECTED', 'bad protocol')
+      )
+    ).toBe('BRIDGE_ERROR');
+    expect(classifyLiveFailureSource(new MessageHandlerError('bad message'))).toBe(
+      'MESSAGE_HANDLER_EXCEPTION'
+    );
+    expect(classifyLiveFailureSource(new SyntaxError('bad json'))).toBe(
+      'MESSAGE_HANDLER_EXCEPTION'
+    );
+    expect(classifyLiveFailureSource(new AudioCodecError('opus error'))).toBe(
+      'AUDIO_CODEC_EXCEPTION'
+    );
+    expect(classifyLiveFailureSource(new SocketSendError('send failed'))).toBe(
+      'SOCKET_SEND_EXCEPTION'
+    );
+    expect(classifyLiveFailureSource(new Error('arbitrary unknown unclassified message'))).toBe(
+      'OTHER_SAFE_CLASS'
+    );
+    expect(classifyLiveFailureSource(new Error('anything'), 'OTHER_SAFE_CLASS')).toBe(
+      'OTHER_SAFE_CLASS'
+    );
+  });
+
+  it('records sanitized structural markers on provider-connect rejection', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      const liveService = {
+        connect: async () => {
+          throw new Error('synthetic provider connection failed network');
+        },
+      } as never;
+
+      const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logs).toContain('PROVIDER_SESSION_CREATE_START=YES');
+      expect(logs).toContain('PROVIDER_SESSION_CREATE_RESULT=NETWORK_ERROR');
+      expect(logs).toContain('PROVIDER_SESSION_STARTED=NO');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=CONNECT_REJECT');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(logs).toContain('ACTIVE_CONNECT_GENERATION=2');
+      expect(logs).toContain('ACTIVE_LISTEN_GENERATION=1');
+      expect(logs).toContain('LISTENING_STATE_AT_FAILURE=YES');
+      expect(logs).toContain('LIVE_SESSION_PRESENT_AT_FAILURE=NO');
+      expect(logs).toContain('CONNECTING_PROMISE_PRESENT_AT_FAILURE=YES');
+
+      expect(ws.closed).toEqual({ code: 1011, reason: 'voice session failed' });
+      const alert = ws.sent
+        .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+        .find((item) => item?.type === 'alert');
+      expect(alert).toEqual({
+        type: 'alert',
+        status: 'Voice service error',
+        message: 'Voice service error',
+        emotion: 'neutral',
+      });
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('records sanitized structural markers on provider onerror callback', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      let onErrorCallback: ((err: Error) => void) | undefined;
+      const liveService = {
+        connect: async (_lang: string, _onEvent: unknown, onError: (err: Error) => void) => {
+          onErrorCallback = onError;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never;
+
+      const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      onErrorCallback?.(new Error('Gemini Live connection error'));
+
+      expect(logs).toContain('PROVIDER_LIVE_ERROR_CALLBACK=YES');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=PROVIDER_ONERROR');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(logs).toContain('ACTIVE_CONNECT_GENERATION=1');
+      expect(logs).toContain('ACTIVE_LISTEN_GENERATION=1');
+      expect(logs).toContain('LISTENING_STATE_AT_FAILURE=YES');
+      expect(logs).toContain('LIVE_SESSION_PRESENT_AT_FAILURE=YES');
+      expect(logs).toContain('CONNECTING_PROMISE_PRESENT_AT_FAILURE=NO');
+
+      const alert = ws.sent
+        .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+        .find((item) => item?.type === 'alert');
+      expect(alert).toEqual({
+        type: 'alert',
+        status: 'Voice service error',
+        message: 'Voice service error',
+        emotion: 'neutral',
+      });
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('records sanitized structural markers on provider unexpected onclose callback', async () => {
+    const ws = socket() as unknown as FakeSocket;
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      let onErrorCallback: ((err: Error) => void) | undefined;
+      const liveService = {
+        connect: async (_lang: string, _onEvent: unknown, onError: (err: Error) => void) => {
+          onErrorCallback = onError;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never;
+
+      const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Unexpected close
+      onErrorCallback?.(new Error('Gemini Live session closed'));
+
+      expect(logs).toContain('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=PROVIDER_ONCLOSE');
+      expect(logs).toContain('ACTIVE_CONNECT_GENERATION=1');
+      expect(logs).toContain('ACTIVE_LISTEN_GENERATION=1');
+      expect(logs).toContain('LISTENING_STATE_AT_FAILURE=YES');
+      expect(logs).toContain('LIVE_SESSION_PRESENT_AT_FAILURE=YES');
+      expect(logs).toContain('CONNECTING_PROMISE_PRESENT_AT_FAILURE=NO');
+
+      const alert = ws.sent
+        .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+        .find((item) => item?.type === 'alert');
+      expect(alert).toEqual({
+        type: 'alert',
+        status: 'Voice service error',
+        message: 'Voice service error',
+        emotion: 'neutral',
+      });
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('records sanitized structural markers on bridge errors during connect and runtime', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      // Connect-time bridge error
+      const ws1 = socket() as unknown as FakeSocket;
+      const bridgeFailConnect = {
+        connect: async () => {
+          throw new GeminiLiveBridgeFailure('CHILD_SPAWN_FAILED', 'child spawn failed');
+        },
+      } as never;
+
+      const session1 = new XiaozhiVoiceSession(ws1, bridgeFailConnect, codec);
+      await session1.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session1.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logs).toContain('PROVIDER_SESSION_CREATE_RESULT=CHILD_SPAWN_FAILED');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=BRIDGE_ERROR');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(ws1.closed).toEqual({ code: 1011, reason: 'voice session failed' });
+
+      // Runtime bridge error
+      logs.length = 0;
+      const ws2 = socket() as unknown as FakeSocket;
+      let onCallback: ((err: Error) => void) | undefined;
+      const bridgeFailRuntime = {
+        connect: async (_lang: string, _onEvent: unknown, onError: (err: Error) => void) => {
+          onCallback = onError;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never;
+
+      const session2 = new XiaozhiVoiceSession(ws2, bridgeFailRuntime, codec);
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      onCallback?.(new GeminiLiveBridgeFailure('BRIDGE_PROTOCOL_REJECTED', 'protocol rejected'));
+
+      expect(logs).toContain('PROVIDER_LIVE_ERROR_CALLBACK=YES');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=BRIDGE_ERROR');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('records sanitized structural markers on message-handler, codec, and socket-send exceptions', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      // 1. Message-handler exception (malformed json)
+      const ws1 = socket() as unknown as FakeSocket;
+      const session1 = new XiaozhiVoiceSession(ws1, { connect: async () => ({}) } as never, codec);
+      session1.start();
+      ws1.emit('message', Buffer.from('invalid-json'), false);
+      await (session1 as unknown as { operation: Promise<void> }).operation;
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=MESSAGE_HANDLER_EXCEPTION');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(ws1.closed).toEqual({ code: 1011, reason: 'voice session failed' });
+
+      // 2. Codec exception on decode
+      logs.length = 0;
+      const ws2 = socket() as unknown as FakeSocket;
+      let liveEvent: ((ev: GeminiLiveEvent) => void) | undefined;
+      const session2 = new XiaozhiVoiceSession(
+        ws2,
+        {
+          connect: async (_lang: string, onEv: (ev: GeminiLiveEvent) => void) => {
+            liveEvent = onEv;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        () => ({
+          decodeDevicePacket: () => {
+            throw new Error('opus decode failed');
+          },
+          encodeModelPcm: () => [],
+          reset: () => {},
+          close: () => {},
+        })
+      );
+      session2.start();
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      ws2.emit('message', Buffer.from([1, 2]), true);
+      await Promise.resolve();
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=AUDIO_CODEC_EXCEPTION');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(ws2.closed).toEqual({ code: 1011, reason: 'voice session failed' });
+
+      // 3. Socket-send exception
+      logs.length = 0;
+      const ws3 = socket() as unknown as FakeSocket;
+      ws3.send = () => {
+        throw new Error('WebSocket send error');
+      };
+      const session3 = new XiaozhiVoiceSession(
+        ws3,
+        {
+          connect: async (_lang: string, onEv: (ev: GeminiLiveEvent) => void) => {
+            liveEvent = onEv;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      liveEvent?.({
+        message: {
+          data: Buffer.from([1, 2, 3, 4]).toString('base64'),
+        } as never,
+      });
+      await Promise.resolve();
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=SOCKET_SEND_EXCEPTION');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('distinguishes expected provider close from unexpected provider close without false failure', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      let onErrorCallback: ((err: Error) => void) | undefined;
+      const liveService = {
+        connect: async (_lang: string, _onEvent: unknown, onError: (err: Error) => void) => {
+          onErrorCallback = onError;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never;
+
+      // 1. Expected close via abort
+      const ws1 = socket() as unknown as FakeSocket;
+      const session1 = new XiaozhiVoiceSession(ws1, liveService, codec);
+      await session1.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session1.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      await session1.handleMessage(Buffer.from(JSON.stringify({ type: 'abort' })), false);
+
+      onErrorCallback?.(new Error('Gemini Live session closed'));
+
+      expect(logs).toContain('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=YES');
+      expect(logs).not.toContain('LIVE_FAILURE_SOURCE=PROVIDER_ONCLOSE');
+      const alerts1 = ws1.sent.filter(
+        (item) => !item.binary && JSON.parse(String(item.data)).type === 'alert'
+      );
+      expect(alerts1).toHaveLength(0);
+
+      // 2. Expected close via session.close()
+      logs.length = 0;
+      const ws2 = socket() as unknown as FakeSocket;
+      const session2 = new XiaozhiVoiceSession(ws2, liveService, codec);
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      session2.close();
+
+      onErrorCallback?.(new Error('Gemini Live session closed'));
+
+      expect(logs).toContain('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=YES');
+      expect(logs).not.toContain('LIVE_FAILURE_SOURCE=PROVIDER_ONCLOSE');
+
+      // 3. Unexpected close during active listening
+      logs.length = 0;
+      const ws3 = socket() as unknown as FakeSocket;
+      const session3 = new XiaozhiVoiceSession(ws3, liveService, codec);
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      onErrorCallback?.(new Error('Gemini Live session closed'));
+
+      expect(logs).toContain('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=PROVIDER_ONCLOSE');
+      const alerts3 = ws3.sent.filter(
+        (item) => !item.binary && JSON.parse(String(item.data)).type === 'alert'
+      );
+      expect(alerts3).toHaveLength(1);
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('preserves privacy across all failure modes without leaking private data or unparsed details', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    const secretMarker = 'AIzaSySyntheticToken999SecretHeader';
+    const secretUrl = 'https://generativelanguage.googleapis.com/v1beta/live?key=' + secretMarker;
+    const stackSnippet = '/Users/ollama/slate/backend/src/secret-auth-file.ts:42';
+
+    try {
+      const liveService = {
+        connect: async () => {
+          const err = new Error(`Connection to ${secretUrl} failed:\n    at ${stackSnippet}`);
+          err.name = 'ConnectError';
+          throw err;
+        },
+      } as never;
+
+      const ws = socket() as unknown as FakeSocket;
+      const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // None of the logs should contain the secret, URL, or stack trace
+      for (const entry of logs) {
+        expect(entry).not.toContain(secretMarker);
+        expect(entry).not.toContain('https://');
+        expect(entry).not.toContain('secret-auth-file');
+        expect(entry).not.toContain('at /Users');
+      }
+
+      // Alerts must be generic only
+      for (const sent of ws.sent) {
+        if (!sent.binary) {
+          const text = String(sent.data);
+          expect(text).not.toContain(secretMarker);
+          expect(text).not.toContain('https://');
+          expect(text).not.toContain('secret-auth-file');
+        }
+      }
+
+      // Check format of all logged key=value markers
+      const validFailureSources: LiveFailureSource[] = [
+        'CONNECT_REJECT',
+        'PROVIDER_ONERROR',
+        'PROVIDER_ONCLOSE',
+        'BRIDGE_ERROR',
+        'MESSAGE_HANDLER_EXCEPTION',
+        'AUDIO_CODEC_EXCEPTION',
+        'SOCKET_SEND_EXCEPTION',
+        'OTHER_SAFE_CLASS',
+      ];
+
+      const markers = new Map<string, string>();
+      for (const line of logs) {
+        const match = /^([A-Z0-9_]+)=([A-Za-z0-9_.-]+)$/.exec(line);
+        if (match) {
+          markers.set(match[1]!, match[2]!);
+        }
+      }
+
+      expect(validFailureSources).toContain(
+        markers.get('LIVE_FAILURE_SOURCE') as LiveFailureSource
+      );
+      expect(['YES', 'NO']).toContain(markers.get('PROVIDER_CLOSE_EXPECTED')!);
+      expect(/^\d+$/.test(markers.get('ACTIVE_CONNECT_GENERATION')!)).toBe(true);
+      expect(/^\d+$/.test(markers.get('ACTIVE_LISTEN_GENERATION')!)).toBe(true);
+      expect(['YES', 'NO']).toContain(markers.get('LISTENING_STATE_AT_FAILURE')!);
+      expect(['YES', 'NO']).toContain(markers.get('LIVE_SESSION_PRESENT_AT_FAILURE')!);
+      expect(['YES', 'NO']).toContain(markers.get('CONNECTING_PROMISE_PRESENT_AT_FAILURE')!);
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('classifies live connection sendAudio/sendText/endAudio/tool responses as BRIDGE_ERROR or OTHER_SAFE_CLASS, not AUDIO_CODEC_EXCEPTION', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      // 1. live.sendAudio throws GeminiLiveBridgeFailure -> BRIDGE_ERROR (not AUDIO_CODEC_EXCEPTION)
+      const ws1 = socket() as unknown as FakeSocket;
+      const session1 = new XiaozhiVoiceSession(
+        ws1,
+        {
+          connect: async () => ({
+            sendAudio: () => {
+              throw new GeminiLiveBridgeFailure('READY_THEN_TEXT_SEND_ERROR', 'bridge send failed');
+            },
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          }),
+        } as never,
+        codec
+      );
+      session1.start();
+      await session1.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session1.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      ws1.emit('message', Buffer.from([1, 2, 3, 4]), true);
+      await Promise.resolve();
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=BRIDGE_ERROR');
+      expect(logs).not.toContain('LIVE_FAILURE_SOURCE=AUDIO_CODEC_EXCEPTION');
+
+      // 2. live.sendAudio throws non-bridge error -> OTHER_SAFE_CLASS (not AUDIO_CODEC_EXCEPTION)
+      logs.length = 0;
+      const ws2 = socket() as unknown as FakeSocket;
+      const session2 = new XiaozhiVoiceSession(
+        ws2,
+        {
+          connect: async () => ({
+            sendAudio: () => {
+              throw new Error('generic sendAudio failure');
+            },
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          }),
+        } as never,
+        codec
+      );
+      session2.start();
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session2.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      ws2.emit('message', Buffer.from([1, 2, 3, 4]), true);
+      await Promise.resolve();
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=OTHER_SAFE_CLASS');
+      expect(logs).not.toContain('LIVE_FAILURE_SOURCE=AUDIO_CODEC_EXCEPTION');
+
+      // 3. live.endAudio throws GeminiLiveBridgeFailure -> BRIDGE_ERROR
+      logs.length = 0;
+      const ws3 = socket() as unknown as FakeSocket;
+      const session3 = new XiaozhiVoiceSession(
+        ws3,
+        {
+          connect: async () => ({
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {
+              throw new GeminiLiveBridgeFailure(
+                'BRIDGE_PROTOCOL_REJECTED',
+                'bridge error on endAudio'
+              );
+            },
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          }),
+        } as never,
+        codec
+      );
+      session3.start();
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      await session3.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+        false
+      );
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=BRIDGE_ERROR');
+
+      // 4. live.endAudio throws non-bridge error -> OTHER_SAFE_CLASS
+      logs.length = 0;
+      const ws4 = socket() as unknown as FakeSocket;
+      const session4 = new XiaozhiVoiceSession(
+        ws4,
+        {
+          connect: async () => ({
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {
+              throw new Error('generic endAudio fail');
+            },
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          }),
+        } as never,
+        codec
+      );
+      session4.start();
+      await session4.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session4.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      await session4.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+        false
+      );
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=OTHER_SAFE_CLASS');
+
+      // 5. live.respondToToolCalls throws bridge error -> BRIDGE_ERROR
+      logs.length = 0;
+      const ws5 = socket() as unknown as FakeSocket;
+      let eventCallback: ((ev: GeminiLiveEvent) => void) | undefined;
+      const session5 = new XiaozhiVoiceSession(
+        ws5,
+        {
+          connect: async (_lang: string, onEv: (ev: GeminiLiveEvent) => void) => {
+            eventCallback = onEv;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {
+                throw new GeminiLiveBridgeFailure(
+                  'BRIDGE_PROTOCOL_REJECTED',
+                  'tool response failed'
+                );
+              },
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec,
+        {
+          propose: async () => ({ ticket: 't1', proposal: {}, expiresAt: '2026-01-01' }),
+          confirm: async () => ({ id: 'e1' }),
+          cancel: async () => {},
+        }
+      );
+      session5.start();
+      await session5.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session5.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      eventCallback?.({
+        message: {
+          toolCall: {
+            functionCalls: [{ id: 'c1', name: 'propose_google_calendar_event', args: {} }],
+          },
+        } as never,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=BRIDGE_ERROR');
+
+      // 6. codec.encodeModelPcm throws -> AUDIO_CODEC_EXCEPTION
+      logs.length = 0;
+      const ws6 = socket() as unknown as FakeSocket;
+      let eventCallback6: ((ev: GeminiLiveEvent) => void) | undefined;
+      const session6 = new XiaozhiVoiceSession(
+        ws6,
+        {
+          connect: async (_lang: string, onEv: (ev: GeminiLiveEvent) => void) => {
+            eventCallback6 = onEv;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        () => ({
+          decodeDevicePacket: () => new Uint8Array(),
+          encodeModelPcm: () => {
+            throw new Error('synthetic encode error');
+          },
+          reset: () => {},
+          close: () => {},
+        })
+      );
+      session6.start();
+      await session6.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session6.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      eventCallback6?.({
+        message: {
+          data: Buffer.from([1, 2, 3]).toString('base64'),
+        } as never,
+      });
+      await Promise.resolve();
+
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=AUDIO_CODEC_EXCEPTION');
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('keeps provider session-create result distinct from runtime callback failure', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      const ws = socket() as unknown as FakeSocket;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_lang: string, _onEvent: unknown, onError: (err: Error) => void) => {
+            // Emulate live-service behavior where connect fails and fires onError callback before throwing
+            onError(new Error('connect failure callback'));
+            throw new Error('connect rejection credential error');
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Session creation markers must be recorded
+      expect(logs).toContain('PROVIDER_SESSION_CREATE_START=YES');
+      expect(logs).toContain('PROVIDER_SESSION_CREATE_RESULT=CREDENTIAL_ERROR');
+      expect(logs).toContain('PROVIDER_SESSION_STARTED=NO');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=CONNECT_REJECT');
+
+      // Must NOT record runtime error callback marker during session-create
+      expect(logs).not.toContain('PROVIDER_LIVE_ERROR_CALLBACK=YES');
+      expect(logs).not.toContain('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('does not classify unexpected provider close after normal turn as expected', async () => {
+    const logs: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      logs.push(String(msg));
+    });
+
+    try {
+      let liveEvent: ((ev: GeminiLiveEvent) => void) | undefined;
+      let onErrorCallback: ((err: Error) => void) | undefined;
+      const ws = socket() as unknown as FakeSocket;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (
+            _lang: string,
+            onEv: (ev: GeminiLiveEvent) => void,
+            onError: (err: Error) => void
+          ) => {
+            liveEvent = onEv;
+            onErrorCallback = onError;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Normal turn completes
+      liveEvent?.({
+        message: {
+          serverContent: {
+            outputTranscription: { text: 'Turn complete' },
+            turnComplete: true,
+          },
+        } as never,
+      });
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+        false
+      );
+
+      // After normal turn, provider unexpectedly closes
+      onErrorCallback?.(new Error('Gemini Live session closed'));
+
+      expect(logs).toContain('PROVIDER_LIVE_CLOSE_CALLBACK=YES');
+      expect(logs).toContain('PROVIDER_CLOSE_EXPECTED=NO');
+      expect(logs).toContain('LIVE_FAILURE_SOURCE=PROVIDER_ONCLOSE');
+
+      const alert = ws.sent
+        .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
+        .find((item) => item?.type === 'alert');
+      expect(alert).toEqual({
+        type: 'alert',
+        status: 'Voice service error',
+        message: 'Voice service error',
+        emotion: 'neutral',
+      });
+    } finally {
+      loggerSpy.mockRestore();
+    }
+  });
+
+  it('preserves SOCKET_SEND_EXCEPTION only for device WebSocket sends', () => {
+    expect(classifyLiveFailureSource(new SocketSendError())).toBe('SOCKET_SEND_EXCEPTION');
+    expect(classifyLiveFailureSource(new SocketSendError('send failed'))).toBe(
+      'SOCKET_SEND_EXCEPTION'
+    );
+    // Any other error containing socket or websocket text is OTHER_SAFE_CLASS
+    expect(classifyLiveFailureSource(new Error('websocket is not open'))).toBe('OTHER_SAFE_CLASS');
+    expect(classifyLiveFailureSource(new Error('socket send error'))).toBe('OTHER_SAFE_CLASS');
+    expect(classifyLiveFailureSource(new Error('ws send failure'))).toBe('OTHER_SAFE_CLASS');
   });
 });
