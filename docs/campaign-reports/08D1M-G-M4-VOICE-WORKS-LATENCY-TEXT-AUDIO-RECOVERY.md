@@ -1,5 +1,46 @@
 # Campaign 8D1M-G — Voice Works, But Latency / Text Refresh / Audio Are Broken
 
+## Combined instrumented M4 session boundary armed
+
+Live PR reconciliation advanced the branch to the exact combined-session
+directive. The current nonphysical baseline remains green and the corrected
+observer is running before the single physical session.
+
+```text
+RECONCILED_PR_HEAD=09da92721d72f36df71a1dbc7b3eb5c1d43a4128
+BACKEND_TAG=slate:m4-voice-repair-f10ade6
+BACKEND_REMOTE_CANONICAL_IMAGE_ID=sha256:7cd37e6a48382f87b01ef731d8d0d8c76822d323fc651fa52ce712b0cd648ccb
+SLATE_HEALTH=HEALTHY
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=HEALTHY
+MYSQL_RESTART_COUNT=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+DEVICE_PORT=/dev/cu.usbmodem31101
+DEVICE_TARGET=ESP32-S3_REV_V0.2
+DEVICE_FLASH_SIZE=16MB
+DEVICE_FLASH_ID=46_4018
+FIRMWARE_APP_SHA256=dc7669190bb17fa2a62958427e152ae8697887beae8fa4618058d2515ba7dc91
+FIRMWARE_APP_ONLY_WRITE_HASH=PASS
+FIRMWARE_BOOT_WIFI_POLL_AFTER_FLASH=PASS
+FIRMWARE_FULL_ERASE=NO
+OBSERVER_LAUNCHD_LABEL=com.streetjk.slate.m4observer
+OBSERVER_LIVE_STATE=RUNNING
+OBSERVER_RAW_CONTENT=NOT_RETAINED
+OBSERVER_FATAL_MARKERS=0
+PROVIDER_CALLS_THIS_STAGE=0
+PHYSICAL_SESSION_THIS_STAGE=NOT_STARTED
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+CURRENT_BLOCKED_NODE=ONE_COMBINED_INSTRUMENTED_M4_PHYSICAL_SESSION
+```
+
+The only remaining action is the authorized physical boundary. The observer
+captures allow-listed voice, timing, audio-packet, decode, player-write and
+EPD markers only; it does not retain raw serial lines, audio, transcripts,
+provider payloads or credentials.
+
 ## Zero-provider artifact qualification checkpoint — cumulative runtime candidate
 
 The complete frozen runtime candidate was independently reviewed after the
