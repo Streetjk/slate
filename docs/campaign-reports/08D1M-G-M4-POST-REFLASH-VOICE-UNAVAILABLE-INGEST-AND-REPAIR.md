@@ -1,5 +1,56 @@
 # Campaign 8D1M-G — Post-Reflash `Voice service unavailable`: Ingest, Re-Attribute, Repair
 
+## Stage 1 checkpoint — post-reflash observer ingestion incomplete; durable value capture repaired
+
+Recorded 2026-09-07 from the already-armed live PTY observer. The physical
+attempt produced structural key markers for `VOICE_WS_CONNECT_START`,
+`VOICE_WS_CONNECT_RESULT`, `VOICE_GENERIC_FAILURE_BRANCH`, and
+`VOICE_MIC_STREAM_STARTED`, but the first observer emitted only marker names,
+not their sanitized enum values. It therefore cannot prove whether the old
+`WS_CONNECT_FAIL` branch persisted.
+
+```text
+POST_REFLASH_VOICE_SERVICE_UNAVAILABLE=YES
+POST_REFLASH_FAILURE_INGESTED=YES_SANITIZED_KEYS_ONLY
+POST_REFLASH_OLD_BRANCH_REPRODUCED=UNKNOWN
+POST_REFLASH_FAILURE_STAGE=WS_CONNECT_MARKERS_PRESENT_VALUES_NOT_CAPTURED
+POST_REFLASH_ROOT_CAUSE_CLASS=CASE_C_OBSERVER_VALUE_CAPTURE_INCOMPLETE
+PREVIOUS_REPAIR_EFFECTIVE=INCONCLUSIVE
+NEW_DOWNSTREAM_STAGE_REACHED=UNKNOWN
+VOICE_WS_CONNECT_START=YES_MARKER
+VOICE_WS_CONNECT_RESULT=UNKNOWN_VALUE
+VOICE_GENERIC_FAILURE_BRANCH=UNKNOWN_VALUE
+VOICE_SESSION_INIT_SENT=UNKNOWN
+VOICE_MIC_STREAM_STARTED=UNKNOWN_VALUE
+BACKEND_WS_UPGRADE=NO_SANITIZED_VOICE_MARKER_OBSERVED
+PROVIDER_SESSION_CREATE_RESULT=NOT_OBSERVED
+FIRST_MIC_FRAME_RECEIVED=UNKNOWN
+SLATE_RESTART_COUNT=0
+MYSQL_RESTART_COUNT=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+ACTIVE_BACKEND_IMAGE_ID=slate:overnight-observability-e0b89e0a
+FIRMWARE_APP_SHA256=640ab435c9ec2f69ad4465520a712405bc28b7b0849a96b16fcb8685693716da
+DEVICE_PORT_CONTINUITY=/dev/cu.usbmodem31201
+RAW_CONTENT_RETAINED=NO
+```
+
+The old pre-fix branch is not reclassified from the identical user-facing
+message. The first observer is retired. A durable repository observer repair
+now extracts only allow-listed structural key/value enums, including the
+actual `TRANSPORT_FAIL`/`OPEN`, `YES`/`NO`, and close-code values, while
+discarding the source line. Its self-test passes:
+
+```text
+OBSERVER_REPAIR=scripts/slate-m4-sanitized-observer-v2.py
+OBSERVER_REPAIR_SHA256=325f4f24f8c831b7fb0c342246bde678c49216de5dfe204b1de44158116559a6
+OBSERVER_SELF_TEST=PASS
+PRODUCTION_BYTES_CHANGED=NO
+```
+
+No further physical Voice AI attempt is authorized until this corrected
+observer is re-armed and its readiness is proven.
+
 ## Live reconciliation at instruction issue
 
 This instruction is issued after reconciling live PR #2 at:
