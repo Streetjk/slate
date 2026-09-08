@@ -359,3 +359,60 @@ Node-bridge settings with the existing protected read-only credential. A
 pre-mutation checkpoint is now published; the next action is the bounded
 same-image configuration redeploy, followed by health/config requalification
 and observer re-arm. No firmware write is required.
+
+## Exact configuration redeploy and requalification — 2026-09-08
+
+The `CONFIG_ERROR` was corrected by restoring the already-authorized G
+production configuration on the same reviewed ARM64 image. This was a
+Slate-only container recreation; no source/runtime bytes, provider authority,
+model authority, credential value, billing, Vertex/ADC state, private data, or
+firmware changed.
+
+```text
+CONFIG_REDEPLOY=PASS
+CONFIG_REDEPLOY_SCOPE=EXACT_EXISTING_G_AUTHORITY_ONLY
+ACTIVE_BACKEND_TAG=slate:m4-voice-attribution-dd8b5b4
+ACTIVE_BACKEND_IMAGE_ID=sha256:63275954b49c147eae65189515655f33517b29d50bf5d582c229f90acec522c9
+GEMINI_AUTH_MODE=developer_api_key
+GEMINI_DEVELOPER_API_KEY_ENABLED=true
+GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true
+GEMINI_LIVE_RUNTIME=node_bridge
+GEMINI_LIVE_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+GEMINI_API_KEY_FILE=/run/secrets/gemini_api_key
+GEMINI_NODE_EXECUTABLE=node
+GEMINI_NODE_BRIDGE_SCRIPT=./src/modules/assistant/gemini-live-node-bridge-runtime.mjs
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_MOUNT_RW=false
+SLATE_CONTAINER_RECREATED=YES
+SLATE_RESTART_COUNT=0
+MYSQL_RECREATED=NO
+MYSQL_RESTART_COUNT=0
+SLATE_HEALTH=HEALTHY
+MYSQL_HEALTH=HEALTHY
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+VOICE_CONFIG_UNAUTH=HTTP_401
+PROVIDER_CALLS_AFTER_CONFIG_REDEPLOY=0
+FIRMWARE_CHANGED=NO
+```
+
+The corrected observer source is active and self-tested. No additional
+physical session was requested in this continuation. The consumed physical
+attempt remains classified as a precise pre-provider configuration failure,
+not as EN/JA voice, latency, text-bubble, or audio acceptance. Those functional
+criteria remain unverified because the session never reached provider audio or
+the downstream device audio chain.
+
+```text
+OBSERVER_STATE=RUNNING_CORRECTED
+OBSERVER_PORT=/dev/cu.usbmodem31101
+OBSERVER_FATAL_MARKERS=0
+OBSERVER_RAW_CONTENT=NO
+READY_NODE_COUNT=0
+READONLY_READY_COUNT=0
+WAITING_HUMAN_COUNT=1
+HUMAN_ACTION_REQUIRED=YES
+CURRENT_BLOCKED_NODE=ONE_NEW_PHYSICAL_M4_ACCEPTANCE_SESSION_AFTER_CONFIG_RESTORE
+TERMINAL_REASON=PHYSICAL_BOUNDARY_ONLY
+NEXT_ACTION=ONE_NEW_COMBINED_EN_JA_PHYSICAL_ACCEPTANCE_SESSION_WHEN_OPERATOR_PERMITS
+```
