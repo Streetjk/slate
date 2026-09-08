@@ -349,6 +349,21 @@ bool AudioService::WaitForPlaybackQueueEmpty(int timeout_ms) {
     }
 }
 
+size_t AudioService::DecodeQueueSize() const {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(queue_mutex_));
+    return decode_queue_.size();
+}
+
+size_t AudioService::SendQueueSize() const {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(queue_mutex_));
+    return send_queue_.size();
+}
+
+size_t AudioService::PlaybackQueueSize() const {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(queue_mutex_));
+    return playback_queue_.size();
+}
+
 void AudioService::InputTaskEntry(void* arg) {
     auto* self = static_cast<AudioService*>(arg);
     self->InputTask();

@@ -18,6 +18,12 @@ markers=(
     "audio_player_write_fail"
     "T_AUDIO_PLAYER_FIRST_WRITE"
     "T_DEVICE_FIRST_AUDIO_WRITE"
+    "AUDIO_DECODE_QUEUE_LEN"
+    "AUDIO_SEND_QUEUE_LEN"
+    "AUDIO_PLAYBACK_QUEUE_LEN"
+    "UI_EVENT_QUEUE_WAITING"
+    "UI_EVENT_QUEUE_SPACES"
+    "RESET_REASON_CLASS"
 )
 
 for marker in "${markers[@]}"; do
@@ -26,6 +32,12 @@ for marker in "${markers[@]}"; do
         exit 1
     fi
 done
+
+# Check that PostCoalesced is used for UI change event backpressure defense
+if ! rg -q -n -- 'PostCoalesced\(UiEventKind::kXiaozhiChanged' "$PRODUCTION_DIR/xiaozhi/service/xiaozhi_service.cc"; then
+    echo "FAIL: PostCoalesced not found in XiaozhiService::PostChanged" >&2
+    exit 1
+fi
 
 # 2. In-place assistant bubble update check
 if ! rg -q -n --glob 'xiaozhi_scene.cc' -- 'can_update_in_place' "$PRODUCTION_DIR/scenes/xiaozhi"; then

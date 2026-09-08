@@ -1,5 +1,11 @@
 #include <cassert>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "xiaozhi/service/turn_history.h"
@@ -270,6 +276,243 @@ int main() {
         assert(th.messages().empty());
         assert(!th.turn_has_user());
         assert(!th.turn_has_assistant());
+    }
+
+    // 6. Multi-turn sequential soak test (10 sequential turns with streaming and trimming)
+    {
+        TurnAwareHistory history;
+        const int kTurns = 10;
+        for (int turn = 1; turn <= kTurns; ++turn) {
+            history.StartListening();
+            // User speaks
+            std::string user_msg = "Turn " + std::to_string(turn) + " question: 今日は何曜日？";
+            history.SetUserText(user_msg);
+
+            // Assistant streams 3 progressive chunks
+            history.SetAssistantText("Turn " + std::to_string(turn) + " answer: ");
+            history.SetAssistantText("Turn " + std::to_string(turn) + " answer: 今日は");
+            history.SetAssistantText("Turn " + std::to_string(turn) + " answer: 今日は火曜日です。");
+
+            // Verify bubble ordering invariant: user bubble always precedes assistant bubble
+            assert(history.snap.messages.size() >= 2);
+            size_t n = history.snap.messages.size();
+            assert(history.snap.messages[n - 2].role == "user");
+            assert(history.snap.messages[n - 1].role == "assistant");
+            assert(history.snap.messages[n - 2].text == user_msg);
+            assert(history.snap.messages[n - 1].text == "Turn " + std::to_string(turn) + " answer: 今日は火曜日です。");
+        }
+    }
+
+    // 7. Event coalescing and queue backpressure verification
+    // Models the exact contract of evt::PostCoalesced and s_xiaozhi_changed_pending in event_bus.cc
+    {
+        class HostCoalescingEventBus {
+           public:
+            enum { kCapacity = 64 };
+
+            bool Post(int kind, int timeout_ms = 0) {
+                std::unique_lock<std::mutex> lock(mutex_);
+                if (queue_.size() >= kCapacity) {
+                    if (timeout_ms <= 0) return false;
+                    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+                    if (!not_full_.wait_until(lock, deadline, [this] { return queue_.size() < kCapacity; })) {
+                        return false;
+                    }
+                }
+                queue_.push_back(kind);
+                if (queue_.size() > max_depth_seen_) {
+                    max_depth_seen_ = queue_.size();
+                }
+                not_empty_.notify_one();
+                return true;
+            }
+
+            bool PostCoalesced(int kind, int timeout_ms = 0) {
+                if (kind == 1) { // 1 = kXiaozhiChanged
+                    if (xiaozhi_changed_pending_.exchange(true, std::memory_order_acq_rel)) {
+                        return true; // Coalesced, no queue entry added
+                    }
+                    if (!Post(kind, timeout_ms)) {
+                        xiaozhi_changed_pending_.store(false, std::memory_order_release);
+                        return false;
+                    }
+                    return true;
+                }
+                return Post(kind, timeout_ms);
+            }
+
+            bool Wait(int* out, int timeout_ms = 50) {
+                std::unique_lock<std::mutex> lock(mutex_);
+                auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+                if (!not_empty_.wait_until(lock, deadline, [this] { return !queue_.empty(); })) {
+                    return false;
+                }
+                *out = queue_.front();
+                queue_.pop_front();
+                if (*out == 1) {
+                    xiaozhi_changed_pending_.store(false, std::memory_order_release);
+                }
+                not_full_.notify_one();
+                return true;
+            }
+
+            bool IsXiaozhiPending() const {
+                return xiaozhi_changed_pending_.load(std::memory_order_acquire);
+            }
+
+            size_t Size() const {
+                std::lock_guard<std::mutex> lock(mutex_);
+                return queue_.size();
+            }
+
+            size_t MaxDepthSeen() const {
+                std::lock_guard<std::mutex> lock(mutex_);
+                return max_depth_seen_;
+            }
+
+           private:
+            mutable std::mutex              mutex_;
+            std::condition_variable         not_empty_;
+            std::condition_variable         not_full_;
+            std::deque<int>                 queue_;
+            size_t                          max_depth_seen_ = 0;
+            std::atomic<bool>               xiaozhi_changed_pending_{false};
+        };
+
+        // 7A. Deterministic state transition verification
+        {
+            HostCoalescingEventBus bus;
+            assert(!bus.IsXiaozhiPending());
+            assert(bus.Size() == 0);
+
+            // First post: state changes false -> true, queue size becomes 1
+            assert(bus.PostCoalesced(1));
+            assert(bus.IsXiaozhiPending());
+            assert(bus.Size() == 1);
+
+            // Rapid streaming burst: 50 successive posts while pending
+            for (int i = 0; i < 50; ++i) {
+                assert(bus.PostCoalesced(1));
+            }
+            // Invariant: all 50 were coalesced, queue size remains strictly 1
+            assert(bus.IsXiaozhiPending());
+            assert(bus.Size() == 1);
+
+            // User presses button (kind 2): immediately queued, bypassing coalescing
+            assert(bus.Post(2));
+            assert(bus.Size() == 2);
+
+            // Dequeue UI changed event: state changes true -> false
+            int evt = 0;
+            assert(bus.Wait(&evt));
+            assert(evt == 1);
+            assert(!bus.IsXiaozhiPending());
+            assert(bus.Size() == 1);
+
+            // Second post after dequeue: state changes false -> true, queue size becomes 2
+            assert(bus.PostCoalesced(1));
+            assert(bus.IsXiaozhiPending());
+            assert(bus.Size() == 2);
+
+            // Dequeue button event: kind is 2, pending flag remains true
+            assert(bus.Wait(&evt));
+            assert(evt == 2);
+            assert(bus.IsXiaozhiPending());
+            assert(bus.Size() == 1);
+
+            // Dequeue second UI changed event: state changes true -> false
+            assert(bus.Wait(&evt));
+            assert(evt == 1);
+            assert(!bus.IsXiaozhiPending());
+            assert(bus.Size() == 0);
+
+            // Queue full rollback verification:
+            // Fill queue to capacity (64) with button events
+            for (size_t i = 0; i < HostCoalescingEventBus::kCapacity; ++i) {
+                assert(bus.Post(2));
+            }
+            assert(bus.Size() == 64);
+            // PostCoalesced must fail closed and roll back pending flag to false
+            assert(!bus.PostCoalesced(1, 0));
+            assert(!bus.IsXiaozhiPending());
+
+            // Clear queue
+            for (size_t i = 0; i < 64; ++i) {
+                assert(bus.Wait(&evt));
+            }
+            assert(bus.Size() == 0);
+        }
+
+        // 7B. Multi-threaded concurrency stress test:
+        // 3 concurrent producers (2 UI streaming producers, 1 button click producer)
+        // and 1 UI consumer thread running concurrently
+        {
+            HostCoalescingEventBus bus;
+            std::atomic<bool> start_signal{false};
+            std::atomic<int> ui_posts_attempted{0};
+
+            // Producer 1: 500 rapid UI snapshot updates
+            std::thread producer1([&]() {
+                while (!start_signal.load(std::memory_order_acquire)) {}
+                for (int i = 0; i < 500; ++i) {
+                    if (bus.PostCoalesced(1)) ui_posts_attempted++;
+                }
+            });
+
+            // Producer 2: 500 rapid UI snapshot updates
+            std::thread producer2([&]() {
+                while (!start_signal.load(std::memory_order_acquire)) {}
+                for (int i = 0; i < 500; ++i) {
+                    if (bus.PostCoalesced(1)) ui_posts_attempted++;
+                }
+            });
+
+            // Producer 3: 10 user button events spaced out
+            std::thread producer3([&]() {
+                while (!start_signal.load(std::memory_order_acquire)) {}
+                for (int i = 0; i < 10; ++i) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    assert(bus.Post(100 + i)); // kind 100..109
+                }
+            });
+
+            // Consumer thread: consumes events until all 10 button events are received
+            std::vector<int> received_buttons;
+            int ui_changes_received = 0;
+
+            std::thread consumer([&]() {
+                while (received_buttons.size() < 10) {
+                    int kind = 0;
+                    if (bus.Wait(&kind, 100)) {
+                        if (kind == 1) {
+                            ui_changes_received++;
+                        } else if (kind >= 100) {
+                            received_buttons.push_back(kind);
+                        }
+                    }
+                }
+            });
+
+            // Release all threads
+            start_signal.store(true, std::memory_order_release);
+
+            producer1.join();
+            producer2.join();
+            producer3.join();
+            consumer.join();
+
+            // Invariant 1: Queue depth NEVER exceeded capacity (64) under 1000+ concurrent posts
+            assert(bus.MaxDepthSeen() <= HostCoalescingEventBus::kCapacity);
+
+            // Invariant 2: ALL 10 button events were received in exact sequence without loss or starvation
+            assert(received_buttons.size() == 10);
+            for (int i = 0; i < 10; ++i) {
+                assert(received_buttons[i] == 100 + i);
+            }
+
+            // Invariant 3: UI changes were delivered and coalesced
+            assert(ui_changes_received > 0);
+        }
     }
 
     return 0;

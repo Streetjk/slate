@@ -822,6 +822,17 @@ void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
             turn_history_.StartListening();
             snapshot_.user_text.clear();
             snapshot_.assistant_text.clear();
+            ESP_LOGI(kTag, "UI_EVENT_QUEUE_WAITING=%u", static_cast<unsigned>(evt::QueueWaiting()));
+            ESP_LOGI(kTag, "UI_EVENT_QUEUE_SPACES=%u", static_cast<unsigned>(evt::QueueSpaces()));
+            ESP_LOGI(kTag, "HEAP_INTERNAL_FREE_BYTES=%u",
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+            ESP_LOGI(kTag, "HEAP_SPIRAM_FREE_BYTES=%u",
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+            if (audio_) {
+                ESP_LOGI(kTag, "AUDIO_DECODE_QUEUE_LEN=%u", static_cast<unsigned>(audio_->DecodeQueueSize()));
+                ESP_LOGI(kTag, "AUDIO_SEND_QUEUE_LEN=%u", static_cast<unsigned>(audio_->SendQueueSize()));
+                ESP_LOGI(kTag, "AUDIO_PLAYBACK_QUEUE_LEN=%u", static_cast<unsigned>(audio_->PlaybackQueueSize()));
+            }
         }
         if (state == XiaozhiState::kReadyIdle)
             snapshot_.emotion = "neutral";
@@ -916,7 +927,7 @@ XiaozhiState XiaozhiService::CurrentState() {
 }
 
 void XiaozhiService::PostChanged() {
-    evt::PostSimple(UiEventKind::kXiaozhiChanged, pdMS_TO_TICKS(50));
+    evt::PostCoalesced(UiEventKind::kXiaozhiChanged, evt::kNoWait);
 }
 
 }  // namespace xiaozhi

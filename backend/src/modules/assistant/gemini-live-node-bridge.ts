@@ -335,10 +335,27 @@ class NodeGeminiLiveConnection implements GeminiLiveConnection {
     }
   }
 
+  getStdioWriteBacklogBytes(): number {
+    return (this.process.stdin as unknown as { writableLength?: number })?.writableLength ?? 0;
+  }
+
   private write(frame: GeminiLiveBridgeRequest): void {
     this.requireReadyForWrite(frame.type);
     try {
-      this.process.stdin.write(encodeGeminiLiveBridgeFrame(frame));
+      const ok = this.process.stdin.write(encodeGeminiLiveBridgeFrame(frame));
+      const backlog =
+        (this.process.stdin as unknown as { writableLength?: number })?.writableLength ?? 0;
+      if (!ok || backlog > 0) {
+        const drainPending = (this.process.stdin as unknown as { writableNeedDrain?: boolean })
+          ?.writableNeedDrain
+          ? 'YES'
+          : 'NO';
+        if (process.env.SLATE_VOICE_TIMING === '1') {
+          console.info(
+            `[slate-voice-timing] BRIDGE_STDIO_WRITE_BACKLOG_BYTES=${backlog} BRIDGE_STDIO_DRAIN_PENDING=${drainPending}`
+          );
+        }
+      }
     } catch {
       this.failBeforeReady(
         'Gemini Live Node bridge write failed',

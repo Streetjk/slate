@@ -37,6 +37,9 @@ class AudioService {
     std::unique_ptr<AudioStreamPacket> PopPacketFromSendQueue();
     bool                               IsIdle();
     bool                               WaitForPlaybackQueueEmpty(int timeout_ms = 2000);
+    size_t                             DecodeQueueSize() const;
+    size_t                             SendQueueSize() const;
+    size_t                             PlaybackQueueSize() const;
 
    private:
     struct PcmTask {

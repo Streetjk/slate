@@ -24,6 +24,7 @@ import type { VoiceCodec } from './opus-pcm-codec';
 class FakeSocket extends EventEmitter {
   readonly OPEN = 1;
   readyState = this.OPEN;
+  bufferedAmount = 0;
   readonly sent: Array<{ data: string | Buffer; binary: boolean }> = [];
   closed: { code: number; reason: string } | undefined;
 
@@ -2154,7 +2155,9 @@ describe('XiaozhiVoiceSession', () => {
         message: { serverContent: { inputTranscription: { text: '今日' } } } as never,
       });
       liveEvent?.({
-        message: { serverContent: { inputTranscription: { text: '今日は何曜日ですか？' } } } as never,
+        message: {
+          serverContent: { inputTranscription: { text: '今日は何曜日ですか？' } },
+        } as never,
       });
 
       // Provider emits outputTranscription and first audio chunk (before turnComplete)
@@ -2166,11 +2169,16 @@ describe('XiaozhiVoiceSession', () => {
       });
 
       // Inspect messages received so far (turnComplete has NOT occurred yet)
-      const nonBinaryMessages = ws.sent
-        .map((item, idx) => ({ idx, binary: item.binary, data: item.binary ? null : JSON.parse(String(item.data)) }));
+      const nonBinaryMessages = ws.sent.map((item, idx) => ({
+        idx,
+        binary: item.binary,
+        data: item.binary ? null : JSON.parse(String(item.data)),
+      }));
 
       const sttMsg = nonBinaryMessages.find((m) => m.data?.type === 'stt');
-      const ttsStartMsg = nonBinaryMessages.find((m) => m.data?.type === 'tts' && m.data?.state === 'start');
+      const ttsStartMsg = nonBinaryMessages.find(
+        (m) => m.data?.type === 'tts' && m.data?.state === 'start'
+      );
       const firstBinary = ws.sent.findIndex((item) => item.binary);
 
       // Invariant 1: STT exists before turnComplete
@@ -2198,7 +2206,9 @@ describe('XiaozhiVoiceSession', () => {
         .map((item) => JSON.parse(String(item.data)));
 
       const sttCount = allMessages.filter((m) => m.type === 'stt').length;
-      const ttsStartCount = allMessages.filter((m) => m.type === 'tts' && m.state === 'start').length;
+      const ttsStartCount = allMessages.filter(
+        (m) => m.type === 'tts' && m.state === 'start'
+      ).length;
       const ttsStopCount = allMessages.filter((m) => m.type === 'tts' && m.state === 'stop').length;
 
       // Exactly one logical user turn and assistant response
@@ -2252,7 +2262,11 @@ describe('XiaozhiVoiceSession', () => {
 
       const ttsStartBeforeTurnComplete = ws.sent
         .filter((item) => !item.binary)
-        .some((item) => JSON.parse(String(item.data)).type === 'tts' && JSON.parse(String(item.data)).state === 'start');
+        .some(
+          (item) =>
+            JSON.parse(String(item.data)).type === 'tts' &&
+            JSON.parse(String(item.data)).state === 'start'
+        );
       expect(ttsStartBeforeTurnComplete).toBe(true);
 
       // Now provider emits late inputTranscription
@@ -2289,7 +2303,9 @@ describe('XiaozhiVoiceSession', () => {
       expect(mergeTranscriptFragment('今日は何曜日ですか？', sample)).toBe(sample);
 
       // Delta fragment merge
-      expect(mergeTranscriptFragment('ひらがな ', 'カタカナ 日本語')).toBe('ひらがな カタカナ 日本語');
+      expect(mergeTranscriptFragment('ひらがな ', 'カタカナ 日本語')).toBe(
+        'ひらがな カタカナ 日本語'
+      );
 
       // In session handling
       const ws = socket() as unknown as FakeSocket;
@@ -2323,7 +2339,9 @@ describe('XiaozhiVoiceSession', () => {
       );
 
       liveEvent?.({
-        message: { serverContent: { inputTranscription: { text: '今日は何曜日ですか？' } } } as never,
+        message: {
+          serverContent: { inputTranscription: { text: '今日は何曜日ですか？' } },
+        } as never,
       });
       liveEvent?.({
         message: {
@@ -2453,10 +2471,7 @@ describe('XiaozhiVoiceSession', () => {
       const timing = new VoiceTimingTrace(fakeLogger, () => currentTime);
 
       timing.mark('T_DEVICE_LISTEN_START');
-      expect(logs).toEqual([
-        'T_DEVICE_LISTEN_START=YES',
-        'T_DEVICE_LISTEN_START_MS=1725800000100',
-      ]);
+      expect(logs).toEqual(['T_DEVICE_LISTEN_START=YES', 'T_DEVICE_LISTEN_START_MS=1725800000100']);
 
       // Repeated call must be ignored (first-occurrence semantics)
       currentTime = 1725800000200;
@@ -2578,6 +2593,242 @@ describe('XiaozhiVoiceSession', () => {
           expect(line).not.toContain('secret');
           expect(line).not.toContain('websocket');
         }
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
+
+    it('isolates per-turn first-occurrence state and provides explicit turn association without stale state across turns', () => {
+      const logs: string[] = [];
+      const fakeLogger = {
+        log: (msg: string) => logs.push(msg),
+      } as unknown as Logger;
+
+      let currentTime = 1725800000000;
+      const timing = new VoiceTimingTrace(fakeLogger, () => currentTime);
+
+      // Turn 1
+      timing.startTurn(1, currentTime);
+      expect(timing.getTurn()).toBe(1);
+      expect(timing.has('T_DEVICE_LISTEN_START')).toBe(false);
+
+      currentTime += 50;
+      timing.mark('T_DEVICE_LISTEN_START', currentTime);
+      expect(timing.has('T_DEVICE_LISTEN_START')).toBe(true);
+      expect(timing.hasForTurn(1, 'T_DEVICE_LISTEN_START')).toBe(true);
+      expect(timing.getStageTimestamp('T_DEVICE_LISTEN_START', 1)).toBe('1725800000050');
+
+      // Duplicate mark in same turn must be ignored (first-occurrence within turn)
+      currentTime += 10;
+      timing.mark('T_DEVICE_LISTEN_START', currentTime);
+      expect(timing.getStageTimestamp('T_DEVICE_LISTEN_START', 1)).toBe('1725800000050');
+
+      currentTime += 100;
+      timing.mark('T_BACKEND_FIRST_AUDIO_RECEIVED', currentTime);
+      expect(timing.has('T_BACKEND_FIRST_AUDIO_RECEIVED')).toBe(true);
+
+      // Turn 2 starts: MUST NOT have stale first-occurrence state from Turn 1
+      currentTime = 1725800001000;
+      timing.startTurn(2, currentTime);
+      expect(timing.getTurn()).toBe(2);
+
+      // Crucial invariant: has() returns false for Turn 2 before stages are marked
+      expect(timing.has('T_DEVICE_LISTEN_START')).toBe(false);
+      expect(timing.has('T_BACKEND_FIRST_AUDIO_RECEIVED')).toBe(false);
+      // But hasEver() and hasForTurn(1, ...) retain historical record
+      expect(timing.hasEver('T_DEVICE_LISTEN_START')).toBe(true);
+      expect(timing.hasForTurn(1, 'T_DEVICE_LISTEN_START')).toBe(true);
+      expect(timing.hasForTurn(2, 'T_DEVICE_LISTEN_START')).toBe(false);
+
+      // Marking stage in Turn 2 associates with Turn 2
+      currentTime += 40;
+      timing.mark('T_DEVICE_LISTEN_START', currentTime);
+      expect(timing.has('T_DEVICE_LISTEN_START')).toBe(true);
+      expect(timing.hasForTurn(2, 'T_DEVICE_LISTEN_START')).toBe(true);
+      expect(timing.getStageTimestamp('T_DEVICE_LISTEN_START', 2)).toBe('1725800001040');
+      // Turn 1 timestamp remains intact and unaffected
+      expect(timing.getStageTimestamp('T_DEVICE_LISTEN_START', 1)).toBe('1725800000050');
+    });
+  });
+
+  describe('Multi-turn soak and backpressure boundedness', () => {
+    it('maintains bounded queues, per-turn timing markers, and correct bubble ordering across 10 sequential turns', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      const logs: string[] = [];
+      const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+        logs.push(String(msg));
+      });
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const sentAudioChunks: Buffer[] = [];
+      let endAudioCount = 0;
+
+      const connection: GeminiLiveConnection = {
+        sendAudio: (data: Buffer) => {
+          sentAudioChunks.push(data);
+        },
+        sendText: () => {},
+        endAudio: () => {
+          endAudioCount++;
+        },
+        respondToToolCalls: () => {},
+        rejectToolCalls: () => {},
+        reconnect: async () => {},
+        close: () => {},
+      };
+
+      try {
+        const liveService = {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return connection;
+          },
+        } as never;
+
+        const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+        // Handshake
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+          false
+        );
+
+        expect(session.getOperationQueueDepth()).toBe(0);
+        expect(session.getPreProviderMicQueueFrames()).toBe(0);
+        expect(session.getPreProviderMicQueueBytes()).toBe(0);
+        expect(session.getWebSocketBufferedBytes()).toBe(0);
+
+        const NUM_TURNS = 10;
+        for (let turn = 1; turn <= NUM_TURNS; turn++) {
+          // 1. Client starts listening
+          await session.handleMessage(
+            Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+            false
+          );
+
+          expect((session as unknown as { listening: boolean }).listening).toBe(true);
+          expect((session as unknown as { listenGeneration: number }).listenGeneration).toBe(turn);
+
+          // Verify turn start markers emitted for this turn
+          expect(logs).toContain(`VOICE_TURN_INDEX=${turn}`);
+          expect(logs).toContain('VOICE_TURN_START=YES');
+          expect(logs).toContain(`ACTIVE_LISTEN_GENERATION=${turn}`);
+
+          // 2. Client sends 3 audio frames
+          for (let f = 0; f < 3; f++) {
+            await session.handleMessage(Buffer.from([turn, f, 1, 2, 3]), true);
+          }
+
+          // Audio was forwarded to provider
+          expect(sentAudioChunks.length).toBe(turn * 3);
+
+          // 3. User finishes speaking
+          await session.handleMessage(
+            Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+            false
+          );
+          expect(endAudioCount).toBe(turn);
+
+          // 4. Provider sends user input transcription
+          liveEvent?.({
+            message: {
+              serverContent: {
+                inputTranscription: { text: `User turn ${turn} question` },
+              },
+            } as never,
+          });
+
+          // 5. Provider streams assistant output transcription and audio chunks
+          liveEvent?.({
+            message: {
+              serverContent: {
+                outputTranscription: { text: `Turn ${turn} ` },
+              },
+              data: Buffer.from([turn, 10]).toString('base64'),
+            } as never,
+          });
+
+          liveEvent?.({
+            message: {
+              serverContent: {
+                outputTranscription: { text: `Turn ${turn} answer completed.` },
+              },
+              data: Buffer.from([turn, 20]).toString('base64'),
+            } as never,
+          });
+
+          // 6. Provider completes turn
+          liveEvent?.({
+            message: {
+              serverContent: {
+                turnComplete: true,
+              },
+            } as never,
+          });
+
+          // Queue backlogs MUST return to 0 after every turn
+          expect(session.getOperationQueueDepth()).toBe(0);
+          expect(session.getPreProviderMicQueueFrames()).toBe(0);
+          expect(session.getPreProviderMicQueueBytes()).toBe(0);
+        }
+
+        // Verify sent messages across all 10 turns:
+        const sentMessages = ws.sent;
+        const textMessages = sentMessages
+          .filter((item) => !item.binary)
+          .map((item) => JSON.parse(String(item.data)));
+
+        // Verify that for each turn, stt was emitted with exact text
+        const sttMessages = textMessages.filter((m) => m.type === 'stt');
+        expect(sttMessages).toHaveLength(NUM_TURNS);
+        for (let turn = 1; turn <= NUM_TURNS; turn++) {
+          expect(sttMessages[turn - 1].text).toBe(`User turn ${turn} question`);
+        }
+
+        // Verify timing markers were emitted per turn and none leaked private data
+        for (let turn = 1; turn <= NUM_TURNS; turn++) {
+          expect(logs).toContain(`VOICE_TURN_INDEX=${turn}`);
+        }
+
+        for (const log of logs) {
+          expect(log).not.toContain('User turn');
+          expect(log).not.toContain('answer completed');
+        }
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
+
+    it('tracks WebSocket buffered amount backpressure correctly', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      ws.bufferedAmount = 65536;
+      const logs: string[] = [];
+      const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+        logs.push(String(msg));
+      });
+
+      try {
+        const liveService = {
+          connect: async () => ({
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          }),
+        } as never;
+
+        const session = new XiaozhiVoiceSession(ws, liveService, codec);
+        expect(session.getWebSocketBufferedBytes()).toBe(65536);
+
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+          false
+        );
+
+        expect(logs).toContain('VOICE_WS_BUFFERED_BYTES=65536');
+        expect(logs).toContain('VOICE_WS_SEND_BACKLOG_BYTES=65536');
       } finally {
         loggerSpy.mockRestore();
       }

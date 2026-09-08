@@ -46,6 +46,25 @@ VOICE_PATTERNS = {
     "CONNECTING_PROMISE_PRESENT_AT_FAILURE": r"(?:YES|NO)",
     "PROVIDER_LIVE_ERROR_CALLBACK": r"YES",
     "PROVIDER_LIVE_CLOSE_CALLBACK": r"YES",
+    "VOICE_TURN_INDEX": r"[0-9]+",
+    "VOICE_TURN_START": r"(?:YES|NO)",
+    "VOICE_TURN_START_MS": r"[0-9]+",
+    "BACKEND_OPERATION_QUEUE_DEPTH": r"[0-9]+",
+    "BACKEND_PRE_PROVIDER_MIC_QUEUE_FRAMES": r"[0-9]+",
+    "BACKEND_PRE_PROVIDER_MIC_QUEUE_BYTES": r"[0-9]+",
+    "VOICE_WS_BUFFERED_BYTES": r"[0-9]+",
+    "VOICE_WS_SEND_BACKLOG_BYTES": r"[0-9]+",
+    "BRIDGE_STDIO_WRITE_BACKLOG_BYTES": r"[0-9]+",
+    "BRIDGE_STDIO_DRAIN_PENDING": r"(?:YES|NO)",
+    "UI_EVENT_QUEUE_WAITING": r"[0-9]+",
+    "UI_EVENT_QUEUE_SPACES": r"[0-9]+",
+    "HEAP_INTERNAL_FREE_BYTES": r"[0-9]+",
+    "HEAP_SPIRAM_FREE_BYTES": r"[0-9]+",
+    "AUDIO_DECODE_QUEUE_LEN": r"[0-9]+",
+    "AUDIO_SEND_QUEUE_LEN": r"[0-9]+",
+    "AUDIO_PLAYBACK_QUEUE_LEN": r"[0-9]+",
+    "RESET_REASON_CLASS": r"(?:POWERON|SW|DEEPSLEEP|PANIC|INT_WDT|TASK_WDT|WDT|BROWNOUT|SDIO|UNKNOWN|OTHER)",
+    "WATCHDOG_REASON_CLASS": r"(?:NONE|TASK_WDT|INT_WDT|OTHER_WDT)",
 }
 VOICE_REGEX = {
     key: re.compile(rf"(?<![A-Z0-9_]){key}=({pattern})(?![A-Za-z0-9_.-])")
@@ -61,7 +80,7 @@ TIMING_MS_REGEX = re.compile(
     rf"(?<![A-Z0-9_])({TIMING_KEY_PREFIXES}_MS)=([0-9]+)(?![A-Za-z0-9_.-])"
 )
 SERIAL_MARKERS = {
-    "BOOT": re.compile(r"(?i)(ESP-ROM|app_main|bootloader|booting|reset reason|rst:)"),
+    "BOOT": re.compile(r"(?i)(ESP-ROM|app_main|bootloader|booting|reset reason|rst:|BOOT_METRICS|RESET_REASON_CLASS)"),
     "WIFI": re.compile(r"(?i)(wifi|wi-fi|got ip|ip_event_sta_got_ip|station.*connect|network.*connect)"),
     "POLL": re.compile(r"(?i)(poll|sync|authenticated|heartbeat)"),
     "FATAL": re.compile(r"(?i)(guru meditation|abort\(|panic|assert failed|fatal error|stack overflow)"),
@@ -115,7 +134,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE '(VOICE_[A-Z0-9_]+|PROVIDER_(SESSION_CREATE_START|SESSION_CREATE_RESULT|SESSION_STARTED|LIVE_ERROR_CALLBACK|LIVE_CLOSE_CALLBACK|CLOSE_EXPECTED)|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE '(VOICE_[A-Z0-9_]+|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
 """
     try:
         completed = subprocess.run(
@@ -364,6 +383,57 @@ def self_test() -> int:
         dump = json.dumps(extracted)
         assert "xiaozhi" not in dump
         assert "audio" not in dump or expected_event in dump
+
+    # Backpressure, queue, turn, and reset markers
+    new_marker_line = (
+        "VOICE_TURN_INDEX=3 VOICE_TURN_START=YES VOICE_TURN_START_MS=1725800000300 "
+        "BACKEND_OPERATION_QUEUE_DEPTH=0 BACKEND_PRE_PROVIDER_MIC_QUEUE_FRAMES=2 "
+        "BACKEND_PRE_PROVIDER_MIC_QUEUE_BYTES=1920 VOICE_WS_BUFFERED_BYTES=0 "
+        "VOICE_WS_SEND_BACKLOG_BYTES=0 BRIDGE_STDIO_WRITE_BACKLOG_BYTES=128 "
+        "BRIDGE_STDIO_DRAIN_PENDING=NO UI_EVENT_QUEUE_WAITING=1 UI_EVENT_QUEUE_SPACES=63 "
+        "HEAP_INTERNAL_FREE_BYTES=210000 HEAP_SPIRAM_FREE_BYTES=4194304 "
+        "AUDIO_DECODE_QUEUE_LEN=0 AUDIO_SEND_QUEUE_LEN=0 AUDIO_PLAYBACK_QUEUE_LEN=1 "
+        "RESET_REASON_CLASS=SW WATCHDOG_REASON_CLASS=NONE"
+    )
+    new_extracted = extract_voice_events(new_marker_line)
+    new_map = {e["event"]: e["value"] for e in new_extracted}
+    assert new_map["VOICE_TURN_INDEX"] == "3"
+    assert new_map["VOICE_TURN_START"] == "YES"
+    assert new_map["VOICE_TURN_START_MS"] == "1725800000300"
+    assert new_map["BACKEND_OPERATION_QUEUE_DEPTH"] == "0"
+    assert new_map["BACKEND_PRE_PROVIDER_MIC_QUEUE_FRAMES"] == "2"
+    assert new_map["BACKEND_PRE_PROVIDER_MIC_QUEUE_BYTES"] == "1920"
+    assert new_map["VOICE_WS_BUFFERED_BYTES"] == "0"
+    assert new_map["VOICE_WS_SEND_BACKLOG_BYTES"] == "0"
+    assert new_map["BRIDGE_STDIO_WRITE_BACKLOG_BYTES"] == "128"
+    assert new_map["BRIDGE_STDIO_DRAIN_PENDING"] == "NO"
+    assert new_map["UI_EVENT_QUEUE_WAITING"] == "1"
+    assert new_map["UI_EVENT_QUEUE_SPACES"] == "63"
+    assert new_map["HEAP_INTERNAL_FREE_BYTES"] == "210000"
+    assert new_map["HEAP_SPIRAM_FREE_BYTES"] == "4194304"
+    assert new_map["AUDIO_DECODE_QUEUE_LEN"] == "0"
+    assert new_map["AUDIO_SEND_QUEUE_LEN"] == "0"
+    assert new_map["AUDIO_PLAYBACK_QUEUE_LEN"] == "1"
+    assert new_map["RESET_REASON_CLASS"] == "SW"
+    # Verify RESET_REASON_CLASS with known values including deliberate UNKNOWN fallback
+    assert extract_voice_events("RESET_REASON_CLASS=UNKNOWN") == [
+        {"event": "RESET_REASON_CLASS", "value": "UNKNOWN"}
+    ]
+    assert extract_voice_events("RESET_REASON_CLASS=POWERON") == [
+        {"event": "RESET_REASON_CLASS", "value": "POWERON"}
+    ]
+    assert extract_voice_events("RESET_REASON_CLASS=PANIC") == [
+        {"event": "RESET_REASON_CLASS", "value": "PANIC"}
+    ]
+
+    # Verify rejection of unsanitized/invalid values for new markers
+    assert extract_voice_events("RESET_REASON_CLASS=UNKNOWN_ARBITRARY") == []
+    assert extract_voice_events("RESET_REASON_CLASS=RANDOM_CRASH_INFO") == []
+    assert extract_voice_events("WATCHDOG_REASON_CLASS=CRASH_LOG") == []
+    assert extract_voice_events("UI_EVENT_QUEUE_WAITING=-1") == []
+    assert extract_voice_events("UI_EVENT_QUEUE_WAITING=12abc") == []
+    assert extract_voice_events("BRIDGE_STDIO_DRAIN_PENDING=MAYBE") == []
+    assert extract_voice_events("VOICE_TURN_START=TRUE") == []
 
     print("slate-m4-sanitized-observer-v2: PASS")
     return 0

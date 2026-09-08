@@ -98,6 +98,7 @@ export class XiaozhiVoiceSession {
   private inputTranscriptTimer: ReturnType<typeof setTimeout> | undefined;
   private transcriptTimer: ReturnType<typeof setTimeout> | undefined;
   private operation = Promise.resolve();
+  private pendingOperations = 0;
   private micFrameMarkerEmitted = false;
   private micQueue: Uint8Array[] = [];
   private micQueueBytes = 0;
@@ -124,16 +125,47 @@ export class XiaozhiVoiceSession {
         }
         return;
       }
+      this.pendingOperations++;
+      this.logOperationQueueDepth();
       this.operation = this.operation
         .then(() => this.handleMessage(data, isBinary))
         .catch((error: unknown) => {
           if (!this.failing && !this.closed) {
             this.fail(error, 'MESSAGE_HANDLER_EXCEPTION');
           }
+        })
+        .finally(() => {
+          this.pendingOperations = Math.max(0, this.pendingOperations - 1);
         });
     });
     this.socket.on('close', () => this.close());
     this.socket.on('error', () => this.close());
+  }
+
+  getOperationQueueDepth(): number {
+    return this.pendingOperations;
+  }
+
+  getPreProviderMicQueueFrames(): number {
+    return this.micQueue.length;
+  }
+
+  getPreProviderMicQueueBytes(): number {
+    return this.micQueueBytes;
+  }
+
+  getWebSocketBufferedBytes(): number {
+    return this.socket.bufferedAmount ?? 0;
+  }
+
+  getTimingTrace(): VoiceTimingTrace {
+    return this.timing;
+  }
+
+  private logOperationQueueDepth(): void {
+    if (this.pendingOperations > 1) {
+      this.logger.log(`BACKEND_OPERATION_QUEUE_DEPTH=${this.pendingOperations}`);
+    }
   }
 
   async handleMessage(data: RawData, isBinary: boolean): Promise<void> {
@@ -155,6 +187,7 @@ export class XiaozhiVoiceSession {
           const turn = ++this.listenGeneration;
           this.clearMicQueue();
           this.clearTranscriptState();
+          this.timing.startTurn(turn);
           this.timing.mark('T_DEVICE_LISTEN_START');
           void this.ensureLive().catch((error: unknown) => {
             if (!this.closed && this.listening && this.listenGeneration === turn) {
@@ -304,6 +337,8 @@ export class XiaozhiVoiceSession {
     }
     this.micQueue.push(packet);
     this.micQueueBytes += packet.byteLength;
+    this.logger.log(`BACKEND_PRE_PROVIDER_MIC_QUEUE_FRAMES=${this.micQueue.length}`);
+    this.logger.log(`BACKEND_PRE_PROVIDER_MIC_QUEUE_BYTES=${this.micQueueBytes}`);
   }
 
   private flushMicQueue(): void {
@@ -311,6 +346,8 @@ export class XiaozhiVoiceSession {
     const frames = this.micQueue;
     this.micQueue = [];
     this.micQueueBytes = 0;
+    this.logger.log('BACKEND_PRE_PROVIDER_MIC_QUEUE_FRAMES=0');
+    this.logger.log('BACKEND_PRE_PROVIDER_MIC_QUEUE_BYTES=0');
     for (const frame of frames) {
       let pcm: Uint8Array;
       try {
@@ -343,6 +380,7 @@ export class XiaozhiVoiceSession {
   private async ensureLive(): Promise<GeminiLiveConnection | undefined> {
     if (this.live) {
       this.logger.log('PROVIDER_SESSION_CREATE_START=NO');
+      this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
       return this.live;
     }
     if (this.connectingPromise) {
@@ -657,6 +695,7 @@ export class XiaozhiVoiceSession {
     if (this.socket.readyState === this.socket.OPEN) {
       try {
         this.socket.send(packet, { binary: true });
+        this.logWebSocketBacklog();
       } catch {
         if (!this.closed && !this.failing) {
           this.fail(new SocketSendError(), 'SOCKET_SEND_EXCEPTION');
@@ -669,11 +708,20 @@ export class XiaozhiVoiceSession {
     if (this.socket.readyState === this.socket.OPEN) {
       try {
         this.socket.send(JSON.stringify(message));
+        this.logWebSocketBacklog();
       } catch {
         if (!this.closed && !this.failing) {
           this.fail(new SocketSendError(), 'SOCKET_SEND_EXCEPTION');
         }
       }
+    }
+  }
+
+  private logWebSocketBacklog(): void {
+    const buffered = this.socket.bufferedAmount ?? 0;
+    if (buffered > 0) {
+      this.logger.log(`VOICE_WS_BUFFERED_BYTES=${buffered}`);
+      this.logger.log(`VOICE_WS_SEND_BACKLOG_BYTES=${buffered}`);
     }
   }
 
@@ -703,6 +751,8 @@ export class XiaozhiVoiceSession {
     this.logger.log(`LISTENING_STATE_AT_FAILURE=${listening ? 'YES' : 'NO'}`);
     this.logger.log(`LIVE_SESSION_PRESENT_AT_FAILURE=${livePresent ? 'YES' : 'NO'}`);
     this.logger.log(`CONNECTING_PROMISE_PRESENT_AT_FAILURE=${connectingPresent ? 'YES' : 'NO'}`);
+    this.logger.log(`BACKEND_OPERATION_QUEUE_DEPTH=${this.pendingOperations}`);
+    this.logger.log(`VOICE_WS_BUFFERED_BYTES=${this.socket.bufferedAmount ?? 0}`);
   }
 
   private fail(
@@ -778,6 +828,9 @@ export function sanitizeTimingMs(value: unknown): string {
 
 export class VoiceTimingTrace {
   private readonly emitted = new Set<string>();
+  private readonly turnEmitted = new Set<string>();
+  private readonly turnStages = new Map<number, Map<string, string>>();
+  private currentTurn = 1;
   private readonly enabled = process.env.SLATE_VOICE_TIMING === '1';
 
   constructor(
@@ -785,11 +838,36 @@ export class VoiceTimingTrace {
     private readonly clock: () => number = Date.now
   ) {}
 
+  startTurn(turnIndex: number, timestampMs?: number): void {
+    this.currentTurn = turnIndex;
+    this.turnEmitted.clear();
+    if (!this.turnStages.has(turnIndex)) {
+      this.turnStages.set(turnIndex, new Map());
+    }
+    const raw =
+      typeof timestampMs === 'number' && Number.isFinite(timestampMs) ? timestampMs : this.clock();
+    const sanitizedMs = sanitizeTimingMs(raw);
+    this.turnStages.get(turnIndex)!.set('VOICE_TURN_START', sanitizedMs);
+    if (this.logger) {
+      this.logger.log(`ACTIVE_LISTEN_GENERATION=${turnIndex}`);
+      this.logger.log(`VOICE_TURN_INDEX=${turnIndex}`);
+      this.logger.log('VOICE_TURN_START=YES');
+      this.logger.log(`VOICE_TURN_START_MS=${sanitizedMs}`);
+    }
+    if (this.enabled) {
+      console.info(
+        `[slate-voice-timing] stage=VOICE_TURN_START turn=${turnIndex} t_ms=${sanitizedMs}`
+      );
+    }
+  }
+
+  getTurn(): number {
+    return this.currentTurn;
+  }
+
   mark(stage: string, timestampMs?: number): void {
     const raw =
-      typeof timestampMs === 'number' && Number.isFinite(timestampMs)
-        ? timestampMs
-        : this.clock();
+      typeof timestampMs === 'number' && Number.isFinite(timestampMs) ? timestampMs : this.clock();
     const sanitizedMs = sanitizeTimingMs(raw);
 
     this.emitStage(stage, sanitizedMs);
@@ -802,23 +880,46 @@ export class VoiceTimingTrace {
   }
 
   private emitStage(stage: string, sanitizedMs: string): void {
-    if (this.emitted.has(stage)) return;
+    if (this.turnEmitted.has(stage)) return;
+    this.turnEmitted.add(stage);
     this.emitted.add(stage);
+    if (!this.turnStages.has(this.currentTurn)) {
+      this.turnStages.set(this.currentTurn, new Map());
+    }
+    this.turnStages.get(this.currentTurn)!.set(stage, sanitizedMs);
     if (this.logger) {
       this.logger.log(`${stage}=YES`);
       this.logger.log(`${stage}_MS=${sanitizedMs}`);
     }
     if (this.enabled) {
-      console.info(`[slate-voice-timing] stage=${stage} t_ms=${sanitizedMs}`);
+      console.info(
+        `[slate-voice-timing] stage=${stage} turn=${this.currentTurn} t_ms=${sanitizedMs}`
+      );
     }
   }
 
   has(stage: string): boolean {
+    return this.turnEmitted.has(stage);
+  }
+
+  hasForTurn(turnIndex: number, stage: string): boolean {
+    return this.turnStages.get(turnIndex)?.has(stage) ?? false;
+  }
+
+  getStageTimestamp(stage: string, turnIndex?: number): string | undefined {
+    const targetTurn = turnIndex ?? this.currentTurn;
+    return this.turnStages.get(targetTurn)?.get(stage);
+  }
+
+  hasEver(stage: string): boolean {
     return this.emitted.has(stage);
   }
 
   reset(): void {
     this.emitted.clear();
+    this.turnEmitted.clear();
+    this.turnStages.clear();
+    this.currentTurn = 1;
   }
 }
 
