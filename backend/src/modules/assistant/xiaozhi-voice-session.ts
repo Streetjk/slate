@@ -80,7 +80,7 @@ export class XiaozhiVoiceSession {
   private readonly logger: Logger;
   private readonly sessionId = randomUUID();
   private readonly codec: VoiceCodec;
-  private readonly timing = new VoiceTimingTrace();
+  private readonly timing: VoiceTimingTrace;
   private live: GeminiLiveConnection | undefined;
   private connectingPromise: Promise<GeminiLiveConnection | undefined> | undefined;
   private connectGeneration = 0;
@@ -92,8 +92,10 @@ export class XiaozhiVoiceSession {
   private failing = false;
   private expectedProviderClose = false;
   private pendingInputTranscript = '';
+  private lastSentInputTranscript = '';
   private pendingOutputTranscript = '';
   private lastSentOutputTranscript = '';
+  private inputTranscriptTimer: ReturnType<typeof setTimeout> | undefined;
   private transcriptTimer: ReturnType<typeof setTimeout> | undefined;
   private operation = Promise.resolve();
   private micFrameMarkerEmitted = false;
@@ -109,6 +111,7 @@ export class XiaozhiVoiceSession {
   ) {
     this.codec = codecFactory();
     this.logger = logger ?? new Logger(XiaozhiVoiceSession.name);
+    this.timing = new VoiceTimingTrace(this.logger);
   }
 
   start(): void {
@@ -166,6 +169,7 @@ export class XiaozhiVoiceSession {
         } else if (message.state === 'stop') {
           this.listening = false;
           this.clearMicQueue();
+          this.flushInputTranscript();
           if (this.live) {
             try {
               this.live.endAudio();
@@ -382,6 +386,7 @@ export class XiaozhiVoiceSession {
         this.live = live;
         this.logger.log('PROVIDER_SESSION_CREATE_RESULT=PASS');
         this.logger.log('PROVIDER_SESSION_STARTED=YES');
+        this.timing.mark('T_PROVIDER_SESSION_READY');
         this.timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
         this.flushMicQueue();
         return live;
@@ -413,11 +418,13 @@ export class XiaozhiVoiceSession {
           this.pendingInputTranscript,
           inputText
         );
+        this.scheduleInputTranscript();
       }
 
       const outputText = message.serverContent?.outputTranscription?.text || message.text;
       if (outputText?.trim()) {
         this.timing.mark('T_PROVIDER_FIRST_OUTPUT_EVENT');
+        this.flushInputTranscript();
         this.startSpeaking();
         this.pendingOutputTranscript = mergeTranscriptFragment(
           this.pendingOutputTranscript,
@@ -433,6 +440,7 @@ export class XiaozhiVoiceSession {
       const audio = message.data;
       if (audio) {
         this.timing.mark('T_PROVIDER_FIRST_AUDIO_EVENT');
+        this.flushInputTranscript();
         this.startSpeaking();
         let packets: Uint8Array[];
         try {
@@ -573,6 +581,26 @@ export class XiaozhiVoiceSession {
     this.sendAlert('Voice service error', 'Voice service error');
   }
 
+  private scheduleInputTranscript(): void {
+    if (this.inputTranscriptTimer) return;
+    this.inputTranscriptTimer = setTimeout(() => {
+      this.inputTranscriptTimer = undefined;
+      this.flushInputTranscript();
+    }, TRANSCRIPT_STREAM_DELAY_MS);
+  }
+
+  private flushInputTranscript(): void {
+    if (this.inputTranscriptTimer) {
+      clearTimeout(this.inputTranscriptTimer);
+      this.inputTranscriptTimer = undefined;
+    }
+    const text = this.pendingInputTranscript.trim();
+    if (text && text !== this.lastSentInputTranscript) {
+      this.sendJson({ type: 'stt', text });
+      this.lastSentInputTranscript = text;
+    }
+  }
+
   private scheduleOutputTranscript(): void {
     if (this.transcriptTimer) return;
     this.transcriptTimer = setTimeout(() => {
@@ -582,6 +610,7 @@ export class XiaozhiVoiceSession {
   }
 
   private emitStreamedOutputTranscript(): void {
+    this.flushInputTranscript();
     const text = this.pendingOutputTranscript.trim();
     if (text && text !== this.lastSentOutputTranscript) {
       this.startSpeaking();
@@ -591,11 +620,16 @@ export class XiaozhiVoiceSession {
   }
 
   private clearTranscriptState(): void {
+    if (this.inputTranscriptTimer) {
+      clearTimeout(this.inputTranscriptTimer);
+      this.inputTranscriptTimer = undefined;
+    }
     if (this.transcriptTimer) {
       clearTimeout(this.transcriptTimer);
       this.transcriptTimer = undefined;
     }
     this.pendingInputTranscript = '';
+    this.lastSentInputTranscript = '';
     this.pendingOutputTranscript = '';
     this.lastSentOutputTranscript = '';
   }
@@ -605,10 +639,11 @@ export class XiaozhiVoiceSession {
       clearTimeout(this.transcriptTimer);
       this.transcriptTimer = undefined;
     }
-    const inputText = this.pendingInputTranscript.trim();
+    this.flushInputTranscript();
     const outputText = this.pendingOutputTranscript.trim();
-    if (inputText || outputText) this.timing.mark('T_TRANSCRIPT_FINALIZED');
-    if (inputText) this.sendJson({ type: 'stt', text: inputText });
+    if (this.lastSentInputTranscript || outputText) {
+      this.timing.mark('T_TRANSCRIPT_FINALIZED');
+    }
     if (outputText) {
       this.startSpeaking();
       if (outputText !== this.lastSentOutputTranscript) {
@@ -616,8 +651,6 @@ export class XiaozhiVoiceSession {
         this.lastSentOutputTranscript = outputText;
       }
     }
-    this.pendingInputTranscript = '';
-    this.pendingOutputTranscript = '';
   }
 
   private sendBinary(packet: Uint8Array): void {
@@ -732,14 +765,60 @@ export function mergeTranscriptFragment(previous: string, incoming: string): str
   return `${previous}${incoming}`.trim();
 }
 
-class VoiceTimingTrace {
+export function sanitizeTimingMs(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+    const floored = Math.floor(value);
+    const str = floored.toString();
+    if (/^\d+$/.test(str)) {
+      return str;
+    }
+  }
+  return '0';
+}
+
+export class VoiceTimingTrace {
   private readonly emitted = new Set<string>();
   private readonly enabled = process.env.SLATE_VOICE_TIMING === '1';
 
-  mark(stage: string): void {
-    if (!this.enabled || this.emitted.has(stage)) return;
+  constructor(
+    private readonly logger?: Logger,
+    private readonly clock: () => number = Date.now
+  ) {}
+
+  mark(stage: string, timestampMs?: number): void {
+    const raw =
+      typeof timestampMs === 'number' && Number.isFinite(timestampMs)
+        ? timestampMs
+        : this.clock();
+    const sanitizedMs = sanitizeTimingMs(raw);
+
+    this.emitStage(stage, sanitizedMs);
+
+    if (stage === 'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN') {
+      this.emitStage('T_PROVIDER_SESSION_READY', sanitizedMs);
+    } else if (stage === 'T_PROVIDER_SESSION_READY') {
+      this.emitStage('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN', sanitizedMs);
+    }
+  }
+
+  private emitStage(stage: string, sanitizedMs: string): void {
+    if (this.emitted.has(stage)) return;
     this.emitted.add(stage);
-    console.info(`[slate-voice-timing] stage=${stage} t_ms=${Date.now()}`);
+    if (this.logger) {
+      this.logger.log(`${stage}=YES`);
+      this.logger.log(`${stage}_MS=${sanitizedMs}`);
+    }
+    if (this.enabled) {
+      console.info(`[slate-voice-timing] stage=${stage} t_ms=${sanitizedMs}`);
+    }
+  }
+
+  has(stage: string): boolean {
+    return this.emitted.has(stage);
+  }
+
+  reset(): void {
+    this.emitted.clear();
   }
 }
 

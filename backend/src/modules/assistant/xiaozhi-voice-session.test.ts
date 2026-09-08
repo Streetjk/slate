@@ -12,7 +12,9 @@ import {
   MessageHandlerError,
   ProviderOnClose,
   ProviderOnError,
+  sanitizeTimingMs,
   SocketSendError,
+  VoiceTimingTrace,
   XiaozhiVoiceSession,
 } from './xiaozhi-voice-session';
 import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
@@ -2113,5 +2115,472 @@ describe('XiaozhiVoiceSession', () => {
     expect(classifyLiveFailureSource(new Error('websocket is not open'))).toBe('OTHER_SAFE_CLASS');
     expect(classifyLiveFailureSource(new Error('socket send error'))).toBe('OTHER_SAFE_CLASS');
     expect(classifyLiveFailureSource(new Error('ws send failure'))).toBe('OTHER_SAFE_CLASS');
+  });
+
+  describe('Turn sequencing, bubble order, and Japanese UTF-8 streaming', () => {
+    it('guarantees STT is flushed before TTS start and audio when input arrives before output', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Provider emits inputTranscription fragments
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: '今日' } } } as never,
+      });
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: '今日は何曜日ですか？' } } } as never,
+      });
+
+      // Provider emits outputTranscription and first audio chunk (before turnComplete)
+      liveEvent?.({
+        message: {
+          serverContent: { outputTranscription: { text: '今日は火曜日です。' } },
+          data: Buffer.from([10, 20]).toString('base64'),
+        } as never,
+      });
+
+      // Inspect messages received so far (turnComplete has NOT occurred yet)
+      const nonBinaryMessages = ws.sent
+        .map((item, idx) => ({ idx, binary: item.binary, data: item.binary ? null : JSON.parse(String(item.data)) }));
+
+      const sttMsg = nonBinaryMessages.find((m) => m.data?.type === 'stt');
+      const ttsStartMsg = nonBinaryMessages.find((m) => m.data?.type === 'tts' && m.data?.state === 'start');
+      const firstBinary = ws.sent.findIndex((item) => item.binary);
+
+      // Invariant 1: STT exists before turnComplete
+      expect(sttMsg).toBeDefined();
+      expect(sttMsg?.data.text).toBe('今日は何曜日ですか？');
+
+      // Invariant 2: STT was sent BEFORE tts start and BEFORE audio binary
+      expect(ttsStartMsg).toBeDefined();
+      expect(sttMsg!.idx).toBeLessThan(ttsStartMsg!.idx);
+      expect(firstBinary).toBeGreaterThanOrEqual(0);
+      expect(sttMsg!.idx).toBeLessThan(firstBinary);
+
+      // Invariant 3: Assistant streaming is active before turnComplete (binary audio arrived immediately)
+      expect(firstBinary).toBeGreaterThanOrEqual(0);
+
+      // Complete turn
+      liveEvent?.({
+        message: {
+          serverContent: { turnComplete: true },
+        } as never,
+      });
+
+      const allMessages = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)));
+
+      const sttCount = allMessages.filter((m) => m.type === 'stt').length;
+      const ttsStartCount = allMessages.filter((m) => m.type === 'tts' && m.state === 'start').length;
+      const ttsStopCount = allMessages.filter((m) => m.type === 'tts' && m.state === 'stop').length;
+
+      // Exactly one logical user turn and assistant response
+      expect(sttCount).toBe(1);
+      expect(ttsStartCount).toBe(1);
+      expect(ttsStopCount).toBe(1);
+    });
+
+    it('streams assistant text and audio immediately when output arrives before input without buffering until turnComplete', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Provider emits outputTranscription and audio BEFORE emitting inputTranscription
+      liveEvent?.({
+        message: {
+          serverContent: { outputTranscription: { text: 'はい、分かりました。' } },
+          data: Buffer.from([10, 20]).toString('base64'),
+        } as never,
+      });
+
+      // Assert assistant output was streamed immediately without waiting for turnComplete or STT
+      const audioPacketsBeforeTurnComplete = ws.sent.filter((item) => item.binary).length;
+      expect(audioPacketsBeforeTurnComplete).toBe(1);
+
+      const ttsStartBeforeTurnComplete = ws.sent
+        .filter((item) => !item.binary)
+        .some((item) => JSON.parse(String(item.data)).type === 'tts' && JSON.parse(String(item.data)).state === 'start');
+      expect(ttsStartBeforeTurnComplete).toBe(true);
+
+      // Now provider emits late inputTranscription
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'こんにちは' } } } as never,
+      });
+
+      // Provider emits authoritative turnComplete
+      liveEvent?.({
+        message: {
+          serverContent: { turnComplete: true },
+        } as never,
+      });
+
+      const allMessages = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)));
+
+      expect(allMessages.filter((m) => m.type === 'stt')).toEqual([
+        { type: 'stt', text: 'こんにちは' },
+      ]);
+      expect(allMessages.filter((m) => m.type === 'tts' && m.state === 'start')).toHaveLength(1);
+      expect(allMessages.filter((m) => m.type === 'tts' && m.state === 'stop')).toHaveLength(1);
+    });
+
+    it('preserves Japanese UTF-8 characters across cumulative and delta fragments without corruption', async () => {
+      const sample = '今日は何曜日ですか？ の ひらがな カタカナ 日本語';
+      // Test UTF-8 byte roundtrip
+      const utf8Buffer = Buffer.from(sample, 'utf-8');
+      expect(utf8Buffer.toString('utf-8')).toBe(sample);
+
+      // Cumulative fragment merge
+      expect(mergeTranscriptFragment('今日', '今日は何曜日ですか？')).toBe('今日は何曜日ですか？');
+      expect(mergeTranscriptFragment('今日は何曜日ですか？', sample)).toBe(sample);
+
+      // Delta fragment merge
+      expect(mergeTranscriptFragment('ひらがな ', 'カタカナ 日本語')).toBe('ひらがな カタカナ 日本語');
+
+      // In session handling
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: '今日は何曜日ですか？' } } } as never,
+      });
+      liveEvent?.({
+        message: {
+          serverContent: {
+            outputTranscription: { text: sample },
+            turnComplete: true,
+          },
+          data: Buffer.from([1, 2]).toString('base64'),
+        } as never,
+      });
+
+      const stt = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .find((m) => m.type === 'stt');
+      expect(stt?.text).toBe('今日は何曜日ですか？');
+
+      const sentenceStart = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .find((m) => m.type === 'tts' && m.state === 'sentence_start');
+      expect(sentenceStart?.text).toBe(sample);
+    });
+
+    it('resets transcript and turn state cleanly across interruption and subsequent turns', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+
+      // --- Turn 1: Interrupted mid-speech ---
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn 1 Question' } } } as never,
+      });
+      liveEvent?.({
+        message: {
+          serverContent: { outputTranscription: { text: 'Turn 1 Partial Answer' } },
+          data: Buffer.from([1, 2]).toString('base64'),
+        } as never,
+      });
+
+      // User interrupts with new listen: start
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // --- Turn 2: Fresh turn ---
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn 2 Question' } } } as never,
+      });
+      liveEvent?.({
+        message: {
+          serverContent: {
+            outputTranscription: { text: 'Turn 2 Complete Answer' },
+            turnComplete: true,
+          },
+          data: Buffer.from([3, 4]).toString('base64'),
+        } as never,
+      });
+
+      const allMessages = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)));
+
+      const sttMessages = allMessages.filter((m) => m.type === 'stt');
+      expect(sttMessages.map((m) => m.text)).toEqual(['Turn 1 Question', 'Turn 2 Question']);
+
+      const sentenceStarts = allMessages.filter(
+        (m) => m.type === 'tts' && m.state === 'sentence_start'
+      );
+      expect(sentenceStarts.map((m) => m.text)).toContain('Turn 2 Complete Answer');
+      // Verify Turn 2 sentence start has NO Turn 1 text concatenated
+      const turn2Sentence = sentenceStarts.find((m) => m.text === 'Turn 2 Complete Answer');
+      expect(turn2Sentence).toBeDefined();
+    });
+  });
+
+  describe('Voice AI timing instrumentation', () => {
+    it('sanitizes numeric timestamps strictly to digits and rejects private data or non-numbers', () => {
+      expect(sanitizeTimingMs(1725800000123)).toBe('1725800000123');
+      expect(sanitizeTimingMs(1725800000123.99)).toBe('1725800000123');
+      expect(sanitizeTimingMs(0)).toBe('0');
+      expect(sanitizeTimingMs(-500)).toBe('0');
+      expect(sanitizeTimingMs(NaN)).toBe('0');
+      expect(sanitizeTimingMs(Infinity)).toBe('0');
+      expect(sanitizeTimingMs(-Infinity)).toBe('0');
+      expect(sanitizeTimingMs('secret_token')).toBe('0');
+      expect(sanitizeTimingMs(new Error('stack trace with password'))).toBe('0');
+      expect(sanitizeTimingMs({ id: 'uuid-123', text: 'private' })).toBe('0');
+      expect(sanitizeTimingMs(null)).toBe('0');
+      expect(sanitizeTimingMs(undefined)).toBe('0');
+    });
+
+    it('emits boolean markers and sanitized numeric timestamps with first-occurrence semantics and provider aliases', () => {
+      const logs: string[] = [];
+      const fakeLogger = {
+        log: (msg: string) => logs.push(msg),
+      } as unknown as Logger;
+
+      let currentTime = 1725800000100;
+      const timing = new VoiceTimingTrace(fakeLogger, () => currentTime);
+
+      timing.mark('T_DEVICE_LISTEN_START');
+      expect(logs).toEqual([
+        'T_DEVICE_LISTEN_START=YES',
+        'T_DEVICE_LISTEN_START_MS=1725800000100',
+      ]);
+
+      // Repeated call must be ignored (first-occurrence semantics)
+      currentTime = 1725800000200;
+      timing.mark('T_DEVICE_LISTEN_START');
+      expect(logs).toHaveLength(2);
+
+      // Provider alias: marking T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN emits both
+      currentTime = 1725800000300;
+      timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
+      expect(logs.slice(2)).toEqual([
+        'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN=YES',
+        'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000300',
+        'T_PROVIDER_SESSION_READY=YES',
+        'T_PROVIDER_SESSION_READY_MS=1725800000300',
+      ]);
+
+      // Calling T_PROVIDER_SESSION_READY afterwards must not re-emit
+      timing.mark('T_PROVIDER_SESSION_READY');
+      expect(logs).toHaveLength(6);
+
+      // Reverse alias check with fresh trace
+      const reverseLogs: string[] = [];
+      const reverseLogger = {
+        log: (msg: string) => reverseLogs.push(msg),
+      } as unknown as Logger;
+      const reverseTiming = new VoiceTimingTrace(reverseLogger, () => 1725800000400);
+      reverseTiming.mark('T_PROVIDER_SESSION_READY');
+      expect(reverseLogs).toEqual([
+        'T_PROVIDER_SESSION_READY=YES',
+        'T_PROVIDER_SESSION_READY_MS=1725800000400',
+        'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN=YES',
+        'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000400',
+      ]);
+    });
+
+    it('emits all stage timing markers during turn lifecycle without leaking private data', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      const logs: string[] = [];
+      const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+        logs.push(String(msg));
+      });
+
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const connection: GeminiLiveConnection = {
+        sendAudio: () => {},
+        sendText: () => {},
+        endAudio: () => {},
+        respondToToolCalls: () => {},
+        rejectToolCalls: () => {},
+        reconnect: async () => {},
+        close: () => {},
+      };
+
+      try {
+        const liveService = {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return connection;
+          },
+        } as never;
+
+        const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+          false
+        );
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+          false
+        );
+        await session.handleMessage(Buffer.from([1, 2, 3]), true);
+
+        liveEvent?.({
+          message: {
+            serverContent: {
+              outputTranscription: { text: 'Private assistant answer text' },
+              turnComplete: true,
+            },
+            data: Buffer.from([4, 5]).toString('base64'),
+          } as never,
+        });
+
+        // Stage markers that must be emitted
+        const expectedStages = [
+          'T_DEVICE_LISTEN_START',
+          'T_FIRST_DEVICE_AUDIO_SENT',
+          'T_BACKEND_FIRST_AUDIO_RECEIVED',
+          'T_PROVIDER_SESSION_READY',
+          'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN',
+          'T_PROVIDER_FIRST_OUTPUT_EVENT',
+          'T_PROVIDER_FIRST_AUDIO_EVENT',
+          'T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE',
+          'T_TRANSCRIPT_FINALIZED',
+        ];
+
+        for (const stage of expectedStages) {
+          expect(logs).toContain(`${stage}=YES`);
+          const msLog = logs.find((line) => line.startsWith(`${stage}_MS=`));
+          expect(msLog).toBeDefined();
+          const msVal = msLog!.slice(`${stage}_MS=`.length);
+          expect(/^\d+$/.test(msVal)).toBe(true);
+          expect(Number(msVal)).toBeGreaterThan(0);
+        }
+
+        // Verify provider ready and alias have identical timestamp
+        const readyMs = logs.find((line) => line.startsWith('T_PROVIDER_SESSION_READY_MS='))!;
+        const aliasMs = logs.find((line) =>
+          line.startsWith('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=')
+        )!;
+        expect(readyMs.replace('T_PROVIDER_SESSION_READY_MS=', '')).toBe(
+          aliasMs.replace('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=', '')
+        );
+
+        // Privacy verification: no private text, credentials, or session payload in timing markers
+        const timingLogs = logs.filter((line) => line.startsWith('T_'));
+        for (const line of timingLogs) {
+          expect(line).not.toContain('Private assistant answer text');
+          expect(line).not.toContain('secret');
+          expect(line).not.toContain('websocket');
+        }
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
   });
 });

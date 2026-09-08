@@ -406,8 +406,13 @@ bool AudioPlayer::WriteXiaozhiPcm(const int16_t* data, size_t samples) {
     const bool ok = (ret == ESP_OK);
     if (ok) {
         const uint32_t oks = write_xiaozhi_ok_count_.fetch_add(1, std::memory_order_relaxed) + 1;
-        ESP_LOGD(kTag, "audio_player_write_ok count=%lu samples=%u", static_cast<unsigned long>(oks),
-                 static_cast<unsigned>(samples));
+        if (oks == 1) {
+            ESP_LOGI(kTag, "audio_player_write_ok count=%lu samples=%u", static_cast<unsigned long>(oks),
+                     static_cast<unsigned>(samples));
+        } else {
+            ESP_LOGD(kTag, "audio_player_write_ok count=%lu samples=%u", static_cast<unsigned long>(oks),
+                     static_cast<unsigned>(samples));
+        }
     } else {
         const uint32_t fails = write_xiaozhi_fail_count_.fetch_add(1, std::memory_order_relaxed) + 1;
         ESP_LOGW(kTag, "audio_player_write_fail ret=0x%x fail_count=%lu", ret,

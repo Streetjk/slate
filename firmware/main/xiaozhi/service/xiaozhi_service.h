@@ -155,6 +155,8 @@ class XiaozhiService {
 
     std::mutex      snapshot_mutex_;
     XiaozhiSnapshot snapshot_;
+    bool            turn_has_user_      = false;
+    bool            turn_has_assistant_ = false;
 
     std::mutex                protocol_mutex_;
     std::shared_ptr<Protocol> protocol_;

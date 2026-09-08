@@ -267,8 +267,14 @@ bool WebsocketProtocol::HandleIncomingBinary(const char* data, size_t len) {
         return false;
 
     const uint32_t pkt_idx = rx_audio_packets_.fetch_add(1, std::memory_order_relaxed) + 1;
-    ESP_LOGD(kTag, "audio_pkt_recv count=%lu bytes=%u", static_cast<unsigned long>(pkt_idx),
-             static_cast<unsigned>(len));
+    if (pkt_idx == 1) {
+        ESP_LOGI(kTag, "audio_pkt_recv count=%lu bytes=%u", static_cast<unsigned long>(pkt_idx),
+                 static_cast<unsigned>(len));
+        ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_RECEIVED");
+    } else {
+        ESP_LOGD(kTag, "audio_pkt_recv count=%lu bytes=%u", static_cast<unsigned long>(pkt_idx),
+                 static_cast<unsigned>(len));
+    }
     bool expected_rx = false;
     if (rx_audio_timing_emitted_.compare_exchange_strong(expected_rx, true, std::memory_order_relaxed)) {
         SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_RECEIVED");

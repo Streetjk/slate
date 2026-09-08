@@ -552,7 +552,7 @@ void XiaozhiScene::AppendXiaozhiBubble(const std::string& role, const std::strin
     lv_obj_t* bubble = lv_obj_create(row);
     StyleBubble(bubble);
     lv_obj_t* label = lv_label_create(bubble);
-    lv_obj_set_style_text_font(label, &Zfull_16, 0);
+    lv_obj_set_style_text_font(label, &Voice_Font_16, 0);
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
     lv_obj_set_style_text_line_space(label, 4, 0);
     LayoutBubble(bubble, label, display_text);

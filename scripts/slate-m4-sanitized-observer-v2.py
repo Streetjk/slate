@@ -51,6 +51,15 @@ VOICE_REGEX = {
     key: re.compile(rf"(?<![A-Z0-9_]){key}=({pattern})(?![A-Za-z0-9_.-])")
     for key, pattern in VOICE_PATTERNS.items()
 }
+TIMING_KEY_PREFIXES = (
+    r"T_(?:DEVICE|BACKEND|PROVIDER|FIRST|TRANSCRIPT|AUDIO|EPD|UI|LVGL|WS)[A-Z0-9_]*"
+)
+TIMING_BOOL_REGEX = re.compile(
+    rf"(?<![A-Z0-9_])({TIMING_KEY_PREFIXES})(?<!_MS)=(YES|NO)(?![A-Za-z0-9_.-])"
+)
+TIMING_MS_REGEX = re.compile(
+    rf"(?<![A-Z0-9_])({TIMING_KEY_PREFIXES}_MS)=([0-9]+)(?![A-Za-z0-9_.-])"
+)
 SERIAL_MARKERS = {
     "BOOT": re.compile(r"(?i)(ESP-ROM|app_main|bootloader|booting|reset reason|rst:)"),
     "WIFI": re.compile(r"(?i)(wifi|wi-fi|got ip|ip_event_sta_got_ip|station.*connect|network.*connect)"),
@@ -78,6 +87,10 @@ def extract_voice_events(line: str) -> list[dict[str, str]]:
     for key, pattern in VOICE_REGEX.items():
         for match in pattern.finditer(line):
             events.append({"event": key, "value": match.group(1)})
+    for match in TIMING_BOOL_REGEX.finditer(line):
+        events.append({"event": match.group(1), "value": match.group(2)})
+    for match in TIMING_MS_REGEX.finditer(line):
+        events.append({"event": match.group(1), "value": match.group(2)})
     return events
 
 
@@ -225,6 +238,107 @@ def self_test() -> int:
     assert "secret" not in dumped
     assert "https://" not in dumped
     assert "/Users" not in dumped
+
+    # Verify allowlisted T_* boolean markers and T_*_MS numeric timestamps
+    assert extract_voice_events("T_DEVICE_LISTEN_START=YES") == [
+        {"event": "T_DEVICE_LISTEN_START", "value": "YES"}
+    ]
+    assert extract_voice_events("T_DEVICE_LISTEN_START_MS=1725800000000") == [
+        {"event": "T_DEVICE_LISTEN_START_MS", "value": "1725800000000"}
+    ]
+    assert extract_voice_events("T_PROVIDER_SESSION_READY=YES") == [
+        {"event": "T_PROVIDER_SESSION_READY", "value": "YES"}
+    ]
+    assert extract_voice_events("T_PROVIDER_SESSION_READY_MS=1725800000050") == [
+        {"event": "T_PROVIDER_SESSION_READY_MS", "value": "1725800000050"}
+    ]
+    assert extract_voice_events("T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN=YES") == [
+        {"event": "T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN", "value": "YES"}
+    ]
+    assert extract_voice_events("T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000050") == [
+        {"event": "T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS", "value": "1725800000050"}
+    ]
+    assert extract_voice_events("T_BACKEND_FIRST_AUDIO_RECEIVED=YES") == [
+        {"event": "T_BACKEND_FIRST_AUDIO_RECEIVED", "value": "YES"}
+    ]
+    assert extract_voice_events("T_BACKEND_FIRST_AUDIO_RECEIVED_MS=1725800000020") == [
+        {"event": "T_BACKEND_FIRST_AUDIO_RECEIVED_MS", "value": "1725800000020"}
+    ]
+    assert extract_voice_events("T_FIRST_DEVICE_AUDIO_SENT=YES") == [
+        {"event": "T_FIRST_DEVICE_AUDIO_SENT", "value": "YES"}
+    ]
+    assert extract_voice_events("T_PROVIDER_FIRST_OUTPUT_EVENT=YES") == [
+        {"event": "T_PROVIDER_FIRST_OUTPUT_EVENT", "value": "YES"}
+    ]
+    assert extract_voice_events("T_PROVIDER_FIRST_AUDIO_EVENT=YES") == [
+        {"event": "T_PROVIDER_FIRST_AUDIO_EVENT", "value": "YES"}
+    ]
+    assert extract_voice_events("T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE=YES") == [
+        {"event": "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE", "value": "YES"}
+    ]
+    assert extract_voice_events("T_TRANSCRIPT_FINALIZED=YES") == [
+        {"event": "T_TRANSCRIPT_FINALIZED", "value": "YES"}
+    ]
+
+    # Multiple timing markers on a single line
+    combo = extract_voice_events(
+        "T_DEVICE_LISTEN_START=YES T_DEVICE_LISTEN_START_MS=1725800000000 "
+        "T_PROVIDER_SESSION_READY=YES T_PROVIDER_SESSION_READY_MS=1725800000050"
+    )
+    assert combo == [
+        {"event": "T_DEVICE_LISTEN_START", "value": "YES"},
+        {"event": "T_PROVIDER_SESSION_READY", "value": "YES"},
+        {"event": "T_DEVICE_LISTEN_START_MS", "value": "1725800000000"},
+        {"event": "T_PROVIDER_SESSION_READY_MS", "value": "1725800000050"},
+    ]
+
+    # Rejection of unallowlisted timing prefixes
+    assert extract_voice_events("T_UNAPPROVED_PREFIX=YES") == []
+    assert extract_voice_events("T_UNAPPROVED_PREFIX_MS=1725800000000") == []
+    assert extract_voice_events("T_RANDOM_STAGE=YES") == []
+
+    # Rejection of non-boolean values for T_*
+    assert extract_voice_events("T_DEVICE_LISTEN_START=1725800000000") == []
+    assert extract_voice_events("T_DEVICE_LISTEN_START=MAYBE") == []
+    assert extract_voice_events("T_DEVICE_LISTEN_START=PASS") == []
+
+    # Rejection of non-numeric values for T_*_MS (digits only)
+    assert extract_voice_events("T_DEVICE_LISTEN_START_MS=YES") == []
+    assert extract_voice_events("T_DEVICE_LISTEN_START_MS=1725800000000abc") == []
+    assert extract_voice_events("T_DEVICE_LISTEN_START_MS=-100") == []
+    assert extract_voice_events("T_DEVICE_LISTEN_START_MS=1725800000000.5") == []
+    assert extract_voice_events("T_DEVICE_LISTEN_START_MS=0x123") == []
+
+    # Timing marker privacy preservation: payloads, keys, credentials, and errors must NOT leak
+    timing_leak_line = (
+        "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE=YES "
+        "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE_MS=1725800000400 "
+        "transcript=user_private_sentence "
+        "api_key=AIzaSySecretToken98765 "
+        "exception=GeminiLiveBridgeFailure:connection_aborted "
+        "uuid=550e8400-e29b-41d4-a716-446655440000"
+    )
+    timing_leak_events = extract_voice_events(timing_leak_line)
+    assert timing_leak_events == [
+        {"event": "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE", "value": "YES"},
+        {"event": "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE_MS", "value": "1725800000400"},
+    ]
+    timing_dump = json.dumps(timing_leak_events)
+    assert "user_private_sentence" not in timing_dump
+    assert "AIzaSy" not in timing_dump
+    assert "GeminiLiveBridgeFailure" not in timing_dump
+    assert "550e8400" not in timing_dump
+
+    # Serial structural markers must still be captured intact
+    assert extract_structural_events("T_DEVICE_FIRST_AUDIO_DECODED") == [
+        {"event": "TIMING_MARKER", "value": "T_DEVICE_FIRST_AUDIO_DECODED"}
+    ]
+    assert extract_structural_events("T_DEVICE_FIRST_AUDIO_PLAYBACK") == [
+        {"event": "TIMING_MARKER", "value": "T_DEVICE_FIRST_AUDIO_PLAYBACK"}
+    ]
+    assert extract_structural_events("audio_pkt_recv count=12 bytes=480") == [
+        {"event": "AUDIO_PACKET_RECEIVED", "value": "12|480"}
+    ]
 
     print("slate-m4-sanitized-observer-v2: PASS")
     return 0

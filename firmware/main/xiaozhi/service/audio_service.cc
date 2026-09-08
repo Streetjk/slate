@@ -293,7 +293,11 @@ bool AudioService::PushPacketToDecodeQueue(std::unique_ptr<AudioStreamPacket> pa
         decode_queue_.push_back(std::move(packet));
     }
     const uint32_t enq = decode_enqueued_count_.fetch_add(1, std::memory_order_relaxed) + 1;
-    ESP_LOGD(kTag, "audio_pkt_enqueued count=%lu", static_cast<unsigned long>(enq));
+    if (enq == 1) {
+        ESP_LOGI(kTag, "audio_pkt_enqueued count=%lu", static_cast<unsigned long>(enq));
+    } else {
+        ESP_LOGD(kTag, "audio_pkt_enqueued count=%lu", static_cast<unsigned long>(enq));
+    }
     AUDIO_DIAG(diag_.decode_push_count.fetch_add(1, std::memory_order_relaxed));
     xSemaphoreGive(decode_notify_);
     return true;
@@ -449,8 +453,10 @@ void AudioService::OutputTask() {
 
         playback_active_.store(true, std::memory_order_relaxed);
         bool expected = false;
-        if (first_playback_timing_emitted_.compare_exchange_strong(expected, true, std::memory_order_relaxed))
+        if (first_playback_timing_emitted_.compare_exchange_strong(expected, true, std::memory_order_relaxed)) {
+            ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK");
             SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK");
+        }
         const bool write_ok = player_->WriteXiaozhiPcm(task->pcm.data(), task->pcm.size());
         AUDIO_DIAG(diag_.playback_write_count.fetch_add(1, std::memory_order_relaxed));
         if (!write_ok) {
@@ -516,8 +522,14 @@ bool AudioService::ProcessDecodePacket() {
                 decoded = ResampleToDeviceRateLocked(task->pcm, decode_packet->sample_rate);
                 if (decoded) {
                     const uint32_t oks = decode_success_count_.fetch_add(1, std::memory_order_relaxed) + 1;
-                    ESP_LOGD(kTag, "audio_decode_ok count=%lu samples=%u",
-                             static_cast<unsigned long>(oks), static_cast<unsigned>(task->pcm.size()));
+                    if (oks == 1) {
+                        ESP_LOGI(kTag, "audio_decode_ok count=%lu samples=%u",
+                                 static_cast<unsigned long>(oks), static_cast<unsigned>(task->pcm.size()));
+                        ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_DECODED");
+                    } else {
+                        ESP_LOGD(kTag, "audio_decode_ok count=%lu samples=%u",
+                                 static_cast<unsigned long>(oks), static_cast<unsigned>(task->pcm.size()));
+                    }
                     bool expected_dec = false;
                     if (first_decode_timing_emitted_.compare_exchange_strong(expected_dec, true, std::memory_order_relaxed)) {
                         SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_DECODED");

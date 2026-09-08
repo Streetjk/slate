@@ -198,6 +198,11 @@ void XiaozhiService::StopConversation(bool send_goodbye) {
             SetState(XiaozhiState::kStopping, "Voice service is stopping...");
     }
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        turn_has_user_      = false;
+        turn_has_assistant_ = false;
+    }
     if (protocol)
         protocol->CloseAudioChannel(send_goodbye);
     EndAudioSession();
@@ -708,7 +713,7 @@ void XiaozhiService::ConfigureProtocolCallbacks(Protocol* protocol) {
         if (CurrentState() == XiaozhiState::kSpeaking) {
             audio_->PushPacketToDecodeQueue(std::move(packet));
         } else {
-            ESP_LOGD(kTag, "audio_pkt_gate_rejected state=%d", static_cast<int>(CurrentState()));
+            ESP_LOGW(kTag, "audio_pkt_gate_rejected state=%d", static_cast<int>(CurrentState()));
         }
     });
     protocol->OnIncomingJson([this, token](const cJSON* root) {
@@ -828,9 +833,17 @@ void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
         snapshot_.has_protocol = settings::HasProtocolConfig();
         if (!status.empty())
             snapshot_.status = status;
+        if (state == XiaozhiState::kListening) {
+            turn_has_user_      = false;
+            turn_has_assistant_ = false;
+            snapshot_.user_text.clear();
+            snapshot_.assistant_text.clear();
+        }
         if (state == XiaozhiState::kReadyIdle)
             snapshot_.emotion = "neutral";
         if (state == XiaozhiState::kReadyIdle) {
+            turn_has_user_      = false;
+            turn_has_assistant_ = false;
             snapshot_.messages.clear();
             snapshot_.user_text.clear();
             snapshot_.assistant_text.clear();
@@ -856,17 +869,51 @@ void XiaozhiService::SetError(const std::string& error) {
 }
 
 void XiaozhiService::SetUserText(const std::string& text) {
+    if (text.empty())
+        return;
     bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        const std::string previous = !snapshot_.messages.empty() && snapshot_.messages.back().role == "user"
-                                         ? snapshot_.messages.back().text
-                                         : "";
+        if (turn_has_user_ && turn_has_assistant_) {
+            // Both already exist for the previous turn, so a new user question
+            // without an explicit state transition starts a new logical turn.
+            turn_has_user_      = false;
+            turn_has_assistant_ = false;
+            snapshot_.user_text.clear();
+            snapshot_.assistant_text.clear();
+        }
+
+        std::string previous;
+        if (turn_has_user_) {
+            if (turn_has_assistant_ && snapshot_.messages.size() >= 2) {
+                previous = snapshot_.messages[snapshot_.messages.size() - 2].text;
+            } else if (!snapshot_.messages.empty() && snapshot_.messages.back().role == "user") {
+                previous = snapshot_.messages.back().text;
+            }
+        }
+
         const std::string merged = MergeTranscriptFragment(previous, text);
-        changed               = merged != snapshot_.user_text;
+        changed               = (merged != snapshot_.user_text);
         snapshot_.user_text   = merged;
-        if (!merged.empty())
-            UpsertMessageLocked("user", merged);
+
+        if (!merged.empty()) {
+            if (turn_has_user_) {
+                if (turn_has_assistant_ && snapshot_.messages.size() >= 2) {
+                    snapshot_.messages[snapshot_.messages.size() - 2].text = merged;
+                } else if (!snapshot_.messages.empty() && snapshot_.messages.back().role == "user") {
+                    snapshot_.messages.back().text = merged;
+                }
+            } else {
+                if (turn_has_assistant_ && !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant") {
+                    // Output-before-input callback ordering: assistant message arrived first.
+                    // Insert the user question immediately BEFORE this turn's assistant answer.
+                    snapshot_.messages.insert(snapshot_.messages.end() - 1, {"user", merged});
+                } else {
+                    snapshot_.messages.push_back({"user", merged});
+                }
+                turn_has_user_ = true;
+            }
+        }
         TrimMessagesLocked();
     }
     if (changed)
@@ -874,17 +921,28 @@ void XiaozhiService::SetUserText(const std::string& text) {
 }
 
 void XiaozhiService::SetAssistantText(const std::string& text) {
+    if (text.empty())
+        return;
     bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        const std::string previous = !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant"
-                                         ? snapshot_.messages.back().text
-                                         : "";
+        std::string previous;
+        if (turn_has_assistant_ && !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant") {
+            previous = snapshot_.messages.back().text;
+        }
+
         const std::string merged = MergeTranscriptFragment(previous, text);
-        changed                  = merged != snapshot_.assistant_text;
+        changed                  = (merged != snapshot_.assistant_text);
         snapshot_.assistant_text = merged;
-        if (!merged.empty())
-            UpsertMessageLocked("assistant", merged);
+
+        if (!merged.empty()) {
+            if (turn_has_assistant_ && !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant") {
+                snapshot_.messages.back().text = merged;
+            } else {
+                snapshot_.messages.push_back({"assistant", merged});
+                turn_has_assistant_ = true;
+            }
+        }
         TrimMessagesLocked();
     }
     if (changed)
@@ -892,11 +950,23 @@ void XiaozhiService::SetAssistantText(const std::string& text) {
 }
 
 void XiaozhiService::UpsertMessageLocked(const std::string& role, const std::string& text) {
-    if (!snapshot_.messages.empty() && snapshot_.messages.back().role == role) {
-        snapshot_.messages.back().text = text;
-        return;
+    if (role == "user") {
+        if (turn_has_assistant_ && !snapshot_.messages.empty() && snapshot_.messages.back().role == "assistant") {
+            snapshot_.messages.insert(snapshot_.messages.end() - 1, {role, text});
+        } else if (!snapshot_.messages.empty() && snapshot_.messages.back().role == role) {
+            snapshot_.messages.back().text = text;
+        } else {
+            snapshot_.messages.push_back({role, text});
+        }
+        turn_has_user_ = true;
+    } else {
+        if (!snapshot_.messages.empty() && snapshot_.messages.back().role == role) {
+            snapshot_.messages.back().text = text;
+        } else {
+            snapshot_.messages.push_back({role, text});
+        }
+        turn_has_assistant_ = true;
     }
-    snapshot_.messages.push_back({role, text});
 }
 
 void XiaozhiService::SetAlert(const std::string& status, const std::string& message, const std::string& emotion) {
