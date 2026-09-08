@@ -52,7 +52,7 @@ VOICE_REGEX = {
     for key, pattern in VOICE_PATTERNS.items()
 }
 TIMING_KEY_PREFIXES = (
-    r"T_(?:DEVICE|BACKEND|PROVIDER|FIRST|TRANSCRIPT|AUDIO|EPD|UI|LVGL|WS)[A-Z0-9_]*"
+    r"T_(?:DEVICE|FIRMWARE|BACKEND|PROVIDER|FIRST|TRANSCRIPT|AUDIO|EPD|UI|LVGL|WS)[A-Z0-9_]*"
 )
 TIMING_BOOL_REGEX = re.compile(
     rf"(?<![A-Z0-9_])({TIMING_KEY_PREFIXES})(?<!_MS)=(YES|NO)(?![A-Za-z0-9_.-])"
@@ -75,7 +75,7 @@ STRUCTURAL_PATTERNS = {
     "AUDIO_PLAYER_WRITE_OK": re.compile(r"\baudio_player_write_ok(?: count=(\d+))?"),
     "AUDIO_PLAYER_WRITE_FAIL": re.compile(r"\baudio_player_write_fail(?: count=(\d+))?"),
     "TIMING_MARKER": re.compile(
-        r"\b(T_(?:DEVICE|BACKEND|PROVIDER|FIRST|TRANSCRIPT|AUDIO|EPD|UI|LVGL|WS)[A-Z0-9_]*)\b"
+        r"\b(T_(?:DEVICE|FIRMWARE|BACKEND|PROVIDER|FIRST|TRANSCRIPT|AUDIO|EPD|UI|LVGL|WS)[A-Z0-9_]*)\b"
     ),
     "REFRESH_MARKER": re.compile(r"\b(refresh_(?:start|done))\b(?: path=(full|partial))?"),
 }
@@ -314,7 +314,7 @@ def self_test() -> int:
         "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE=YES "
         "T_BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE_MS=1725800000400 "
         "transcript=user_private_sentence "
-        "api_key=AIzaSySecretToken98765 "
+        "api_key=synthetic-test-token-never-leak-98765 "
         "exception=GeminiLiveBridgeFailure:connection_aborted "
         "uuid=550e8400-e29b-41d4-a716-446655440000"
     )
@@ -325,7 +325,7 @@ def self_test() -> int:
     ]
     timing_dump = json.dumps(timing_leak_events)
     assert "user_private_sentence" not in timing_dump
-    assert "AIzaSy" not in timing_dump
+    assert "synthetic-test-token" not in timing_dump
     assert "GeminiLiveBridgeFailure" not in timing_dump
     assert "550e8400" not in timing_dump
 
@@ -339,6 +339,31 @@ def self_test() -> int:
     assert extract_structural_events("audio_pkt_recv count=12 bytes=480") == [
         {"event": "AUDIO_PACKET_RECEIVED", "value": "12|480"}
     ]
+    assert extract_structural_events("audio_player_write_ok count=1 samples=240") == [
+        {"event": "AUDIO_PLAYER_WRITE_OK", "value": "1"}
+    ]
+
+    # Firmware audio attribution markers with sanitized numeric timestamps
+    fw_stages = [
+        ("I (1000) xiaozhi_ws: T_DEVICE_FIRST_AUDIO_RECEIVED=YES T_DEVICE_FIRST_AUDIO_RECEIVED_MS=1725800000100",
+         "T_DEVICE_FIRST_AUDIO_RECEIVED_MS", "1725800000100"),
+        ("I (1050) xiaozhi_audio: T_DEVICE_FIRST_AUDIO_DECODED=YES T_DEVICE_FIRST_AUDIO_DECODED_MS=1725800000150",
+         "T_DEVICE_FIRST_AUDIO_DECODED_MS", "1725800000150"),
+        ("I (1100) xiaozhi_audio: T_DEVICE_FIRST_AUDIO_PLAYBACK=YES T_DEVICE_FIRST_AUDIO_PLAYBACK_MS=1725800000200",
+         "T_DEVICE_FIRST_AUDIO_PLAYBACK_MS", "1725800000200"),
+        ("I (1150) audio: T_AUDIO_PLAYER_FIRST_WRITE=YES T_AUDIO_PLAYER_FIRST_WRITE_MS=1725800000220",
+         "T_AUDIO_PLAYER_FIRST_WRITE_MS", "1725800000220"),
+        ("I (1151) audio: T_DEVICE_FIRST_AUDIO_WRITE=YES T_DEVICE_FIRST_AUDIO_WRITE_MS=1725800000220",
+         "T_DEVICE_FIRST_AUDIO_WRITE_MS", "1725800000220"),
+    ]
+    for raw_line, expected_event, expected_val in fw_stages:
+        extracted = extract_voice_events(raw_line)
+        assert any(e["event"] == expected_event and e["value"] == expected_val for e in extracted), (
+            f"Failed to extract {expected_event}={expected_val} from {raw_line}: {extracted}"
+        )
+        dump = json.dumps(extracted)
+        assert "xiaozhi" not in dump
+        assert "audio" not in dump or expected_event in dump
 
     print("slate-m4-sanitized-observer-v2: PASS")
     return 0

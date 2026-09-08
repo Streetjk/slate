@@ -1649,7 +1649,7 @@ describe('XiaozhiVoiceSession', () => {
       logs.push(String(msg));
     });
 
-    const secretMarker = 'AIzaSySyntheticToken999SecretHeader';
+    const secretMarker = 'synthetic-key-not-a-real-secret-token-999';
     const secretUrl = 'https://generativelanguage.googleapis.com/v1beta/live?key=' + secretMarker;
     const stackSnippet = '/Users/ollama/slate/backend/src/secret-auth-file.ts:42';
 

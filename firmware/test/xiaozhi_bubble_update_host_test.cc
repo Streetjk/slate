@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 
+#include "xiaozhi/service/turn_history.h"
+
 struct XiaozhiMessage {
     std::string role;
     std::string text;
@@ -52,95 +54,39 @@ bool CanUpdateInPlace(
            MessagesPrefixKey(snap) == rendered_prefix_key;
 }
 
-std::string MergeTranscriptFragment(const std::string& previous, const std::string& incoming) {
-    if (previous.empty())
-        return incoming;
-    if (incoming.empty() || incoming == previous)
-        return previous;
-    if (incoming.rfind(previous, 0) == 0)
-        return incoming;
-    if (previous.size() >= incoming.size() &&
-        previous.compare(previous.size() - incoming.size(), incoming.size(), incoming) == 0)
-        return previous;
-
-    return previous + incoming;
-}
-
+// Exercise the shared runtime TurnHistory implementation to eliminate host-test drift.
 class TurnAwareHistory {
    public:
     void StartListening() {
-        turn_has_user_ = false;
-        turn_has_assistant_ = false;
-        snap.user_text.clear();
-        snap.assistant_text.clear();
+        history_.StartListening();
         snap.state = 3;  // kListening
+        SyncSnap();
     }
 
     void SetUserText(const std::string& text) {
-        if (text.empty())
-            return;
-        if (turn_has_user_ && turn_has_assistant_) {
-            turn_has_user_ = false;
-            turn_has_assistant_ = false;
-            snap.user_text.clear();
-            snap.assistant_text.clear();
-        }
-
-        std::string previous;
-        if (turn_has_user_) {
-            if (turn_has_assistant_ && snap.messages.size() >= 2) {
-                previous = snap.messages[snap.messages.size() - 2].text;
-            } else if (!snap.messages.empty() && snap.messages.back().role == "user") {
-                previous = snap.messages.back().text;
-            }
-        }
-
-        const std::string merged = MergeTranscriptFragment(previous, text);
-        snap.user_text = merged;
-
-        if (!merged.empty()) {
-            if (turn_has_user_) {
-                if (turn_has_assistant_ && snap.messages.size() >= 2) {
-                    snap.messages[snap.messages.size() - 2].text = merged;
-                } else if (!snap.messages.empty() && snap.messages.back().role == "user") {
-                    snap.messages.back().text = merged;
-                }
-            } else {
-                if (turn_has_assistant_ && !snap.messages.empty() && snap.messages.back().role == "assistant") {
-                    snap.messages.insert(snap.messages.end() - 1, {"user", merged});
-                } else {
-                    snap.messages.push_back({"user", merged});
-                }
-                turn_has_user_ = true;
-            }
-        }
+        history_.SetUserText(text);
+        SyncSnap();
     }
 
     void SetAssistantText(const std::string& text) {
-        if (text.empty())
-            return;
-        std::string previous;
-        if (turn_has_assistant_ && !snap.messages.empty() && snap.messages.back().role == "assistant") {
-            previous = snap.messages.back().text;
-        }
-
-        const std::string merged = MergeTranscriptFragment(previous, text);
-        snap.assistant_text = merged;
-
-        if (!merged.empty()) {
-            if (turn_has_assistant_ && !snap.messages.empty() && snap.messages.back().role == "assistant") {
-                snap.messages.back().text = merged;
-            } else {
-                snap.messages.push_back({"assistant", merged});
-                turn_has_assistant_ = true;
-            }
-        }
+        history_.SetAssistantText(text);
         snap.state = 4;  // kSpeaking
+        SyncSnap();
     }
 
-    struct XiaozhiSnapshot snap;
-    bool turn_has_user_ = false;
-    bool turn_has_assistant_ = false;
+    XiaozhiSnapshot snap;
+
+   private:
+    void SyncSnap() {
+        snap.user_text      = history_.user_text();
+        snap.assistant_text = history_.assistant_text();
+        snap.messages.clear();
+        for (const auto& msg : history_.messages()) {
+            snap.messages.push_back({msg.role, msg.text});
+        }
+    }
+
+    xiaozhi::TurnHistory history_;
 };
 
 int main() {
@@ -285,6 +231,45 @@ int main() {
         assert(history.snap.messages[1].role == "assistant");
         assert(history.snap.messages[2].role == "user");
         assert(history.snap.messages[3].role == "assistant");
+    }
+
+    // 5. Direct shared TurnHistory runtime unit test
+    {
+        xiaozhi::TurnHistory th;
+        th.StartListening();
+        assert(th.messages().empty());
+        assert(!th.turn_has_user());
+        assert(!th.turn_has_assistant());
+
+        // Output-before-input ordering test directly on TurnHistory
+        th.SetAssistantText("Answer first");
+        assert(th.messages().size() == 1);
+        assert(th.messages()[0].role == "assistant");
+        assert(th.messages()[0].text == "Answer first");
+        assert(th.turn_has_assistant());
+        assert(!th.turn_has_user());
+
+        th.SetUserText("Question second");
+        assert(th.messages().size() == 2);
+        assert(th.messages()[0].role == "user");
+        assert(th.messages()[0].text == "Question second");
+        assert(th.messages()[1].role == "assistant");
+        assert(th.messages()[1].text == "Answer first");
+        assert(th.turn_has_user());
+        assert(th.turn_has_assistant());
+
+        // Test TrimMessages cap
+        for (int i = 0; i < 20; ++i) {
+            th.messages().push_back({"user", "msg " + std::to_string(i)});
+        }
+        assert(th.messages().size() > 12);
+        th.TrimMessages();
+        assert(th.messages().size() == 12);
+
+        th.Clear();
+        assert(th.messages().empty());
+        assert(!th.turn_has_user());
+        assert(!th.turn_has_assistant());
     }
 
     return 0;

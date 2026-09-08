@@ -454,7 +454,9 @@ void AudioService::OutputTask() {
         playback_active_.store(true, std::memory_order_relaxed);
         bool expected = false;
         if (first_playback_timing_emitted_.compare_exchange_strong(expected, true, std::memory_order_relaxed)) {
-            ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK");
+            const int64_t now_ms = time_utils::NowMs();
+            ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK=YES T_DEVICE_FIRST_AUDIO_PLAYBACK_MS=%lld",
+                     static_cast<long long>(now_ms));
             SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_PLAYBACK");
         }
         const bool write_ok = player_->WriteXiaozhiPcm(task->pcm.data(), task->pcm.size());
@@ -525,13 +527,15 @@ bool AudioService::ProcessDecodePacket() {
                     if (oks == 1) {
                         ESP_LOGI(kTag, "audio_decode_ok count=%lu samples=%u",
                                  static_cast<unsigned long>(oks), static_cast<unsigned>(task->pcm.size()));
-                        ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_DECODED");
                     } else {
                         ESP_LOGD(kTag, "audio_decode_ok count=%lu samples=%u",
                                  static_cast<unsigned long>(oks), static_cast<unsigned>(task->pcm.size()));
                     }
                     bool expected_dec = false;
                     if (first_decode_timing_emitted_.compare_exchange_strong(expected_dec, true, std::memory_order_relaxed)) {
+                        const int64_t now_ms = time_utils::NowMs();
+                        ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_DECODED=YES T_DEVICE_FIRST_AUDIO_DECODED_MS=%lld",
+                                 static_cast<long long>(now_ms));
                         SLATE_TIMING_LOG(kTag, "T_DEVICE_FIRST_AUDIO_DECODED");
                     }
                 } else {

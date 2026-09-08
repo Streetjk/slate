@@ -13,8 +13,11 @@ markers=(
     "audio_decode_ok"
     "audio_decode_fail"
     "T_DEVICE_FIRST_AUDIO_DECODED"
+    "T_DEVICE_FIRST_AUDIO_PLAYBACK"
     "audio_player_write_ok"
     "audio_player_write_fail"
+    "T_AUDIO_PLAYER_FIRST_WRITE"
+    "T_DEVICE_FIRST_AUDIO_WRITE"
 )
 
 for marker in "${markers[@]}"; do

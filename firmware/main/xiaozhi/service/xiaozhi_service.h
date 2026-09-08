@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "xiaozhi/protocol/protocol.h"
+#include "xiaozhi/service/turn_history.h"
 
 class AudioPlayer;
 
@@ -38,10 +39,7 @@ enum class XiaozhiPhase : uint8_t {
     kStartPending,
 };
 
-struct XiaozhiMessage {
-    std::string role;
-    std::string text;
-};
+using XiaozhiMessage = TurnMessage;
 
 struct XiaozhiSnapshot {
     XiaozhiState                state = XiaozhiState::kCheckingConfig;
@@ -155,8 +153,7 @@ class XiaozhiService {
 
     std::mutex      snapshot_mutex_;
     XiaozhiSnapshot snapshot_;
-    bool            turn_has_user_      = false;
-    bool            turn_has_assistant_ = false;
+    TurnHistory     turn_history_;
 
     std::mutex                protocol_mutex_;
     std::shared_ptr<Protocol> protocol_;

@@ -12,6 +12,7 @@
 #include "drivers/bus/i2c_bus_lock.h"
 #include "storage/nvs/volume_store.h"
 #include "utils/gpio_util.h"
+#include "utils/time_utils.h"
 
 // Board::Init 已经在 InitPower 阶段把 GPIO42（AVDD_3V3 rail）拉高 + hold_en。
 // i2c_device.cc 仍然在异常路径上调 BoardI2cForcePowerOn 自救，实现放在 board_power.cc。
@@ -407,8 +408,13 @@ bool AudioPlayer::WriteXiaozhiPcm(const int16_t* data, size_t samples) {
     if (ok) {
         const uint32_t oks = write_xiaozhi_ok_count_.fetch_add(1, std::memory_order_relaxed) + 1;
         if (oks == 1) {
+            const int64_t now_ms = time_utils::NowMs();
             ESP_LOGI(kTag, "audio_player_write_ok count=%lu samples=%u", static_cast<unsigned long>(oks),
                      static_cast<unsigned>(samples));
+            ESP_LOGI(kTag, "T_AUDIO_PLAYER_FIRST_WRITE=YES T_AUDIO_PLAYER_FIRST_WRITE_MS=%lld",
+                     static_cast<long long>(now_ms));
+            ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_WRITE=YES T_DEVICE_FIRST_AUDIO_WRITE_MS=%lld",
+                     static_cast<long long>(now_ms));
         } else {
             ESP_LOGD(kTag, "audio_player_write_ok count=%lu samples=%u", static_cast<unsigned long>(oks),
                      static_cast<unsigned>(samples));

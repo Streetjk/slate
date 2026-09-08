@@ -11,6 +11,7 @@
 #include "utils/byte_utils.h"
 #include "utils/json_utils.h"
 #include "utils/mac_utils.h"
+#include "utils/time_utils.h"
 #include "utils/timing_trace.h"
 #include "network/cred_store.h"
 #include "xiaozhi/config/settings.h"
@@ -268,9 +269,11 @@ bool WebsocketProtocol::HandleIncomingBinary(const char* data, size_t len) {
 
     const uint32_t pkt_idx = rx_audio_packets_.fetch_add(1, std::memory_order_relaxed) + 1;
     if (pkt_idx == 1) {
+        const int64_t now_ms = time_utils::NowMs();
         ESP_LOGI(kTag, "audio_pkt_recv count=%lu bytes=%u", static_cast<unsigned long>(pkt_idx),
                  static_cast<unsigned>(len));
-        ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_RECEIVED");
+        ESP_LOGI(kTag, "T_DEVICE_FIRST_AUDIO_RECEIVED=YES T_DEVICE_FIRST_AUDIO_RECEIVED_MS=%lld",
+                 static_cast<long long>(now_ms));
     } else {
         ESP_LOGD(kTag, "audio_pkt_recv count=%lu bytes=%u", static_cast<unsigned long>(pkt_idx),
                  static_cast<unsigned>(len));

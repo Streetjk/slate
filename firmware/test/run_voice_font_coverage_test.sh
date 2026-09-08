@@ -62,7 +62,7 @@ font_c = open(sys.argv[1], "r", encoding="utf-8").read()
 fallback_c = open(sys.argv[2], "r", encoding="utf-8").read()
 
 def extract_codepoints(text):
-    return {int(m.group(1), 16) for m in re.finditer(r'/\*\s*U\+([0-9A-Fa-f]+)\s+"([^"]*)"\s*\*/', text)}
+    return {int(m.group(1), 16) for m in re.finditer(r'/\*\s*U\+([0-9A-Fa-f]+)\b', text)}
 
 voice_cps = extract_codepoints(font_c)
 fallback_cps = extract_codepoints(fallback_c)
@@ -91,10 +91,31 @@ for w in ["今日", "何曜日", "ですか", "の", "ひらがな", "カタカ�
     for ch in w:
         assert ord(ch) in total_cps, f"Character '{ch}' in '{w}' not resolved"
 
+# English ASCII regression coverage:
+# Full standard printable ASCII range (0x20 through 0x7E)
+ascii_missing = [f"U+{cp:04X}" for cp in range(0x20, 0x7F) if cp not in total_cps]
+assert not ascii_missing, f"ASCII printable range incomplete, missing: {ascii_missing}"
+
+english_sample = "The quick brown fox jumps over the lazy dog. 0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
+missing_en = [f"'{ch}' (U+{ord(ch):04X})" for ch in english_sample if ord(ch) not in total_cps]
+assert not missing_en, f"English sample has missing glyphs: {missing_en}"
+
+# GB2312-backed Chinese regression coverage:
+# Validates Chinese UI and voice strings resolve through the fallback path (Zfull_16)
+chinese_sample = "天气预报 正在聆听 已连接 网络连接 日历日程 待办事项 设置 你好我是小智"
+missing_zh = [f"'{ch}' (U+{ord(ch):04X})" for ch in chinese_sample if ord(ch) not in total_cps]
+assert not missing_zh, f"Chinese sample has missing glyphs: {missing_zh}"
+
+# Explicit fallback path verification: ensure non-ASCII Chinese characters resolve via fallback_cps
+fallback_resolved = [ch for ch in chinese_sample if ord(ch) in fallback_cps and ch != " "]
+assert len(fallback_resolved) >= 20, f"Expected Chinese glyphs to resolve via fallback, found: {len(fallback_resolved)}"
+
 print(f"Voice font direct glyphs: {len(voice_cps)}")
 print(f"Fallback font glyphs: {len(fallback_cps)}")
 print(f"Combined reachable glyphs: {len(total_cps)}")
-print(f"Sample '{sample_text}': 100% resolved")
+print(f"Japanese sample '{sample_text}': 100% resolved")
+print(f"English sample '{english_sample}': 100% resolved")
+print(f"GB2312 Chinese sample '{chinese_sample}': 100% resolved")
 PY
 
 echo "run_voice_font_coverage_test: PASS"
