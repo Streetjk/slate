@@ -264,3 +264,98 @@ NEXT_ACTION=
 No exit with READY or READONLY_READY work remaining unless a genuine safety/authority conflict exists.
 
 Human-only gates remain limited to the established set: physical NOTE4 actions, sudo/root password, merge/release, changed device identity, new credentials/provider/billing/private-data authority, and unresolved P0/P1/security boundaries.
+
+## Controller ingest and exact attribution — 2026-09-08
+
+The operator's single combined physical session is consumed. No second physical
+attempt was made or requested. The original observer's backend extraction had a
+regex defect: it matched the literal `PROVIDER=` token rather than the approved
+`PROVIDER_*` marker names. The observer source was corrected locally and its
+self-test and Python syntax checks passed. The corrected allow-list does not
+retain raw serial, provider, credential, audio, transcript, URL, or auth-header
+content.
+
+```text
+LATEST_COMBINED_PHYSICAL_SESSION_INGESTED=YES
+OBSERVER_EXTRACTION_REPAIR=PROVIDER_KEY_REGEX_CORRECTED
+OBSERVER_EXTRACTION_REPAIR_SHA256=4668415c8ae666c6e2c748f55d18457a0b6897c145cb8b19ea328777b4d29e52
+OBSERVER_SELF_TEST=PASS
+OBSERVER_PYTHON_SYNTAX=PASS
+OBSERVER_RAW_CONTENT=NO
+```
+
+The retained sanitized backend markers for the completed session are:
+
+```text
+VOICE_CONFIG_RESULT=NOT_OBSERVED
+VOICE_WS_CONNECT_RESULT=OPEN
+VOICE_WS_AUTH_RESULT=PASS
+VOICE_WS_ACCEPTED=YES
+VOICE_WS_CLOSE_CODE=NOT_OBSERVED
+VOICE_SESSION_INIT_SENT=YES
+VOICE_MIC_STREAM_STARTED=NO_THEN_YES_OBSERVED
+FIRST_MIC_FRAME_RECEIVED=NO
+PROVIDER_SESSION_CREATE_START=YES
+PROVIDER_SESSION_CREATE_RESULT=CONFIG_ERROR
+PROVIDER_SESSION_STARTED=NO
+PROVIDER_LIVE_ERROR_CALLBACK=NOT_OBSERVED
+PROVIDER_LIVE_CLOSE_CALLBACK=NOT_OBSERVED
+LIVE_FAILURE_SOURCE=CONNECT_REJECT
+PROVIDER_CLOSE_EXPECTED=NO
+ACTIVE_CONNECT_GENERATION=2
+ACTIVE_LISTEN_GENERATION=1
+LISTENING_STATE_AT_FAILURE=YES
+LIVE_SESSION_PRESENT_AT_FAILURE=NO
+CONNECTING_PROMISE_PRESENT_AT_FAILURE=YES
+PROVIDER_FIRST_OUTPUT_EVENT=NOT_OBSERVED
+PROVIDER_FIRST_AUDIO_EVENT=NOT_OBSERVED
+BACKEND_FIRST_AUDIO_PACKET_TO_DEVICE=NOT_OBSERVED
+FIRMWARE_FIRST_AUDIO_PACKET_RECEIVED=NOT_OBSERVED
+FIRMWARE_FIRST_AUDIO_PACKET_ACCEPTED=NOT_OBSERVED
+FIRMWARE_FIRST_DECODED_PCM=NOT_OBSERVED
+AUDIO_PLAYER_FIRST_WRITE=NOT_OBSERVED
+AUDIO_PLAYER_WRITE_RESULT=NOT_OBSERVED
+TTS_START_RECEIVED=NOT_OBSERVED
+TTS_STOP_RECEIVED=NOT_OBSERVED
+TRANSCRIPT_UPDATE_COUNT=NOT_OBSERVED
+EPD_REFRESH_COUNT_DURING_RESPONSE=NOT_OBSERVED
+DEVICE_PORT_CONTINUITY=/dev/cu.usbmodem31101
+```
+
+The earliest boundary is exact: NOTE4's WebSocket opened, authenticated and
+was accepted; Slate then entered provider session creation, failed its own
+production configuration gate, and rejected the active listen turn before a
+Gemini Live session existed or the first microphone frame reached the backend.
+The `ACTIVE_CONNECT_GENERATION=2` value is the expected post-rejection
+invalidation from the current lifecycle code, not evidence of a stale-callback
+race. The 33 live-session attribution tests pass, including the tested
+connect-rejection path; no source defect is proven.
+
+Read-only production metadata identified the deployment omission:
+
+```text
+ACTIVE_BACKEND_TAG=slate:m4-voice-attribution-dd8b5b4
+ACTIVE_BACKEND_IMAGE_ID=sha256:63275954b49c147eae65189515655f33517b29d50bf5d582c229f90acec522c9
+NODE_ENV=production
+ACTIVE_CONTAINER_GEMINI_CONFIGURATION_KEYS=ABSENT
+ACTIVE_DOTENV_KEYS=MYSQL_PASSWORD_ONLY
+SECRET_DESTINATION=/run/secrets/gemini_api_key
+SECRET_MOUNT_RW=false
+SLATE_HEALTH=HTTP_200
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=HEALTHY
+MYSQL_RESTART_COUNT=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+PROVIDER_CALLS_THIS_STAGE=0
+PRODUCTION_CHANGED=NO
+FIRMWARE_CHANGED=NO
+```
+
+This is a production runtime configuration omission, not a provider/model,
+credential, firmware, audio, or latency defect. The existing authorized G
+activation covers restoring the exact 2.5 native-audio Developer-API
+Node-bridge settings with the existing protected read-only credential. A
+pre-mutation checkpoint is now published; the next action is the bounded
+same-image configuration redeploy, followed by health/config requalification
+and observer re-arm. No firmware write is required.
