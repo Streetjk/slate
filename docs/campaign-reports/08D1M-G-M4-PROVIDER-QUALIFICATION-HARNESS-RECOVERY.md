@@ -324,3 +324,66 @@ with a sanitized serial connection. The observer's structural snapshot reports
 remote Slate healthy with restart count 0, MySQL healthy with restart count 0,
 and both local/public health probes available where applicable. No raw observer
 content is retained.
+
+## Exactly one newly authorized provider session consumed — 2026-09-09
+
+```text
+AUTHORIZATION_SOURCE_HEAD=1f5e1a8ae26bc5a2b3825b9348530ad7a2a6538f
+PROVIDER_SESSION_MAX_AUTHORIZED=1
+PROVIDER_SESSION_CONSUMED=1
+TOTAL_PROVIDER_QUALIFICATION_SESSION_ATTEMPTS=2
+QUALIFICATION_DRIVER_IDENTITY=7c21eb112429ad7ed93111fedb8019bfa61da7d0ace47b702658c7f38158ff7f
+QUALIFICATION_DRIVER_COMMAND_CLASS=TEMPORARY_DIRECT_SSH_DOCKER_NODE_BRIDGE_DRIVER
+QUALIFICATION_DRIVER_SOURCE_OR_INLINE_SCRIPT_IDENTITY=EPHEMERAL_DRIVER_HASH_ABOVE;NOT_RETAINED_AFTER_RUN
+DRIVER_START_OBSERVED=YES
+DRIVER_PROCESS_EXIT_OBSERVED=YES
+DRIVER_EXIT_CLASS=FAIL_SESSION_SETUP
+DRIVER_TIMEOUT_OR_KILL_CLASS=NO_TIMEOUT;CHILD_STOP_REQUESTED_AFTER_SANITIZED_BRIDGE_ERROR
+CHILD_NODE_BRIDGE_START_OBSERVED=YES
+CHILD_NODE_BRIDGE_EXIT_OBSERVED=YES
+PROVIDER_CONNECT_ATTEMPT_OBSERVED=YES
+PROVIDER_SESSION_ESTABLISHED_OBSERVED=NO
+FIRST_SYNTHETIC_AUDIO_SENT_OBSERVED=NO
+END_AUDIO_OR_TURN_COMMIT_OBSERVED=NO
+FIRST_INPUT_TRANSCRIPTION_EVENT_OBSERVED=NO
+FIRST_PROVIDER_OUTPUT_EVENT_OBSERVED=NO
+PROVIDER_ERROR_CLASS=SANITIZED_BRIDGE_ERROR_CLASS_NOT_RETAINED_BY_DRIVER
+WS_OR_STREAM_CLOSE_CLASS=UNKNOWN_NOT_DURABLY_OBSERVED
+TERMINAL_COMPLETION_MARKER_EXPECTED=YES
+TERMINAL_COMPLETION_MARKER_EMITTED=YES
+EARLIEST_MISSING_OR_FAILED_BOUNDARY=PROVIDER_SESSION_ESTABLISHMENT
+QUALIFICATION_TERMINAL=FAIL_SESSION_SETUP
+```
+
+The only emitted qualification output was sanitized structural accounting:
+
+```text
+INPUT_TRANSCRIPTION_HINT=en-US;ja-JP
+INPUT_TRANSCRIPTION_HINT_CONFIGURED=YES
+PROVIDER_SESSION_ESTABLISHED=NO
+EN_TRANSCRIPTION_EVENT_SEEN=NO
+JA_TRANSCRIPTION_EVENT_SEEN=NO
+EN_LANGUAGE_EXPECTATION_MET=UNKNOWN
+JA_LANGUAGE_EXPECTATION_MET=UNKNOWN
+T_AUDIO_INPUT_COMMIT_OR_TURN_END=UNKNOWN
+T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=UNKNOWN
+T_PROVIDER_READY=UNKNOWN
+T_PROVIDER_FIRST_OUTPUT=UNKNOWN
+ASSISTANT_OUTPUT_EVENT_SEEN=NO
+QUALIFICATION_TERMINAL=FAIL_SESSION_SETUP
+```
+
+`CLEAN_CHILD_EXIT=UNKNOWN_NOT_EMITTED_BY_THIS_CONSUMED_DRIVER_OUTPUT`; it is
+not inferred. No transcript, audio, provider payload, credential, auth header,
+device identifier or private data was printed or retained. The bridge error's
+enum was also not retained, so its exact provider/config/connect subcause
+cannot be distinguished after this single session. This is not evidence of a
+Gemini model/configuration failure: the supported failed boundary is provider
+session establishment, before synthetic audio or provider events.
+
+Codex adjudication: no product/runtime repair, deployment, firmware action,
+provider retry or physical action is justified. The deployed product remains
+the reviewed `b0606b6beb22a21b49570c17c323a64d486c38c9` candidate with approved
+Gemini configuration and read-only secret mount. The one-session authority is
+consumed; further provider diagnosis requires separate explicit authority. No
+blind retry or physical acceptance request is made.
