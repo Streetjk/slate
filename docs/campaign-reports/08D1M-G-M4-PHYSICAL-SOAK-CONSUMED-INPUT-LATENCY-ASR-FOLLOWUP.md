@@ -356,3 +356,45 @@ M4_BILINGUAL_ASR_LANGUAGE_DISAMBIGUATION=READY
 No firmware, Wi-Fi, deployment, credential, or production state was changed during ingestion. Current accepted runtime remains `slate:m4-observability-07248b6`; Slate/MySQL health remains `200,200` / healthy with restart count `0`; the accepted firmware app identity remains unchanged at `4ea31710c6dfd5bff025b5282f2dd5edd49117eacfe4161988dcde0df820c298`.
 
 The existing progressive-lag/freeze repair cannot be closed from this capture because freeze, exit, bubble, kana, and audio acceptance are unknown. No immediate physical retry is requested. Continue provider-disabled timing diagnosis and qualify the minimum bilingual ASR candidate under the established AGY and Grok 4.6 review loop.
+
+## Safe qualification and exact review — b0606b6
+
+The evidence justified two minimum-footprint backend changes: a provider-supported bilingual input-transcription hint, and sanitized timing boundaries for future authorized sessions. AGY `gemini-3.8-flash-high` implemented both; the accepted Grok P1 repair removed the misleading `T_PROVIDER_INPUT_TRANSCRIPTION_FINAL` alias from `turnComplete`. The existing `T_TRANSCRIPT_FINALIZED` marker remains the turn-complete boundary, while input-transcription finality remains unavailable unless the provider emits a distinct supported signal.
+
+```text
+SOURCE_COMMIT=b0606b6beb22a21b49570c17c323a64d486c38c9
+PARENT_COMMIT=97711c48312d4f3da94519a371a07a38c7f50ab6
+AGY_IMPLEMENTER=gemini-3.8-flash-high
+AGY_SCOPE=MINIMUM_BILINGUAL_ASR_HINT_PLUS_SANITIZED_INPUT_BOUNDARY_MARKERS
+CHANGED_RUNTIME_PATHS=GEMINI_DIRECT_SDK;GEMINI_NODE_BRIDGE;XIAOZHI_INPUT_TIMING
+INPUT_TRANSCRIPTION_HINT=en-US;ja-JP_BCP47_LIST
+INPUT_FINAL_MARKER=UNAVAILABLE_NOT_CLAIMED
+PROVIDER_MODEL_AUTH=UNCHANGED
+FIRMWARE=UNCHANGED
+FOCUSED_VALIDATION=PASS_74;SKIP_5_OPTIONAL_PROVIDER_DISABLED_HARNESS;FAIL_0
+TYPECHECK=PASS
+LINT=PASS
+FORMAT=PASS_IMPACTED_TYPESCRIPT
+PRIVACY_SECRET_SCAN=PASS_NO_SECRET_ASSIGNMENTS_OR_PAYLOAD_LOGGING
+GIT_DIFF_CHECK=PASS
+ARM64_IMAGE_BUILD=PASS
+ARM64_IMAGE_ID=sha256:36131bdcc39adca1975dc782c8e5e56e2b35fec87e59f76ae1daba2f5fc94fd7
+EXACT_INDEPENDENT_REVIEWER=GROK_4_6
+EXACT_INDEPENDENT_REVIEW_COMMAND=grok -m grok-4.6
+EXACT_REVIEW_TARGET=b0606b6beb22a21b49570c17c323a64d486c38c9
+EXACT_REVIEW_STATUS=PASS
+EXACT_REVIEW_BLOCKING_FINDINGS=0
+EXACT_REVIEW_P0=0
+EXACT_REVIEW_P1=0
+EXACT_REVIEW_P2=0
+EXACT_REVIEW_SECURITY=0
+PROVIDER_CALL_THIS_STAGE=0
+PRODUCTION_DEPLOYMENT_THIS_STAGE=NO
+FIRMWARE_FLASH_THIS_STAGE=NO
+```
+
+The timing additions are structural only: `T_AUDIO_INPUT_COMMIT_OR_TURN_END` is emitted at client listen-stop before `endAudio`; `T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL` is emitted on the first nonblank provider input-transcription fragment; `T_BACKEND_USER_TRANSCRIPT_FLUSH` and `T_USER_BUBBLE_EVENT_POSTED` are emitted synchronously when the backend sends the `stt` event. `T_LAST_MEANINGFUL_MIC_FRAME_OR_VAD_END`, `T_PROVIDER_INPUT_TRANSCRIPTION_FINAL`, and `T_USER_BUBBLE_FIRST_VISIBLE` remain unavailable rather than being inferred.
+
+### Exact remaining authority boundary
+
+All safe provider-disabled implementation, validation, privacy scanning, build, freeze and independent review work is exhausted. The new image/source identity cannot be used as the currently accepted production identity without a fresh bounded authorization for the changed backend deployment and an authorized provider qualification session. No deploy, restart, firmware flash, credential/configuration change or physical retry was performed. The next action is to obtain only that exact new backend/provider qualification authority; after it is granted, deploy/requalify and rearm the observer before any physical acceptance request.
