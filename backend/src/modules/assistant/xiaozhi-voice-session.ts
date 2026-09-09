@@ -474,7 +474,6 @@ export class XiaozhiVoiceSession {
       }
 
       if (message.serverContent?.turnComplete) {
-        this.timing.mark('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL');
         this.flushPendingTranscripts();
       }
 

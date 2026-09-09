@@ -2786,7 +2786,7 @@ describe('XiaozhiVoiceSession', () => {
         expect(logs.filter((l) => l === 'T_BACKEND_USER_TRANSCRIPT_FLUSH=YES')).toHaveLength(1);
         expect(logs.filter((l) => l === 'T_USER_BUBBLE_EVENT_POSTED=YES')).toHaveLength(1);
 
-        // Provider turnComplete -> T_PROVIDER_INPUT_TRANSCRIPTION_FINAL
+        // Provider turnComplete -> T_TRANSCRIPT_FINALIZED emitted; input-final remains unavailable
         expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES');
         liveEvent?.({
           message: {
@@ -2795,25 +2795,15 @@ describe('XiaozhiVoiceSession', () => {
             },
           } as never,
         });
-        expect(logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES')).toHaveLength(
-          1
-        );
-
-        // Duplicate turnComplete must not re-emit
-        liveEvent?.({
-          message: {
-            serverContent: {
-              turnComplete: true,
-            },
-          } as never,
-        });
-        expect(logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES')).toHaveLength(
-          1
-        );
+        expect(logs).toContain('T_TRANSCRIPT_FINALIZED=YES');
+        expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES');
+        expect(session.getTimingTrace().has('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(false);
 
         // Verify ordering:
-        // T_DEVICE_LISTEN_START <= T_AUDIO_INPUT_COMMIT_OR_TURN_END <= T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL
-        // <= T_BACKEND_USER_TRANSCRIPT_FLUSH <= T_PROVIDER_INPUT_TRANSCRIPTION_FINAL
+        // T_DEVICE_LISTEN_START precedes all subsequent stages.
+        // T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL precedes or coincides with T_BACKEND_USER_TRANSCRIPT_FLUSH.
+        // T_BACKEND_USER_TRANSCRIPT_FLUSH and T_USER_BUBBLE_EVENT_POSTED are synchronous (identical timestamps).
+        // Neither stop-before-partial nor partial-before-stop is encoded as a rigid real-world constraint.
         const getMs = (stage: string) => {
           const entry = logs.find((l) => l.startsWith(`${stage}_MS=`));
           expect(entry).toBeDefined();
@@ -2827,17 +2817,19 @@ describe('XiaozhiVoiceSession', () => {
         const tTranscriptPartial = getMs('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL');
         const tTranscriptFlush = getMs('T_BACKEND_USER_TRANSCRIPT_FLUSH');
         const tBubblePosted = getMs('T_USER_BUBBLE_EVENT_POSTED');
-        const tTranscriptFinal = getMs('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL');
+        const tTranscriptFinalized = getMs('T_TRANSCRIPT_FINALIZED');
 
         expect(tListenStart).toBeLessThanOrEqual(tInputCommit);
-        expect(tInputCommit).toBeLessThanOrEqual(tTranscriptPartial);
+        expect(tListenStart).toBeLessThanOrEqual(tTranscriptPartial);
         expect(tTranscriptPartial).toBeLessThanOrEqual(tTranscriptFlush);
         expect(tTranscriptFlush).toBe(tBubblePosted);
-        expect(tTranscriptFlush).toBeLessThanOrEqual(tTranscriptFinal);
+        expect(tTranscriptFlush).toBeLessThanOrEqual(tTranscriptFinalized);
 
         // Verify unavailable markers are NOT claimed
+        expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES');
         expect(logs).not.toContain('T_USER_BUBBLE_FIRST_VISIBLE=YES');
         expect(logs).not.toContain('T_LAST_MEANINGFUL_MIC_FRAME_OR_VAD_END=YES');
+        expect(session.getTimingTrace().has('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(false);
         expect(session.getTimingTrace().has('T_USER_BUBBLE_FIRST_VISIBLE')).toBe(false);
         expect(session.getTimingTrace().has('T_LAST_MEANINGFUL_MIC_FRAME_OR_VAD_END')).toBe(false);
 
@@ -2911,7 +2903,8 @@ describe('XiaozhiVoiceSession', () => {
         expect(timing.hasForTurn(1, 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(true);
         expect(timing.hasForTurn(1, 'T_BACKEND_USER_TRANSCRIPT_FLUSH')).toBe(true);
         expect(timing.hasForTurn(1, 'T_USER_BUBBLE_EVENT_POSTED')).toBe(true);
-        expect(timing.hasForTurn(1, 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(true);
+        expect(timing.hasForTurn(1, 'T_TRANSCRIPT_FINALIZED')).toBe(true);
+        expect(timing.hasForTurn(1, 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(false);
 
         const turn1CommitMs = timing.getStageTimestamp('T_AUDIO_INPUT_COMMIT_OR_TURN_END', 1);
         expect(turn1CommitMs).toBeDefined();
@@ -2946,12 +2939,121 @@ describe('XiaozhiVoiceSession', () => {
         expect(timing.hasForTurn(2, 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(true);
         expect(timing.hasForTurn(2, 'T_BACKEND_USER_TRANSCRIPT_FLUSH')).toBe(true);
         expect(timing.hasForTurn(2, 'T_USER_BUBBLE_EVENT_POSTED')).toBe(true);
-        expect(timing.hasForTurn(2, 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(true);
+        expect(timing.hasForTurn(2, 'T_TRANSCRIPT_FINALIZED')).toBe(true);
+        expect(timing.hasForTurn(2, 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(false);
 
         const turn2CommitMs = timing.getStageTimestamp('T_AUDIO_INPUT_COMMIT_OR_TURN_END', 2);
         expect(turn2CommitMs).toBeDefined();
         // Turn 1 record is preserved intact
         expect(timing.getStageTimestamp('T_AUDIO_INPUT_COMMIT_OR_TURN_END', 1)).toBe(turn1CommitMs);
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
+
+    it('records input latency boundaries when streaming partial arrives while speaking before listen stop', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      const logs: string[] = [];
+      const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+        logs.push(String(msg));
+      });
+
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      let endAudioCalled = false;
+      const connection: GeminiLiveConnection = {
+        sendAudio: () => {},
+        sendText: () => {},
+        endAudio: () => {
+          endAudioCalled = true;
+        },
+        respondToToolCalls: () => {},
+        rejectToolCalls: () => {},
+        reconnect: async () => {},
+        close: () => {},
+      };
+
+      try {
+        const liveService = {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return connection;
+          },
+        } as never;
+
+        const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+          false
+        );
+
+        // 1. Client starts listening
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+          false
+        );
+
+        // 2. Client sends mic audio while speaking
+        await session.handleMessage(Buffer.from([1, 2, 3]), true);
+
+        // 3. Provider sends streaming partial input transcription BEFORE listen stop
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: 'Streaming query while speaking' },
+            },
+          } as never,
+        });
+
+        // Partial marker emitted immediately upon first nonblank transcription
+        expect(logs).toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=YES');
+        // Audio commit has NOT occurred yet because user is still speaking
+        expect(logs).not.toContain('T_AUDIO_INPUT_COMMIT_OR_TURN_END=YES');
+
+        // 4. Output transcription triggers early flush of user input bubble
+        liveEvent?.({
+          message: {
+            serverContent: {
+              outputTranscription: { text: 'Early assistant reply' },
+            },
+          } as never,
+        });
+        expect(logs).toContain('T_BACKEND_USER_TRANSCRIPT_FLUSH=YES');
+        expect(logs).toContain('T_USER_BUBBLE_EVENT_POSTED=YES');
+
+        // 5. User finishes speaking and device issues listen stop
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+          false
+        );
+        expect(logs).toContain('T_AUDIO_INPUT_COMMIT_OR_TURN_END=YES');
+        expect(endAudioCalled).toBe(true);
+
+        // 6. Provider turnComplete
+        liveEvent?.({
+          message: {
+            serverContent: {
+              turnComplete: true,
+            },
+          } as never,
+        });
+        expect(logs).toContain('T_TRANSCRIPT_FINALIZED=YES');
+        expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES');
+        expect(session.getTimingTrace().has('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(false);
+
+        // Verify partial occurred BEFORE commit (demonstrating stop-before-partial is not required)
+        const getMs = (stage: string) => {
+          const entry = logs.find((l) => l.startsWith(`${stage}_MS=`));
+          expect(entry).toBeDefined();
+          return Number(entry!.slice(`${stage}_MS=`.length));
+        };
+
+        const tListenStart = getMs('T_DEVICE_LISTEN_START');
+        const tPartial = getMs('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL');
+        const tCommit = getMs('T_AUDIO_INPUT_COMMIT_OR_TURN_END');
+
+        expect(tListenStart).toBeLessThanOrEqual(tPartial);
+        expect(tPartial).toBeLessThanOrEqual(tCommit);
       } finally {
         loggerSpy.mockRestore();
       }
@@ -3101,11 +3203,11 @@ describe('XiaozhiVoiceSession', () => {
           'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL',
           'T_BACKEND_USER_TRANSCRIPT_FLUSH',
           'T_USER_BUBBLE_EVENT_POSTED',
-          'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL',
         ];
         for (const stage of inputStages) {
           expect(logs.filter((line) => line === `${stage}=YES`)).toHaveLength(NUM_TURNS);
         }
+        expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES');
 
         for (const log of logs) {
           expect(log).not.toContain('User turn');
