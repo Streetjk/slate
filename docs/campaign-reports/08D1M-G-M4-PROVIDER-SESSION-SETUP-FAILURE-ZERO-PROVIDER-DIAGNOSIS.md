@@ -65,6 +65,175 @@ It does **not** prove:
 
 The exact sanitized provider/config/connect sub-error was not retained, so root cause remains unresolved.
 
+## Zero-provider setup diagnosis and reviewed compatibility repair — 2026-09-10
+
+The live PR was reconciled before this diagnosis. The consumed provider attempt
+was not retried and no physical device action or production restart was used.
+
+```text
+LIVE_PR_HEAD_AT_DIAGNOSIS=97b84394d20f386b2fd821552735440e5f0e443b
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+PROVIDER_CALLS_DURING_DIAGNOSIS=0
+AUTHORIZATION_PROVENANCE=EXPLICIT_OPERATOR_INSTRUCTION_AVAILABLE
+```
+
+### Exact setup reconstruction
+
+The durable last-known generic setup is `1cfb1a2`; its immediate instrumentation
+descendant `97711c4` retained the same provider setup. The deployed `b0606b6`
+candidate added the same bilingual field in both the Node bridge and direct SDK
+paths. The exact source diff is:
+
+```text
+LAST_KNOWN_SESSION_ESTABLISHING_SOURCE=1cfb1a2
+LAST_KNOWN_SETUP_INPUT_AUDIO_TRANSCRIPTION={}
+CURRENT_DEPLOYED_SETUP_INPUT_AUDIO_TRANSCRIPTION={languageCodes:["en-US","ja-JP"]}
+PROVIDER_FACING_SETUP_DIFF=ONLY_inputAudioTranscription.languageCodes_ADDED_RELATIVE_TO_1cfb1a2
+NON_PROVIDER_INSTRUMENTATION_DIFF=T_AUDIO_INPUT_COMMIT_OR_TURN_END;T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL;T_BACKEND_USER_TRANSCRIPT_FLUSH;T_USER_BUBBLE_EVENT_POSTED
+PROVIDER_FACING_SETUP_DIFF_b0606b6_vs_97711c4=NONE
+```
+
+The instrumentation additions are in `xiaozhi-voice-session.ts`; they do not
+change the provider setup object. This mechanically isolates the bilingual
+field as the only material provider-facing difference relative to the generic
+session-establishing baseline.
+
+### Provider-disabled actual connect-object capture
+
+The actual `ai.live.connect` call in the Node bridge was intercepted with a
+fake SDK module and no network access. Only structural summaries were retained:
+
+```text
+CAPTURE_MODE=PROVIDER_DISABLED_FAKE_SDK
+MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+RESPONSE_MODALITIES=["AUDIO"]
+INPUT_AUDIO_TRANSCRIPTION={languageCodes:["en-US","ja-JP"]}
+OUTPUT_AUDIO_TRANSCRIPTION=OBJECT_PRESENT_EMPTY
+SPEECH_CONFIG=ABSENT
+REALTIME_INPUT_CONFIG=ABSENT
+ACTIVITY_CONFIG=ABSENT
+SYSTEM_INSTRUCTION=STRING_PRESENT_BYTES_ONLY
+TOOLS=ARRAY_PRESENT_FUNCTION_DECLARATION_SHAPE_ONLY
+UNDEFINED_CONFIG_KEYS=NONE
+NULL_CONFIG_KEYS=NONE
+NETWORK_CALL=NO
+```
+
+The provider-disabled serialization matrix was also executed:
+
+```text
+CASE_1_INPUT_AUDIO_TRANSCRIPTION={}
+CASE_2_INPUT_AUDIO_TRANSCRIPTION={languageCodes:["en-US","ja-JP"]}
+CASE_3_INPUT_AUDIO_TRANSCRIPTION={languageCodes:[]}
+CASE_SERIALIZATIONS_DISTINCT=YES
+SERVER_ACCEPTANCE=NOT_TESTED
+```
+
+### Model-specific capability audit
+
+The pinned `@google/genai` 2.20.0 declaration exposes the generic
+`AudioTranscriptionConfig.languageCodes` member. That proves SDK schema
+availability only. The official Live transcription documentation documents
+language-code hints for Gemini 3.5 Transcribe Live, while the official
+Gemini 2.5 Flash Native Audio preview model page does not document this field
+for the current model. Therefore:
+
+```text
+SDK_SCHEMA_SUPPORTS_LANGUAGE_CODES=YES_GENERIC_TYPE_ONLY
+CURRENT_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+CURRENT_MODEL_DOCUMENTS_LANGUAGE_CODES_SUPPORT=NO_OFFICIAL_MODEL_SPECIFIC_DOCUMENTATION_FOUND
+CURRENT_MODEL_EXPLICITLY_REJECTS_LANGUAGE_CODES=NO_OFFICIAL_MODEL_SPECIFIC_ASSERTION
+CURRENT_MODEL_SUPPORT_STATUS=UNDOCUMENTED
+LANGUAGE_CODES_HYPOTHESIS=STRONGLY_IMPLICATED_BY_ONLY_PROVIDER_SETUP_DIFF_AND_PRE_AUDIO_FAILURE;NOT_SERVER_PROVEN
+BILINGUAL_ASR_STATUS=UNRESOLVED_FOR_CURRENT_GEMINI25_MODEL
+```
+
+References used for the capability distinction: [Google Live API transcription](https://ai.google.dev/gemini-api/docs/live-api/live-transcribe), [Gemini 2.5 Flash Native Audio model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-native-audio-preview-12-2025), and [Live API capabilities](https://ai.google.dev/gemini-api/docs/live-api/capabilities).
+
+### Sanitized failure-class preservation
+
+The bridge/harness boundary now retains exactly one of:
+
+```text
+AUTH
+MODEL_NOT_FOUND
+UNSUPPORTED_CONFIG
+INVALID_ARGUMENT
+QUOTA
+NETWORK
+TLS
+PROTOCOL
+UNKNOWN_SANITIZED
+```
+
+Unknown values, raw error strings and bridge codes that cannot prove a finer
+class map to `UNKNOWN_SANITIZED`. Raw provider error text, payloads, secrets,
+auth headers, identifiers, transcripts and audio are discarded. Existing
+terminal precedence and exactly-one-terminal accounting remain unchanged.
+
+### Minimum repair, validation and freeze
+
+Because the field is undocumented for the current Gemini 2.5 model and the
+failure occurred before audio/session establishment, the minimum reviewed
+candidate restores the generic setup in both production paths:
+
+```text
+backend/src/modules/assistant/gemini-live-node-bridge-runtime.mjs: inputAudioTranscription={}
+backend/src/modules/assistant/gemini-live.service.ts: inputAudioTranscription={}
+```
+
+No model, provider, auth, credential, billing, private-data, tool, audio,
+turn-order, stale-generation, queue or timing behavior was changed. The
+bilingual ASR question remains open; the current model was not silently
+switched or globally forced to Japanese.
+
+```text
+AGY_IMPLEMENTATION_MODEL=gemini-3.8-flash-high
+AGY_IMPLEMENTATION=PASS_MINIMUM_SCOPE
+HARNESS_TESTS=PASS_18
+ASSISTANT_FOCUSED_TESTS=PASS_86;SKIP_5_ENVIRONMENT_GATED;FAIL_0
+TYPECHECK=PASS
+LINT=PASS
+FORMAT=PASS_IMPACTED_TYPESCRIPT
+GIT_DIFF_CHECK=PASS
+PRODUCTION_SECRET_SCAN=PASS
+PRIVACY_REDACTION_TESTS=PASS
+SOURCE_FREEZE_COMMIT=f0dfdad0b4065e48ff8bc82aa505706d40fd9f4c
+ARM64_BUILD=PASS
+ARM64_IMAGE_ID=sha256:b271eb8bfcb7a4d04d602d3974ceeb83c928e72721c67fda19c1c2e822a646d5
+ARM64_IMAGE_SIZE_BYTES=1130803552
+FIRMWARE_CHANGED=NO
+FIRMWARE_FLASHED=NO
+PRODUCTION_DEPLOYMENT=NO
+PROVIDER_QUALIFICATION=NO_NEW_SESSION
+EXACT_INDEPENDENT_REVIEWER=GROK_4_6
+EXACT_INDEPENDENT_REVIEW_COMMAND=grok -m grok-4.6
+EXACT_REVIEW_TARGET=f0dfdad0b4065e48ff8bc82aa505706d40fd9f4c
+EXACT_REVIEW_STATUS=PASS
+EXACT_REVIEW_BLOCKING_FINDINGS=0
+EXACT_REVIEW_P0=0
+EXACT_REVIEW_P1=0
+EXACT_REVIEW_P2=0
+EXACT_REVIEW_SECURITY=0
+```
+
+The candidate is fully qualified and independently reviewed, but it is not the
+deployed product identity. The existing deployment/provider authority does not
+cover this changed candidate, and this directive grants no new provider or
+deployment action.
+
+```text
+CURRENT_PRODUCT_DEPLOYED_SOURCE=b0606b6beb22a21b49570c17c323a64d486c38c9
+CURRENT_PRODUCT_DEPLOYED_IMAGE=sha256:177c3ed9f369eb4cf675bc907584028bb5e3787d4c0ee6daef835d6b2e964e14
+CANDIDATE_SOURCE=f0dfdad0b4065e48ff8bc82aa505706d40fd9f4c
+CANDIDATE_IMAGE=sha256:b271eb8bfcb7a4d04d602d3974ceeb83c928e72721c67fda19c1c2e822a646d5
+NEW_DEPLOYMENT_AUTHORITY=REQUIRED
+NEW_PROVIDER_SESSION_AUTHORITY=REQUIRED
+PHYSICAL_ACTION_REQUESTED=NO
+```
+
 ## Highest-priority compatibility hypothesis
 
 The current product model is:
