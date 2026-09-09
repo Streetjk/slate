@@ -43,7 +43,9 @@ export class DeviceFirmwareController {
   @UseGuards(DeviceAuthGuard)
   @Post('devices/current/poll')
   async poll(@CurrentDevice() dev: DeviceContext, @Body() body: PollDto): Promise<DeviceStateT> {
-    return this.devices.poll(dev.deviceId, body.telemetry);
+    const result = await this.devices.poll(dev.deviceId, body.telemetry);
+    this.logger.log('DEVICE_AUTHENTICATED_POLL_RESULT=PASS');
+    return result;
   }
 
   // The firmware already owns the device secret. Return only the Slate voice

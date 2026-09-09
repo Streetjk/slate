@@ -14,6 +14,7 @@ from serial import SerialException
 
 
 VOICE_PATTERNS = {
+    "DEVICE_AUTHENTICATED_POLL_RESULT": r"PASS",
     "VOICE_CONFIG_REQUEST_START": r"YES",
     "VOICE_CONFIG_RESULT": r"(?:2xx|4xx|5xx|transport_error)",
     "VOICE_CONFIG_PARSE": r"(?:PASS|FAIL_[A-Z0-9_]+)",
@@ -134,7 +135,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE '(VOICE_[A-Z0-9_]+|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
 """
     try:
         completed = subprocess.run(
@@ -434,6 +435,34 @@ def self_test() -> int:
     assert extract_voice_events("UI_EVENT_QUEUE_WAITING=12abc") == []
     assert extract_voice_events("BRIDGE_STDIO_DRAIN_PENDING=MAYBE") == []
     assert extract_voice_events("VOICE_TURN_START=TRUE") == []
+
+    # Verify DEVICE_AUTHENTICATED_POLL_RESULT accepts exact PASS marker only
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=PASS") == [
+        {"event": "DEVICE_AUTHENTICATED_POLL_RESULT", "value": "PASS"}
+    ]
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=FAIL") == []
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=REJECT") == []
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=PASS_EXTRA") == []
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=PASSWORD") == []
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=2xx") == []
+    assert extract_voice_events("DEVICE_AUTHENTICATED_POLL_RESULT=") == []
+    assert extract_voice_events("PREFIX_DEVICE_AUTHENTICATED_POLL_RESULT=PASS") == []
+
+    # Verify privacy preservation: no device ID, MAC, token, or payload retention
+    poll_leak_line = (
+        "DEVICE_AUTHENTICATED_POLL_RESULT=PASS "
+        "deviceId=device-123 mac=AA:BB:CC:DD:EE:FF ip=192.168.1.1 ssid=HomeWiFi "
+        "token=secret_device_token payload=sensitive_content"
+    )
+    poll_extracted = extract_voice_events(poll_leak_line)
+    assert poll_extracted == [{"event": "DEVICE_AUTHENTICATED_POLL_RESULT", "value": "PASS"}]
+    poll_dumped = json.dumps(poll_extracted)
+    assert "device-123" not in poll_dumped
+    assert "AA:BB:CC:DD:EE:FF" not in poll_dumped
+    assert "192.168.1.1" not in poll_dumped
+    assert "HomeWiFi" not in poll_dumped
+    assert "secret_device_token" not in poll_dumped
+    assert "sensitive_content" not in poll_dumped
 
     print("slate-m4-sanitized-observer-v2: PASS")
     return 0
