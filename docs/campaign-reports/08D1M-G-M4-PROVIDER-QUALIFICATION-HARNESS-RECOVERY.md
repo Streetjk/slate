@@ -222,3 +222,98 @@ Rules:
 ## Immediate next action
 
 Reconcile the live branch and exact deployed runtime, then diagnose and harden the provider qualification harness entirely provider-disabled. Continue until either the ambiguity is resolved without another live session or a single fully bounded, mechanically self-evidencing provider qualification session is genuinely the only remaining useful node.
+
+## Provider-disabled recovery checkpoint — 2026-09-09
+
+```text
+LIVE_PR_HEAD_AT_RECONCILIATION=10d4d1620ca77dd19be014227a8706666a517d56
+HARNESS_SOURCE_COMMIT=1edf33e578030c60d12a20b04ea271b58266195d
+HARNESS_FILES=scripts/slate-m4-provider-qualification-harness.mjs;scripts/slate-m4-provider-qualification-harness.test.mjs
+HARNESS_REVIEW_STATUS=PASS_GROK_4_6
+HARNESS_REVIEW_FINDINGS=P0_0_P1_0_P2_0_SECURITY_0
+HARNESS_DETERMINISTIC_TESTS=PASS_15
+DEPLOYED_PRODUCT_SOURCE=b0606b6beb22a21b49570c17c323a64d486c38c9
+DEPLOYED_PRODUCT_CHANGED_SINCE_REVIEW=NO
+PROVIDER_SESSION_USED_FOR_RECOVERY=NO
+```
+
+The consumed attempt was reconstructed only from durable GitHub evidence. The
+exact inline driver source and process-level observer record were not retained,
+so unavailable milestones remain `UNKNOWN_NOT_DURABLY_OBSERVED`; no provider
+call was made to fill them in:
+
+```text
+QUALIFICATION_DRIVER_IDENTITY=UNAVAILABLE_NOT_DURABLY_RECORDED
+QUALIFICATION_DRIVER_COMMAND_CLASS=DIRECT_SYNTHETIC_BRIDGE_DRIVER_REPORT_SUPPORTED
+QUALIFICATION_DRIVER_SOURCE_OR_INLINE_SCRIPT_IDENTITY=UNAVAILABLE_NOT_DURABLY_RECORDED
+DRIVER_START_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+DRIVER_PROCESS_EXIT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+DRIVER_EXIT_CLASS=UNKNOWN_NOT_DURABLY_OBSERVED
+DRIVER_TIMEOUT_OR_KILL_CLASS=UNKNOWN_NOT_DURABLY_OBSERVED
+CHILD_NODE_BRIDGE_START_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+CHILD_NODE_BRIDGE_EXIT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+PROVIDER_CONNECT_ATTEMPT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+PROVIDER_SESSION_ESTABLISHED_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+FIRST_SYNTHETIC_AUDIO_SENT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+END_AUDIO_OR_TURN_COMMIT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+FIRST_INPUT_TRANSCRIPTION_EVENT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+FIRST_PROVIDER_OUTPUT_EVENT_OBSERVED=UNKNOWN_NOT_DURABLY_OBSERVED
+PROVIDER_ERROR_CLASS=UNKNOWN_NOT_DURABLY_OBSERVED
+WS_OR_STREAM_CLOSE_CLASS=UNKNOWN_NOT_DURABLY_OBSERVED
+TERMINAL_COMPLETION_MARKER_EXPECTED=UNKNOWN_NOT_DURABLY_OBSERVED
+TERMINAL_COMPLETION_MARKER_EMITTED=NO
+EARLIEST_MISSING_OR_FAILED_BOUNDARY=DRIVER_TERMINAL_ACCOUNTING_AND_SANITIZED_COMPLETION
+```
+
+The durable evidence supports an ambiguous direct-driver termination, not a
+provider failure. It does not distinguish marker design, buffering, child
+liveness, provider setup, synthetic audio delivery, swallowed provider errors,
+or SSH/session interruption; those remain explicitly unknown.
+
+The recovery harness is provider-disabled and allowlist-sanitizes structural
+events. It requires the exact EN turn followed by the exact JA turn, both audio
+and end markers, input transcription and language expectation, provider output,
+turn completion, a clean child exit, and rejects duplicate or post-exit events.
+Every CLI/library path emits one terminal class and failure paths exit nonzero.
+The 15 focused tests cover success, all required failure classes, malformed
+input, signal/crash buffering, hint/language binding, child lifecycle and
+privacy redaction. `node --check`, focused tests and `git diff --check` passed.
+
+Grok 4.6 independently reviewed the exact staged harness and tests at the
+checkpoint above and returned:
+
+```text
+VERDICT=PASS
+P0=0 P1=0 P2=0 SECURITY=0
+```
+
+The direct synthetic bridge route is the narrowest eventual route currently
+available without private data or a physical device. It can prove bridge
+startup, provider connection/session setup, the `en-US;ja-JP` hint reaching the
+driver boundary, input-transcription events, provider readiness/output and
+terminal accounting. It cannot prove Slate WebSocket authentication/backend
+transcript flush, user-bubble timing, or firmware UI/audio behaviour when it
+bypasses the Slate session. Any eventual live qualification must label those
+limits and must not claim backend timing from direct-driver evidence.
+
+Zero-provider recovery is exhausted. A second live provider session is now the
+sole remaining useful node for testing the deployed provider behaviour and
+bilingual input hypothesis, but it is not authorized by the consumed one-session
+budget. No physical action, product redeploy, firmware flash or provider retry
+was performed in this checkpoint. The exact bounded request is:
+
+```text
+QUALIFICATION_HARNESS_SOURCE_SHA=1edf33e578030c60d12a20b04ea271b58266195d
+QUALIFICATION_HARNESS_REVIEW_STATUS=PASS_GROK_4_6
+DEPLOYED_PRODUCT_SOURCE=b0606b6beb22a21b49570c17c323a64d486c38c9
+DEPLOYED_PRODUCT_CHANGED_SINCE_REVIEW=NO
+PROVIDER_SESSION_MAX_REQUESTED=1
+EXACT_HYPOTHESIS=THE_RECOVERED_FAIL_CLOSED_ROUTE_WILL_ACCOUNT_FOR_ONE_SYNTHETIC_EN_JA_SESSION_AND_REVEAL_WHETHER_INPUT_TRANSCRIPTION_HINT_AND_INPUT_LATENCY_BOUNDARIES_ARE_PRESENT
+EXACT_SUCCESS_PREDICATE=ONE_TERMINAL_QUALIFICATION_TERMINAL_PASS_WITH_CLEAN_CHILD_EXIT;EN_TURN_1_AND_JA_TURN_2_INPUT_EVENTS_AND_LANGUAGE_EXPECTATIONS;PROVIDER_OUTPUT_AND_TURN_COMPLETION_FOR_BOTH;NO_TIMEOUT_ERROR_MALFORMED_DUPLICATE_OR_POST_EXIT_EVENT
+EXACT_FAILURE_PREDICATE=ONE_TERMINAL_SANITIZED_NONPASS_CLASS_FOR_ANY_MISSING_CONFIG_CONNECT_SESSION_AUDIO_INPUT_LANGUAGE_OUTPUT_PROTOCOL_TIMEOUT_OR_DRIVER_BOUNDARY
+EXPECTED_SANITIZED_TERMINAL_MARKER=QUALIFICATION_TERMINAL=PASS_OR_ONE_EXACT_FAIL_CLASS
+EN_JA_TEST_SCOPE=ONE_SYNTHETIC_NON_SENSITIVE_EN_THEN_JA_SESSION;HINT=en-US;ja-JP;NO_TRANSLATION_OR_TRANSCRIPT_REWRITE
+PRIVATE_DATA_SCOPE=NONE_SYNTHETIC_ONLY
+PHYSICAL_DEVICE_ACTION=NONE
+FIRMWARE_ACTION=NONE
+```
