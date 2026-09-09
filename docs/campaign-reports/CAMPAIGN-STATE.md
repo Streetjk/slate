@@ -3,7 +3,7 @@
 ## Authoritative current frontier — exact backend deployed; single provider qualification consumed ambiguously; no retry authorized
 
 ```text
-CURRENT_HEAD=947fab8f30e40bd22cbe847732a26ae10619c4d7
+CURRENT_HEAD=1421aff7f6b41fdc9c128bac3367d977ff5580ee
 CURRENT_STAGE=M4_EXACT_BACKEND_DEPLOYED_ONE_PROVIDER_QUALIFICATION_AMBIGUOUS_NO_RETRY
 CAMPAIGN=8D1M_G_VOICE_WORKS_LATENCY_TEXT_AUDIO_RECOVERY
 MODE=FRONTIER_DRIVEN_LONGRUN
