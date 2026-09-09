@@ -317,3 +317,10 @@ PRIVATE_DATA_SCOPE=NONE_SYNTHETIC_ONLY
 PHYSICAL_DEVICE_ACTION=NONE
 FIRMWARE_ACTION=NONE
 ```
+
+After publishing this checkpoint, the existing observer was rearmed without
+touching the product or device. Its self-test passed and the process is running
+with a sanitized serial connection. The observer's structural snapshot reports
+remote Slate healthy with restart count 0, MySQL healthy with restart count 0,
+and both local/public health probes available where applicable. No raw observer
+content is retained.
