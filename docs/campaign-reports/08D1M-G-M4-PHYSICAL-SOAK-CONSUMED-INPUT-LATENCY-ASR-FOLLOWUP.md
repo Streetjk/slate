@@ -428,3 +428,99 @@ NEXT_ACTION=WAIT_FOR_EXACT_NEW_BACKEND_DEPLOYMENT_AND_PROVIDER_QUALIFICATION_AUT
 ```
 
 No physical Voice retry, reset, reflash, redeploy, provider call, credential change, Wi-Fi change, pairing change, or Gemini model/provider/auth change occurred after the consumed session.
+
+## Exact authorized backend deployment and one-session qualification boundary — 2026-09-09
+
+The live PR was independently reconciled before activation:
+
+```text
+LIVE_PR_HEAD=947fab8f30e40bd22cbe847732a26ae10619c4d7
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+AUTHORIZED_SOURCE_COMMIT=b0606b6beb22a21b49570c17c323a64d486c38c9
+AUTHORIZED_ARM64_IMAGE_ID=sha256:36131bdcc39adca1975dc782c8e5e56e2b35fec87e59f76ae1daba2f5fc94fd7
+```
+
+The exact ARM64 candidate was loaded and only the Slate container was recreated.
+The first Compose activation was rejected by the deployed fail-closed qualifier
+because the base Compose file did not carry the already-approved `GEMINI_*`
+environment block. No provider session was started during that rejected
+configuration state. The container was then recreated again with the exact
+approved non-secret settings and the pre-existing read-only protected secret
+mount. MySQL was not recreated and no firmware action occurred.
+
+```text
+INITIAL_CONFIG_QUALIFICATION=FAIL_CLOSED_MISSING_APPROVED_GEMINI_KEYS
+CONFIG_RESTORE_SCOPE=EXACT_APPROVED_SETTINGS_ONLY
+CONFIG_RESTORE=PASS
+SLATE_CONTAINER_RECREATED=YES
+MYSQL_RECREATED=NO_NO_DEPS_SCOPE
+AUTHORIZED_IMAGE_ACTIVE=YES
+REMOTE_LOADED_IMAGE_ID=sha256:177c3ed9f369eb4cf675bc907584028bb5e3787d4c0ee6daef835d6b2e964e14
+REMOTE_IMAGE_ID_NOTE=DOCKER_LOAD_REPRESENTATION_ID;EXPECTED_LOCAL_CONTENT_ID_RECORDED_ABOVE
+GEMINI_AUTH_MODE=developer_api_key
+GEMINI_DEVELOPER_API_KEY_ENABLED=true
+GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true
+GEMINI_LIVE_RUNTIME=node_bridge
+GEMINI_LIVE_MODEL=gemini-2.5-flash-native-audio-preview-12-2025
+GEMINI_API_KEY_FILE=/run/secrets/gemini_api_key
+GEMINI_NODE_EXECUTABLE=node
+GEMINI_NODE_BRIDGE_SCRIPT=./src/modules/assistant/gemini-live-node-bridge-runtime.mjs
+GEMINI_CONFIG_QUALIFICATION=PASS
+GEMINI_SECRET_MOUNT_READONLY=PRESENT_VALID
+SLATE_HEALTH=HEALTHY
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=HEALTHY
+MYSQL_RESTART_COUNT=0
+MYSQL_RECREATED=NO
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+FIRMWARE_CHANGED=NO
+FIRMWARE_FLASHED=NO
+NOTE4_AUTHENTICATED_POLL=PASS_OBSERVED_AFTER_DEPLOY
+OBSERVER_STATE=RUNNING_CONNECTED
+OBSERVER_SELF_TEST=PASS
+OBSERVER_RAW_CONTENT=NOT_RETAINED
+NODE_BRIDGE_SYNTAX=PASS
+```
+
+The running container source hashes for the three changed runtime paths match
+the frozen candidate source. No credential value, device identity, private
+payload, transcript or audio was printed or recorded.
+
+The single authorized synthetic EN/JA qualification attempt was started only
+after the exact config qualification passed. Its driver did not emit a
+sanitized completion record, so the session is consumed and classified
+conservatively:
+
+```text
+PROVIDER_QUALIFICATION_SESSION_ATTEMPTS=1
+PROVIDER_QUALIFICATION_SESSION_MAX=1
+PROVIDER_QUALIFICATION_RESULT=AMBIGUOUS_NO_SANITIZED_COMPLETION
+PROVIDER_SESSION_ESTABLISHED=UNKNOWN
+INPUT_TRANSCRIPTION_HINT=en-US;ja-JP
+EN_INPUT_TRANSCRIPTION=UNKNOWN
+JA_INPUT_TRANSCRIPTION=UNKNOWN
+EN_JA_LANGUAGE_DISAMBIGUATION=UNKNOWN
+PROVIDER_READY_TO_FIRST_OUTPUT_MS=UNKNOWN
+T_AUDIO_INPUT_COMMIT_OR_TURN_END=NOT_CAPTURED_BY_DIRECT_DRIVER
+T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=UNKNOWN
+T_BACKEND_USER_TRANSCRIPT_FLUSH=NOT_CAPTURED_NO_SLATE_WS_SESSION
+T_USER_BUBBLE_EVENT_POSTED=NOT_CAPTURED_NO_SLATE_WS_SESSION
+ASSISTANT_RESPONSE_CONTINUITY=UNKNOWN
+PROVIDER_ERROR=UNKNOWN
+PROVIDER_RETRY=NO_PROHIBITED
+PRIVATE_DATA_SENT=NO
+SEARCH_OR_TOOLS_USED=NO
+MICROPHONE_USED=NO
+GENERATED_AUDIO_RETAINED=NO
+```
+
+The qualification result is not treated as a PASS and no second provider
+attempt is authorized by this boundary. The exact candidate remains deployed
+because all non-provider health/configuration gates are green; further
+qualification requires a new explicit provider authority. Zero-provider work
+may continue, but no firmware flash, device reset, re-pair, Wi-Fi change,
+credential change, model/provider/auth change or private-data action is
+permitted.
