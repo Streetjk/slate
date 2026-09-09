@@ -126,7 +126,7 @@ describe('GeminiLiveService', () => {
       model: 'gemini-live-2.5-flash-native-audio',
       config: {
         responseModalities: ['AUDIO'],
-        inputAudioTranscription: { languageCodes: ['en-US', 'ja-JP'] },
+        inputAudioTranscription: {},
         outputAudioTranscription: {},
       },
     });
@@ -136,7 +136,7 @@ describe('GeminiLiveService', () => {
           inputAudioTranscription?: { languageCodes?: string[] };
         }
       )?.inputAudioTranscription?.languageCodes
-    ).toEqual(['en-US', 'ja-JP']);
+    ).toBeUndefined();
     expect(clientOptions[0]?.config).toHaveProperty('tools.0.googleSearch');
     expect(calls[0]).toEqual({
       type: 'audio',

@@ -155,7 +155,7 @@ async function openSession(frame, epochAlreadyActive = false) {
         abortSignal: abortController.signal,
         responseModalities: [Modality.AUDIO],
         systemInstruction: frame.systemInstruction,
-        inputAudioTranscription: { languageCodes: ['en-US', 'ja-JP'] },
+        inputAudioTranscription: {},
         outputAudioTranscription: {},
         tools: frame.tools,
       },

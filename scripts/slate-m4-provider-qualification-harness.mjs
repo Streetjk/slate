@@ -25,6 +25,27 @@ export const TERMINAL_CLASSES = Object.freeze([
   'DRIVER_ERROR',
 ]);
 
+export const ALLOWED_PROVIDER_ERROR_CLASSES = Object.freeze([
+  'AUTH',
+  'MODEL_NOT_FOUND',
+  'UNSUPPORTED_CONFIG',
+  'INVALID_ARGUMENT',
+  'QUOTA',
+  'NETWORK',
+  'TLS',
+  'PROTOCOL',
+  'UNKNOWN_SANITIZED',
+]);
+
+const ALLOWED_PROVIDER_ERROR_CLASS_SET = new Set(ALLOWED_PROVIDER_ERROR_CLASSES);
+
+export function sanitizeProviderErrorClass(value) {
+  if (typeof value === 'string' && ALLOWED_PROVIDER_ERROR_CLASS_SET.has(value)) {
+    return value;
+  }
+  return 'UNKNOWN_SANITIZED';
+}
+
 const TURN_COUNT = 2;
 const VALID_LANGUAGES = new Set(['en', 'ja']);
 const STRUCTURAL_TYPES = new Set([
@@ -91,7 +112,10 @@ export function sanitizeStructuralEvent(value) {
       timestampMs: isFiniteTimestamp(value.timestampMs) ? value.timestampMs : undefined,
     };
   }
-  if (type === 'provider_error') return { kind: type };
+  if (type === 'provider_error') {
+    const rawClass = value.errorClass ?? value.error_class ?? value.code ?? value.error;
+    return { kind: type, errorClass: sanitizeProviderErrorClass(rawClass) };
+  }
   if (type === 'child_exit') return { kind: type, clean: value.clean === true };
   if (type === 'timeout') return { kind: type };
   if (type === 'config_failure') return { kind: type };
@@ -121,6 +145,7 @@ function emptyState() {
     hintConfigured: undefined,
     configFailure: false,
     providerError: false,
+    providerErrorClass: undefined,
     childExited: false,
     childExitClean: false,
     childExitCount: 0,
@@ -171,6 +196,9 @@ function applyEvent(state, event) {
       break;
     case 'provider_error':
       state.providerError = true;
+      if (state.providerErrorClass === undefined) {
+        state.providerErrorClass = event.errorClass ?? 'UNKNOWN_SANITIZED';
+      }
       break;
     case 'child_exit':
       state.childExitCount += 1;
@@ -264,6 +292,7 @@ export function runQualificationReplay(events) {
     `T_PROVIDER_READY=${safeMarkerValue(state.turns[0].markers.provider_ready)}`,
     `T_PROVIDER_FIRST_OUTPUT=${safeMarkerValue(state.turns[0].markers.provider_output)}`,
     `ASSISTANT_OUTPUT_EVENT_SEEN=${state.turns.some((turn) => turn.providerOutput) ? 'YES' : 'NO'}`,
+    ...(state.providerError ? [`PROVIDER_ERROR_CLASS=${state.providerErrorClass}`] : []),
     `QUALIFICATION_TERMINAL=${state.terminal}`,
   ];
   return {
@@ -275,9 +304,31 @@ export function runQualificationReplay(events) {
       childExited: state.childExited,
       childExitClean: state.childExitClean,
       providerError: state.providerError,
+      providerErrorClass: state.providerError ? state.providerErrorClass : undefined,
       malformed: state.malformed,
     },
   };
+}
+
+export function serializeLiveConnectSetup(options = {}) {
+  const model = options.model ?? 'gemini-2.5-flash-native-audio-preview-12-2025';
+  const systemInstruction =
+    options.systemInstruction ??
+    'You are the Slate assistant for a monochrome NOTE4 device. Respond in the user language, English or Japanese. Never access, infer, or discuss private Outlook or Microsoft calendar data. Calendar requests may only produce a proposed Google Calendar event for a separate confirmation flow.';
+  const inputAudioTranscription = options.inputAudioTranscription ?? {};
+  const outputAudioTranscription = options.outputAudioTranscription ?? {};
+  const tools = options.tools ?? [];
+
+  return JSON.stringify({
+    model,
+    config: {
+      responseModalities: ['AUDIO'],
+      systemInstruction,
+      inputAudioTranscription,
+      outputAudioTranscription,
+      tools,
+    },
+  });
 }
 
 function bufferedEvents(input) {

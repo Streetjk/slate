@@ -18,6 +18,30 @@ export const GEMINI_LIVE_FAILURE_STAGES = [
 
 export type GeminiLiveFailureStage = (typeof GEMINI_LIVE_FAILURE_STAGES)[number];
 
+export const GEMINI_LIVE_PROVIDER_ERROR_CLASSES = [
+  'AUTH',
+  'MODEL_NOT_FOUND',
+  'UNSUPPORTED_CONFIG',
+  'INVALID_ARGUMENT',
+  'QUOTA',
+  'NETWORK',
+  'TLS',
+  'PROTOCOL',
+  'UNKNOWN_SANITIZED',
+] as const;
+
+export type GeminiLiveProviderErrorClass = (typeof GEMINI_LIVE_PROVIDER_ERROR_CLASSES)[number];
+
+export function sanitizeProviderErrorClass(value: unknown): GeminiLiveProviderErrorClass {
+  if (
+    typeof value === 'string' &&
+    (GEMINI_LIVE_PROVIDER_ERROR_CLASSES as readonly string[]).includes(value)
+  ) {
+    return value as GeminiLiveProviderErrorClass;
+  }
+  return 'UNKNOWN_SANITIZED';
+}
+
 export class GeminiLiveBridgeFailure extends Error {
   constructor(
     readonly failureStage: GeminiLiveFailureStage,

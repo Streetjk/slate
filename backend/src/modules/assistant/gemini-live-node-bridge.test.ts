@@ -6,8 +6,10 @@ import { tmpdir } from 'node:os';
 import type { LiveServerMessage } from '@google/genai';
 import {
   GEMINI_LIVE_FAILURE_STAGES,
+  GEMINI_LIVE_PROVIDER_ERROR_CLASSES,
   GeminiLiveBridgeFailure,
   GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+  sanitizeProviderErrorClass,
   type GeminiLiveBridgeRequest,
 } from './gemini-live-bridge.protocol';
 import { NodeGeminiLiveBridge, type BridgeTimers } from './gemini-live-node-bridge';
@@ -134,16 +136,17 @@ describe('Gemini 2.5 native-audio Node runtime compatibility contract', () => {
     expect(source).toContain('sendToolResponse({ functionResponses: frame.calls })');
   });
 
-  it('configures bilingual input-transcription language hints for the provider', () => {
+  it('configures session-establishing input-transcription setup for Gemini 2.5', () => {
     const source = readFileSync(runtimeScript, 'utf8');
     const connectStart = source.indexOf('client.live.connect({');
     const connectEnd = source.indexOf('callbacks:', connectStart);
     const connectConfig = source.slice(connectStart, connectEnd);
 
-    expect(connectConfig).toContain(
+    expect(connectConfig).toContain('inputAudioTranscription: {}');
+    expect(connectConfig).not.toContain(
       "inputAudioTranscription: { languageCodes: ['en-US', 'ja-JP'] }"
     );
-    expect(source).not.toContain('inputAudioTranscription: {}');
+    expect(connectConfig).not.toContain('languageCodes');
   });
 
   it('defines only the sanitized failure stages used by the bridge', () => {
@@ -159,6 +162,58 @@ describe('Gemini 2.5 native-audio Node runtime compatibility contract', () => {
       'CONNECT_TIMEOUT',
       'UNKNOWN_SAFE_FAILURE',
     ]);
+  });
+
+  it('defines exactly the allowlisted provider error classes and maps unknown safely', () => {
+    expect(GEMINI_LIVE_PROVIDER_ERROR_CLASSES).toEqual([
+      'AUTH',
+      'MODEL_NOT_FOUND',
+      'UNSUPPORTED_CONFIG',
+      'INVALID_ARGUMENT',
+      'QUOTA',
+      'NETWORK',
+      'TLS',
+      'PROTOCOL',
+      'UNKNOWN_SANITIZED',
+    ]);
+    for (const code of GEMINI_LIVE_PROVIDER_ERROR_CLASSES) {
+      expect(sanitizeProviderErrorClass(code)).toBe(code);
+    }
+    expect(sanitizeProviderErrorClass('BRIDGE_PROVIDER_CONNECTION_FAILED')).toBe(
+      'UNKNOWN_SANITIZED'
+    );
+    expect(sanitizeProviderErrorClass('BRIDGE_PROVIDER_ERROR')).toBe('UNKNOWN_SANITIZED');
+    expect(sanitizeProviderErrorClass('raw error with secret')).toBe('UNKNOWN_SANITIZED');
+    expect(sanitizeProviderErrorClass(undefined)).toBe('UNKNOWN_SANITIZED');
+  });
+
+  it('serializes provider-disabled setup requests for {}, bilingual hints, and empty hints', () => {
+    const serializeSetup = (inputAudioTranscription: Record<string, unknown>) =>
+      JSON.stringify({
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        config: {
+          responseModalities: ['AUDIO'],
+          inputAudioTranscription,
+          outputAudioTranscription: {},
+        },
+      });
+
+    const case1 = JSON.parse(serializeSetup({}));
+    expect(case1.config.inputAudioTranscription).toEqual({});
+    expect(case1.config.inputAudioTranscription.languageCodes).toBeUndefined();
+
+    const case2 = JSON.parse(serializeSetup({ languageCodes: ['en-US', 'ja-JP'] }));
+    expect(case2.config.inputAudioTranscription).toEqual({
+      languageCodes: ['en-US', 'ja-JP'],
+    });
+
+    const case3 = JSON.parse(serializeSetup({ languageCodes: [] }));
+    expect(case3.config.inputAudioTranscription).toEqual({
+      languageCodes: [],
+    });
+
+    expect(serializeSetup({})).not.toEqual(serializeSetup({ languageCodes: ['en-US', 'ja-JP'] }));
+    expect(serializeSetup({})).not.toEqual(serializeSetup({ languageCodes: [] }));
   });
 });
 
