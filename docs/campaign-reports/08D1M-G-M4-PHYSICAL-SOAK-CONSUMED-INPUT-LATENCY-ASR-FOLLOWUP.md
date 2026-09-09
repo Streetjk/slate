@@ -257,3 +257,102 @@ Rules:
 ## Immediate next action
 
 Ingest the already-consumed 8-turn physical session now. Reconcile the sanitized evidence, classify whether the prior progressive-lag/freeze node passes, and split any remaining issues into speech-input/transcript latency and bilingual ASR language-disambiguation nodes. Then continue the long-run campaign automatically until a true human-only authority boundary or campaign completion is reached.
+
+## Consumed-session ingestion — 59ce9a8
+
+The exact live PR head was independently reconciled before ingestion:
+
+```text
+LIVE_PR_HEAD=59ce9a83f552104f664a6a7ae0846fffce44d3e3
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+PHYSICAL_SOAK_CONSUMED=YES
+TARGET_TURN_COUNT=8
+TURN_COUNT_OBSERVED=8_OPERATOR_CONFIRMED;9_UNIQUE_VOICE_TURN_START_MARKERS_CAPTURED
+EARLY_TURN_LATENCY_CLASS=IMPROVED_QUICKER_OPERATOR_REPORTED
+LATE_TURN_LATENCY_CLASS=INPUT_PROCESSING_DISPLAY_SLOW_OPERATOR_REPORTED;TURN_8_PROVIDER_READY_TO_FIRST_OUTPUT_30281_MS
+PROGRESSIVE_LATENCY_DEGRADATION=UNKNOWN_NOT_PROVEN
+APPARENT_FREEZE=UNKNOWN_NOT_REPORTED
+VOICE_SERVICE_ERROR=NO_STRUCTURAL_ERROR_CAPTURED
+BUBBLE_ORDER_CORRECT=UNKNOWN_NOT_REPORTED
+ONE_BUBBLE_PER_ROLE_BEHAVIOR=UNKNOWN_NOT_REPORTED
+JAPANESE_KANA_RENDERING=UNKNOWN_NOT_REPORTED
+JAPANESE_NO_GLYPH=UNKNOWN_NOT_REPORTED
+AUDIBLE_ASSISTANT_AUDIO=UNKNOWN_NOT_REPORTED;OUTPUT_AUDIO_MARKER_NOT_CAPTURED
+VOICE_AI_EXIT=UNKNOWN_NOT_REPORTED
+UNEXPECTED_REBOOT_OR_SETTINGS_RETURN=UNKNOWN_NO_RESET_WATCHDOG_FATAL_MARKERS;EXIT_STATUS_NOT_CAPTURED
+JAPANESE_ASR_LANGUAGE_CONFUSION=YES_OPERATOR_REPORTED_CHINESE_MISRECOGNITION
+ASSISTANT_REPLY_SPEED_CLASS=IMPROVED_QUICKER_OPERATOR_REPORTED
+AUDIO_INPUT_PROCESSING_DISPLAY_CLASS=SIGNIFICANTLY_SLOWER_OPERATOR_REPORTED
+M4_PROGRESSIVE_LAG_FREEZE_ACCEPTANCE=OPEN_AMBIGUOUS_NOT_CLOSED
+```
+
+The operator-confirmed count is authoritative for the requested eight-turn boundary. The ninth unique listen-start marker is recorded as an instrumentation anomaly/out-of-scope marker, not silently counted as a ninth requested turn.
+
+### Sanitized structural evidence
+
+The existing observer remained running and connected (`slate-m4-sanitized-observer-v2`, serial `/dev/cu.usbmodem31101`, self-test PASS). The consumed capture contained `VOICE_WS_CONNECT_RESULT=OPEN`, `VOICE_WS_AUTH_RESULT=PASS`, `VOICE_WS_ACCEPTED=YES`, `VOICE_WS_UPGRADE_ATTEMPT=YES`, `VOICE_SESSION_INIT_SENT=YES`, `VOICE_MIC_STREAM_STARTED=YES`, and `FIRST_MIC_FRAME_RECEIVED=YES`. No `VOICE_SERVICE_ERROR`, fatal, reset, watchdog, or WebSocket-close marker was captured. This supports no structural Voice-service failure, but does not prove downstream audible playback or normal exit.
+
+The eight provider-ready-to-first-output deltas were:
+
+```text
+TURN_1=9747_MS
+TURN_2=12954_MS
+TURN_3=9715_MS
+TURN_4=10361_MS
+TURN_5=8869_MS
+TURN_6=8402_MS
+TURN_7=8877_MS
+TURN_8=30281_MS
+```
+
+Turns 1–7 are non-monotonic; turn 8 is a late outlier. Therefore a progressive leak/backlog is not mechanically proven, while the provider/output stage is measurably high and the operator separately reports slow input processing/display.
+
+Available structural queue/resource evidence was bounded: pre-provider mic buffering reached at most the observed 30-frame/4385-byte sample and reset between bursts; UI queue waiting stayed `0` with `64` spaces; decode and playback queues stayed `0`; send queue was `0/1`; PSRAM stayed approximately `8.09–8.105 MB`; sampled internal heap was variable (`11095–25651` bytes) without a monotonic trend. Node stdio backlog, backend transcript flush timing, user-bubble visibility, VAD/end-of-speech, input partial/final timing, provider input transcription timing, and downstream provider-audio-to-player timing were not captured. All unsupported derived fields are `UNAVAILABLE_NOT_INSTRUMENTED`, not PASS.
+
+```text
+T_LISTEN_START=CAPTURED_AS_T_DEVICE_LISTEN_START
+T_FIRST_MIC_FRAME=CAPTURED_AS_T_FIRST_DEVICE_AUDIO_SENT_AND_T_BACKEND_FIRST_AUDIO_RECEIVED
+T_LAST_MEANINGFUL_MIC_FRAME_OR_VAD_END=UNAVAILABLE
+T_AUDIO_INPUT_COMMIT_OR_TURN_END=UNAVAILABLE
+T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=UNAVAILABLE
+T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=UNAVAILABLE;T_TRANSCRIPT_FINALIZED_IS_TURN_COMPLETE_MARKER
+T_BACKEND_USER_TRANSCRIPT_FLUSH=UNAVAILABLE
+T_USER_BUBBLE_EVENT_POSTED=UNAVAILABLE
+T_USER_BUBBLE_FIRST_VISIBLE=UNAVAILABLE
+T_PROVIDER_READY=CAPTURED
+T_PROVIDER_FIRST_OUTPUT=CAPTURED
+T_ASSISTANT_FIRST_VISIBLE=UNAVAILABLE
+T_AUDIO_OUTPUT_FIRST_FRAME=UNAVAILABLE
+SPEECH_END_TO_INPUT_COMMIT_MS=UNAVAILABLE
+INPUT_COMMIT_TO_TRANSCRIPT_PARTIAL_MS=UNAVAILABLE
+INPUT_COMMIT_TO_TRANSCRIPT_FINAL_MS=UNAVAILABLE
+TRANSCRIPT_FINAL_TO_BACKEND_FLUSH_MS=UNAVAILABLE
+BACKEND_FLUSH_TO_USER_BUBBLE_VISIBLE_MS=UNAVAILABLE
+INPUT_COMMIT_TO_PROVIDER_FIRST_OUTPUT_MS=UNAVAILABLE
+PROVIDER_READY_TO_FIRST_OUTPUT_MS=8402..30281_CAPTURED
+```
+
+### ASR/language diagnosis
+
+The deployed path uses Gemini Live input transcription. Both direct SDK and Node bridge configs currently send `inputAudioTranscription: {}`; omitted language codes therefore leave language detection automatic. The Slate `language` value is currently used in the response/system-language instruction and is not passed as an input-transcription language hint. Current `@google/genai` v2.20.0 types expose `AudioTranscriptionConfig.languageCodes?: string[]`, and the official Live transcription contract supports BCP-47 hints including English and Japanese while retaining automatic detection for multiple supplied languages. This is a provider-supported transcription setting, not a display rewrite or response-only instruction.
+
+The smallest justified candidate is a bilingual hint in both actual runtime paths:
+
+```text
+inputAudioTranscription: { languageCodes: ['en-US', 'ja-JP'] }
+```
+
+It does not globally force Japanese, does not transliterate or translate text, does not change provider/model/auth/credentials, and preserves EN/JA switching. It requires deterministic config tests; real-provider efficacy is not claimed without an authorized future provider session.
+
+The safe work queue is split into:
+
+```text
+M4_AUDIO_INPUT_TRANSCRIPT_LATENCY_OPTIMIZATION=READY
+M4_BILINGUAL_ASR_LANGUAGE_DISAMBIGUATION=READY
+```
+
+No firmware, Wi-Fi, deployment, credential, or production state was changed during ingestion. Current accepted runtime remains `slate:m4-observability-07248b6`; Slate/MySQL health remains `200,200` / healthy with restart count `0`; the accepted firmware app identity remains unchanged at `4ea31710c6dfd5bff025b5282f2dd5edd49117eacfe4161988dcde0df820c298`.
+
+The existing progressive-lag/freeze repair cannot be closed from this capture because freeze, exit, bubble, kana, and audio acceptance are unknown. No immediate physical retry is requested. Continue provider-disabled timing diagnosis and qualify the minimum bilingual ASR candidate under the established AGY and Grok 4.6 review loop.
