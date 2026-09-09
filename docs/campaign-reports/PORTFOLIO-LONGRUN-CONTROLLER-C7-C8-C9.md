@@ -374,3 +374,86 @@ No ZAI retry for Campaign 8. No silent reviewer fallback anywhere.
 7. Return only when the entire portfolio has no safe work left and the next actions are genuine human/external gates.
 
 This coordination directive does not authorize any merge, release, production deploy, firmware flash, provider session, credential/OAuth/billing action, or private-data expansion.
+
+## Portfolio reconciliation checkpoint — 2026-09-10
+
+The live GitHub reconciliation completed against PR #1, PR #2 and PR #3:
+
+```text
+PR1_HEAD=7c0ebae5e351f2650f4b8704532218d6be7b318d
+PR1_STATE=OPEN
+PR1_DRAFT=YES
+PR1_MERGED=NO
+PR2_HEAD=c969d805f73a27b83dce789cd86c696c5e502cdc
+PR2_STATE=OPEN
+PR2_DRAFT=YES
+PR2_MERGED=NO
+PR3_HEAD=61700ea8c5b7755aa39259a45554289ca01ff700
+PR3_STATE=OPEN
+PR3_DRAFT=YES
+PR3_MERGED=NO
+INTEGRATION_HEAD=2d4a2a9e9a380c591c2ac7f0f3120f1f7939b65d
+```
+
+Campaign 8 remains P0 and is parked at its exact new backend deployment plus
+one-provider-session authority boundary. No C8 runtime, production, device,
+credential, provider or billing action was taken.
+
+Campaign 7 completed all safe branch-local work. Its live branch was already
+based on current integration, had zero runtime-file overlap with C8, preserved
+Campaign 6D firmware isolation, passed 283 backend tests, 6 shared tests,
+typecheck, lint, format, frontend build, renderer/timezone tests and current
+structural external probes. It is parked at separate deployment and physical
+acceptance authority.
+
+Campaign 9 completed current official-document and source reconciliation with
+zero provider calls and no source/runtime change. The installed lockfile
+version is `@google/genai@2.20.0`; official Developer API OAuth/ADC setup is
+documented, but end-to-end Node Live OAuth remains unverified without a
+project/ADC credential. Current official docs identify `gemini-3.1-flash-live-preview`
+as the conversational Live candidate and `gemini-3.5-transcribe-live` as a
+dedicated STT-only surface. C9 is parked at the optional architecture/auth,
+OAuth and billing decision boundary.
+
+```text
+PORTFOLIO_MODE=PORTFOLIO_FRONTIER_DRIVEN_LONGRUN
+PORTFOLIO_HEAD_OR_COORDINATION_SHA=c969d805f73a27b83dce789cd86c696c5e502cdc
+PORTFOLIO_CURRENT_CAMPAIGN=C8
+PORTFOLIO_CURRENT_NODE=C8_REVIEWED_SETUP_RESTORE_REQUIRES_NEW_BACKEND_DEPLOYMENT_AND_PROVIDER_AUTHORITY
+C7_HEAD=7c0ebae5e351f2650f4b8704532218d6be7b318d
+C7_STAGE=SOFTWARE_REVALIDATED_AGAINST_CURRENT_INTEGRATION_AND_C8_ERA
+C7_READY=0
+C7_READONLY_READY=0
+C7_WAITING_DEVICE=1
+C7_WAITING_HUMAN=1
+C7_EXTERNALLY_BLOCKED=0
+C7_NEXT_ACTION=AWAIT_SEPARATE_DEPLOYMENT_AND_PHYSICAL_ACCEPTANCE_AUTHORITY
+C8_HEAD=c969d805f73a27b83dce789cd86c696c5e502cdc
+C8_STAGE=M4_ZERO_PROVIDER_SETUP_DIAGNOSIS_COMPLETE_REVIEWED_SETUP_RESTORE_AWAITS_AUTHORITY
+C8_READY=0
+C8_READONLY_READY=0
+C8_WAITING_DEVICE=0
+C8_WAITING_HUMAN=1
+C8_EXTERNALLY_BLOCKED=0
+C8_NEXT_ACTION=AWAIT_EXACT_NEW_BACKEND_DEPLOYMENT_AND_ONE_PROVIDER_QUALIFICATION_AUTHORITY
+C9_HEAD=61700ea8c5b7755aa39259a45554289ca01ff700
+C9_STAGE=READONLY_RESEARCH_RECONCILED_AGAINST_CURRENT_C8_RUNTIME
+C9_READY=0
+C9_READONLY_READY=0
+C9_WAITING_DEVICE=0
+C9_WAITING_HUMAN=1
+C9_EXTERNALLY_BLOCKED=0
+C9_NEXT_ACTION=AWAIT_EXPLICIT_OAUTH_BILLING_PROVIDER_ARCHITECTURE_AUTHORITY_OR_RETAIN_CURRENT_C8_RUNTIME
+PORTFOLIO_READY_NODE_COUNT=0
+PORTFOLIO_READONLY_READY_NODE_COUNT=0
+PORTFOLIO_WAITING_DEVICE_COUNT=1
+PORTFOLIO_WAITING_HUMAN_COUNT=3
+PORTFOLIO_EXTERNALLY_BLOCKED_COUNT=0
+PORTFOLIO_HUMAN_ACTION_REQUIRED=YES
+PORTFOLIO_HUMAN_ACTION_REASON=C8_EXACT_BACKEND_DEPLOYMENT_AND_ONE_PROVIDER_SESSION;C7_DEPLOYMENT_AND_PHYSICAL_ACCEPTANCE;C9_OPTIONAL_OAUTH_BILLING_ARCHITECTURE_DECISION
+PORTFOLIO_TERMINAL_REASON=ALL_REMAINING_CAMPAIGNS_AT_GENUINE_HUMAN_AUTHORITY_BOUNDARIES
+PORTFOLIO_NEXT_ACTION=AWAIT_MINIMUM_EXPLICIT_CAMPAIGN_AUTHORITY;NO_SAFE_READY_OR_READONLY_READY_NODE_REMAINS
+```
+
+No safe READY or READONLY_READY node remains. This is a portfolio-wide
+authority boundary, not a campaign completion or merge/release event.
