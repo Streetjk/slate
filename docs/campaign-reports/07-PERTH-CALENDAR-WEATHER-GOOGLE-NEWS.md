@@ -124,3 +124,52 @@ Human PR review of PR #1. After separately authorized deployment, run the NOTE4 
 
 READY FOR HUMAN PR REVIEW; NOT DEPLOYED
 
+## Portfolio reconciliation checkpoint — 2026-09-10
+
+```text
+C7_LIVE_HEAD=0a985ab5c18596310290a1ff4da4b4d7b585d947
+C7_PR_STATE=OPEN
+C7_PR_DRAFT=YES
+C7_PR_MERGED=NO
+C7_BASE_SHA=2d4a2a9e9a380c591c2ac7f0f3120f1f7939b65d
+C7_REBASE_OR_FORWARD_PORT_STATUS=NOT_NEEDED_BASE_ALREADY_EQUALS_INTEGRATION
+C7_CONFLICT_COUNT=0
+C7_RUNTIME_FILES_CHANGED_SINCE_PRIOR_REVIEW=0
+C7_C8_RUNTIME_OVERLAP_COUNT=0
+C7_SHARED_FILE_DRIFT=CAMPAIGN-STATE_ONLY_HISTORICAL_DOC
+C7_FIRMWARE_CHANGED=NO
+C7_BACKEND_TESTS=PASS_283
+C7_SHARED_TESTS=PASS_6
+C7_FRONTEND_BUILD=PASS
+C7_TYPECHECK=PASS
+C7_LINT=PASS
+C7_FORMAT=PASS
+C7_RENDERER_TESTS=PASS
+C7_PERTH_TIMEZONE_TESTS=PASS
+C7_WA_HOLIDAY_SOURCE_AS_OF=2026-09-10
+C7_WA_HOLIDAY_SOURCE_LAST_UPDATED=2026-09-02
+C7_WA_HOLIDAY_CONFIRMED_YEARS=2026_2027
+C7_OPEN_METEO_LIVE_PROBE=HTTP_200
+C7_GOOGLE_NEWS_AU_PROBE=HTTP_200_APPLICATION_XML
+C7_GOOGLE_NEWS_TW_PROBE=HTTP_200_APPLICATION_XML
+C7_PRIVACY_SECRET_SCAN=PASS
+C7_GIT_DIFF_CHECK=PASS
+C7_REVIEW_STATUS=HISTORICAL_REVIEW_STILL_VALID_NO_MATERIAL_SOURCE_CHANGE
+C7_DEPLOYED=NO
+C7_PHYSICAL_ACCEPTANCE=NOT_RUN
+C7_STATUS=SOFTWARE_REVALIDATED_WAITING_DEPLOYMENT_AND_PHYSICAL_AUTHORITY
+C7_NEXT_ACTION=AWAIT_SEPARATE_DEPLOYMENT_AND_PHYSICAL_ACCEPTANCE_AUTHORITY
+```
+
+The current Western Australian Government public-holiday page confirms that
+2026 and 2027 dates are published and was last updated 2026-09-02:
+https://www.wa.gov.au/service/employment/workplace-arrangements/public-holidays-western-australia
+The branch's versioned 2026/2027 data remains aligned; no source change was
+required. Current structural probes returned HTTP 200 for both fixed Google
+News RSS routes and both Open-Meteo routes; response bodies were not retained.
+
+This checkpoint performed no production deployment, provider call, physical
+NOTE4 action, merge, release, firmware change, credential change, or private
+data access. Campaign 7 is now parked at its separately authorized deployment
+and physical-acceptance boundary while the portfolio scheduler proceeds to
+Campaign 9 read-only reconciliation.
