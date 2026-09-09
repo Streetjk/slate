@@ -398,3 +398,33 @@ The timing additions are structural only: `T_AUDIO_INPUT_COMMIT_OR_TURN_END` is 
 ### Exact remaining authority boundary
 
 All safe provider-disabled implementation, validation, privacy scanning, build, freeze and independent review work is exhausted. The new image/source identity cannot be used as the currently accepted production identity without a fresh bounded authorization for the changed backend deployment and an authorized provider qualification session. No deploy, restart, firmware flash, credential/configuration change or physical retry was performed. The next action is to obtain only that exact new backend/provider qualification authority; after it is granted, deploy/requalify and rearm the observer before any physical acceptance request.
+
+## Final durable checkpoint — observer rearmed
+
+```text
+CURRENT_HEAD=5d2fc14701a62ea7c8300c9ce2e6f321fde63bb4
+SOURCE_REVIEW_TARGET=b0606b6beb22a21b49570c17c323a64d486c38c9
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+OBSERVER_SELF_TEST=PASS
+OBSERVER_STATE=RUNNING
+OBSERVER_SERIAL_CONNECTED=YES
+OBSERVER_RAW_CONTENT=NOT_RETAINED
+ACTIVE_BACKEND_TAG=slate:m4-observability-07248b6
+ACTIVE_FIRMWARE_APP_SHA256=4ea31710c6dfd5bff025b5282f2dd5edd49117eacfe4161988dcde0df820c298
+SLATE_HEALTH=HEALTHY_RESTART_0
+MYSQL_HEALTH=HEALTHY_RESTART_0
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_DEVICE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+CURRENT_BLOCKED_NODE=NEW_CHANGED_BACKEND_DEPLOYMENT_AND_PROVIDER_QUALIFICATION_AUTHORITY
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=AUTHORIZE_EXACT_REVIEWED_B0606B6_BACKEND_DEPLOYMENT_AND_ONE_BOUNDED_PROVIDER_QUALIFICATION_SESSION
+TERMINAL_REASON=NEW_ARTIFACT_DEPLOYMENT_PROVIDER_AUTHORITY_BOUNDARY
+NEXT_ACTION=WAIT_FOR_EXACT_NEW_BACKEND_DEPLOYMENT_AND_PROVIDER_QUALIFICATION_AUTHORITY
+```
+
+No physical Voice retry, reset, reflash, redeploy, provider call, credential change, Wi-Fi change, pairing change, or Gemini model/provider/auth change occurred after the consumed session.
