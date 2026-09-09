@@ -2649,6 +2649,313 @@ describe('XiaozhiVoiceSession', () => {
       // Turn 1 timestamp remains intact and unaffected
       expect(timing.getStageTimestamp('T_DEVICE_LISTEN_START', 1)).toBe('1725800000050');
     });
+
+    it('emits input latency timing markers at exact structural boundaries with first-occurrence semantics and privacy', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      const logs: string[] = [];
+      const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+        logs.push(String(msg));
+      });
+
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      let endAudioCalled = false;
+      let endAudioMarkPresentBefore = false;
+      const connection: GeminiLiveConnection = {
+        sendAudio: () => {},
+        sendText: () => {},
+        endAudio: () => {
+          endAudioCalled = true;
+          endAudioMarkPresentBefore = logs.includes('T_AUDIO_INPUT_COMMIT_OR_TURN_END=YES');
+        },
+        respondToToolCalls: () => {},
+        rejectToolCalls: () => {},
+        reconnect: async () => {},
+        close: () => {},
+      };
+
+      try {
+        const liveService = {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return connection;
+          },
+        } as never;
+
+        const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+        // Handshake
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+          false
+        );
+
+        // Start listening
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+          false
+        );
+        expect(logs).toContain('T_DEVICE_LISTEN_START=YES');
+        expect(logs).not.toContain('T_AUDIO_INPUT_COMMIT_OR_TURN_END=YES');
+
+        // Stream audio frames
+        await session.handleMessage(Buffer.from([1, 2, 3]), true);
+
+        // Listen stop -> T_AUDIO_INPUT_COMMIT_OR_TURN_END before endAudio
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+          false
+        );
+        expect(endAudioCalled).toBe(true);
+        expect(endAudioMarkPresentBefore).toBe(true);
+        expect(logs.filter((l) => l === 'T_AUDIO_INPUT_COMMIT_OR_TURN_END=YES')).toHaveLength(1);
+
+        // Redundant listen stop must not re-emit (first-occurrence per-turn)
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+          false
+        );
+        expect(logs.filter((l) => l === 'T_AUDIO_INPUT_COMMIT_OR_TURN_END=YES')).toHaveLength(1);
+
+        // Provider sends blank/whitespace input transcription -> MUST NOT emit partial marker
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: '   ' },
+            },
+          } as never,
+        });
+        expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=YES');
+
+        // First nonblank input transcription with sensitive text
+        const privateMarkerCanary = 'SYNTHETIC_PII_SSN_999_88_7777_CONFIDENTIAL';
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: `Hello world ${privateMarkerCanary}` },
+            },
+          } as never,
+        });
+        expect(
+          logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=YES')
+        ).toHaveLength(1);
+
+        // Subsequent nonblank input transcription in same turn must not re-emit
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: `Hello world ${privateMarkerCanary} more text` },
+            },
+          } as never,
+        });
+        expect(
+          logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=YES')
+        ).toHaveLength(1);
+
+        // Backend flushes input transcript -> sends stt event
+        // Triggered by output transcription arriving
+        expect(logs).not.toContain('T_BACKEND_USER_TRANSCRIPT_FLUSH=YES');
+        expect(logs).not.toContain('T_USER_BUBBLE_EVENT_POSTED=YES');
+
+        liveEvent?.({
+          message: {
+            serverContent: {
+              outputTranscription: { text: 'Assistant reply' },
+            },
+          } as never,
+        });
+
+        // Backend sent stt event, emitting both markers
+        expect(logs.filter((l) => l === 'T_BACKEND_USER_TRANSCRIPT_FLUSH=YES')).toHaveLength(1);
+        expect(logs.filter((l) => l === 'T_USER_BUBBLE_EVENT_POSTED=YES')).toHaveLength(1);
+
+        // Subsequent stt emission in same turn must not re-emit
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: `Hello world ${privateMarkerCanary} extra update` },
+            },
+          } as never,
+        });
+        liveEvent?.({
+          message: {
+            serverContent: {
+              outputTranscription: { text: 'Assistant reply continuation' },
+            },
+          } as never,
+        });
+        expect(logs.filter((l) => l === 'T_BACKEND_USER_TRANSCRIPT_FLUSH=YES')).toHaveLength(1);
+        expect(logs.filter((l) => l === 'T_USER_BUBBLE_EVENT_POSTED=YES')).toHaveLength(1);
+
+        // Provider turnComplete -> T_PROVIDER_INPUT_TRANSCRIPTION_FINAL
+        expect(logs).not.toContain('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES');
+        liveEvent?.({
+          message: {
+            serverContent: {
+              turnComplete: true,
+            },
+          } as never,
+        });
+        expect(logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES')).toHaveLength(
+          1
+        );
+
+        // Duplicate turnComplete must not re-emit
+        liveEvent?.({
+          message: {
+            serverContent: {
+              turnComplete: true,
+            },
+          } as never,
+        });
+        expect(logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL=YES')).toHaveLength(
+          1
+        );
+
+        // Verify ordering:
+        // T_DEVICE_LISTEN_START <= T_AUDIO_INPUT_COMMIT_OR_TURN_END <= T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL
+        // <= T_BACKEND_USER_TRANSCRIPT_FLUSH <= T_PROVIDER_INPUT_TRANSCRIPTION_FINAL
+        const getMs = (stage: string) => {
+          const entry = logs.find((l) => l.startsWith(`${stage}_MS=`));
+          expect(entry).toBeDefined();
+          const ms = entry!.slice(`${stage}_MS=`.length);
+          expect(/^\d+$/.test(ms)).toBe(true);
+          return Number(ms);
+        };
+
+        const tListenStart = getMs('T_DEVICE_LISTEN_START');
+        const tInputCommit = getMs('T_AUDIO_INPUT_COMMIT_OR_TURN_END');
+        const tTranscriptPartial = getMs('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL');
+        const tTranscriptFlush = getMs('T_BACKEND_USER_TRANSCRIPT_FLUSH');
+        const tBubblePosted = getMs('T_USER_BUBBLE_EVENT_POSTED');
+        const tTranscriptFinal = getMs('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL');
+
+        expect(tListenStart).toBeLessThanOrEqual(tInputCommit);
+        expect(tInputCommit).toBeLessThanOrEqual(tTranscriptPartial);
+        expect(tTranscriptPartial).toBeLessThanOrEqual(tTranscriptFlush);
+        expect(tTranscriptFlush).toBe(tBubblePosted);
+        expect(tTranscriptFlush).toBeLessThanOrEqual(tTranscriptFinal);
+
+        // Verify unavailable markers are NOT claimed
+        expect(logs).not.toContain('T_USER_BUBBLE_FIRST_VISIBLE=YES');
+        expect(logs).not.toContain('T_LAST_MEANINGFUL_MIC_FRAME_OR_VAD_END=YES');
+        expect(session.getTimingTrace().has('T_USER_BUBBLE_FIRST_VISIBLE')).toBe(false);
+        expect(session.getTimingTrace().has('T_LAST_MEANINGFUL_MIC_FRAME_OR_VAD_END')).toBe(false);
+
+        // Privacy verification: no private data leaked in timing markers or logs
+        const timingLogs = logs.filter((l) => l.startsWith('T_') || l.includes('t_ms='));
+        for (const log of timingLogs) {
+          expect(log).not.toContain(privateMarkerCanary);
+          expect(log).not.toContain('Hello world');
+          expect(log).not.toContain('Assistant reply');
+        }
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
+
+    it('resets input latency markers across sequential turns with distinct per-turn timestamps', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      const logs: string[] = [];
+      const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+        logs.push(String(msg));
+      });
+
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const connection: GeminiLiveConnection = {
+        sendAudio: () => {},
+        sendText: () => {},
+        endAudio: () => {},
+        respondToToolCalls: () => {},
+        rejectToolCalls: () => {},
+        reconnect: async () => {},
+        close: () => {},
+      };
+
+      try {
+        const liveService = {
+          connect: async (_language: 'en', onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return connection;
+          },
+        } as never;
+
+        const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+          false
+        );
+
+        // Turn 1
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+          false
+        );
+        await session.handleMessage(Buffer.from([1, 2, 3]), true);
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+          false
+        );
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: 'Turn 1 user text' },
+              outputTranscription: { text: 'Turn 1 assistant text' },
+              turnComplete: true,
+            },
+          } as never,
+        });
+
+        const timing = session.getTimingTrace();
+        expect(timing.hasForTurn(1, 'T_AUDIO_INPUT_COMMIT_OR_TURN_END')).toBe(true);
+        expect(timing.hasForTurn(1, 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(true);
+        expect(timing.hasForTurn(1, 'T_BACKEND_USER_TRANSCRIPT_FLUSH')).toBe(true);
+        expect(timing.hasForTurn(1, 'T_USER_BUBBLE_EVENT_POSTED')).toBe(true);
+        expect(timing.hasForTurn(1, 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(true);
+
+        const turn1CommitMs = timing.getStageTimestamp('T_AUDIO_INPUT_COMMIT_OR_TURN_END', 1);
+        expect(turn1CommitMs).toBeDefined();
+
+        // Turn 2
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+          false
+        );
+        expect(timing.has('T_AUDIO_INPUT_COMMIT_OR_TURN_END')).toBe(false);
+        expect(timing.has('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(false);
+        expect(timing.has('T_BACKEND_USER_TRANSCRIPT_FLUSH')).toBe(false);
+        expect(timing.has('T_USER_BUBBLE_EVENT_POSTED')).toBe(false);
+        expect(timing.has('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(false);
+
+        await session.handleMessage(Buffer.from([4, 5, 6]), true);
+        await session.handleMessage(
+          Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+          false
+        );
+        liveEvent?.({
+          message: {
+            serverContent: {
+              inputTranscription: { text: 'Turn 2 user text' },
+              outputTranscription: { text: 'Turn 2 assistant text' },
+              turnComplete: true,
+            },
+          } as never,
+        });
+
+        expect(timing.hasForTurn(2, 'T_AUDIO_INPUT_COMMIT_OR_TURN_END')).toBe(true);
+        expect(timing.hasForTurn(2, 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(true);
+        expect(timing.hasForTurn(2, 'T_BACKEND_USER_TRANSCRIPT_FLUSH')).toBe(true);
+        expect(timing.hasForTurn(2, 'T_USER_BUBBLE_EVENT_POSTED')).toBe(true);
+        expect(timing.hasForTurn(2, 'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL')).toBe(true);
+
+        const turn2CommitMs = timing.getStageTimestamp('T_AUDIO_INPUT_COMMIT_OR_TURN_END', 2);
+        expect(turn2CommitMs).toBeDefined();
+        // Turn 1 record is preserved intact
+        expect(timing.getStageTimestamp('T_AUDIO_INPUT_COMMIT_OR_TURN_END', 1)).toBe(turn1CommitMs);
+      } finally {
+        loggerSpy.mockRestore();
+      }
+    });
   });
 
   describe('Multi-turn soak and backpressure boundedness', () => {
@@ -2787,6 +3094,17 @@ describe('XiaozhiVoiceSession', () => {
         // Verify timing markers were emitted per turn and none leaked private data
         for (let turn = 1; turn <= NUM_TURNS; turn++) {
           expect(logs).toContain(`VOICE_TURN_INDEX=${turn}`);
+        }
+
+        const inputStages = [
+          'T_AUDIO_INPUT_COMMIT_OR_TURN_END',
+          'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL',
+          'T_BACKEND_USER_TRANSCRIPT_FLUSH',
+          'T_USER_BUBBLE_EVENT_POSTED',
+          'T_PROVIDER_INPUT_TRANSCRIPTION_FINAL',
+        ];
+        for (const stage of inputStages) {
+          expect(logs.filter((line) => line === `${stage}=YES`)).toHaveLength(NUM_TURNS);
         }
 
         for (const log of logs) {

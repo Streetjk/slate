@@ -201,6 +201,7 @@ export class XiaozhiVoiceSession {
           });
         } else if (message.state === 'stop') {
           this.listening = false;
+          this.timing.mark('T_AUDIO_INPUT_COMMIT_OR_TURN_END');
           this.clearMicQueue();
           this.flushInputTranscript();
           if (this.live) {
@@ -452,6 +453,7 @@ export class XiaozhiVoiceSession {
     try {
       const inputText = message.serverContent?.inputTranscription?.text;
       if (inputText?.trim()) {
+        this.timing.mark('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL');
         this.pendingInputTranscript = mergeTranscriptFragment(
           this.pendingInputTranscript,
           inputText
@@ -472,6 +474,7 @@ export class XiaozhiVoiceSession {
       }
 
       if (message.serverContent?.turnComplete) {
+        this.timing.mark('T_PROVIDER_INPUT_TRANSCRIPTION_FINAL');
         this.flushPendingTranscripts();
       }
 
@@ -634,6 +637,8 @@ export class XiaozhiVoiceSession {
     }
     const text = this.pendingInputTranscript.trim();
     if (text && text !== this.lastSentInputTranscript) {
+      this.timing.mark('T_BACKEND_USER_TRANSCRIPT_FLUSH');
+      this.timing.mark('T_USER_BUBBLE_EVENT_POSTED');
       this.sendJson({ type: 'stt', text });
       this.lastSentInputTranscript = text;
     }
