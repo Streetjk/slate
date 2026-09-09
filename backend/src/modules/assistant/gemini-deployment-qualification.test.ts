@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -260,6 +261,101 @@ describe('qualifyGeminiDeploymentConfig', () => {
       expect(emptyResult.secretMountStatus).toBe('INVALID_SIZE');
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+const WRAPPER_SCRIPT_PATH = join(
+  import.meta.dir,
+  '../../../../scripts/qualify-gemini-deployment.sh'
+);
+
+describe('qualify-gemini-deployment.sh wrapper', () => {
+  it('fails closed and exits nonzero when run with unconfigured environment (cannot false-PASS)', () => {
+    const res = spawnSync('bash', [WRAPPER_SCRIPT_PATH], {
+      env: { PATH: process.env.PATH },
+    });
+    expect(res.status).toBe(1);
+    const stdout = res.stdout.toString();
+    expect(stdout).toContain('GEMINI_CONFIG_QUALIFICATION=FAIL');
+    expect(stdout).toContain('GEMINI_AUTH_MODE=MISSING');
+    expect(stdout).toContain('GEMINI_LIVE_MODEL=MISSING');
+    expect(stdout).toContain('GEMINI_SECRET_MOUNT_READONLY=MISSING');
+    expect(stdout).not.toContain('GEMINI_CONFIG_QUALIFICATION=PASS');
+  });
+
+  it('fails closed and exits nonzero when configuration contains unapproved values (cannot false-PASS)', () => {
+    const res = spawnSync('bash', [WRAPPER_SCRIPT_PATH], {
+      env: {
+        PATH: process.env.PATH,
+        GEMINI_AUTH_MODE: 'vertex_adc',
+        GEMINI_LIVE_MODEL: 'gemini-1.5-flash',
+      },
+    });
+    expect(res.status).toBe(1);
+    const stdout = res.stdout.toString();
+    expect(stdout).toContain('GEMINI_CONFIG_QUALIFICATION=FAIL');
+    expect(stdout).toContain('GEMINI_AUTH_MODE=INVALID');
+    expect(stdout).toContain('GEMINI_LIVE_MODEL=INVALID');
+    expect(stdout).not.toContain('GEMINI_CONFIG_QUALIFICATION=PASS');
+  });
+
+  it('fails closed and exits nonzero when secret file mount is missing despite valid approved keys', () => {
+    const res = spawnSync('bash', [WRAPPER_SCRIPT_PATH], {
+      env: {
+        PATH: process.env.PATH,
+        GEMINI_AUTH_MODE: APPROVED_GEMINI_AUTH_MODE,
+        GEMINI_DEVELOPER_API_KEY_ENABLED: 'true',
+        GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED: 'true',
+        GEMINI_LIVE_RUNTIME: APPROVED_GEMINI_LIVE_RUNTIME,
+        GEMINI_LIVE_MODEL: APPROVED_GEMINI_LIVE_MODEL,
+        GEMINI_API_KEY_FILE: APPROVED_GEMINI_API_KEY_FILE,
+        GEMINI_NODE_EXECUTABLE: APPROVED_GEMINI_NODE_EXECUTABLE,
+        GEMINI_NODE_BRIDGE_SCRIPT: APPROVED_GEMINI_NODE_BRIDGE_SCRIPT,
+      },
+    });
+    expect(res.status).toBe(1);
+    const stdout = res.stdout.toString();
+    expect(stdout).toContain('GEMINI_SECRET_MOUNT_READONLY=MISSING');
+    expect(stdout).toContain('GEMINI_CONFIG_QUALIFICATION=FAIL');
+    expect(stdout).not.toContain('GEMINI_CONFIG_QUALIFICATION=PASS');
+  });
+
+  it('fails closed and exits nonzero when Bun is not available in PATH (even if Node is available)', () => {
+    const paths = (process.env.PATH || '').split(':');
+    const nodeDir =
+      paths.find((d) => existsSync(join(d, 'node')) && !existsSync(join(d, 'bun'))) || '';
+    const res = spawnSync('bash', [WRAPPER_SCRIPT_PATH], {
+      env: {
+        PATH: nodeDir ? `${nodeDir}:/usr/bin:/bin` : '/usr/bin:/bin',
+      },
+    });
+    expect(res.status).toBe(1);
+    const stderr = res.stderr.toString();
+    expect(stderr).toContain('GEMINI_CONFIG_QUALIFICATION=FAIL');
+    expect(stderr).toContain('ERROR: bun not found for qualification runner');
+    expect(res.stdout.toString()).not.toContain('GEMINI_CONFIG_QUALIFICATION=PASS');
+  });
+
+  it('never prints or leaks secret values or canary payloads in wrapper output', () => {
+    const canary = 'test-secret-canary-payload-xyz987';
+    const fakePath = '/tmp/fake-secret-key-file-canary';
+    const res = spawnSync('bash', [WRAPPER_SCRIPT_PATH], {
+      env: {
+        PATH: process.env.PATH,
+        GEMINI_DUMMY_SECRET_CANARY: canary,
+        GEMINI_API_KEY_FILE: fakePath,
+      },
+    });
+    expect(res.status).toBe(1);
+    const combinedOutput = res.stdout.toString() + res.stderr.toString();
+    expect(combinedOutput).not.toContain(canary);
+    expect(combinedOutput).not.toContain(fakePath);
+
+    // Verify stdout lines strictly follow KEY=STATUS pattern
+    const lines = res.stdout.toString().trim().split('\n');
+    for (const line of lines) {
+      expect(/^[A-Z0-9_]+=[A-Z0-9_]+$/.test(line)).toBe(true);
     }
   });
 });
