@@ -113,7 +113,7 @@ export class GeminiLiveService {
             abortSignal: abortController.signal,
             responseModalities: [Modality.AUDIO],
             systemInstruction: `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
-            inputAudioTranscription: {},
+            inputAudioTranscription: { languageCodes: ['en-US', 'ja-JP'] },
             outputAudioTranscription: {},
             tools: buildGeminiToolRegistry(enableWebSearch),
           },

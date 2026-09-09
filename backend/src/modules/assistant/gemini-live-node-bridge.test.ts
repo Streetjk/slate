@@ -134,6 +134,18 @@ describe('Gemini 2.5 native-audio Node runtime compatibility contract', () => {
     expect(source).toContain('sendToolResponse({ functionResponses: frame.calls })');
   });
 
+  it('configures bilingual input-transcription language hints for the provider', () => {
+    const source = readFileSync(runtimeScript, 'utf8');
+    const connectStart = source.indexOf('client.live.connect({');
+    const connectEnd = source.indexOf('callbacks:', connectStart);
+    const connectConfig = source.slice(connectStart, connectEnd);
+
+    expect(connectConfig).toContain(
+      "inputAudioTranscription: { languageCodes: ['en-US', 'ja-JP'] }"
+    );
+    expect(source).not.toContain('inputAudioTranscription: {}');
+  });
+
   it('defines only the sanitized failure stages used by the bridge', () => {
     expect(GEMINI_LIVE_FAILURE_STAGES).toEqual([
       'CONFIG_REJECTED_BEFORE_CHILD',
