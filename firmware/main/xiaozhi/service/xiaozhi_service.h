@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "xiaozhi/protocol/protocol.h"
+#include "xiaozhi/service/turn_history.h"
 
 class AudioPlayer;
 
@@ -22,7 +23,6 @@ struct IncomingMessage;
 
 enum class XiaozhiState : int {
     kCheckingConfig = 0,
-    kAwaitingActivation,
     kReadyIdle,
     kConnecting,
     kListening,
@@ -39,17 +39,12 @@ enum class XiaozhiPhase : uint8_t {
     kStartPending,
 };
 
-struct XiaozhiMessage {
-    std::string role;
-    std::string text;
-};
+using XiaozhiMessage = TurnMessage;
 
 struct XiaozhiSnapshot {
     XiaozhiState                state = XiaozhiState::kCheckingConfig;
     std::string                 status;
     std::string                 emotion = "neutral";
-    std::string                 activation_message;
-    std::string                 activation_code;
     std::string                 user_text;
     std::string                 assistant_text;
     std::vector<XiaozhiMessage> messages;
@@ -131,12 +126,12 @@ class XiaozhiService {
     void         EndAudioSession();
     void         SetState(XiaozhiState state, const std::string& status = "");
     void         SetError(const std::string& error);
-    void         SetActivation(const std::string& message, const std::string& code);
     void         SetUserText(const std::string& text);
     void         SetAssistantText(const std::string& text);
     void         SetAlert(const std::string& status, const std::string& message, const std::string& emotion);
     void         SetCalendarProposal(const IncomingMessage& message);
     void         SetCalendarResult(const std::string& message);
+    void         UpsertMessageLocked(const std::string& role, const std::string& text);
     void         ClearAlertLocked();
     void         TrimMessagesLocked();
     XiaozhiState CurrentState();
@@ -158,6 +153,7 @@ class XiaozhiService {
 
     std::mutex      snapshot_mutex_;
     XiaozhiSnapshot snapshot_;
+    TurnHistory     turn_history_;
 
     std::mutex                protocol_mutex_;
     std::shared_ptr<Protocol> protocol_;

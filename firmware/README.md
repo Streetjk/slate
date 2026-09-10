@@ -146,6 +146,24 @@ storage  0x410000  0xBF0000
 
 `storage` 是 LittleFS，约 12 MB。按每帧 15 KB image + 可选 PCM 估算，可缓存约数百帧。
 
+## Slate voice configuration
+
+Voice mode uses the existing Slate device identity and server address:
+
+```text
+GET {server_url}/api/v1/devices/current/voice/config
+  Authorization: Bearer <device_secret>
+        ↓
+wss://{server_host}/api/v1/voice/websocket
+  Authorization: Bearer <device_secret>
+```
+
+The configuration endpoint is protected by the Slate device secret and returns
+only the Slate WebSocket path/version. The firmware does not contact a vendor
+activation service, display an activation code, or store a second voice token.
+The existing ENTER/UP/DOWN Xiaozhi controls and Calendar Confirm/Cancel flow
+remain unchanged.
+
 ## 启动模式
 
 `boot_mode::Decide()` 根据凭据和唤醒原因决定：
@@ -383,7 +401,7 @@ ES8311 使用 lazy open：
 
 `xiaozhi/` 子系统包含：
 
-- `config/`：`activation_client` / `settings`，向小智配置服务获取 MQTT/WebSocket 配置与 activation 信息，并保存 UUID、协议配置、音量等 NVS 设置。
+- `config/`：`slate_voice_config_client` / `settings`，通过已认证的 Slate 设备 API 获取 WebSocket 路由，并保存 UUID、协议配置、音量等 NVS 设置。
 - `mcp/`：`mcp_dispatcher` / `mcp_tools`，MCP 协议分发与工具注册。
 - `protocol/`：`protocol` / `mqtt_protocol` / `websocket_protocol` / `audio_stream_packet`，对话协议。
 - `service/`：`xiaozhi_service`、`xiaozhi_phase`、`audio_service`、`message_handler`，对话状态机、麦克风、播放、语音处理。
