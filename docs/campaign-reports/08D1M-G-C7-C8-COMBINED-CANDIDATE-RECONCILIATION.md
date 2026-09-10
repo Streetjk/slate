@@ -57,11 +57,39 @@ to conceal it.
 
 ```text
 C7_STANDALONE_REVIEW=HISTORICAL_PASS;VALID_FOR_STANDALONE_BYTES_ONLY
-COMBINED_BYTES_REVIEW=REQUIRED_FRESH_AGY_GEMINI37_MEDIUM_READONLY_REVIEW
+COMBINED_BYTES_REVIEW=PASS_AGY_GEMINI37_MEDIUM_P0_0_P1_0_P2_0_SECURITY_0
 COMBINED_DEPLOYMENT=NOT_AUTHORIZED
 COMBINED_PHYSICAL_ACCEPTANCE=NOT_AUTHORIZED
 NEXT_ACTION=FRESH_INDEPENDENT_REVIEW_OF_COMBINED_BYTES
 ```
+
+## Fresh independent review
+
+```text
+REVIEWER=AGY_GEMINI_3_7_FLASH_MEDIUM
+REVIEW_MODE=INDEPENDENT_READ_ONLY
+REVIEWED_COMMIT=20c4c3eed2e2d87fd4570039b29e5e5fa64e89d4
+REVIEW_VERDICT=APPROVE
+P0_FINDINGS=0
+P1_FINDINGS=0
+P2_FINDINGS=0
+SECURITY_FINDINGS=0
+REVIEW_BLOCKING_FINDINGS=0
+REVIEW_NONBLOCKING=FIRMWARE_LOWER_TRANSPORT_FIXTURE_NOT_POPULATED;WA_HOLIDAY_DATASET_2026_2027
+PRODUCTION_DEPLOYMENT=NOT_PERFORMED
+PHYSICAL_ACCEPTANCE=NOT_PERFORMED
+```
+
+AGY confirmed that the exact C8 assistant/firmware tree is preserved, C7 is
+confined to the intended dynamic-content and UI scope, Outlook remains
+read-only and absent from Gemini tools, Calendar writes retain proposal-to-
+confirmation single-write safety, and external endpoint parsing is bounded.
+The fresh-worktree lower-transport fixture limitation remains informational;
+the exact qualified C8 workspace passed that regression. No provider, private
+data, deployment or physical action was performed by the review.
+
+The combined candidate is fully qualified for the next authority boundary but
+is not deployed or physically accepted under this checkpoint.
 
 The combined candidate must receive a fresh independent AGY review because
 its bytes differ from the standalone reviewed C7 candidate. The existing C8
