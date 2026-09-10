@@ -99,9 +99,8 @@ export class GoogleNewsProvider implements DataProvider<GoogleNewsConfigT, Googl
       }
       return section;
     } catch (error) {
-      this.logger.warn(
-        `Google News ${edition} fetch failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+      // Keep upstream error text and payload details out of persistent logs.
+      this.logger.warn(`Google News ${edition} fetch failed`);
       throw error;
     }
   }
