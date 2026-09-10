@@ -9,6 +9,7 @@ import {
   Flame,
   Bitcoin,
   Mail,
+  Newspaper,
   Type as TypeIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -43,7 +44,7 @@ export const DYNAMIC_TYPE_META = {
   weather: {
     label: 'Weather',
     hint: 'Live temperature / humidity / wind speed',
-    description: 'Shows live weather by city. Data comes from QWeather.',
+    description: 'Shows live metric weather by city using Open-Meteo or QWeather.',
     hasConfigurableParams: true,
     supportsAudio: true,
     Icon: CloudSun,
@@ -88,6 +89,14 @@ export const DYNAMIC_TYPE_META = {
     supportsAudio: false,
     Icon: Mail,
   },
+  google_news: {
+    label: 'Google News',
+    hint: 'Australia · Taiwan · combined editions',
+    description: 'Shows compact headlines from fixed Google News RSS editions.',
+    hasConfigurableParams: true,
+    supportsAudio: false,
+    Icon: Newspaper,
+  },
   dashboard: {
     label: 'External data',
     hint: 'Template + JSON data push',
@@ -124,6 +133,7 @@ export const DYNAMIC_TYPE_ORDER = [
   'earthquake_report',
   'btc_price',
   'outlook_calendar',
+  'google_news',
   'hot_list',
   'dashboard',
   'font_test',

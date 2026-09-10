@@ -21,7 +21,23 @@ describe('outlook-queries', () => {
         getSafeOutlookAuthErrorMessage({
           response: { data: { error: '服务器内部错误' } },
         })
-      ).toBe('服务器内部错误');
+      ).toBe('Outlook server error');
+
+      expect(
+        getSafeOutlookAuthErrorMessage({
+          response: { data: { message: '服务器内部错误' } },
+        })
+      ).toBe('Outlook server error');
+
+      expect(
+        getSafeOutlookAuthErrorMessage({
+          response: { status: 500, data: { message: 'Internal Server Error' } },
+        })
+      ).toBe('Outlook server error');
+
+      expect(getSafeOutlookAuthErrorMessage(new Error('Prisma database connection failed'))).toBe(
+        'Outlook server error'
+      );
 
       expect(getSafeOutlookAuthErrorMessage(new Error('Network Error'))).toBe('Network Error');
     });

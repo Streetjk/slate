@@ -17,6 +17,9 @@ mock.module('@nestjs/common', () => ({
 
 const { OutlookController } = await import('./outlook.controller');
 const { OUTLOOK_SCOPES } = await import('./microsoft-oauth.service');
+// The controller is loaded with shims above; release the global module mock so
+// parallel dynamic-content tests see the real Nest exports.
+mock.restore();
 
 describe('OutlookController', () => {
   const testUser: WebUserContext = {

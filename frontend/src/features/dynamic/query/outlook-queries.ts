@@ -33,9 +33,18 @@ export function getSafeOutlookAuthErrorMessage(err: unknown): string {
   if (!err) return fallback;
 
   let raw = '';
+  let status: number | undefined;
   if (typeof err === 'object' && err !== null && 'response' in err) {
-    const data = (err as { response?: { data?: { message?: unknown; error?: unknown } } }).response
-      ?.data;
+    const resp = (
+      err as {
+        response?: {
+          status?: number;
+          data?: { message?: unknown; error?: unknown };
+        };
+      }
+    ).response;
+    status = resp?.status;
+    const data = resp?.data;
     if (typeof data?.message === 'string' && data.message.trim()) {
       raw = data.message.trim();
     } else if (typeof data?.error === 'string' && data.error.trim()) {
@@ -53,6 +62,16 @@ export function getSafeOutlookAuthErrorMessage(err: unknown): string {
     )
   ) {
     return fallback;
+  }
+
+  if (
+    /[\u4e00-\u9fff]/.test(raw) ||
+    /internal server error|internal error|prisma|database|sql|syntaxerror|typeerror|stack|trace/i.test(
+      raw
+    ) ||
+    (status !== undefined && status >= 500)
+  ) {
+    return 'Outlook server error';
   }
 
   return raw;
