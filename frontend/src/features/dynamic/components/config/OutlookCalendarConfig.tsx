@@ -3,8 +3,8 @@ import type { DynamicConfigT } from 'shared';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import {
-  beginOutlookConnection,
   getOutlookConnectionStatus,
+  handleOutlookConnect,
   type OutlookConnectionStatus,
 } from '@/features/dynamic/query/outlook-queries';
 import { DynamicRefreshSettings } from './RefreshSettings';
@@ -13,12 +13,15 @@ import type { DynamicConfigChange } from '@/features/dynamic/model/config-types'
 export function OutlookCalendarConfigPanel({
   config,
   onChange,
+  onNavigate,
 }: {
   config: Extract<DynamicConfigT, { type: 'outlook_calendar' }>;
   onChange: DynamicConfigChange;
+  onNavigate?: (url: string) => void;
 }) {
   const [status, setStatus] = useState<OutlookConnectionStatus | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -35,12 +38,11 @@ export function OutlookCalendarConfigPanel({
   }, []);
 
   const connect = async () => {
-    setConnecting(true);
-    try {
-      await beginOutlookConnection();
-    } catch {
-      setConnecting(false);
-    }
+    await handleOutlookConnect({
+      setConnecting,
+      setErrorMessage,
+      onNavigate,
+    });
   };
 
   return (
@@ -58,6 +60,11 @@ export function OutlookCalendarConfigPanel({
           </span>
         )}
       </div>
+      {errorMessage && (
+        <p className="font-sans text-[11px] text-clay" role="alert">
+          {errorMessage}
+        </p>
+      )}
       <DynamicRefreshSettings config={config} onChange={onChange} />
     </div>
   );

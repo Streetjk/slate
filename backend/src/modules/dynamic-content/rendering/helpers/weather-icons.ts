@@ -69,14 +69,53 @@ async function renderWeatherIconMask(
   return { width: px, height: px, pixels };
 }
 
-function resolveIconPath(code: number): string | null {
-  const preferred = join(QWEATHER_ICON_SVG_DIR, `${code}.svg`);
+export const WMO_TO_QWEATHER_MAP: Record<number, number> = {
+  0: 100,
+  1: 101,
+  2: 103,
+  3: 104,
+  45: 501,
+  48: 501,
+  51: 309,
+  53: 309,
+  55: 309,
+  56: 309,
+  57: 309,
+  61: 305,
+  63: 306,
+  65: 307,
+  66: 313,
+  67: 313,
+  71: 400,
+  73: 401,
+  75: 402,
+  77: 400,
+  80: 300,
+  81: 300,
+  82: 301,
+  85: 406,
+  86: 406,
+  95: 302,
+  96: 304,
+  99: 304,
+};
+
+export function mapWmoToQWeather(code: number): number | undefined {
+  return WMO_TO_QWEATHER_MAP[code];
+}
+
+export function resolveIconPath(code: number): string | null {
+  const mapped = mapWmoToQWeather(code) ?? code;
+  const preferred = join(QWEATHER_ICON_SVG_DIR, `${mapped}.svg`);
   if (existsSync(preferred)) return preferred;
   const fallback = join(QWEATHER_ICON_SVG_DIR, '999.svg');
   return existsSync(fallback) ? fallback : null;
 }
 
-function normalizeIconCode(code: number | null): number {
-  if (code !== null && Number.isFinite(code)) return Math.trunc(code);
+export function normalizeIconCode(code: number | null): number {
+  if (code !== null && Number.isFinite(code)) {
+    const int = Math.trunc(code);
+    return mapWmoToQWeather(int) ?? int;
+  }
   return 999;
 }
