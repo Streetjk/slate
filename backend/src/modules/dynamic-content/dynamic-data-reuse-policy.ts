@@ -68,6 +68,7 @@ const DYNAMIC_DATA_REUSE_POLICIES: Record<string, DynamicDataReusePolicyConfig> 
   history_today: { reuse: 'same_history_today', reuseCapSec: 1_800 },
   weather: { reuse: 'timestamp', reuseCapSec: 43_200 },
   hot_list: { reuse: 'timestamp', reuseCapSec: 3_600 },
+  google_news: { reuse: 'timestamp', reuseCapSec: 3_600 },
   weather_alert: { reuse: 'timestamp', reuseCapSec: 3_600 },
   earthquake_report: { reuse: 'timestamp', reuseCapSec: 3_600 },
   btc_price: { reuse: 'timestamp', reuseCapSec: 86_400 },

@@ -1,13 +1,20 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Modality, type LiveServerMessage, type Session } from '@google/genai';
 import type { VoiceLanguageT } from 'shared';
-import { GeminiConfig } from './gemini.config';
+import { DEVELOPER_API_LIVE_MODEL, GeminiConfig } from './gemini.config';
 import {
   createGeminiClient,
   GEMINI_CLIENT_FACTORY,
+  safeGeminiErrorCategory,
   type GeminiClientFactory,
 } from './gemini.client';
 import { buildGeminiToolRegistry } from './gemini-tool-registry';
+import { GeminiLiveBridgeFailure } from './gemini-live-bridge.protocol';
+import {
+  createNodeGeminiLiveBridge,
+  NODE_GEMINI_LIVE_BRIDGE_FACTORY,
+  type NodeGeminiLiveBridgeFactory,
+} from './gemini-live-node-bridge';
 
 export interface GeminiLiveEvent {
   message: LiveServerMessage;
@@ -35,7 +42,9 @@ export class GeminiLiveService {
   constructor(
     private readonly config: GeminiConfig,
     @Inject(GEMINI_CLIENT_FACTORY)
-    private readonly clientFactory: GeminiClientFactory = createGeminiClient
+    private readonly clientFactory: GeminiClientFactory = createGeminiClient,
+    @Inject(NODE_GEMINI_LIVE_BRIDGE_FACTORY)
+    private readonly nodeBridgeFactory: NodeGeminiLiveBridgeFactory = createNodeGeminiLiveBridge
   ) {}
 
   async connect(
@@ -45,20 +54,60 @@ export class GeminiLiveService {
     enableWebSearch = true
   ): Promise<GeminiLiveConnection> {
     this.assertConfigured();
+    if (this.config.liveRuntime === 'node_bridge') {
+      if (
+        this.config.authMode !== 'developer_api_key' ||
+        this.config.liveModel !== DEVELOPER_API_LIVE_MODEL
+      ) {
+        throw new GeminiConfigurationError(
+          `Gemini runtime is not configured: the Node Live bridge requires ${DEVELOPER_API_LIVE_MODEL} in evaluation-only Developer API mode`
+        );
+      }
+      try {
+        return await this.nodeBridgeFactory(this.config.nodeBridgeOptions()).connect(
+          language,
+          onEvent,
+          onError ?? (() => undefined),
+          this.config.liveModel,
+          `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
+          this.config.liveConnectTimeoutMs,
+          enableWebSearch
+        );
+      } catch (error) {
+        const normalized = normalizeError(error, 'Gemini Live connection failed');
+        this.logger.warn(
+          normalized instanceof GeminiLiveBridgeFailure
+            ? `Gemini Live bridge failure: ${normalized.failureStage}`
+            : normalized.message
+        );
+        onError?.(normalized);
+        throw normalized;
+      }
+    }
     let session: Session | undefined;
     let closed = false;
-    const client = this.clientFactory({
-      vertexai: true,
-      project: this.config.project,
-      location: this.config.location,
-    });
+    let activeGeneration = 0;
+    const expectedCloseSessions = new WeakSet<object>();
+    let client: ReturnType<GeminiClientFactory>;
+    try {
+      client = this.clientFactory(this.config.clientOptions());
+    } catch (error) {
+      const normalized = new GeminiConfigurationError(
+        'Gemini runtime client could not be initialized'
+      );
+      this.logger.warn(`Gemini client initialization failed: ${safeGeminiErrorCategory(error)}`);
+      onError?.(normalized);
+      throw normalized;
+    }
 
     const connectSession = async (): Promise<void> => {
+      const generation = ++activeGeneration;
       session = undefined;
       const abortController = new AbortController();
       const timeout = setTimeout(() => abortController.abort(), this.config.liveConnectTimeoutMs);
+      let nextSession: Session | undefined;
       try {
-        const nextSession = await client.live.connect({
+        nextSession = await client.live.connect({
           model: this.config.liveModel,
           config: {
             abortSignal: abortController.signal,
@@ -73,10 +122,21 @@ export class GeminiLiveService {
             onerror: (event) => {
               const error =
                 event instanceof Error ? event : new Error('Gemini Live connection error');
-              this.logger.warn(`Gemini Live error: ${error.message}`);
-              onError?.(error);
+              this.logger.warn(`Gemini Live error: ${safeGeminiErrorCategory(error)}`);
+              onError?.(new Error('Gemini Live connection error'));
             },
-            onclose: () => this.logger.debug('Gemini Live session closed'),
+            onclose: () => {
+              const isExpectedClose =
+                nextSession !== undefined && expectedCloseSessions.delete(nextSession);
+              if (generation !== activeGeneration) return;
+              if (nextSession !== undefined && session !== undefined && session !== nextSession)
+                return;
+              session = undefined;
+              if (!isExpectedClose && !closed) {
+                this.logger.debug('Gemini Live session closed');
+                onError?.(new Error('Gemini Live session closed'));
+              }
+            },
           },
         });
         if (closed) {
@@ -133,7 +193,11 @@ export class GeminiLiveService {
         if (closed) {
           throw new GeminiLiveStateError('Cannot reconnect a closed Gemini Live session');
         }
-        session?.close();
+        const previousSession = session;
+        if (previousSession) {
+          expectedCloseSessions.add(previousSession);
+          previousSession.close();
+        }
         await connectSession();
       },
       close: () => {
@@ -146,9 +210,7 @@ export class GeminiLiveService {
 
   private assertConfigured(): void {
     if (!this.config.isConfigured()) {
-      throw new GeminiConfigurationError(
-        'Gemini OAuth/ADC is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required'
-      );
+      throw new GeminiConfigurationError(this.config.configurationErrorMessage());
     }
   }
 }
@@ -168,6 +230,11 @@ export class GeminiLiveStateError extends Error {
 }
 
 function normalizeError(error: unknown, fallback: string): Error {
-  if (error instanceof Error) return new Error(`${fallback}: ${error.message}`);
-  return new Error(`${fallback}: ${String(error)}`);
+  if (error instanceof GeminiConfigurationError || error instanceof GeminiLiveStateError) {
+    return error;
+  }
+  if (error instanceof GeminiLiveBridgeFailure) {
+    return new GeminiLiveBridgeFailure(error.failureStage, fallback);
+  }
+  return new Error(fallback);
 }

@@ -3,6 +3,7 @@
 #include <esp_log.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <string>
 
@@ -13,6 +14,7 @@ namespace {
 constexpr char        kTag[]    = "event";
 QueueHandle_t         s_queue   = nullptr;
 constexpr UBaseType_t kQueueLen = 64;
+std::atomic<bool>     s_xiaozhi_changed_pending{false};
 
 void CopyEventText(char* out, size_t cap, const std::string& value) {
     util::CopyUtf8Truncated(out, cap, value);
@@ -80,6 +82,9 @@ bool Wait(UiEvent* out, TickType_t timeout) {
         return false;
     if (xQueueReceive(s_queue, out, timeout) != pdTRUE)
         return false;
+    if (out->kind == UiEventKind::kXiaozhiChanged) {
+        s_xiaozhi_changed_pending.store(false, std::memory_order_release);
+    }
     if (log::DebugEnabled(kTag)) {
         char detail[128];
         log::Describe(*out, detail, sizeof(detail));
@@ -93,6 +98,30 @@ bool PostSimple(UiEventKind kind, TickType_t timeout) {
     UiEvent e{};
     e.kind = kind;
     return Post(e, timeout);
+}
+
+bool PostCoalesced(UiEventKind kind, TickType_t timeout) {
+    if (kind == UiEventKind::kXiaozhiChanged) {
+        if (s_xiaozhi_changed_pending.exchange(true, std::memory_order_acq_rel)) {
+            return true;
+        }
+        UiEvent e{};
+        e.kind = kind;
+        if (!Post(e, timeout)) {
+            s_xiaozhi_changed_pending.store(false, std::memory_order_release);
+            return false;
+        }
+        return true;
+    }
+    return PostSimple(kind, timeout);
+}
+
+size_t QueueWaiting() {
+    return s_queue ? static_cast<size_t>(uxQueueMessagesWaiting(s_queue)) : 0;
+}
+
+size_t QueueSpaces() {
+    return s_queue ? static_cast<size_t>(uxQueueSpacesAvailable(s_queue)) : 0;
 }
 
 bool PostButton(UiEventKind kind, ButtonId btn, TickType_t timeout) {

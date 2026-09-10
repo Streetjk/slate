@@ -86,11 +86,17 @@ export interface WeatherCitySearchResult {
   name: string;
   adm1: string;
   adm2: string;
+  provider?: 'qweather' | 'open_meteo';
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
 }
 
 const LOOKUP_CACHE_TTL_MS = 86_400_000;
 const CITY_SEARCH_CACHE_TTL_MS = 3_600_000;
-const FC_LABELS = ['今日', '明日', '后天'];
+const FC_LABELS = ['Today', 'Tomorrow', 'Day after'];
+const OPEN_METEO_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
+const OPEN_METEO_GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const MAX_CACHE_ENTRIES = 128;
 const MAX_LOOKUP_CACHE_ENTRIES = 256;
 const MAX_CITY_SEARCH_CACHE_ENTRIES = 128;
@@ -118,10 +124,12 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
   async searchCities(
     query: string,
     limit = 8,
-    now = Date.now()
+    now = Date.now(),
+    provider: 'qweather' | 'open_meteo' = 'qweather'
   ): Promise<WeatherCitySearchResult[]> {
     const normalizedQuery = query.trim();
     if (!normalizedQuery) return [];
+    if (provider === 'open_meteo') return this.searchOpenMeteo(normalizedQuery, limit, now);
     const apiKey = this.config.apiKey;
     if (!apiKey) throw new Error('QWEATHER_API_KEY 未配置');
     if (!this.config.apiHost) {
@@ -165,8 +173,112 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
     const now = ctx.now.getTime();
     const ttlSec = Math.max(config.refresh_interval_sec ?? DEFAULT_PROVIDER_CACHE_TTL_SEC, 300);
     return this.fetcher.getOrFetch(key, now, ttlSec * 1000, () =>
-      this.fetchFromQWeather(config, ctx)
+      config.provider === 'open_meteo'
+        ? this.fetchFromOpenMeteo(config, ctx)
+        : this.fetchFromQWeather(config, ctx)
     );
+  }
+
+  private async fetchFromOpenMeteo(
+    config: WeatherConfigT,
+    ctx: DynamicContentFetchCtx
+  ): Promise<WeatherProviderData> {
+    if (config.latitude === undefined || config.longitude === undefined) {
+      throw new Error('Open-Meteo location coordinates are not configured');
+    }
+    const timezone = config.location_timezone ?? config.tz;
+    const params = new URLSearchParams({
+      latitude: String(config.latitude),
+      longitude: String(config.longitude),
+      current:
+        'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      timezone,
+      forecast_days: '3',
+      wind_speed_unit: 'kmh',
+      temperature_unit: 'celsius',
+      precipitation_unit: 'mm',
+    });
+    const data = await fetchJsonWithTimeout<OpenMeteoResponse>(
+      `${OPEN_METEO_FORECAST_URL}?${params.toString()}`,
+      { timeoutMs: DEFAULT_PROVIDER_FETCH_TIMEOUT_MS, userAgent: null }
+    );
+    const current = data.current ?? {};
+    const daily = data.daily ?? {};
+    const fc = Array.from({ length: 3 }, (_, index) => {
+      const date = daily.time?.[index];
+      const min = toDisplayNumber(daily.temperature_2m_min?.[index]);
+      const max = toDisplayNumber(daily.temperature_2m_max?.[index]);
+      const code = safeNumber(daily.weather_code?.[index], 999);
+      const text = openMeteoWeatherText(code);
+      return {
+        label: forecastLabel(date, config.tz, ctx.now) ?? FC_LABELS[index] ?? '--',
+        val: `${text}  ${min}~${max}°`,
+        text,
+        tempMin: min,
+        tempMax: max,
+        code,
+      };
+    });
+    const code = safeNumber(current.weather_code, 999);
+    return {
+      tempC: toDisplayNumber(current.temperature_2m),
+      feelsLikeC: toDisplayNumber(current.apparent_temperature),
+      humidity: toDisplayNumber(current.relative_humidity_2m),
+      pressure: toDisplayNumber(current.surface_pressure),
+      windDisplay: `${toDisplayNumber(current.wind_speed_10m)} km/h`,
+      summary: openMeteoWeatherText(code),
+      code,
+      obsTime: current.time ? `${current.time}:00` : ctx.now.toISOString(),
+      updatedAt: ctx.now.toISOString(),
+      fc,
+    };
+  }
+
+  private async searchOpenMeteo(
+    query: string,
+    limit: number,
+    now: number
+  ): Promise<WeatherCitySearchResult[]> {
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 20);
+    const key = `open_meteo:${query}:${safeLimit}`;
+    const cached = this.citySearchCache.get(key);
+    if (cached && now - cached.fetchedAt < CITY_SEARCH_CACHE_TTL_MS) return cached.data;
+    const params = new URLSearchParams({
+      name: query,
+      count: String(safeLimit),
+      language: 'en',
+      format: 'json',
+    });
+    const json = await fetchJsonWithTimeout<OpenMeteoGeocodingResponse>(
+      `${OPEN_METEO_GEOCODING_URL}?${params.toString()}`,
+      { timeoutMs: DEFAULT_PROVIDER_FETCH_TIMEOUT_MS, userAgent: null }
+    );
+    const results = (json.results ?? [])
+      .map((location) => ({
+        id: String(location.id ?? ''),
+        name: location.name?.trim() ?? '',
+        adm1: location.admin1?.trim() ?? '',
+        adm2: location.admin2?.trim() ?? '',
+        provider: 'open_meteo' as const,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timezone: location.timezone,
+      }))
+      .filter(
+        (location) =>
+          location.id &&
+          location.name &&
+          typeof location.latitude === 'number' &&
+          typeof location.longitude === 'number'
+      );
+    setBoundedCache(
+      this.citySearchCache,
+      key,
+      { data: results, fetchedAt: now },
+      MAX_CITY_SEARCH_CACHE_ENTRIES
+    );
+    return results;
   }
 
   private async fetchFromQWeather(
@@ -395,7 +507,7 @@ export function forecastLabel(value: unknown, timeZone: string, now: Date): stri
   const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
   if (Number.isNaN(date.getTime())) return value.slice(5);
   try {
-    return getDateTimeFormat('zh-CN', {
+    return getDateTimeFormat('en-AU', {
       timeZone,
       month: 'numeric',
       day: 'numeric',
@@ -407,4 +519,53 @@ export function forecastLabel(value: unknown, timeZone: string, now: Date): stri
 
 function ordinalDay(year: number, month: number, day: number): number {
   return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
+}
+
+export function openMeteoWeatherText(code: number): string {
+  if (code === 0) return 'Clear sky';
+  if (code === 1) return 'Mainly clear';
+  if (code === 2) return 'Partly cloudy';
+  if (code === 3) return 'Overcast';
+  if (code === 45 || code === 48) return 'Fog';
+  if ([51, 53, 55, 56, 57].includes(code)) return 'Drizzle';
+  if ([61, 63, 65, 66, 67].includes(code)) return 'Rain';
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return 'Snow';
+  if ([80, 81, 82].includes(code)) return 'Rain showers';
+  if ([95, 96, 99].includes(code)) return 'Thunderstorm';
+  return 'Unknown conditions';
+}
+
+function safeNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+interface OpenMeteoResponse {
+  current?: {
+    time?: string;
+    temperature_2m?: number;
+    relative_humidity_2m?: number;
+    apparent_temperature?: number;
+    precipitation?: number;
+    weather_code?: number;
+    surface_pressure?: number;
+    wind_speed_10m?: number;
+  };
+  daily?: {
+    time?: string[];
+    weather_code?: number[];
+    temperature_2m_max?: number[];
+    temperature_2m_min?: number[];
+  };
+}
+
+interface OpenMeteoGeocodingResponse {
+  results?: Array<{
+    id?: number;
+    name?: string;
+    admin1?: string;
+    admin2?: string;
+    latitude?: number;
+    longitude?: number;
+    timezone?: string;
+  }>;
 }
