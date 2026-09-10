@@ -73,6 +73,27 @@ The operator-visible ASR examples support an ASR-accuracy issue, but do not
 prove whether the source is acoustic input, provider transcription, language
 selection or display. No transcript text or audio was retained.
 
+## Read-only runtime and observer reconciliation
+
+After ingestion, a read-only host check found the previously deployed combined
+backend healthy and unchanged, with MySQL healthy and unchanged. Local and
+public health both returned HTTP 200. The observer was then rearmed against the
+existing serial port; its capture remains sanitized and contains no Voice
+payloads.
+
+```text
+RUNNING_BACKEND_TAG=slate:m4-c7-c8-combined-8fcf7c6
+RUNNING_BACKEND_IMAGE_ID=sha256:f84fcde837a113ea940f43eb0f828df18f72726f4e9db8432794eaf9a8926bf3
+SLATE_HEALTH=RUNNING_HEALTHY
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=RUNNING_HEALTHY
+MYSQL_RESTART_COUNT=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+OBSERVER_STATE=ARMED_CONNECTED_SANITIZED
+OBSERVER_RAW_CONTENT=NOT_RETAINED
+```
+
 The requested timing decomposition is mechanically unavailable for this
 capture:
 
