@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { accessSync, constants, lstatSync, statSync } from 'node:fs';
 import type { EnvT } from '../../infra/config/env.schema';
+import type { GeminiClientOptions } from './gemini.client';
+import type { NodeGeminiLiveBridgeOptions } from './gemini-live-node-bridge';
+
+export type GeminiAuthMode = 'vertex_adc' | 'developer_api_key';
+export type GeminiLiveRuntime = 'bun_sdk' | 'node_bridge';
+
+export const DEVELOPER_API_LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 @Injectable()
 export class GeminiConfig {
@@ -12,6 +20,42 @@ export class GeminiConfig {
 
   get location(): string | undefined {
     return this.cs.get('GOOGLE_CLOUD_LOCATION', { infer: true });
+  }
+
+  get authMode(): GeminiAuthMode {
+    return this.cs.get('GEMINI_AUTH_MODE', { infer: true });
+  }
+
+  get apiKeyFile(): string | undefined {
+    return this.cs.get('GEMINI_API_KEY_FILE', { infer: true });
+  }
+
+  get adcCredentialFile(): string | undefined {
+    return this.cs.get('GOOGLE_APPLICATION_CREDENTIALS', { infer: true });
+  }
+
+  get developerApiKeyEnabled(): boolean {
+    return this.cs.get('GEMINI_DEVELOPER_API_KEY_ENABLED', { infer: true }) ?? false;
+  }
+
+  get productionDeveloperApiKeyEnabled(): boolean {
+    return this.cs.get('GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED', { infer: true }) ?? false;
+  }
+
+  get liveRuntime(): GeminiLiveRuntime {
+    return this.cs.get('GEMINI_LIVE_RUNTIME', { infer: true });
+  }
+
+  get nodeExecutable(): string {
+    return this.cs.get('GEMINI_NODE_EXECUTABLE', { infer: true });
+  }
+
+  get nodeBridgeScript(): string {
+    return this.cs.get('GEMINI_NODE_BRIDGE_SCRIPT', { infer: true });
+  }
+
+  get nodeEnv(): string {
+    return this.cs.get('NODE_ENV', { infer: true }) ?? 'development';
   }
 
   get textModel(): string {
@@ -27,6 +71,92 @@ export class GeminiConfig {
   }
 
   isConfigured(): boolean {
-    return Boolean(this.project && this.location);
+    if (this.liveRuntime === 'node_bridge') {
+      return (
+        (this.nodeEnv !== 'production' || this.productionDeveloperApiKeyEnabled) &&
+        this.authMode === 'developer_api_key' &&
+        this.developerApiKeyEnabled &&
+        this.liveModel === DEVELOPER_API_LIVE_MODEL &&
+        this.hasUsableCredentialFile()
+      );
+    }
+    return this.authMode === 'developer_api_key'
+      ? this.developerApiKeyEnabled &&
+          this.nodeEnv !== 'production' &&
+          this.liveModel === DEVELOPER_API_LIVE_MODEL &&
+          this.hasUsableCredentialFile()
+      : Boolean(this.project && this.location);
+  }
+
+  configurationErrorMessage(): string {
+    if (this.liveRuntime === 'node_bridge') {
+      if (this.nodeEnv === 'production') {
+        if (!this.productionDeveloperApiKeyEnabled) {
+          return 'Gemini runtime is not configured: production Node Live bridge requires GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED=true';
+        }
+      }
+      if (this.authMode !== 'developer_api_key' || !this.developerApiKeyEnabled) {
+        return 'Gemini runtime is not configured: the Node Live bridge requires explicitly enabled evaluation-only Developer API mode';
+      }
+      if (this.liveModel !== DEVELOPER_API_LIVE_MODEL) {
+        return `Gemini runtime is not configured: the Node Live bridge requires GEMINI_LIVE_MODEL=${DEVELOPER_API_LIVE_MODEL}`;
+      }
+      if (!this.hasUsableCredentialFile()) {
+        return 'Gemini runtime is not configured: the Node Live bridge requires a readable GEMINI_API_KEY_FILE';
+      }
+      return 'Gemini runtime is configured';
+    }
+    if (this.authMode !== 'developer_api_key') {
+      return 'Gemini runtime is not configured: GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are required for vertex_adc mode';
+    }
+    if (
+      !this.developerApiKeyEnabled ||
+      this.nodeEnv === 'production' ||
+      !this.hasUsableCredentialFile()
+    ) {
+      return 'Gemini runtime is not configured: evaluation-only Developer API mode requires a readable GEMINI_API_KEY_FILE and GEMINI_DEVELOPER_API_KEY_ENABLED=true outside production';
+    }
+    return this.liveModel !== DEVELOPER_API_LIVE_MODEL
+      ? `Gemini runtime is not configured: Developer API evaluation requires GEMINI_LIVE_MODEL=${DEVELOPER_API_LIVE_MODEL}`
+      : 'Gemini runtime is configured';
+  }
+
+  clientOptions(): GeminiClientOptions {
+    if (this.authMode === 'developer_api_key') {
+      if (!this.isConfigured()) throw new Error(this.configurationErrorMessage());
+      if (!this.apiKeyFile) throw new Error(this.configurationErrorMessage());
+      return { apiKeyFile: this.apiKeyFile };
+    }
+    if (!this.project || !this.location) {
+      throw new Error('Gemini OAuth/ADC project and location are not configured');
+    }
+    return { vertexai: true, project: this.project, location: this.location };
+  }
+
+  nodeBridgeOptions(): NodeGeminiLiveBridgeOptions {
+    if (!this.isConfigured()) throw new Error(this.configurationErrorMessage());
+    return {
+      executable: this.nodeExecutable,
+      script: this.nodeBridgeScript,
+      authMode: this.authMode,
+      ...(this.apiKeyFile ? { apiKeyFile: this.apiKeyFile } : {}),
+      ...(this.adcCredentialFile ? { adcCredentialFile: this.adcCredentialFile } : {}),
+      ...(this.project ? { project: this.project } : {}),
+      ...(this.location ? { location: this.location } : {}),
+    };
+  }
+
+  private hasUsableCredentialFile(): boolean {
+    if (!this.apiKeyFile) return false;
+    try {
+      if (lstatSync(this.apiKeyFile).isSymbolicLink()) return false;
+      const stats = statSync(this.apiKeyFile);
+      if (!stats.isFile() || stats.size === 0 || stats.size > 4096) return false;
+      if ((stats.mode & 0o077) !== 0) return false;
+      accessSync(this.apiKeyFile, constants.R_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -28,6 +28,9 @@ bool PostFromIsr(const UiEvent& e, BaseType_t* hpw);
 bool Wait(UiEvent* out, TickType_t timeout);
 
 bool PostSimple(UiEventKind kind, TickType_t timeout = kDefaultPostTimeout);
+bool PostCoalesced(UiEventKind kind, TickType_t timeout = kNoWait);
+size_t QueueWaiting();
+size_t QueueSpaces();
 bool PostButton(UiEventKind kind, ButtonId btn, TickType_t timeout = kDefaultPostTimeout);
 bool PostChargeChanged(uint8_t state, bool present, bool charging, bool full, bool no_battery,
                        TickType_t timeout = kDefaultPostTimeout);

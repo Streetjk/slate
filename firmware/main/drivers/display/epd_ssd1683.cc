@@ -455,6 +455,7 @@ void EpdSsd1683::RunRefresh(bool full_refresh, const epd::Rect& partial_window) 
                  static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
         SLATE_TIMING_LOG(kTag, "refresh_done path=full elapsed_us=%lld",
                          static_cast<long long>(esp_timer_get_time() - start_us));
+        SLATE_TIMING_LOG(kTag, "T_EPD_REFRESH_COMPLETE_IF_AVAILABLE");
         return;
     }
 
@@ -464,6 +465,7 @@ void EpdSsd1683::RunRefresh(bool full_refresh, const epd::Rect& partial_window) 
              static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
     SLATE_TIMING_LOG(kTag, "refresh_done path=partial elapsed_us=%lld",
                      static_cast<long long>(esp_timer_get_time() - start_us));
+    SLATE_TIMING_LOG(kTag, "T_EPD_REFRESH_COMPLETE_IF_AVAILABLE");
 }
 
 void EpdSsd1683::FinishRefreshSnapshot() {

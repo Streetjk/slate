@@ -26,6 +26,7 @@ import { IngestPayloadSizePipe } from './ingest/ingest-payload-size.pipe';
 import { DynamicPreviewController } from './dynamic-preview.controller';
 import { BtcPriceProvider } from './providers/btc-price.provider';
 import { OutlookModule } from './outlook/outlook.module';
+import { GoogleNewsProvider } from './providers/google-news.provider';
 
 /**
  * 动态内容模板与渲染业务模块。
@@ -55,6 +56,7 @@ import { OutlookModule } from './outlook/outlook.module';
     DailyCalendarProvider,
     MonthCalendarProvider,
     WeatherProvider,
+    GoogleNewsProvider,
     HistoryTodayProvider,
     WeatherAlertProvider,
     EarthquakeReportProvider,

@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useGroups } from '@/features/groups/query/group-queries';
 import { DevicesSection } from '@/features/devices/components/DevicesSection';
 import { GroupsSection } from '@/features/groups/components/GroupsSection';
+import { AiUsageSection } from '@/features/ai-usage/components/AiUsageSection';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export function DashboardPage() {
 
       <DevicesSection devices={devices.data} groups={groups.data} isPending={devices.isPending} />
       <GroupsSection groups={groups.data} isPending={groups.isPending} />
+      <AiUsageSection />
     </div>
   );
 }
