@@ -307,4 +307,43 @@ describe('GeminiLiveService', () => {
 
     await expect(service.connect('en', () => {})).rejects.toThrow('Gemini Live connection failed');
   });
+
+  it('configures neutral EN/JA session setup without English-only bias when language is omitted', async () => {
+    const clientOptions: Record<string, unknown>[] = [];
+    const session = { close: () => {} } as unknown as Session;
+    const client = {
+      live: {
+        connect: async (parameters: Record<string, unknown>) => {
+          clientOptions.push(parameters);
+          return session;
+        },
+      },
+      models: {},
+    } as unknown as GeminiClient;
+    const service = new GeminiLiveService(config(), () => client);
+
+    await service.connect(undefined, () => {});
+
+    expect(clientOptions[0]).toMatchObject({
+      model: 'gemini-live-2.5-flash-native-audio',
+      config: {
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+      },
+    });
+
+    const sysInstruction = (clientOptions[0]?.config as { systemInstruction?: string })
+      ?.systemInstruction;
+    expect(sysInstruction).toBeDefined();
+    expect(sysInstruction).toContain('Respond in the user language, English or Japanese.');
+    expect(sysInstruction).not.toContain('Preferred language:');
+    expect(sysInstruction).not.toContain('Preferred language: en.');
+    expect(
+      (
+        clientOptions[0]?.config as {
+          inputAudioTranscription?: { languageCodes?: string[] };
+        }
+      )?.inputAudioTranscription?.languageCodes
+    ).toBeUndefined();
+  });
 });

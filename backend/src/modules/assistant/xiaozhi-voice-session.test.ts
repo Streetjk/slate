@@ -164,6 +164,7 @@ describe('XiaozhiVoiceSession', () => {
       .map((item) => (item.binary ? null : JSON.parse(String(item.data))))
       .filter((item) => item?.type === 'stt' || item?.type === 'tts');
     expect(messages.filter((item) => item.type === 'stt')).toEqual([
+      { type: 'stt', text: 'Hel' },
       { type: 'stt', text: 'Hello' },
     ]);
     expect(
@@ -2175,21 +2176,24 @@ describe('XiaozhiVoiceSession', () => {
         data: item.binary ? null : JSON.parse(String(item.data)),
       }));
 
-      const sttMsg = nonBinaryMessages.find((m) => m.data?.type === 'stt');
+      const sttMsgs = nonBinaryMessages.filter((m) => m.data?.type === 'stt');
       const ttsStartMsg = nonBinaryMessages.find(
         (m) => m.data?.type === 'tts' && m.data?.state === 'start'
       );
       const firstBinary = ws.sent.findIndex((item) => item.binary);
 
-      // Invariant 1: STT exists before turnComplete
-      expect(sttMsg).toBeDefined();
-      expect(sttMsg?.data.text).toBe('今日は何曜日ですか？');
+      // Invariant 1: STT exists before turnComplete (first partial immediate, subsequent flushed before output)
+      expect(sttMsgs).toHaveLength(2);
+      expect(sttMsgs[0]?.data.text).toBe('今日');
+      expect(sttMsgs[1]?.data.text).toBe('今日は何曜日ですか？');
 
       // Invariant 2: STT was sent BEFORE tts start and BEFORE audio binary
       expect(ttsStartMsg).toBeDefined();
-      expect(sttMsg!.idx).toBeLessThan(ttsStartMsg!.idx);
+      expect(sttMsgs[0]!.idx).toBeLessThan(ttsStartMsg!.idx);
+      expect(sttMsgs[1]!.idx).toBeLessThan(ttsStartMsg!.idx);
       expect(firstBinary).toBeGreaterThanOrEqual(0);
-      expect(sttMsg!.idx).toBeLessThan(firstBinary);
+      expect(sttMsgs[0]!.idx).toBeLessThan(firstBinary);
+      expect(sttMsgs[1]!.idx).toBeLessThan(firstBinary);
 
       // Invariant 3: Assistant streaming is active before turnComplete (binary audio arrived immediately)
       expect(firstBinary).toBeGreaterThanOrEqual(0);
@@ -2211,8 +2215,8 @@ describe('XiaozhiVoiceSession', () => {
       ).length;
       const ttsStopCount = allMessages.filter((m) => m.type === 'tts' && m.state === 'stop').length;
 
-      // Exactly one logical user turn and assistant response
-      expect(sttCount).toBe(1);
+      // User turn streamed initial partial then finalized text, assistant response streamed
+      expect(sttCount).toBe(2);
       expect(ttsStartCount).toBe(1);
       expect(ttsStopCount).toBe(1);
     });
@@ -2751,10 +2755,9 @@ describe('XiaozhiVoiceSession', () => {
           logs.filter((l) => l === 'T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL=YES')
         ).toHaveLength(1);
 
-        // Backend flushes input transcript -> sends stt event
-        // Triggered by output transcription arriving
-        expect(logs).not.toContain('T_BACKEND_USER_TRANSCRIPT_FLUSH=YES');
-        expect(logs).not.toContain('T_USER_BUBBLE_EVENT_POSTED=YES');
+        // First nonblank input transcription immediately flushes -> sends stt event
+        expect(logs.filter((l) => l === 'T_BACKEND_USER_TRANSCRIPT_FLUSH=YES')).toHaveLength(1);
+        expect(logs.filter((l) => l === 'T_USER_BUBBLE_EVENT_POSTED=YES')).toHaveLength(1);
 
         liveEvent?.({
           message: {
@@ -2764,7 +2767,7 @@ describe('XiaozhiVoiceSession', () => {
           } as never,
         });
 
-        // Backend sent stt event, emitting both markers
+        // Backend sent stt event, emitting both markers with first-occurrence semantics
         expect(logs.filter((l) => l === 'T_BACKEND_USER_TRANSCRIPT_FLUSH=YES')).toHaveLength(1);
         expect(logs.filter((l) => l === 'T_USER_BUBBLE_EVENT_POSTED=YES')).toHaveLength(1);
 
@@ -3252,6 +3255,337 @@ describe('XiaozhiVoiceSession', () => {
       } finally {
         loggerSpy.mockRestore();
       }
+    });
+  });
+
+  describe('C8 post-physical repair: input transcript streaming and neutral bilingual session', () => {
+    it('makes the first non-empty input-transcription partial visible immediately without scheduler delay', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_lang: unknown, onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Initial state: no stt message sent yet
+      expect(
+        ws.sent.filter((item) => !item.binary && JSON.parse(String(item.data)).type === 'stt')
+      ).toHaveLength(0);
+
+      // First non-empty partial arrives
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Hel' } } } as never,
+      });
+
+      // Synchronously and immediately visible without waiting for 100ms timer
+      const sttImmediately = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      expect(sttImmediately).toHaveLength(1);
+      expect(sttImmediately[0]).toEqual({ type: 'stt', text: 'Hel' });
+
+      // Timing markers for flush and user bubble posted emitted immediately
+      const timing = session.getTimingTrace();
+      expect(timing.has('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(true);
+      expect(timing.has('T_BACKEND_USER_TRANSCRIPT_FLUSH')).toBe(true);
+      expect(timing.has('T_USER_BUBBLE_EVENT_POSTED')).toBe(true);
+      expect(timing.getStageTimestamp('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL')).toBe(
+        timing.getStageTimestamp('T_BACKEND_USER_TRANSCRIPT_FLUSH')
+      );
+    });
+
+    it('bounds subsequent input partial updates under rapid bursts with approximately 100ms spacing', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_lang: unknown, onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Burst of 20 rapid partials within the coalescing window
+      for (let i = 1; i <= 20; i++) {
+        liveEvent?.({
+          message: {
+            serverContent: { inputTranscription: { text: `token_${i}` } },
+          } as never,
+        });
+      }
+
+      // Immediately after the burst (before timer expiration):
+      // ONLY the first partial was emitted immediately; the remaining 19 are coalesced
+      const sttBeforeTimer = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      expect(sttBeforeTimer).toHaveLength(1);
+      expect(sttBeforeTimer[0].text).toBe('token_1');
+
+      // Wait for the coalesced 100ms spacing timer to fire
+      await new Promise((resolve) => setTimeout(resolve, 130));
+
+      const sttAfterTimer = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      // Exactly one additional update was emitted with the fully coalesced text
+      expect(sttAfterTimer).toHaveLength(2);
+      expect(sttAfterTimer[1].text).toContain('token_20');
+
+      // Total emitted events bounded to 2 despite 20 incoming partials
+      expect(sttAfterTimer.length).toBeLessThan(5);
+    });
+
+    it('preserves per-turn same-bubble semantics across multiple sequential turns', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_lang: unknown, onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+
+      // --- Turn 1 ---
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn1 part1' } } } as never,
+      });
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn1 part1 part2' } } } as never,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 130));
+      // Turn 1 completes
+      liveEvent?.({
+        message: {
+          serverContent: {
+            outputTranscription: { text: 'Turn 1 answer' },
+            turnComplete: true,
+          },
+        } as never,
+      });
+
+      // --- Turn 2 ---
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+      // Turn 2 first partial must be emitted immediately
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn2 part1' } } } as never,
+      });
+      const sttAfterTurn2First = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      // The first partial of Turn 2 is immediately sent
+      expect(sttAfterTurn2First.at(-1)?.text).toBe('Turn2 part1');
+
+      // Turn 2 final partial and completion
+      liveEvent?.({
+        message: {
+          serverContent: { inputTranscription: { text: 'Turn2 part1 finalized' } },
+        } as never,
+      });
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'stop' })),
+        false
+      );
+
+      const allStt = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      // Turn 1 had 'Turn1 part1' and 'Turn1 part1 part2'
+      // Turn 2 had 'Turn2 part1' and 'Turn2 part1 finalized'
+      expect(allStt.map((m) => m.text)).toEqual([
+        'Turn1 part1',
+        'Turn1 part1 part2',
+        'Turn2 part1',
+        'Turn2 part1 finalized',
+      ]);
+    });
+
+    it('protects newer turns from stale generation timers and callbacks', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let liveEvent: ((event: GeminiLiveEvent) => void) | undefined;
+      const session = new XiaozhiVoiceSession(
+        ws,
+        {
+          connect: async (_lang: unknown, onEvent: (event: GeminiLiveEvent) => void) => {
+            liveEvent = onEvent;
+            return {
+              sendAudio: () => {},
+              sendText: () => {},
+              endAudio: () => {},
+              respondToToolCalls: () => {},
+              rejectToolCalls: () => {},
+              reconnect: async () => {},
+              close: () => {},
+            };
+          },
+        } as never,
+        codec
+      );
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+
+      // Turn 1 starts
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Turn 1 first partial arrives (immediate)
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn 1 initial' } } } as never,
+      });
+
+      // Turn 1 second partial arrives (schedules 100ms timer)
+      liveEvent?.({
+        message: {
+          serverContent: { inputTranscription: { text: 'Turn 1 scheduled pending' } },
+        } as never,
+      });
+
+      // Before timer fires, user interrupts with Turn 2 (listen: start advances listenGeneration)
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // Wait for the time when Turn 1 timer would have fired
+      await new Promise((resolve) => setTimeout(resolve, 130));
+
+      const sttMessages = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      // Turn 1 scheduled timer MUST NOT have emitted 'Turn 1 scheduled pending' into Turn 2
+      expect(sttMessages.map((m) => m.text)).toEqual(['Turn 1 initial']);
+
+      // Now Turn 2 emits its own first partial
+      liveEvent?.({
+        message: { serverContent: { inputTranscription: { text: 'Turn 2 initial' } } } as never,
+      });
+
+      const sttMessagesAfterTurn2 = ws.sent
+        .filter((item) => !item.binary)
+        .map((item) => JSON.parse(String(item.data)))
+        .filter((m) => m.type === 'stt');
+
+      expect(sttMessagesAfterTurn2.map((m) => m.text)).toEqual([
+        'Turn 1 initial',
+        'Turn 2 initial',
+      ]);
+    });
+
+    it('connects with neutral EN/JA session setup without hard-coded English bias', async () => {
+      const ws = socket() as unknown as FakeSocket;
+      let connectedLanguage: unknown = 'uncalled';
+      const liveService = {
+        connect: async (language: unknown, _onEvent: unknown) => {
+          connectedLanguage = language;
+          return {
+            sendAudio: () => {},
+            sendText: () => {},
+            endAudio: () => {},
+            respondToToolCalls: () => {},
+            rejectToolCalls: () => {},
+            reconnect: async () => {},
+            close: () => {},
+          };
+        },
+      } as never;
+
+      const session = new XiaozhiVoiceSession(ws, liveService, codec);
+
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'hello', version: 1, transport: 'websocket' })),
+        false
+      );
+      await session.handleMessage(
+        Buffer.from(JSON.stringify({ type: 'listen', state: 'start' })),
+        false
+      );
+
+      // ensureLive() MUST pass undefined (neutral setup) rather than hard-coded 'en'
+      expect(connectedLanguage).toBeUndefined();
     });
   });
 });

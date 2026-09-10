@@ -48,12 +48,15 @@ export class GeminiLiveService {
   ) {}
 
   async connect(
-    language: VoiceLanguageT,
+    language: VoiceLanguageT | undefined,
     onEvent: (event: GeminiLiveEvent) => void,
     onError?: (error: Error) => void,
     enableWebSearch = true
   ): Promise<GeminiLiveConnection> {
     this.assertConfigured();
+    const systemInstruction = language
+      ? `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`
+      : LIVE_SYSTEM_INSTRUCTION;
     if (this.config.liveRuntime === 'node_bridge') {
       if (
         this.config.authMode !== 'developer_api_key' ||
@@ -65,11 +68,11 @@ export class GeminiLiveService {
       }
       try {
         return await this.nodeBridgeFactory(this.config.nodeBridgeOptions()).connect(
-          language,
+          language ?? 'en',
           onEvent,
           onError ?? (() => undefined),
           this.config.liveModel,
-          `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
+          systemInstruction,
           this.config.liveConnectTimeoutMs,
           enableWebSearch
         );
@@ -112,7 +115,7 @@ export class GeminiLiveService {
           config: {
             abortSignal: abortController.signal,
             responseModalities: [Modality.AUDIO],
-            systemInstruction: `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`,
+            systemInstruction,
             inputAudioTranscription: {},
             outputAudioTranscription: {},
             tools: buildGeminiToolRegistry(enableWebSearch),

@@ -9,6 +9,7 @@ import {
   GeminiLiveBridgeProtocolError,
 } from './gemini-live-bridge.protocol';
 import { OpusPcmCodec, type VoiceCodec } from './opus-pcm-codec';
+import type { VoiceLanguageT } from 'shared';
 
 const MAX_PRE_PROVIDER_MIC_FRAMES = 50;
 const MAX_PRE_PROVIDER_MIC_BYTES = 100 * 1024;
@@ -108,7 +109,8 @@ export class XiaozhiVoiceSession {
     private readonly liveService: GeminiLiveService,
     codecFactory: () => VoiceCodec = () => new OpusPcmCodec(),
     private readonly calendarActions?: VoiceCalendarActions,
-    logger?: Logger
+    logger?: Logger,
+    private readonly language?: VoiceLanguageT
   ) {
     this.codec = codecFactory();
     this.logger = logger ?? new Logger(XiaozhiVoiceSession.name);
@@ -394,7 +396,7 @@ export class XiaozhiVoiceSession {
     connectPromise = (async () => {
       try {
         const live = await this.liveService.connect(
-          'en',
+          this.language,
           ({ message }) => {
             if (this.isCurrentAttempt(generation)) {
               this.handleGeminiMessage(message);
@@ -458,7 +460,11 @@ export class XiaozhiVoiceSession {
           this.pendingInputTranscript,
           inputText
         );
-        this.scheduleInputTranscript();
+        if (!this.lastSentInputTranscript) {
+          this.flushInputTranscript();
+        } else {
+          this.scheduleInputTranscript();
+        }
       }
 
       const outputText = message.serverContent?.outputTranscription?.text || message.text;
@@ -621,15 +627,18 @@ export class XiaozhiVoiceSession {
     this.sendAlert('Voice service error', 'Voice service error');
   }
 
-  private scheduleInputTranscript(): void {
+  private scheduleInputTranscript(generation = this.listenGeneration): void {
     if (this.inputTranscriptTimer) return;
     this.inputTranscriptTimer = setTimeout(() => {
       this.inputTranscriptTimer = undefined;
-      this.flushInputTranscript();
+      if (!this.closed && this.listenGeneration === generation) {
+        this.flushInputTranscript(generation);
+      }
     }, TRANSCRIPT_STREAM_DELAY_MS);
   }
 
-  private flushInputTranscript(): void {
+  private flushInputTranscript(generation = this.listenGeneration): void {
+    if (this.closed || this.listenGeneration !== generation) return;
     if (this.inputTranscriptTimer) {
       clearTimeout(this.inputTranscriptTimer);
       this.inputTranscriptTimer = undefined;
@@ -643,16 +652,19 @@ export class XiaozhiVoiceSession {
     }
   }
 
-  private scheduleOutputTranscript(): void {
+  private scheduleOutputTranscript(generation = this.listenGeneration): void {
     if (this.transcriptTimer) return;
     this.transcriptTimer = setTimeout(() => {
       this.transcriptTimer = undefined;
-      this.emitStreamedOutputTranscript();
+      if (!this.closed && this.listenGeneration === generation) {
+        this.emitStreamedOutputTranscript(generation);
+      }
     }, TRANSCRIPT_STREAM_DELAY_MS);
   }
 
-  private emitStreamedOutputTranscript(): void {
-    this.flushInputTranscript();
+  private emitStreamedOutputTranscript(generation = this.listenGeneration): void {
+    if (this.closed || this.listenGeneration !== generation) return;
+    this.flushInputTranscript(generation);
     const text = this.pendingOutputTranscript.trim();
     if (text && text !== this.lastSentOutputTranscript) {
       this.startSpeaking();
@@ -676,12 +688,13 @@ export class XiaozhiVoiceSession {
     this.lastSentOutputTranscript = '';
   }
 
-  private flushPendingTranscripts(): void {
+  private flushPendingTranscripts(generation = this.listenGeneration): void {
+    if (this.closed || this.listenGeneration !== generation) return;
     if (this.transcriptTimer) {
       clearTimeout(this.transcriptTimer);
       this.transcriptTimer = undefined;
     }
-    this.flushInputTranscript();
+    this.flushInputTranscript(generation);
     const outputText = this.pendingOutputTranscript.trim();
     if (this.lastSentInputTranscript || outputText) {
       this.timing.mark('T_TRANSCRIPT_FINALIZED');
