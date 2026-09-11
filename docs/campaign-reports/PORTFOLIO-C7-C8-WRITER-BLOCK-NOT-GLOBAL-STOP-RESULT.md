@@ -1,0 +1,162 @@
+# C7/C8 independent diagnosis after the bounded Z.ai retry
+
+Date: 2026-09-11 (Australia/Perth)
+
+## Reconciliation and authority
+
+```text
+LIVE_PR2_HEAD_AT_RECONCILIATION=c3f2f82d196e0f4d5c1c9167622b5b2795ee6f81
+PR1_HEAD=641e358f7067d7e314e4f2c1eb18258690268cab
+PR2_HEAD=c3f2f82d196e0f4d5c1c9167622b5b2795ee6f81
+PR3_HEAD=61700ea8c5b7755aa39259a45554289ca01ff700
+PR4_HEAD=e9a6cfac86c63cb461a62d5029080332fac06865
+ALL_PRS=OPEN_DRAFT_UNMERGED
+PHYSICAL_REQUALIFICATION_CONSUMED=YES
+PHYSICAL_REQUALIFICATION_PENDING=NO
+AUTO_REPEAT_AUTHORIZED=NO
+```
+
+No physical test, deployment, reflash, provider qualification, reset,
+re-pairing, Wi-Fi change, OAuth action, credential action or MySQL mutation
+was performed.
+
+## Observer and runtime evidence
+
+The sanitized observer self-test passed and the observer was re-armed. Its
+capture retained only structural markers. It observed healthy backend and
+database snapshots, with authenticated poll PASS markers and no new reset,
+fatal or Voice event. No raw serial content was retained.
+
+```text
+OBSERVER_SELF_TEST=PASS
+OBSERVER_STATE=ARMED_CONNECTED_SANITIZED
+OBSERVER_RAW_CONTENT=NOT_RETAINED
+SLATE_HEALTH=running|healthy
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=running|healthy
+MYSQL_RESTART_COUNT=0
+NOTE4_AUTHENTICATED_POLL=PASS_SANITIZED
+```
+
+## Calendar downstream boundary
+
+The source-equivalent and read-only record evidence remains:
+
+```text
+C7_MONTH_CALENDAR_SERVER_CURRENT_FRAME_RENDER_TIMESTAMP_CLASS=WITHIN_24H_NONERROR_NONZERO_IMAGE
+C7_MONTH_CALENDAR_SERVER_CURRENT_FRAME_CONTENT_CLASS=ENGLISH_STRUCTURAL_EXPECTED_FROM_ACTIVE_RENDERER
+C7_MONTH_CALENDAR_CURRENT_FRAME_HASH_OR_ETAG_CLASS=PRESENT_NOT_EXPOSED
+C7_MONTH_CALENDAR_DEVICE_LAST_SYNC_FRAME_IDENTITY_CLASS=UNAVAILABLE_SANITIZED_SURFACE
+C7_MONTH_CALENDAR_DEVICE_SYNC_ACK_OR_FETCH_MARKER=UNAVAILABLE_NO_SYNC_EVENT_IN_CURRENT_WINDOW
+C7_MONTH_CALENDAR_DEVICE_LOCAL_CACHE_IDENTITY_CLASS=UNAVAILABLE_SANITIZED_SURFACE
+C7_MONTH_CALENDAR_ACTIVE_DEVICE_ARTIFACT_MATCH=UNPROVEN
+C7_MONTH_CALENDAR_FIRST_FAILED_BOUNDARY=DEVICE_SYNC_OR_ACTIVE_ARTIFACT_IDENTITY_NOT_OBSERVABLE
+C7_MONTH_CALENDAR_ROOT_CAUSE=UNRESOLVED_PHYSICAL_FRAME_CACHE_OR_ACTIVE_ARTIFACT_MISMATCH
+```
+
+The server path is mechanically `MonthCalendarProvider -> CalendarDataService
+-> DynamicFrameRendererService.renderMonthCalendarFrame`. The renderer uses
+the persisted `Australia/Perth` timezone, English weekday labels and the WA
+holiday table, and its month-cell subtitle path does not select lunar data.
+The Chinese/lunar photograph therefore remains unassigned to a source-layer
+failure. No card was recreated.
+
+## Weather error lifecycle
+
+Provider-disabled source inspection proves that the existing Open-Meteo Perth
+config shape is valid and that the normal render-success update explicitly
+clears `dynamicLastError`; both unchanged-image and image-replacement success
+paths write a null error. The currently available sanitized production window
+does not expose the required DB/API/frontend error fields.
+
+```text
+C7_WEATHER_DB_ERROR_FIELD_PRESENT=UNAVAILABLE_SANITIZED_READ_ONLY_WINDOW
+C7_WEATHER_DB_LAST_SUCCESS_RENDER_STATUS=UNAVAILABLE_SANITIZED_READ_ONLY_WINDOW
+C7_WEATHER_DB_LAST_SUCCESS_RENDER_TIMESTAMP_CLASS=UNAVAILABLE_SANITIZED_READ_ONLY_WINDOW
+C7_WEATHER_API_ERROR_FIELD_PRESENT=UNAVAILABLE_SANITIZED_READ_ONLY_WINDOW
+C7_WEATHER_API_RENDER_STATUS=UNAVAILABLE_SANITIZED_READ_ONLY_WINDOW
+C7_WEATHER_FRONTEND_QUERY_OR_LOCAL_CACHE_ERROR_PRESENT=UNAVAILABLE_SANITIZED_READ_ONLY_WINDOW
+C7_WEATHER_SUCCESS_PATH_EXPLICITLY_CLEARS_ERROR=YES_SOURCE_PROVEN
+C7_WEATHER_FIRST_BOUNDARY_WHERE_ERROR_SURVIVES=NOT_OBSERVABLE_WITHOUT_NEW_RUNTIME_OR_DEVICE_MARKER
+C7_WEATHER_ROOT_CAUSE=UNRESOLVED_ERROR_STATE_OR_CACHE_BOUNDARY
+C7_WEATHER_REPAIR_SOURCE=NONE
+```
+
+No external weather request was made and the existing card was not mutated.
+
+## Japanese glyph runtime-equivalent diagnosis
+
+The exact source selects `Voice_Font_16` for every Voice bubble. The generated
+font declares `Zfull_16` as fallback, contains a direct U+66C7 entry, and is
+compiled by the firmware CMake source list. The provider-disabled coverage
+test passed for U+66C7 and the representative `曇り時々雨` string, but this is
+not an LVGL runtime layout proof.
+
+```text
+C8_RUNTIME_VOICE_FONT_OBJECT=Voice_Font_16_AT_XIAOZHI_APPEND_BUBBLE
+C8_U66C7_RUNTIME_GLYPH_DESCRIPTOR=SOURCE_TABLE_PRESENT_HOST_COVERAGE_PASS
+C8_U66C7_RUNTIME_GLYPH_BITMAP=SOURCE_TABLE_PRESENT_HOST_COVERAGE_PASS
+C8_U66C7_CMAP_INDEX_PATH=Voice_Font_16_fmt_txt_cmaps_DIRECT_ENTRY
+C8_DUPLICATE_OR_STALE_FONT_OBJECT=NO_DUPLICATE_VOICE_OBJECT_FOUND;Zfull_16_IS_FALLBACK
+C8_EXACT_APP_REFERENCES_REPAIRED_FONT=SOURCE_CMAKE_REFERENCE_PRESENT
+C8_LITERAL_KUMORI_LAYOUT_REPLAY=PASS_HOST_COVERAGE_ONLY_LVGL_LAYOUT_UNPROVEN
+C8_FIRST_FAILED_BOUNDARY=LVGL_RUNTIME_LAYOUT_OR_DEVICE_ACTIVE_ARTIFACT_UNOBSERVABLE
+C8_GLYPH_ROOT_CAUSE=UNRESOLVED_RUNTIME_LAYOUT_OR_ACTIVE_ARTIFACT_SELECTION
+C8_FIRMWARE_CHANGE_REQUIRED=UNPROVEN_NO_FLASH_AUTHORIZED
+```
+
+The firmware coverage script passed without changing firmware. The physical
+missing-square result remains preserved and is not converted to PASS.
+
+## BTC writer health boundary
+
+The one permitted bounded non-secret Z.ai check was executed with the exact
+configured provider/model route. It failed before model execution with the
+same authentication failure; no secret value was printed or copied.
+
+```text
+BTC_WRITER_STATUS=BLOCKED_ZAI_GLM_5_3_FLASH
+BTC_WRITER_HEALTHCHECK=FAIL_AUTHENTICATION_BEFORE_EXECUTION
+SILENT_SUBSTITUTE=NO
+BTC_REPAIR_SOURCE=NONE_WRITER_BLOCKED
+BTC_TARGET_VISIBLE_TILE_COUNT=1
+BTC_TARGET_VISIBLE_PERIOD=weekly
+BTC_WEEKLY_WINDOW=7_DAYS
+BTC_WEEKLY_GRANULARITY=1_HOUR
+BTC_WEEKLY_MAX_POINTS=168
+```
+
+The exact current source still creates all three requests, and read-only
+production evidence shows one persisted Daily, Weekly and Monthly record.
+The targeted BTC-only consolidation remains unimplemented; unrelated content
+was not touched.
+
+## Frontier
+
+```text
+PORTFOLIO_CURRENT_HEAD=c3f2f82d196e0f4d5c1c9167622b5b2795ee6f81
+PORTFOLIO_CURRENT_PRIORITY=WAITING_DOWNSTREAM_CALENDAR_WEATHER_GLYPH_EVIDENCE_AND_ZAI_WRITER_RECOVERY
+C7_READY_NODE_COUNT=0
+C7_READONLY_READY_NODE_COUNT=0
+C7_WAITING_DEVICE_COUNT=2
+C7_WAITING_HUMAN_COUNT=0
+C7_EXTERNALLY_BLOCKED_COUNT=0
+C8_READY_NODE_COUNT=0
+C8_READONLY_READY_NODE_COUNT=0
+C8_WAITING_DEVICE_COUNT=1
+C8_WAITING_HUMAN_COUNT=0
+C8_EXTERNALLY_BLOCKED_COUNT=1
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_DEVICE_COUNT=3
+WAITING_HUMAN_COUNT=0
+EXTERNALLY_BLOCKED_COUNT=1
+CURRENT_BLOCKED_NODE=BTC_WEEKLY_ONLY_IMPLEMENTATION_ZAI_GLM_5_3_FLASH_AUTHENTICATION
+HUMAN_ACTION_REQUIRED=NO
+HUMAN_ACTION_REASON=NONE
+TERMINAL_REASON=SAFE_DOWNSTREAM_MARKERS_AND_MANDATED_WRITER_AUTHENTICATION_UNAVAILABLE
+NEXT_ACTION=RESUME_SANITIZED_DOWNSTREAM_MARKER_CAPTURE_OR_EXACT_ZAI_GLM_5_3_FLASH_IMPLEMENTATION_WHEN_ROUTE_RECOVERS;NO_PHYSICAL_REPEAT
+```
+
+C9 remains parked research-only. C10 remains isolated and undeployed. No
+deployment or physical authority is requested by this checkpoint.
