@@ -106,3 +106,7 @@ C8_NEXT_ACTION=USE_REPAIRED_TOOL-DENIED_BOUNDED_HARNESS_FOR_ONE_LATER_CANONICAL_
 The remaining review retry is not authorized as a second retry in this
 invocation. C7 remains deferred to the selected combined C7+C8 path; C9 and
 C10 remain parked by design. All PRs remain OPEN / DRAFT / UNMERGED.
+
+```text
+DURABLE_CHECKPOINT_HEAD=ab335f8cde2f0c61b8e8fcd8a0fb76499ec78c94
+```
