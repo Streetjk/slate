@@ -6,7 +6,8 @@ import { resolve } from 'node:path';
 
 export const REVIEW_SOURCE =
   process.env.SLATE_REVIEW_SOURCE ?? '553ad71932a8036a6f6dfe34794052eb4e573b10';
-export const REVIEW_BASE = 'd26efe2441407faf71c4c508f66e9f5c39f98fae';
+export const REVIEW_BASE =
+  process.env.SLATE_REVIEW_BASE ?? 'd26efe2441407faf71c4c508f66e9f5c39f98fae';
 export const REVIEW_IMAGE =
   process.env.SLATE_REVIEW_IMAGE ??
   'sha256:23363b7c54c4dbce27d2a223f637551b245a206dca8befc567f895af02ddf9c4';
@@ -14,7 +15,7 @@ export const REVIEW_MODEL = 'grok-4.6';
 export const MAX_OUTPUT_BYTES = 64 * 1024;
 export const REVIEW_TIMEOUT_MS = 300_000;
 export const DISALLOWED_REVIEW_TOOLS =
-  'Read,Glob,Grep,Bash,Task,WebSearch,WebFetch';
+  'Agent,web_search,web_fetch,run_terminal_cmd,run_terminal_command';
 
 const FOCUSED_PATHS = [
   'backend/src/modules/dynamic-content/definitions/google-news.json',
@@ -107,6 +108,7 @@ export function buildReviewPrompt(diff) {
     `MODEL=${REVIEW_MODEL}`,
     'ARTIFACT_SCOPE=C7+C8 combined backend/shared/frontend only; firmware unchanged.',
     'QUALIFICATION_EVIDENCE=focused C7 weather compatibility, google_news registration/dispatch, C8 transcript coalescing and mixed EN/JA provider-disabled tests previously passed; product runtime bytes are unchanged in this review.',
+    'PRIOR_REVIEW_FINDING=P2: Open-Meteo fallback selection could persist provider=open_meteo without latitude/longitude; the corrected delta must prove that this path now fails closed or selects a coordinate-bearing alternative.',
     'REVIEW_RUBRIC=check correctness, security/privacy, data integrity, regression risk, bounded queues/refresh behavior, and exact artifact/source consistency.',
     'SEVERITY_CONTRACT=P0 critical; P1 high; P2 medium; P3 low/informational; SECURITY any secret/privacy/auth boundary. Count only actionable findings in P0/P1/P2/SECURITY.',
     '',
@@ -130,6 +132,8 @@ export function buildReviewerArgs(repoRoot, prompt) {
     repoRoot,
     '--no-plan',
     '--no-subagents',
+    '--tools',
+    '',
     '--disable-web-search',
     '--disallowed-tools',
     DISALLOWED_REVIEW_TOOLS,
