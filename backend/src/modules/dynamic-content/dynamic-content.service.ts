@@ -200,7 +200,7 @@ export class DynamicContentService {
     });
     const plan = planBtcWeeklyConsolidation(existing);
     let currentManifestEtag = group.manifestEtag;
-    const kept = plan.keepId === null ? null : existing.find((record) => record.id === plan.keepId);
+    const kept = plan.keepId === null ? null : (existing.find((record) => record.id === plan.keepId) ?? null);
 
     if (plan.removeIds.length > 0) {
       await this.prisma.$transaction(async (tx) => {
@@ -208,11 +208,13 @@ export class DynamicContentService {
         await tx.content.deleteMany({ where: { id: { in: plan.removeIds } } });
         await compactContentSortOrders(tx, gid);
         currentManifestEtag = await this.groups.recomputeManifestEtag(gid, tx);
-        const compactedKept = await tx.content.findUnique({
-          where: { id: plan.keepId },
-          select: { sortOrder: true },
-        });
-        kept.sortOrder = compactedKept?.sortOrder ?? kept.sortOrder;
+        if (kept) {
+          const compactedKept = await tx.content.findUnique({
+            where: { id: kept.id },
+            select: { sortOrder: true },
+          });
+          kept.sortOrder = compactedKept?.sortOrder ?? kept.sortOrder;
+        }
       });
       await Promise.allSettled(
         existing
