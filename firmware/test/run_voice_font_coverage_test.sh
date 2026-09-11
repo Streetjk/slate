@@ -91,6 +91,18 @@ for w in ["今日", "何曜日", "ですか", "の", "ひらがな", "カタカ�
     for ch in w:
         assert ord(ch) in total_cps, f"Character '{ch}' in '{w}' not resolved"
 
+# Japanese weather and conversational glyph assertions (including U+66C7 '曇')
+assert 0x66C7 in voice_cps, "U+66C7 ('曇') missing from Voice_Font_16 direct glyphs"
+assert 0x66C7 in total_cps, "U+66C7 ('曇') not resolved in reachable font set"
+
+japanese_representative_samples = [
+    "こんにちは。今日の天気どう？日本の首都はどこですか？一年は何ヶ月ありますか？日本の通貨は何ですか？",
+    "今日の天気は曇りです",
+]
+for rep_sample in japanese_representative_samples:
+    missing_rep = [f"'{ch}' (U+{ord(ch):04X})" for ch in rep_sample if ord(ch) not in total_cps]
+    assert not missing_rep, f"Representative sample '{rep_sample}' has missing glyphs: {missing_rep}"
+
 # English ASCII regression coverage:
 # Full standard printable ASCII range (0x20 through 0x7E)
 ascii_missing = [f"U+{cp:04X}" for cp in range(0x20, 0x7F) if cp not in total_cps]
@@ -114,6 +126,9 @@ print(f"Voice font direct glyphs: {len(voice_cps)}")
 print(f"Fallback font glyphs: {len(fallback_cps)}")
 print(f"Combined reachable glyphs: {len(total_cps)}")
 print(f"Japanese sample '{sample_text}': 100% resolved")
+print(f"U+66C7 ('曇') assertion: PASS (direct voice font)")
+for rep_sample in japanese_representative_samples:
+    print(f"Japanese representative '{rep_sample}': 100% resolved")
 print(f"English sample '{english_sample}': 100% resolved")
 print(f"GB2312 Chinese sample '{chinese_sample}': 100% resolved")
 PY

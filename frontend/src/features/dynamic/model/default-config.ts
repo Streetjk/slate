@@ -12,14 +12,14 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
     case 'daily_calendar':
       return {
         type: 'daily_calendar',
-        tz: LOCAL_TIME_ZONE,
+        tz: 'Australia/Perth',
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };
     case 'month_calendar':
       return {
         type: 'month_calendar',
-        tz: LOCAL_TIME_ZONE,
+        tz: 'Australia/Perth',
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };

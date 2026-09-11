@@ -61,7 +61,7 @@ const DynamicRefreshOptions = z.object({
 export const DailyCalendarConfig = z
   .object({
     type: z.literal('daily_calendar'),
-    tz: Tz,
+    tz: Tz.default('Australia/Perth'),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);
@@ -70,7 +70,7 @@ export type DailyCalendarConfigT = z.infer<typeof DailyCalendarConfig>;
 export const MonthCalendarConfig = z
   .object({
     type: z.literal('month_calendar'),
-    tz: Tz,
+    tz: Tz.default('Australia/Perth'),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);

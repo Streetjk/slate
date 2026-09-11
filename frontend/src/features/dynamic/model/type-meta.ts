@@ -27,16 +27,16 @@ export interface DynamicTypeMeta {
 export const DYNAMIC_TYPE_META = {
   daily_calendar: {
     label: 'Calendar',
-    hint: 'Date · weekday · lunar date · solar term',
-    description: "Shows today's Gregorian date, lunar date, and sexagenary cycle.",
+    hint: 'Perth date · English weekday · WA holiday',
+    description: "Shows today's English Gregorian date in Australia/Perth.",
     hasConfigurableParams: false,
     supportsAudio: true,
     Icon: Calendar,
   },
   month_calendar: {
     label: 'Monthly calendar',
-    hint: 'Full month · lunar dates · holidays',
-    description: 'Shows the calendar for the current month.',
+    hint: 'English month grid · WA public holidays',
+    description: 'Shows the current month in English with confirmed WA public holidays.',
     hasConfigurableParams: false,
     supportsAudio: true,
     Icon: CalendarDays,

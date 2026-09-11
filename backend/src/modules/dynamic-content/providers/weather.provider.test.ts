@@ -105,6 +105,29 @@ describe('forecastLabel', () => {
     expect(validated.location_timezone).toBe('Australia/Perth');
   });
 
+  it('validates structurally-read production Weather record deterministically without migration', () => {
+    const provider = new WeatherProvider({ apiKey: '', apiHost: '' } as QweatherConfig);
+    // Structurally-read production record: dynamicType=weather, provider=open_meteo,
+    // finite coordinates, Australia/Perth timezone.
+    const productionWeatherConfig = {
+      type: 'weather',
+      tz: 'Australia/Perth',
+      provider: 'open_meteo',
+      location_id: '2063523',
+      location_label: 'Perth',
+      latitude: -31.95224,
+      longitude: 115.8614,
+      location_timezone: 'Australia/Perth',
+    };
+
+    // Validates cleanly without provider network calls; requires no schema migration.
+    // Stale dynamicLastError from an earlier pre-fix render attempt will clear upon normal refresh.
+    const validated = provider.validateConfig(productionWeatherConfig);
+    expect(validated).toMatchObject(productionWeatherConfig);
+    expect(Number.isFinite(validated.latitude)).toBe(true);
+    expect(Number.isFinite(validated.longitude)).toBe(true);
+  });
+
   it('searches Open-Meteo cities without credentials and returns coordinates', async () => {
     globalThis.fetch = (async () =>
       Response.json({
