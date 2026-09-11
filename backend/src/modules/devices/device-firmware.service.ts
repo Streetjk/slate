@@ -220,6 +220,17 @@ export class DeviceFirmwareService {
     } else {
       state.current_content = null;
     }
+    if (!resolvedCurrentFrame) {
+      this.logger.log('frame marker phase=server_current frame_available=0');
+    } else {
+      const frameIdPresent = Boolean(resolvedCurrentFrame.contentId);
+      const frameIdMatch =
+        frameIdPresent && state.current_content?.id === resolvedCurrentFrame.contentId;
+      this.logger.log(
+        `frame marker phase=server_current seq=${resolvedCurrentFrame.seq} ` +
+          `frame_id_present=${frameIdPresent ? 1 : 0} frame_id_match=${frameIdMatch ? 'match' : 'mismatch'}`
+      );
+    }
     return state;
   }
 

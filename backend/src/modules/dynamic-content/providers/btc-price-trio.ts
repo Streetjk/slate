@@ -1,21 +1,44 @@
-import type { CreateDynamicContentRequestT, PricePeriodT } from 'shared';
+import { BtcPriceConfig } from 'shared';
+import type { CreateDynamicContentRequestT } from 'shared';
 
-export const BTC_TRIO_PERIODS: readonly PricePeriodT[] = ['daily', 'weekly', 'monthly'];
-
-const LABEL_BY_PERIOD: Record<PricePeriodT, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-};
-
-export function createBtcTrioRequests(refreshIntervalSec = 600): CreateDynamicContentRequestT[] {
-  return BTC_TRIO_PERIODS.map((period) => ({
+export function createBtcWeeklyRequest(refreshIntervalSec = 600): CreateDynamicContentRequestT {
+  return {
     kind: 'dynamic',
-    frame_name: `BTC/USD · ${LABEL_BY_PERIOD[period]}`,
+    frame_name: 'BTC/USD · Weekly',
     config: {
       type: 'btc_price',
-      period,
+      period: 'weekly',
       refresh_interval_sec: refreshIntervalSec,
     },
+  };
+}
+
+export interface BtcWeeklyConsolidationRecord {
+  id: string;
+  dynamicConfig: unknown;
+}
+
+export interface BtcWeeklyConsolidationPlan {
+  keepId: string | null;
+  removeIds: string[];
+}
+
+export function planBtcWeeklyConsolidation(
+  records: readonly BtcWeeklyConsolidationRecord[]
+): BtcWeeklyConsolidationPlan {
+  const parsedRecords = records.map((record) => ({
+    id: record.id,
+    config: BtcPriceConfig.safeParse(record.dynamicConfig),
   }));
+  const keepId =
+    parsedRecords.find((record) => record.config.success && record.config.data.period === 'weekly')
+      ?.id ?? null;
+  const removeIds = parsedRecords
+    .filter((record) => {
+      if (!record.config.success) return false;
+      if (record.config.data.period !== 'weekly') return true;
+      return keepId !== null && record.id !== keepId;
+    })
+    .map((record) => record.id);
+  return { keepId, removeIds };
 }

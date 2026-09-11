@@ -143,8 +143,9 @@ bool SyncService::DownloadFramesToStage(cache::CacheWriter& writer, const std::s
         if (writer.FrameImageExists(f.seq, f.image_etag) &&
             (f.audio_etag.empty() || writer.FrameAudioExists(f.seq, f.audio_etag))) {
             cache::FrameMeta fm;
-            fm.status_bar_text = f.device_status_bar_text;
-            fm.content_etag    = f.content_etag;
+            fm.status_bar_text      = f.device_status_bar_text;
+            fm.manifest_content_id  = f.id;
+            fm.content_etag         = f.content_etag;
             fm.image_etag      = f.image_etag;
             fm.audio_etag      = f.audio_etag;
             // next_wake_sec<=0 视为非动态帧(不配 RTC timer)：0 曾被当成动态并被 60s
@@ -293,6 +294,7 @@ bool SyncService::SyncCurrentContent(const std::string& gid, const api::ContentM
     const bool       old_meta_ok = cache::ReadFrameMeta(gid, f.seq, old_meta);
     cache::FrameMeta next_meta;
     next_meta.status_bar_text = f.device_status_bar_text;
+    next_meta.manifest_content_id = f.id;
     next_meta.content_etag    = f.content_etag;
     next_meta.image_etag      = f.image_etag;
     next_meta.audio_etag      = f.audio_etag;
@@ -305,7 +307,8 @@ bool SyncService::SyncCurrentContent(const std::string& gid, const api::ContentM
         (f.audio_etag.empty() || cache::FrameAudioExists(gid, f.seq, f.audio_etag))) {
         if (old_meta.status_bar_text != next_meta.status_bar_text || old_meta.has_ttl != next_meta.has_ttl ||
             old_meta.ttl_sec != next_meta.ttl_sec || old_meta.image_etag != next_meta.image_etag ||
-            old_meta.audio_etag != next_meta.audio_etag) {
+            old_meta.audio_etag != next_meta.audio_etag ||
+            old_meta.manifest_content_id != next_meta.manifest_content_id) {
             if (!cache::WriteFrameMeta(gid, f.seq, next_meta)) {
                 ESP_LOGW(kTag, "frame meta write failed seq=%d", f.seq);
                 return false;
@@ -371,6 +374,13 @@ bool SyncService::SyncCurrentContent(const std::string& gid, const api::ContentM
         ESP_LOGW(kTag, "frame meta write failed seq=%d", f.seq);
         return false;
     }
+    const bool frame_id_match = old_meta_ok && !old_meta.manifest_content_id.empty() &&
+        old_meta.manifest_content_id == next_meta.manifest_content_id;
+    const bool frame_id_compared =
+        old_meta_ok && !old_meta.manifest_content_id.empty() && !next_meta.manifest_content_id.empty();
+    ESP_LOGI(kTag, "frame marker phase=received seq=%d frame_id_present=%d frame_id_match=%s", f.seq,
+             next_meta.manifest_content_id.empty() ? 0 : 1,
+             frame_id_compared ? (frame_id_match ? "match" : "mismatch") : "unknown");
     power_state::SetCurrentFrameFromMeta(f.seq, next_meta);
     changed = image_downloaded || image_etag_changed || status_bar_changed;
     return true;

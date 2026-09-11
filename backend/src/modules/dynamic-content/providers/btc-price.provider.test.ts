@@ -96,6 +96,41 @@ describe('BtcPriceProvider', () => {
     expect(result.points.at(-1)!.priceUsd).toBe(69034);
   });
 
+  it('uses one weekly request with 7-day, 1-hour, and 168-point semantics', async () => {
+    const requests: string[] = [];
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      requests.push(String(input));
+      if (String(input).includes('/spot')) {
+        return Response.json({ data: { amount: '70000', base: 'BTC', currency: 'USD' } });
+      }
+      return Response.json(
+        Array.from({ length: 180 }, (_, index) => [
+          1710000000 + index * 3600,
+          1,
+          2,
+          1,
+          69000 + index,
+        ])
+      );
+    }) as unknown as typeof fetch;
+
+    const provider = new BtcPriceProvider();
+    const result = await provider.fetchData(
+      provider.validateConfig({ type: 'btc_price', period: 'weekly' }),
+      { now: new Date('2024-03-09T16:00:00.000Z') }
+    );
+    const candleRequest = requests.find((request) => request.includes('granularity='));
+    const start = new Date(new URL(candleRequest!).searchParams.get('start')!);
+    const end = new Date(new URL(candleRequest!).searchParams.get('end')!);
+
+    expect(requests).toHaveLength(2);
+    expect(candleRequest).toContain('granularity=3600');
+    expect(end.getTime() - start.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+    expect(result.points).toHaveLength(168);
+    expect(result.points[0]!.priceUsd).toBe(69012);
+    expect(result.points.at(-1)!.priceUsd).toBe(69179);
+  });
+
   it('propagates endpoint failures so central reuse policy owns stale acceptance', async () => {
     let requests = 0;
     globalThis.fetch = (async () => {

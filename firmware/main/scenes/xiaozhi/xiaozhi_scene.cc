@@ -1,11 +1,13 @@
 #include "scenes/xiaozhi/xiaozhi_scene.h"
 
 #include <esp_log.h>
+#include <sdkconfig.h>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "drivers/display/epd_ssd1683.h"
@@ -32,6 +34,73 @@ int StandbyContentCenterY() {
 
 std::string DisplayText(const std::string& text) {
     return util::TrimForScreen(util::SanitizeForScreen(text), 120);
+}
+
+std::optional<uint32_t> FirstMissingVoiceGlyph(const std::string& text) {
+    for (size_t pos = 0; pos < text.size();) {
+        uint32_t codepoint = 0;
+        size_t   step      = 1;
+        if (!util::DecodeUtf8Codepoint(text, pos, codepoint, step)) {
+            ++pos;
+            continue;
+        }
+        lv_font_glyph_dsc_t descriptor{};
+        if (!lv_font_get_glyph_dsc(&Voice_Font_16, &descriptor, codepoint, codepoint))
+            return codepoint;
+        pos += step;
+    }
+    return std::nullopt;
+}
+
+std::optional<uint32_t> FirstUtf8Codepoint(const std::string& text) {
+    for (size_t pos = 0; pos < text.size();) {
+        uint32_t codepoint = 0;
+        size_t   step      = 1;
+        if (!util::DecodeUtf8Codepoint(text, pos, codepoint, step))
+            return std::nullopt;
+        return codepoint;
+    }
+    return std::nullopt;
+}
+
+size_t CountUtf8Codepoints(const std::string& text) {
+    size_t count = 0;
+    for (size_t pos = 0; pos < text.size();) {
+        uint32_t codepoint = 0;
+        size_t   step      = 1;
+        if (!util::DecodeUtf8Codepoint(text, pos, codepoint, step))
+            step = 1;
+        pos += step;
+        ++count;
+    }
+    return count;
+}
+
+void LogVoiceFontSelection(const std::string& text) {
+    const std::optional<uint32_t> missing_codepoint = FirstMissingVoiceGlyph(text);
+    const lv_font_t*              fallback          = Voice_Font_16.fallback;
+    const std::optional<uint32_t> first_codepoint   = FirstUtf8Codepoint(text);
+    const std::optional<uint32_t> probe_codepoint   =
+        missing_codepoint ? missing_codepoint : first_codepoint;
+    lv_font_glyph_dsc_t           resolved_descriptor{};
+    lv_font_glyph_dsc_t           direct_descriptor{};
+    const bool direct_descriptor_found = probe_codepoint &&
+        lv_font_get_glyph_dsc(&Voice_Font_16, &direct_descriptor, *probe_codepoint, *probe_codepoint);
+    const bool direct_bitmap_found =
+        direct_descriptor_found && direct_descriptor.box_w > 0 && direct_descriptor.box_h > 0;
+    const bool fallback_descriptor_found = missing_codepoint && fallback &&
+        lv_font_get_glyph_dsc(fallback, &resolved_descriptor, *missing_codepoint, *missing_codepoint);
+    const bool fallback_bitmap =
+        fallback_descriptor_found && resolved_descriptor.box_w > 0 && resolved_descriptor.box_h > 0;
+    ESP_LOGI(kTag,
+             "voice font marker artifact=%s fw=%s font=Voice_Font_16 direct_descriptor=%d "
+             "direct_bitmap=%d fallback=%s fallback_descriptor=%d fallback_bitmap=%d",
+             "voice_font_16+zfull_16", CONFIG_APP_PROJECT_VER, direct_descriptor_found ? 1 : 0,
+             direct_bitmap_found ? 1 : 0, fallback ? "Zfull_16" : "none",
+             fallback_descriptor_found ? 1 : 0, fallback_bitmap ? 1 : 0);
+    if (missing_codepoint)
+        ESP_LOGW(kTag, "voice font marker missing_codepoint=0x%04lX",
+                 static_cast<unsigned long>(*missing_codepoint));
 }
 
 std::string MessagesKey(const xiaozhi::XiaozhiSnapshot& snap) {
@@ -555,7 +624,11 @@ void XiaozhiScene::AppendXiaozhiBubble(const std::string& role, const std::strin
     lv_obj_set_style_text_font(label, &Voice_Font_16, 0);
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
     lv_obj_set_style_text_line_space(label, 4, 0);
+    LogVoiceFontSelection(display_text);
     LayoutBubble(bubble, label, display_text);
+    ESP_LOGI(kTag, "voice layout marker measured_width=%d final_width=%d final_height=%d text_chars=%zu",
+             lv_obj_get_width(label), lv_obj_get_width(bubble) - 18, lv_obj_get_height(bubble),
+             CountUtf8Codepoints(display_text));
     lv_obj_set_height(row, lv_obj_get_height(bubble) + 2);
 
     if (system)

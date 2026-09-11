@@ -47,6 +47,7 @@ export const ContentDetail = ContentSummary.extend({
   dynamic_last_rendered_at: z.string().datetime().nullable(),
   dynamic_next_render_at: z.string().datetime().nullable(),
   dynamic_render_error: z.string().nullable(),
+  dynamic_render_error_present: z.boolean().optional(),
   audio_text: z.string().nullable(),
   audio_error: z.string().nullable(),
   audio_updated_at: z.string().datetime().nullable(),

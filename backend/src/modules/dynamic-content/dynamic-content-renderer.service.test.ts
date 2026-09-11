@@ -181,40 +181,57 @@ describe('DynamicContentRendererService queueing', () => {
 
   it('marks error and throws Invalid configuration when weather config is malformed', async () => {
     let markedMessage = '';
-    const service = createService({
-      dynamicType: 'weather',
-      dynamicConfig: { type: 'weather', provider: 'invalid_provider' },
-      validateConfig: () => {
-        throw new Error('Invalid provider: Invalid enum value');
+    const loggerMessages: string[] = [];
+    const service = createService(
+      {
+        dynamicType: 'weather',
+        dynamicConfig: { type: 'weather', provider: 'invalid_provider' },
+        validateConfig: () => {
+          throw new Error('Invalid provider: Invalid enum value');
+        },
+        updateContent: async (_id, data) => {
+          markedMessage = String(data.dynamicLastError ?? '');
+        },
+        fetchData: () => Promise.resolve({}),
       },
-      updateContent: async (_id, data) => {
-        markedMessage = String(data.dynamicLastError ?? '');
-      },
-      fetchData: () => Promise.resolve({}),
-    });
+      loggerMessages
+    );
 
     await expect(service.renderDynamicContent('content-1', { force: true })).rejects.toThrow(
       'Dynamic configuration is invalid: Invalid provider: Invalid enum value'
     );
     expect(markedMessage).toContain('Invalid configuration: Invalid provider: Invalid enum value');
+
+    const lifecycleMessages = loggerMessages.filter((message) =>
+      message.includes('weather lifecycle marker')
+    );
+    expect(lifecycleMessages.join('\n')).toContain('stage=db_mark_config_invalid');
+    expect(lifecycleMessages.join('\n')).toContain('type=weather');
+    expect(lifecycleMessages.join('\n')).toContain('error_present=1');
+    expect(lifecycleMessages.join('\n')).not.toContain('content_id=');
+    expect(lifecycleMessages.join('\n')).not.toContain('content-1');
+    expect(lifecycleMessages.join('\n')).not.toContain('Invalid provider');
   });
 });
 
-function createService(opts: {
-  fetchData: () => Promise<unknown>;
-  syncAudio?: () => Promise<boolean>;
-  audioEtag?: string | null;
-  currentAudioEtag?: string | null;
-  dynamicData?: unknown;
-  dynamicLastRunAt?: Date | null;
-  imageSize?: number;
-  dynamicType?: string;
-  dynamicConfig?: unknown;
-  validateConfig?: (raw: unknown) => unknown;
-  registryGet?: (type: string) => unknown;
-  frameRender?: (ctx: { type: string }) => Promise<Buffer>;
-  updateContent?: (id: string, data: Record<string, unknown>) => Promise<unknown>;
-}): DynamicContentRendererService {
+function createService(
+  opts: {
+    fetchData: () => Promise<unknown>;
+    syncAudio?: () => Promise<boolean>;
+    audioEtag?: string | null;
+    currentAudioEtag?: string | null;
+    dynamicData?: unknown;
+    dynamicLastRunAt?: Date | null;
+    imageSize?: number;
+    dynamicType?: string;
+    dynamicConfig?: unknown;
+    validateConfig?: (raw: unknown) => unknown;
+    registryGet?: (type: string) => unknown;
+    frameRender?: (ctx: { type: string }) => Promise<Buffer>;
+    updateContent?: (id: string, data: Record<string, unknown>) => Promise<unknown>;
+  },
+  loggerMessages: string[] = []
+): DynamicContentRendererService {
   const content = {
     id: 'content-1',
     groupId: 'group-1',
@@ -281,7 +298,7 @@ function createService(opts: {
   const dynamicAudio = {
     sync: opts.syncAudio ?? (async () => false),
   };
-  return new DynamicContentRendererService(
+  const service = new DynamicContentRendererService(
     prisma as unknown as PrismaService,
     blob as unknown as BlobService,
     registry as unknown as DynamicContentRegistry,
@@ -289,6 +306,12 @@ function createService(opts: {
     groups as unknown as GroupsService,
     dynamicAudio as unknown as DynamicAudioService
   );
+  (service as unknown as { logger: unknown }).logger = {
+    warn: (message: string) => loggerMessages.push(message),
+    error: (message: string) => loggerMessages.push(message),
+    log: (message: string) => loggerMessages.push(message),
+  };
+  return service;
 }
 
 function deferred<T>(): {

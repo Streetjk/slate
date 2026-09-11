@@ -24,7 +24,7 @@ import { deleteContentAudioBlob } from '../../infra/blob/content-audio-blobs';
 import { DynamicContentRegistry } from './dynamic-content-registry';
 import { DynamicContentRendererService } from './dynamic-content-renderer.service';
 import { defaultDynamicFrameName } from './status-text/dynamic-content-status-text';
-import { createBtcTrioRequests } from './providers/btc-price-trio';
+import { createBtcWeeklyRequest, planBtcWeeklyConsolidation } from './providers/btc-price-trio';
 import { toContentMutationResponse } from '../contents/content-mutation-response';
 
 const DYNAMIC_MUTATION_TAIL_TTL_MS = 5 * 60_000;
@@ -180,20 +180,65 @@ export class DynamicContentService {
   }
 
   async appendBtcTrio(gid: string, ownerUserId: string): Promise<ContentMutationResponseT[]> {
-    const created: ContentMutationResponseT[] = [];
-    try {
-      for (const request of createBtcTrioRequests()) {
-        created.push(await this.append(gid, ownerUserId, request));
-      }
-      return created;
-    } catch (err) {
+    await this.groups.assertOwned(gid, ownerUserId);
+    const group = await this.prisma.group.findUnique({
+      where: { id: gid },
+      select: { manifestEtag: true },
+    });
+    if (!group) throw new NotFoundError('Group not found');
+    const existing = await this.prisma.content.findMany({
+      where: { groupId: gid, kind: 'dynamic', dynamicType: 'btc_price' },
+      select: {
+        id: true,
+        sortOrder: true,
+        contentEtag: true,
+        imageEtag: true,
+        audioEtag: true,
+        dynamicConfig: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    });
+    const plan = planBtcWeeklyConsolidation(existing);
+    let currentManifestEtag = group.manifestEtag;
+    const kept = plan.keepId === null ? null : existing.find((record) => record.id === plan.keepId);
+
+    if (plan.removeIds.length > 0) {
+      await this.prisma.$transaction(async (tx) => {
+        await lockGroupRow(tx, gid);
+        await tx.content.deleteMany({ where: { id: { in: plan.removeIds } } });
+        await compactContentSortOrders(tx, gid);
+        currentManifestEtag = await this.groups.recomputeManifestEtag(gid, tx);
+        const compactedKept = await tx.content.findUnique({
+          where: { id: plan.keepId },
+          select: { sortOrder: true },
+        });
+        kept.sortOrder = compactedKept?.sortOrder ?? kept.sortOrder;
+      });
       await Promise.allSettled(
-        created.map((content) =>
-          this.rollbackCreation(content.id, gid, new Error('BTC trio provisioning failed'))
-        )
+        existing
+          .filter((record) => plan.removeIds.includes(record.id))
+          .map(async (record) =>
+            Promise.allSettled([
+              this.blob.delete(gid, record.id, 'image'),
+              deleteContentAudioBlob(this.blob, gid, record.id, record.audioEtag),
+            ])
+          )
       );
-      throw err;
     }
+
+    if (kept) {
+      return [
+        toContentMutationResponse(
+          kept.id,
+          kept.sortOrder,
+          kept.imageEtag,
+          kept.audioEtag,
+          currentManifestEtag,
+          kept.contentEtag
+        ),
+      ];
+    }
+    return [await this.append(gid, ownerUserId, createBtcWeeklyRequest())];
   }
 
   async patch(
