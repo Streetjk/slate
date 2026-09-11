@@ -186,14 +186,18 @@ are a checkout/test-fixture limitation, not a change in this candidate.
 AGY_IMPLEMENTATION=SUCCESS_GEMINI_3_8_FLASH_HIGH
 AGY_PROVIDER_CALLS=NO_PRODUCT_PROVIDER_CALLS
 GROK_REVIEW_COMMAND=grok -m grok-4.6
-GROK_REVIEW_STATUS=BLOCKED_RETRYABLE_DEVICE_NOT_CONFIGURED_BEFORE_REVIEW
+GROK_REVIEW_STATUS=BLOCKED_EXTERNAL_REVIEWER_INFRASTRUCTURE_NO_TERMINAL_VERDICT_AFTER_CANONICAL_RETRIES
+GROK_REVIEW_ATTEMPTS=3_CANONICAL_grok_-m_grok-4.6;FIRST_DEVICE_NOT_CONFIGURED;TWO_MAX_TURN_INSPECTIONS_NO_VERDICT
+GROK_REVIEW_VERDICT=UNKNOWN_NOT_PASS_NOT_REVISE
 GROK_REVIEW_FALLBACK=NONE
 EXACT_ARTIFACT_BUILD=PASS_LINUX_ARM64_PROVIDER_DISABLED_BUILD;IMAGE_ID_SHA256_23363b7c54c4dbce27d2a223f637551b245a206dca8befc567f895af02ddf9c
 BACKEND_DEPLOYMENT=NO_NEW_AUTHORITY
 FIRMWARE_FLASH=NO_AUTHORITY
 ```
 
-Next safe action is to freeze this exact source/artifact and obtain the fresh
-independent Grok 4.6 review, retrying the recoverable local reviewer setup
-failure through the canonical route only. Changed backend/shared/frontend
-bytes remain undeployed until explicit deployment authority is granted.
+The canonical route was retried after its initial device error and then run
+with bounded turn caps. It inspected the candidate but did not emit the
+required terminal verdict. This is an external reviewer-infrastructure block,
+not a PASS or REVISE result; no fallback reviewer is allowed. Changed
+backend/shared/frontend bytes remain undeployed until the exact candidate has a
+terminal Grok verdict and explicit deployment authority.
