@@ -91,7 +91,25 @@ export const WeatherConfig = z
     location_timezone: Tz.optional(),
   })
   .merge(DynamicAudioOptions)
-  .merge(DynamicRefreshOptions);
+  .merge(DynamicRefreshOptions)
+  .superRefine((data, ctx) => {
+    if (data.provider === 'open_meteo') {
+      if (typeof data.latitude !== 'number' || Number.isNaN(data.latitude)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Open-Meteo location coordinates are not configured',
+          path: ['latitude'],
+        });
+      }
+      if (typeof data.longitude !== 'number' || Number.isNaN(data.longitude)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Open-Meteo location coordinates are not configured',
+          path: ['longitude'],
+        });
+      }
+    }
+  });
 export type WeatherConfigT = z.infer<typeof WeatherConfig>;
 
 export const HistoryTodayConfig = z

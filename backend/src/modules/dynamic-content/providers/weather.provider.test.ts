@@ -243,16 +243,40 @@ describe('forecastLabel', () => {
       })
     ).toThrow(/Invalid location_id/);
 
-    // Missing coordinates on Open-Meteo fetch
-    const configWithoutCoords = provider.validateConfig({
-      type: 'weather',
-      tz: 'Australia/Perth',
-      provider: 'open_meteo',
-      location_id: '2063523',
-      location_label: 'Perth',
-    });
+    // Missing coordinates on Open-Meteo config (fail-closed validation)
+    expect(() =>
+      provider.validateConfig({
+        type: 'weather',
+        tz: 'Australia/Perth',
+        provider: 'open_meteo',
+        location_id: '2063523',
+        location_label: 'Perth',
+      })
+    ).toThrow(/Invalid latitude: Open-Meteo location coordinates are not configured/);
+
+    expect(() =>
+      provider.validateConfig({
+        type: 'weather',
+        tz: 'Australia/Perth',
+        provider: 'open_meteo',
+        location_id: '2063523',
+        location_label: 'Perth',
+        latitude: -31.95224,
+      })
+    ).toThrow(/Invalid longitude: Open-Meteo location coordinates are not configured/);
+
+    // Defense-in-depth on Open-Meteo fetch when coordinates are missing
     expect(
-      provider.fetchData(configWithoutCoords, { now: new Date('2026-09-01T13:00:00Z') })
+      provider.fetchData(
+        {
+          type: 'weather',
+          tz: 'Australia/Perth',
+          provider: 'open_meteo',
+          location_id: '2063523',
+          location_label: 'Perth',
+        } as unknown as WeatherConfigT,
+        { now: new Date('2026-09-01T13:00:00Z') }
+      )
     ).rejects.toThrow('Open-Meteo location coordinates are not configured');
   });
 });

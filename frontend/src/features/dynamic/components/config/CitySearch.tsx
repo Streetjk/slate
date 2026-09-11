@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SearchDropdown } from '@/components/ui/SearchDropdown';
 import {
+  resolveFallbackCitySelection,
+  resolveRemoteCitySelection,
   useWeatherCitySearch,
   type WeatherCityResult,
+  type WeatherCitySelection,
 } from '@/features/dynamic/hooks/useWeatherCitySearch';
 import type { City } from '@/features/dynamic/model/cities';
 import { useCities } from '@/features/dynamic/hooks/useCities';
@@ -14,14 +17,7 @@ export function CitySearch({
   onSelect,
 }: {
   value: string;
-  onSelect: (result: {
-    locationId: string;
-    label: string;
-    provider?: 'qweather' | 'open_meteo';
-    latitude?: number;
-    longitude?: number;
-    timezone?: string;
-  }) => void;
+  onSelect: (result: WeatherCitySelection) => void;
 }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
@@ -124,32 +120,18 @@ function cityResultKey(result: CityResult): string {
   return `${result.city.name}-${result.city.province}`;
 }
 
-function cityResultValue(result: CityResult): {
-  locationId: string;
-  label: string;
-  hint: string;
-  provider?: 'qweather' | 'open_meteo';
-  latitude?: number;
-  longitude?: number;
-  timezone?: string;
-} {
+function cityResultValue(result: CityResult): WeatherCitySelection & { hint: string } {
   if (result.source === 'remote') {
     const city = result.city;
     const hint = [city.adm1, city.adm2].filter((part) => part && part !== city.name).join(' · ');
     return {
-      locationId: city.id,
-      label: city.name,
+      ...resolveRemoteCitySelection(city),
       hint,
-      provider: city.provider,
-      latitude: city.latitude,
-      longitude: city.longitude,
-      timezone: city.timezone,
     };
   }
   const city = result.city;
   return {
-    locationId: city.locationId,
-    label: city.name,
+    ...resolveFallbackCitySelection(city),
     hint: city.province !== city.name ? city.province : '',
   };
 }
