@@ -108,5 +108,5 @@ invocation. C7 remains deferred to the selected combined C7+C8 path; C9 and
 C10 remain parked by design. All PRs remain OPEN / DRAFT / UNMERGED.
 
 ```text
-DURABLE_CHECKPOINT_HEAD=62dd6e6c24b356caa7aad28c2e4732347abe0c0d
+DURABLE_CHECKPOINT_HEAD=196f64e93cda6ba9b05333a0b4ac38e90332215e
 ```
