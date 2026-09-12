@@ -214,16 +214,27 @@ export class DynamicContentService {
     const claim = await this.prisma.$transaction(async (tx) => {
       await lockGroupRow(tx, gid);
       const existing = await this.loadBtcConsolidationRecords(tx, gid);
-      const plan = planBtcWeeklyConsolidation(existing);
+      const provisioning = existing.filter((record) => this.isBtcProvisioningPlaceholder(record));
+      const activeProvisioning = provisioning.find((record) => this.isBtcProvisioning(record));
+      if (activeProvisioning) {
+        return { kind: 'waiting' as const, contentId: activeProvisioning.id };
+      }
+      if (provisioning.length > 0) {
+        await tx.content.deleteMany({
+          where: { id: { in: provisioning.map((record) => record.id) } },
+        });
+        await compactContentSortOrders(tx, gid);
+      }
+      const usableExisting = existing.filter(
+        (record) => !this.isBtcProvisioningPlaceholder(record)
+      );
+      const plan = planBtcWeeklyConsolidation(usableExisting);
       const kept =
         plan.keepId === null
           ? null
-          : (existing.find((record) => record.id === plan.keepId) ?? null);
+          : (usableExisting.find((record) => record.id === plan.keepId) ?? null);
       if (kept) {
-        return {
-          kind: this.isBtcProvisioning(kept) ? ('waiting' as const) : ('existing' as const),
-          contentId: kept.id,
-        };
+        return { kind: 'existing' as const, contentId: kept.id };
       }
 
       const contentId = createId();
@@ -309,10 +320,17 @@ export class DynamicContentService {
     >
   ): boolean {
     return (
-      record.imageSize === 0 &&
-      record.imageEtag === computeETag(`btc-provisioning:${record.id}`) &&
+      this.isBtcProvisioningPlaceholder(record) &&
       record.dynamicRefreshLeaseUntil !== null &&
       record.dynamicRefreshLeaseUntil.getTime() > Date.now()
+    );
+  }
+
+  private isBtcProvisioningPlaceholder(
+    record: Pick<BtcConsolidationRecord, 'id' | 'imageEtag' | 'imageSize'>
+  ): boolean {
+    return (
+      record.imageSize === 0 && record.imageEtag === computeETag(`btc-provisioning:${record.id}`)
     );
   }
 
@@ -336,12 +354,21 @@ export class DynamicContentService {
     const result = await this.prisma.$transaction(async (tx) => {
       await lockGroupRow(tx, gid);
       const existing = await this.loadBtcConsolidationRecords(tx, gid);
-      const plan = planBtcWeeklyConsolidation(existing);
+      const provisioningIds = existing
+        .filter((record) => this.isBtcProvisioningPlaceholder(record))
+        .map((record) => record.id);
+      const plan = planBtcWeeklyConsolidation(
+        existing.filter((record) => !provisioningIds.includes(record.id))
+      );
       const keptId = plan.keepId;
-      const removed = existing.filter((record) => plan.removeIds.includes(record.id));
+      const removed = existing.filter(
+        (record) => plan.removeIds.includes(record.id) || provisioningIds.includes(record.id)
+      );
       let manifestEtag = fallbackManifestEtag;
       if (removed.length > 0) {
-        await tx.content.deleteMany({ where: { id: { in: plan.removeIds } } });
+        await tx.content.deleteMany({
+          where: { id: { in: removed.map((record) => record.id) } },
+        });
         await compactContentSortOrders(tx, gid);
         manifestEtag = await this.groups.recomputeManifestEtag(gid, tx);
       }

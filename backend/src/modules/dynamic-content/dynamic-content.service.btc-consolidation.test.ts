@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import type { PrismaService } from '../../infra/prisma/prisma.service';
 import type { BlobService } from '../../infra/blob/blob.service';
 import { DynamicContentService } from './dynamic-content.service';
+import { computeETag } from '../../common/utils/etag';
 
 describe('DynamicContentService BTC weekly consolidation', () => {
   function createService(
@@ -316,5 +317,33 @@ describe('DynamicContentService BTC weekly consolidation', () => {
     );
     expect(getRecords().map((record) => record.id)).toEqual(['daily']);
     expect(deletedIds).toEqual([]);
+  });
+
+  it('replaces an expired interrupted placeholder before consolidating', async () => {
+    const deletedIds: string[] = [];
+    const staleId = 'stale-placeholder';
+    const { service, getRecords } = createService(
+      [
+        {
+          id: staleId,
+          sortOrder: 0,
+          contentEtag: 'stale-content',
+          imageEtag: computeETag(`btc-provisioning:${staleId}`),
+          imageSize: 0,
+          audioEtag: null,
+          dynamicConfig: { type: 'btc_price', period: 'weekly', refresh_interval_sec: 600 },
+          dynamicRefreshLeaseUntil: new Date(Date.now() - 1),
+        },
+      ],
+      deletedIds
+    );
+
+    const [response] = await service.appendBtcTrio('group-1', 'user-1');
+
+    expect(response?.id).not.toBe(staleId);
+    expect(deletedIds).toContain(staleId);
+    expect(getRecords()).toHaveLength(1);
+    expect(getRecords()[0]?.dynamicConfig).toMatchObject({ period: 'weekly' });
+    expect(getRecords()[0]?.imageSize).toBe(128);
   });
 });

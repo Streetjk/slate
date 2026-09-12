@@ -2,6 +2,7 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'bun:test';
 import { DynamicContentService } from './dynamic-content.service';
+import { computeETag } from '../../common/utils/etag';
 
 const databaseUrl = process.env.M04_ISOLATED_DATABASE_URL;
 const runIsolated = databaseUrl ? it : it.skip;
@@ -144,6 +145,42 @@ describe('DynamicContentService BTC isolated database qualification', () => {
       });
       expect(response?.id).toBe('m04-weekly');
       expect(rows.map((row) => row.id)).toEqual(['m04-weekly']);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+  runIsolated('resumes after an expired interrupted weekly placeholder', async () => {
+    const prisma = new PrismaClient({ adapter: new PrismaMariaDb(databaseUrl!) });
+    try {
+      await reset(prisma);
+      const staleId = 'm04-stale-placeholder';
+      await prisma.content.create({
+        data: {
+          id: staleId,
+          groupId: 'm04-group',
+          sortOrder: 0,
+          frameName: 'BTC/USD · Weekly',
+          imageEtag: computeETag(`btc-provisioning:${staleId}`),
+          imageSize: 0,
+          kind: 'dynamic',
+          dynamicType: 'btc_price',
+          dynamicConfig: { type: 'btc_price', period: 'weekly', refresh_interval_sec: 600 },
+          dynamicNextRunAt: new Date(0),
+          dynamicRefreshDueAt: new Date(0),
+          dynamicRefreshLeaseUntil: new Date(Date.now() - 1),
+        },
+      });
+
+      const [response] = await makeService(prisma).appendBtcTrio('m04-group', 'm04-user');
+      const rows = await prisma.content.findMany({
+        where: { groupId: 'm04-group', dynamicType: 'btc_price' },
+      });
+
+      expect(response?.id).not.toBe(staleId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.dynamicConfig).toMatchObject({ period: 'weekly' });
+      expect(rows[0]?.imageSize).toBe(128);
     } finally {
       await prisma.$disconnect();
     }
