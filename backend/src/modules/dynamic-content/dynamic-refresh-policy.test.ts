@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { computeErrorBackoffAt } from './dynamic-refresh-policy';
+import { computeErrorBackoffAt, dynamicSchedulePolicy } from './dynamic-refresh-policy';
 
 describe('computeErrorBackoffAt', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');
@@ -31,5 +31,11 @@ describe('computeErrorBackoffAt', () => {
     expect(delaySec(NaN)).toBe(60);
     expect(delaySec(undefined as unknown as number)).toBe(60);
     expect(Number.isNaN(computeErrorBackoffAt(NaN, now).getTime())).toBe(false);
+  });
+});
+
+describe('dynamicSchedulePolicy', () => {
+  it('schedules google_news by refresh interval', () => {
+    expect(dynamicSchedulePolicy('google_news')).toBe('refresh_interval');
   });
 });

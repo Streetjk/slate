@@ -57,6 +57,10 @@ std::string GetServerUrl() {
     return nvs_store::GetString(nvs_schema::kNet, nvs_schema::net::kUrl);
 }
 
+std::string GetDeviceSecret() {
+    return nvs_store::GetString(nvs_schema::kNet, nvs_schema::net::kDevSec);
+}
+
 void Clear() {
     nvs_store::EraseNamespace(nvs_schema::kNet);
     // 不读旧 namespace，但恢复出厂时顺手清掉测试残留。

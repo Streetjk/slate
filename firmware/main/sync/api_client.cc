@@ -62,6 +62,9 @@ inline constexpr char kStructureEtag[]       = "structure_etag";
 inline constexpr char kTelemetry[]           = "telemetry";
 inline constexpr char kTotal[]               = "total";
 inline constexpr char kWakeReason[]          = "wake_reason";
+inline constexpr char kWebsocket[]           = "websocket";
+inline constexpr char kPath[]                = "path";
+inline constexpr char kVersion[]             = "version";
 
 }  // namespace proto
 
@@ -538,6 +541,55 @@ bool ApiClient::Register(RegisterResult& out) {
     return true;
 }
 
+bool ApiClient::GetVoiceConfig(VoiceConfig& out) {
+    ESP_LOGI(kTag, "VOICE_CONFIG_REQUEST_START");
+    std::vector<uint8_t> bytes;
+    int status = 0;
+    const std::string path = std::string(kApiPrefix) + "/devices/current/voice/config";
+    const bool ok = DoRequest(path, HTTP_METHOD_GET, "", bytes, &status, "", nullptr, /*need_auth=*/true, kDefaultTimeoutMs);
+
+    const char* result_str = "transport_error";
+    if (status >= 200 && status < 300) {
+        result_str = "2xx";
+    } else if (status >= 400 && status < 500) {
+        result_str = "4xx";
+    } else if (status >= 500 && status < 600) {
+        result_str = "5xx";
+    }
+    ESP_LOGI(kTag, "VOICE_CONFIG_RESULT=%s", result_str);
+
+    if (!ok || status == 0) {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_TRANSPORT");
+        return false;
+    }
+    if (status < 200 || status >= 300) {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_HTTP_STATUS");
+        return false;
+    }
+
+    std::string resp(bytes.begin(), bytes.end());
+    cJSON* root = cJSON_Parse(resp.c_str());
+    if (!root) {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_JSON_INVALID");
+        return false;
+    }
+    cJSON* websocket = cJSON_GetObjectItemCaseSensitive(root, proto::kWebsocket);
+    cJSON* path_item = cJSON_IsObject(websocket) ? cJSON_GetObjectItemCaseSensitive(websocket, proto::kPath) : nullptr;
+    cJSON* version   = cJSON_IsObject(websocket) ? cJSON_GetObjectItemCaseSensitive(websocket, proto::kVersion) : nullptr;
+    const bool valid = cJSON_IsString(path_item) && path_item->valuestring &&
+                       std::strcmp(path_item->valuestring, "/api/v1/voice/websocket") == 0 &&
+                       cJSON_IsNumber(version) && version->valueint == 1;
+    if (valid) {
+        out.websocket_path = path_item->valuestring;
+        out.version        = version->valueint;
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=PASS");
+    } else {
+        ESP_LOGI(kTag, "VOICE_CONFIG_PARSE=FAIL_SCHEMA_INVALID");
+    }
+    cJSON_Delete(root);
+    return valid;
+}
+
 bool ApiClient::Poll(const Telemetry& tel, DeviceState& out) {
     cJSON* root = cJSON_CreateObject();
     if (!root) {
@@ -728,6 +780,10 @@ void ResetConnection() {
 
 bool Register(RegisterResult& out) {
     return DefaultClient().Register(out);
+}
+
+bool GetVoiceConfig(VoiceConfig& out) {
+    return DefaultClient().GetVoiceConfig(out);
 }
 
 bool Poll(const Telemetry& tel, DeviceState& out) {

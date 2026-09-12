@@ -54,7 +54,7 @@ export function DynamicCreateForm({ gid, type, form, header, onDone }: DynamicCr
   async function submitBtcTrio() {
     try {
       await createBtcTrio.mutateAsync();
-      toast.success('Created Daily, Weekly, and Monthly BTC frames');
+      toast.success('Created the BTC/USD weekly frame');
       onDone();
     } catch (err) {
       toast.error('BTC trio creation failed', getApiErrorMessage(err));

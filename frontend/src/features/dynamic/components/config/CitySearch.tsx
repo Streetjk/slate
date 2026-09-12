@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SearchDropdown } from '@/components/ui/SearchDropdown';
 import {
+  resolveFallbackCitySelection,
+  resolveRemoteCitySelection,
   useWeatherCitySearch,
   type WeatherCityResult,
+  type WeatherCitySelection,
 } from '@/features/dynamic/hooks/useWeatherCitySearch';
 import type { City } from '@/features/dynamic/model/cities';
 import { useCities } from '@/features/dynamic/hooks/useCities';
@@ -14,13 +17,13 @@ export function CitySearch({
   onSelect,
 }: {
   value: string;
-  onSelect: (result: { locationId: string; label: string }) => void;
+  onSelect: (result: WeatherCitySelection) => void;
 }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const trimmedQuery = query.trim();
-  const citySearch = useWeatherCitySearch(trimmedQuery, dirty);
+  const citySearch = useWeatherCitySearch(trimmedQuery, dirty, 'open_meteo');
   const shouldUseLocalFallback =
     citySearch.isError ||
     (!citySearch.isFetching && (!citySearch.data || citySearch.data.length === 0));
@@ -79,7 +82,14 @@ export function CitySearch({
       getKey={cityResultKey}
       onSelect={(result) => {
         const city = cityResultValue(result);
-        onSelect({ locationId: city.locationId, label: city.label });
+        onSelect({
+          locationId: city.locationId,
+          label: city.label,
+          provider: city.provider,
+          latitude: city.latitude,
+          longitude: city.longitude,
+          timezone: city.timezone,
+        });
         setQuery(city.label);
         setDirty(false);
       }}
@@ -110,16 +120,18 @@ function cityResultKey(result: CityResult): string {
   return `${result.city.name}-${result.city.province}`;
 }
 
-function cityResultValue(result: CityResult): { locationId: string; label: string; hint: string } {
+function cityResultValue(result: CityResult): WeatherCitySelection & { hint: string } {
   if (result.source === 'remote') {
     const city = result.city;
     const hint = [city.adm1, city.adm2].filter((part) => part && part !== city.name).join(' · ');
-    return { locationId: city.id, label: city.name, hint };
+    return {
+      ...resolveRemoteCitySelection(city),
+      hint,
+    };
   }
   const city = result.city;
   return {
-    locationId: city.locationId,
-    label: city.name,
+    ...resolveFallbackCitySelection(city),
     hint: city.province !== city.name ? city.province : '',
   };
 }

@@ -1,0 +1,101 @@
+# Grok 4.6 firmware artifact recovery result
+
+Date: 2026-09-12 (Australia/Perth)
+
+## F0 — exact artifact recovery
+
+The search was limited to campaign-controlled worktrees, firmware build
+directories and controller staging directories. Candidate names were not
+trusted.
+
+```text
+F6BD_SEARCH_LOCATIONS_CLASS=CAMPAIGN_WORKTREES_BUILD_DIRECTORIES_CONTROLLER_STAGING_ONLY
+F6BD_CANDIDATE_FILE_COUNT=3_EXACT_SIZE_APP_BINARIES
+F6BD_EXACT_MATCH_FOUND=YES
+F6BD_EXACT_MATCH_SHA256=sha256:f6bd1111fba50d94ff9bd6ccfbbc284dbdd4bbcd0d763ed5b09403e231954ab1
+F6BD_EXACT_MATCH_BYTES=2537024
+F6BD_EXACT_MATCH_IMAGE_INFO_CLASS=VALID_ESP32_S3_16MB_DIO_80M_7_SEGMENTS_CHECKSUM_VALID
+F6BD_EXACT_MATCH_ELF_IDENTITY=8869b77b943b117c38a8c5aca9ecee81a1116abeba3c797c711a5f963d5de1e2
+```
+
+The exact artifact was found at the campaign staging path
+`/Users/ollama/slate-fw-build.RE9ToU/firmware/build-c7-c8-zai-b235/slate.bin`.
+
+## F1/F2 disposition
+
+The historical artifact was recovered, so no new candidate was built and no
+new Grok review was required. The two prior nonmatching rebuilds remain only
+as historical comparison evidence:
+
+```text
+REBUILD_1_SHA256=sha256:e7358690157695559ecc370b32d43eb2107093cc7092e82a10531ed4bd3f859d
+REBUILD_2_SHA256=sha256:232b69e9d152121d4fed61a6248eb54137c11acdb83a79ae5c608cb950374764
+NEW_FIRMWARE_CANDIDATE=NONE_HISTORICAL_EXACT_RECOVERED
+```
+
+## Exact app-only flash
+
+The existing unconsumed exact-artifact authority was used once.
+
+```text
+FIRMWARE_TARGET=ESP32S3
+FIRMWARE_APP_SHA256=sha256:f6bd1111fba50d94ff9bd6ccfbbc284dbdd4bbcd0d763ed5b09403e231954ab1
+FIRMWARE_APP_BYTES=2537024
+FIRMWARE_APP_PARTITION_BYTES=4194304
+FIRMWARE_APP_OFFSET=0x10000
+FIRMWARE_FLASH_SCOPE=APPLICATION_PARTITION_ONLY
+FLASH_HASH_MATCH=YES
+FLASH_RESULT=PASS_HASH_VERIFIED
+BOOT_COMPLETED=YES_POST_FLASH_USB_REENUMERATION_AND_RUNTIME_POLL
+NETWORK_RECONNECTED=YES_AUTHENTICATED_POLL
+PAIRING_PRESERVED=YES_AUTHENTICATED_POLL
+BOOTLOADER_FLASHED=NO
+PARTITION_TABLE_FLASHED=NO
+NVS_FLASHED=NO
+FILESYSTEM_FLASHED=NO
+```
+
+No substitute binary was used. No application redeployment, MySQL action,
+provider call, Wi-Fi change, re-pairing or factory reset occurred.
+
+## Post-flash qualification and observer
+
+```text
+SLATE_HEALTH=running_healthy
+SLATE_RESTART_COUNT=0
+MYSQL_HEALTH=running_healthy
+MYSQL_RESTART_COUNT=0
+LOCAL_HTTP_HEALTH=HTTP_200
+PUBLIC_HTTP_HEALTH=HTTP_200
+NOTE4_AUTHENTICATED_POLL=PASS
+FRAME_MARKERS_AVAILABLE=YES_SANITIZED_SERVER_CURRENT_AND_MATCH_MARKERS
+GLYPH_MARKERS_AVAILABLE=YES_CANDIDATE_AND_COLLECTOR_PATH_READY
+COLLECTOR_ID=m4-sanitized-structural-v3|sha256:2c60ae95bec6236afdb42f77b0e2dfc1a9c9123a847559fd67c04c3f173af65a
+COLLECTOR_SELF_TEST=PASS
+OBSERVER_STATE=RUNNING_CONNECTED_SANITIZED
+OBSERVER_RAW_CONTENT_RETAINED=NO
+FATAL_MARKERS=0_OBSERVED
+```
+
+The runtime observer is active in a persistent sanitized session. The
+physical window has not yet been consumed.
+
+## Physical boundary
+
+```text
+PHYSICAL_REQUALIFICATION_CONSUMED=NO
+PHYSICAL_REQUALIFICATION_AUTHORITY=EXISTING_UNCONSUMED_ONE_WINDOW
+PHYSICAL_REQUALIFICATION_ARMED=YES
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_DEVICE_COUNT=1
+WAITING_HUMAN_COUNT=0
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=PERFORM_ONE_AUTHORIZED_COMBINED_C7_C8_NOTE4_ACCEPTANCE
+CURRENT_BLOCKED_NODE=ONE_BOUNDED_COMBINED_C7_C8_NOTE4_PHYSICAL_ACCEPTANCE
+NEXT_ACTION=CONSUME_ONE_BOUNDED_PHYSICAL_ACCEPTANCE_THEN_INGEST_SANITIZED_EVIDENCE
+```
+
+Only sanitized structural evidence is retained. Raw audio, transcripts,
+provider payloads, credentials, auth headers, private Outlook/Calendar data
+and private device identifiers are excluded.

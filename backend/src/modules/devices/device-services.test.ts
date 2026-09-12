@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
+import { Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { ContentSummaryT } from 'shared';
 import type { PrismaService } from '../../infra/prisma/prisma.service';
@@ -356,6 +357,30 @@ describe('DeviceFirmwareService.poll', () => {
     expect(calls.refreshed).toHaveLength(0);
     expect(calls.currentContent).toHaveLength(1);
     expect(state.current_content).toEqual(currentContent);
+  });
+
+  it('emits a sanitized server current-frame marker without structural identifiers', async () => {
+    const loggedMessages: string[] = [];
+    const loggerSpy = spyOn(Logger.prototype, 'log').mockImplementation((message: string) => {
+      loggedMessages.push(message);
+    });
+    const { service } = createPollService();
+
+    try {
+      await service.poll('device-1', {
+        wake_reason: 'button',
+        current_group: 'group-1',
+        current_content_seq: 2,
+        manifest_etag: 'manifest-1',
+      });
+    } finally {
+      loggerSpy.mockRestore();
+    }
+
+    const marker = loggedMessages.find((message) => message.includes('phase=server_current'));
+    expect(marker).toBe(
+      'frame marker phase=server_current seq=2 frame_id_present=1 frame_id_match=match'
+    );
   });
 
   it('returns null current_content when the selected group manifest no longer matches', async () => {

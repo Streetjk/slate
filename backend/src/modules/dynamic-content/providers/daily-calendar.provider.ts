@@ -5,6 +5,7 @@ import { pickTraditionalFestival } from '../traditional-festivals';
 import type { DataProvider, DynamicContentFetchCtx } from '../dynamic-content.types';
 import { findNextSolarTerm } from '../calendar-data.service';
 import { datePartsInTz } from '../timezone';
+import { waPublicHolidayOn } from '../wa-public-holidays';
 
 export interface DailyCalendarProviderData {
   /** 公历：2026 */
@@ -37,9 +38,11 @@ export interface DailyCalendarProviderData {
   festival: string | null;
   yi: string[];
   ji: string[];
+  weekday: string;
+  publicHoliday: string | null;
 }
 
-const WEEKDAY_CN = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+const WEEKDAY_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 @Injectable()
 export class DailyCalendarProvider implements DataProvider<
@@ -97,7 +100,8 @@ export class DailyCalendarProvider implements DataProvider<
       month: String(month),
       day: String(day),
       monthDay: `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`,
-      weekdayCN: WEEKDAY_CN[weekday]!,
+      weekdayCN: WEEKDAY_EN[weekday]!,
+      weekday: WEEKDAY_EN[weekday]!,
       lunar: lunarStr,
       lunarDate,
       ganzhiYear,
@@ -109,6 +113,7 @@ export class DailyCalendarProvider implements DataProvider<
       festival: pickTraditionalFestival(festivals),
       yi: lunar.getDayYi().slice(0, 5),
       ji: lunar.getDayJi().slice(0, 5),
+      publicHoliday: waPublicHolidayOn(year, month, day)?.name ?? null,
     };
   }
 }

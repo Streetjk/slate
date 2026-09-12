@@ -35,6 +35,10 @@ api::Telemetry BuildTelemetry(const std::string& current_group, const std::strin
         if (cache::ReadStateMeta(gid, manifest_etag) && !gid.empty() &&
             cache::ReadFrameMeta(gid, tel.current_content_seq, meta)) {
             tel.current_content_etag = meta.content_etag;
+            ESP_LOGI(kTag,
+                     "frame marker phase=requested seq=%d frame_id_present=%d frame_id_match=%s",
+                     tel.current_content_seq, meta.manifest_content_id.empty() ? 0 : 1,
+                     meta.manifest_content_id.empty() ? "unknown" : "unknown");
         }
     }
     tel.manifest_etag = cache::ReadCurrentManifestEtag();
@@ -139,6 +143,23 @@ void SyncService::SyncOnce(SyncMode mode) {
 
     ESP_LOGI(kTag, "sync done mode=%s ok=%d group_changed=%d elapsed_ms=%lld", SyncModeName(mode), sync_ok ? 1 : 0,
              group_changed ? 1 : 0, (long long)(time_utils::NowMs() - started_ms));
+    if (state.has_group && state.has_current_content)
+    {
+        cache::FrameMeta cached_meta;
+        const bool       cached_meta_ok =
+            cache::ReadFrameMeta(state.group_id, state.current_content.seq, cached_meta);
+        const bool frame_id_compared = cached_meta_ok && !cached_meta.manifest_content_id.empty() &&
+            !state.current_content.id.empty();
+        const bool frame_id_match =
+            frame_id_compared && cached_meta.manifest_content_id == state.current_content.id;
+        ESP_LOGI(kTag,
+                 "frame marker phase=sync_result ok=%d seq=%d frame_id_present=%d frame_id_match=%s",
+                 sync_ok ? 1 : 0, state.current_content.seq,
+                 cached_meta_ok && !cached_meta.manifest_content_id.empty() ? 1 : 0,
+                 frame_id_compared ? (frame_id_match ? "match" : "mismatch") : "unknown");
+    }
+    else
+        ESP_LOGI(kTag, "frame marker phase=sync_result ok=%d frame_available=0", sync_ok ? 1 : 0);
     evt::PostSyncFinished(sync_ok, group_changed, evt::kNoWait);
 }
 

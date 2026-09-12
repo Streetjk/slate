@@ -392,6 +392,9 @@ void FrameScene::LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBeh
     else
         ctx.epd->RequestUrgentPartialRefresh();
     ESP_LOGD(kTag, "load frame refresh idx=%d full=%d first_loaded=%d", idx, full ? 1 : 0, first_loaded_ ? 1 : 0);
+    ESP_LOGI(kTag, "frame marker phase=active seq=%d frame_id_present=%d frame_id_match=%s", idx,
+             meta.manifest_content_id.empty() ? 0 : 1,
+             meta.manifest_content_id.empty() ? "unknown" : "unknown");
 
     if (ctx.audio) {
         std::vector<uint8_t> pcm;

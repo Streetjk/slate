@@ -52,5 +52,10 @@ class XiaozhiScene : public Scene {
     bool                       service_entered_        = false;
     size_t                     rendered_message_count_ = 0;
     std::string                rendered_messages_key_;
+    std::string                rendered_prefix_key_;
+    lv_obj_t*                  last_bubble_row_        = nullptr;
+    lv_obj_t*                  last_bubble_            = nullptr;
+    lv_obj_t*                  last_label_             = nullptr;
+    std::string                last_bubble_role_;
     std::unique_ptr<StatusBar> status_bar_;
 };

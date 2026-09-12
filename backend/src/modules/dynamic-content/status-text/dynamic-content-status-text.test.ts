@@ -11,6 +11,7 @@ describe('dynamic content English status text', () => {
     expect(defaultDynamicFrameName('month_calendar')).toBe('Monthly calendar');
     expect(defaultDynamicFrameName('history_today')).toBe('Today in history');
     expect(defaultDynamicFrameName('earthquake_report')).toBe('Earthquake reports');
+    expect(defaultDynamicFrameName('google_news')).toBe('Google News');
   });
 
   test('formats device status-bar dates in English', () => {

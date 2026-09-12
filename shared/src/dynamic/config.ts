@@ -18,6 +18,7 @@ export const DynamicType = z.enum([
   'earthquake_report',
   'btc_price',
   'outlook_calendar',
+  'google_news',
   'dashboard',
   'font_test',
   'hot_list',
@@ -60,7 +61,7 @@ const DynamicRefreshOptions = z.object({
 export const DailyCalendarConfig = z
   .object({
     type: z.literal('daily_calendar'),
-    tz: Tz,
+    tz: Tz.default('Australia/Perth'),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);
@@ -69,22 +70,46 @@ export type DailyCalendarConfigT = z.infer<typeof DailyCalendarConfig>;
 export const MonthCalendarConfig = z
   .object({
     type: z.literal('month_calendar'),
-    tz: Tz,
+    tz: Tz.default('Australia/Perth'),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);
 export type MonthCalendarConfigT = z.infer<typeof MonthCalendarConfig>;
 
+// Keep the historical default on QWeather so persisted configs from before
+// the provider discriminator remain valid. New frontend configs explicitly
+// select Open-Meteo for global locations.
 export const WeatherConfig = z
   .object({
     type: z.literal('weather'),
     tz: Tz,
-    provider: z.enum(['qweather']).default('qweather'),
-    location_id: z.string().min(1).max(32),
+    provider: z.enum(['qweather', 'open_meteo']).default('qweather'),
+    location_id: z.coerce.string().min(1).max(32),
     location_label: z.string().min(1).max(32),
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+    location_timezone: Tz.optional(),
   })
   .merge(DynamicAudioOptions)
-  .merge(DynamicRefreshOptions);
+  .merge(DynamicRefreshOptions)
+  .superRefine((data, ctx) => {
+    if (data.provider === 'open_meteo') {
+      if (typeof data.latitude !== 'number' || Number.isNaN(data.latitude)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Open-Meteo location coordinates are not configured',
+          path: ['latitude'],
+        });
+      }
+      if (typeof data.longitude !== 'number' || Number.isNaN(data.longitude)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Open-Meteo location coordinates are not configured',
+          path: ['longitude'],
+        });
+      }
+    }
+  });
 export type WeatherConfigT = z.infer<typeof WeatherConfig>;
 
 export const HistoryTodayConfig = z
@@ -188,6 +213,13 @@ export const OutlookCalendarConfig = z.object({
 });
 export type OutlookCalendarConfigT = z.infer<typeof OutlookCalendarConfig>;
 
+export const GoogleNewsConfig = z.object({
+  type: z.literal('google_news'),
+  edition: z.enum(['au', 'tw', 'both']).default('both'),
+  refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(900),
+});
+export type GoogleNewsConfigT = z.infer<typeof GoogleNewsConfig>;
+
 export const DashboardTemplateRef = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('system'),
@@ -231,6 +263,7 @@ export const DynamicConfig = z.discriminatedUnion('type', [
   EarthquakeReportConfig,
   BtcPriceConfig,
   OutlookCalendarConfig,
+  GoogleNewsConfig,
   DashboardConfig,
   FontTestConfig,
   HotListConfig,
