@@ -12,6 +12,7 @@ describe('DynamicContentService BTC weekly consolidation', () => {
   ) {
     const records = existing as Array<Record<string, unknown>>;
     let compactDbWriteCalls = 0;
+    const deletedBlobIds: string[] = [];
     const tx = {
       $queryRaw: async () => [{ id: 'group-1' }],
       $executeRaw: async () => {
@@ -70,7 +71,9 @@ describe('DynamicContentService BTC weekly consolidation', () => {
       recomputeManifestEtag: async () => 'current-group-etag',
     };
     const blob = {
-      delete: async () => undefined,
+      delete: async (_gid: string, contentId: string) => {
+        deletedBlobIds.push(contentId);
+      },
     };
     const renderer = {
       renderDynamicContent: async (contentId: string) => {
@@ -116,6 +119,7 @@ describe('DynamicContentService BTC weekly consolidation', () => {
       getAppendCalls: () => appendCalls,
       getCompactDbWriteCalls: () => compactDbWriteCalls,
       getRecords: () => records,
+      getDeletedBlobIds: () => deletedBlobIds,
     };
   }
 
@@ -322,7 +326,7 @@ describe('DynamicContentService BTC weekly consolidation', () => {
   it('replaces an expired interrupted placeholder before consolidating', async () => {
     const deletedIds: string[] = [];
     const staleId = 'stale-placeholder';
-    const { service, getRecords } = createService(
+    const { service, getRecords, getDeletedBlobIds } = createService(
       [
         {
           id: staleId,
@@ -330,7 +334,7 @@ describe('DynamicContentService BTC weekly consolidation', () => {
           contentEtag: 'stale-content',
           imageEtag: computeETag(`btc-provisioning:${staleId}`),
           imageSize: 0,
-          audioEtag: null,
+          audioEtag: 'stale-audio',
           dynamicConfig: { type: 'btc_price', period: 'weekly', refresh_interval_sec: 600 },
           dynamicRefreshLeaseUntil: new Date(Date.now() - 1),
         },
@@ -344,6 +348,29 @@ describe('DynamicContentService BTC weekly consolidation', () => {
     expect(deletedIds).toContain(staleId);
     expect(getRecords()).toHaveLength(1);
     expect(getRecords()[0]?.dynamicConfig).toMatchObject({ period: 'weekly' });
+    expect(getRecords()[0]?.imageSize).toBe(128);
+    expect(getDeletedBlobIds()).toContain(staleId);
+  });
+
+  it('waits through an active lease instead of reporting a premature conflict', async () => {
+    const staleId = 'active-placeholder';
+    const { service, getRecords } = createService([
+      {
+        id: staleId,
+        sortOrder: 0,
+        contentEtag: 'active-content',
+        imageEtag: computeETag(`btc-provisioning:${staleId}`),
+        imageSize: 0,
+        audioEtag: null,
+        dynamicConfig: { type: 'btc_price', period: 'weekly', refresh_interval_sec: 600 },
+        dynamicRefreshLeaseUntil: new Date(Date.now() + 20),
+      },
+    ]);
+
+    const [response] = await service.appendBtcTrio('group-1', 'user-1');
+
+    expect(response?.id).not.toBe(staleId);
+    expect(getRecords()).toHaveLength(1);
     expect(getRecords()[0]?.imageSize).toBe(128);
   });
 });

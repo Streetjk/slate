@@ -217,7 +217,12 @@ export class DynamicContentService {
       const provisioning = existing.filter((record) => this.isBtcProvisioningPlaceholder(record));
       const activeProvisioning = provisioning.find((record) => this.isBtcProvisioning(record));
       if (activeProvisioning) {
-        return { kind: 'waiting' as const, contentId: activeProvisioning.id };
+        return {
+          kind: 'waiting' as const,
+          contentId: activeProvisioning.id,
+          leaseUntil: activeProvisioning.dynamicRefreshLeaseUntil,
+          removedProvisioning: [] as BtcConsolidationRecord[],
+        };
       }
       if (provisioning.length > 0) {
         await tx.content.deleteMany({
@@ -234,7 +239,11 @@ export class DynamicContentService {
           ? null
           : (usableExisting.find((record) => record.id === plan.keepId) ?? null);
       if (kept) {
-        return { kind: 'existing' as const, contentId: kept.id };
+        return {
+          kind: 'existing' as const,
+          contentId: kept.id,
+          removedProvisioning: provisioning,
+        };
       }
 
       const contentId = createId();
@@ -259,11 +268,12 @@ export class DynamicContentService {
           dynamicRefreshLeaseUntil: new Date(Date.now() + BTC_PROVISIONING_LEASE_MS),
         },
       });
-      return { kind: 'created' as const, contentId };
+      return { kind: 'created' as const, contentId, removedProvisioning: provisioning };
     });
 
+    await this.cleanupBtcRemovedBlobs(gid, claim.removedProvisioning);
     if (claim.kind === 'waiting') {
-      await this.waitForBtcProvisioning(gid, claim.contentId);
+      await this.waitForBtcProvisioning(claim.contentId, claim.leaseUntil);
       return this.appendBtcTrioSerialized(gid, ownerUserId);
     }
 
@@ -334,17 +344,25 @@ export class DynamicContentService {
     );
   }
 
-  private async waitForBtcProvisioning(gid: string, contentId: string): Promise<void> {
-    const deadline = Date.now() + BTC_PROVISIONING_WAIT_MS;
-    while (Date.now() < deadline) {
+  private async waitForBtcProvisioning(contentId: string, leaseUntil: Date | null): Promise<void> {
+    let deadline = Math.max(
+      Date.now() + BTC_PROVISIONING_WAIT_MS,
+      leaseUntil?.getTime() ?? Date.now()
+    );
+    while (true) {
       const record = await this.prisma.content.findUnique({
         where: { id: contentId },
         select: { id: true, imageEtag: true, imageSize: true, dynamicRefreshLeaseUntil: true },
       });
       if (!record || !this.isBtcProvisioning(record)) return;
+      if (Date.now() >= deadline) {
+        deadline = Math.max(
+          Date.now() + BTC_PROVISIONING_WAIT_MS,
+          record.dynamicRefreshLeaseUntil?.getTime() ?? Date.now()
+        );
+      }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    throw new ConflictError(`BTC weekly provisioning did not complete for group ${gid}`);
   }
 
   private async finalizeBtcConsolidation(
@@ -383,15 +401,22 @@ export class DynamicContentService {
       }
       return { kept, removed, manifestEtag };
     });
+    await this.cleanupBtcRemovedBlobs(gid, result.removed);
+    return result;
+  }
+
+  private async cleanupBtcRemovedBlobs(
+    gid: string,
+    records: readonly BtcConsolidationRecord[]
+  ): Promise<void> {
     await Promise.allSettled(
-      result.removed.map(async (record) =>
+      records.map(async (record) =>
         Promise.allSettled([
           this.blob.delete(gid, record.id, 'image'),
           deleteContentAudioBlob(this.blob, gid, record.id, record.audioEtag),
         ])
       )
     );
-    return result;
   }
 
   async patch(

@@ -270,10 +270,6 @@ class CaptureAccumulator:
             return []
         self.pending += text
         events: list[dict[str, str]] = []
-        if len(self.pending) > MAX_PENDING_INPUT_CHARS:
-            last_newline = self.pending.rfind("\n")
-            self.pending = self.pending[last_newline + 1 :] if last_newline >= 0 else ""
-            events.append({"event": "CAPTURE_BUFFER_OVERFLOW", "value": "DROPPED"})
         while "\n" in self.pending:
             line, self.pending = self.pending.split("\n", 1)
             line = line.rstrip("\r")
@@ -297,6 +293,9 @@ class CaptureAccumulator:
                 if event["event"] in REQUIRED_PRODUCER_EVENT_CLASSES:
                     self._required_seen.add(event["event"])
             events.extend(line_events)
+        if len(self.pending) > MAX_PENDING_INPUT_CHARS:
+            self.pending = ""
+            events.append({"event": "CAPTURE_BUFFER_OVERFLOW", "value": "DROPPED_PARTIAL"})
         return events[:MAX_EVENTS_PER_LINE]
 
     def mark_interrupted(self) -> dict[str, str] | None:
@@ -531,8 +530,14 @@ def self_test() -> int:
     }
     assert interrupted.summary()["terminal"] == "MISSING_EVIDENCE"
     oversized = CaptureAccumulator()
-    overflow_events = oversized.feed("x" * (MAX_PENDING_INPUT_CHARS + 1))
-    assert {event["event"] for event in overflow_events} == {"CAPTURE_BUFFER_OVERFLOW"}
+    overflow_events = oversized.feed(
+        "frame marker phase=server_current seq=9 frame_id_present=1\n"
+        + "x" * (MAX_PENDING_INPUT_CHARS + 1)
+    )
+    overflow_event_names = {event["event"] for event in overflow_events}
+    assert "FRAME_MARKER" in overflow_event_names
+    assert "CAPTURE_BUFFER_OVERFLOW" in overflow_event_names
+    assert oversized.line_count == 1
     assert oversized.summary()["terminal"] == "MISSING_EVIDENCE"
     assert extract_voice_events("T_BACKEND_FIRST_AUDIO_RECEIVED=YES") == [
         {"event": "T_BACKEND_FIRST_AUDIO_RECEIVED", "value": "YES"}
