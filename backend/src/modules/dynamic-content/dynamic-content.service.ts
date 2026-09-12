@@ -28,6 +28,19 @@ import { createBtcWeeklyRequest, planBtcWeeklyConsolidation } from './providers/
 import { toContentMutationResponse } from '../contents/content-mutation-response';
 
 const DYNAMIC_MUTATION_TAIL_TTL_MS = 5 * 60_000;
+const BTC_PROVISIONING_LEASE_MS = 5 * 60_000;
+const BTC_PROVISIONING_WAIT_MS = 30_000;
+
+type BtcConsolidationRecord = {
+  id: string;
+  sortOrder: number;
+  contentEtag: string;
+  imageEtag: string;
+  audioEtag: string | null;
+  imageSize: number;
+  dynamicConfig: Prisma.JsonValue | null;
+  dynamicRefreshLeaseUntil: Date | null;
+};
 
 @Injectable()
 export class DynamicContentService {
@@ -181,12 +194,99 @@ export class DynamicContentService {
 
   async appendBtcTrio(gid: string, ownerUserId: string): Promise<ContentMutationResponseT[]> {
     await this.groups.assertOwned(gid, ownerUserId);
+    return this.mutationQueue.run(
+      `btc-group:${gid}`,
+      () => this.appendBtcTrioSerialized(gid, ownerUserId),
+      { continueAfterFailure: true }
+    );
+  }
+
+  private async appendBtcTrioSerialized(
+    gid: string,
+    ownerUserId: string
+  ): Promise<ContentMutationResponseT[]> {
     const group = await this.prisma.group.findUnique({
       where: { id: gid },
       select: { manifestEtag: true },
     });
     if (!group) throw new NotFoundError('Group not found');
-    const existing = await this.prisma.content.findMany({
+
+    const claim = await this.prisma.$transaction(async (tx) => {
+      await lockGroupRow(tx, gid);
+      const existing = await this.loadBtcConsolidationRecords(tx, gid);
+      const plan = planBtcWeeklyConsolidation(existing);
+      const kept =
+        plan.keepId === null
+          ? null
+          : (existing.find((record) => record.id === plan.keepId) ?? null);
+      if (kept) {
+        return {
+          kind: this.isBtcProvisioning(kept) ? ('waiting' as const) : ('existing' as const),
+          contentId: kept.id,
+        };
+      }
+
+      const contentId = createId();
+      const nextSeq = await nextContentSortOrder(tx, gid);
+      const validatedConfig = DynamicConfig.parse(createBtcWeeklyRequest().config);
+      await tx.content.create({
+        data: {
+          id: contentId,
+          groupId: gid,
+          sortOrder: nextSeq,
+          frameName: defaultDynamicFrameName('btc_price', validatedConfig),
+          kind: 'dynamic',
+          dynamicType: 'btc_price',
+          dynamicConfig: toPrismaInputJson(validatedConfig),
+          imageEtag: computeETag(`btc-provisioning:${contentId}`),
+          imageSize: 0,
+          audioStatus: 'none',
+          audioSource: null,
+          audioVoice: null,
+          dynamicNextRunAt: new Date(0),
+          dynamicRefreshDueAt: new Date(0),
+          dynamicRefreshLeaseUntil: new Date(Date.now() + BTC_PROVISIONING_LEASE_MS),
+        },
+      });
+      return { kind: 'created' as const, contentId };
+    });
+
+    if (claim.kind === 'waiting') {
+      await this.waitForBtcProvisioning(gid, claim.contentId);
+      return this.appendBtcTrioSerialized(gid, ownerUserId);
+    }
+
+    let rendered: Awaited<
+      ReturnType<DynamicContentRendererService['renderDynamicContent']>
+    > | null = null;
+    if (claim.kind === 'created') {
+      try {
+        rendered = await this.renderDynamicAndReadEtag(claim.contentId);
+      } catch (err) {
+        await this.rollbackCreation(claim.contentId, gid, err);
+        throw err;
+      }
+    }
+
+    const finalized = await this.finalizeBtcConsolidation(gid, group.manifestEtag);
+    if (!finalized.kept) throw new ConflictError('BTC weekly content was not retained');
+    return [
+      toContentMutationResponse(
+        finalized.kept.id,
+        finalized.kept.sortOrder,
+        rendered?.imageEtag ?? finalized.kept.imageEtag,
+        rendered?.audioEtag ?? finalized.kept.audioEtag,
+        finalized.manifestEtag,
+        rendered?.contentEtag ?? finalized.kept.contentEtag
+      ),
+    ];
+  }
+
+  private loadBtcConsolidationRecords(
+    tx: Prisma.TransactionClient,
+    gid: string
+  ): Promise<BtcConsolidationRecord[]> {
+    return tx.content.findMany({
       where: { groupId: gid, kind: 'dynamic', dynamicType: 'btc_price' },
       select: {
         id: true,
@@ -194,53 +294,77 @@ export class DynamicContentService {
         contentEtag: true,
         imageEtag: true,
         audioEtag: true,
+        imageSize: true,
         dynamicConfig: true,
+        dynamicRefreshLeaseUntil: true,
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
-    const plan = planBtcWeeklyConsolidation(existing);
-    let currentManifestEtag = group.manifestEtag;
-    const kept = plan.keepId === null ? null : (existing.find((record) => record.id === plan.keepId) ?? null);
+  }
 
-    if (plan.removeIds.length > 0) {
-      await this.prisma.$transaction(async (tx) => {
-        await lockGroupRow(tx, gid);
+  private isBtcProvisioning(
+    record: Pick<
+      BtcConsolidationRecord,
+      'id' | 'imageEtag' | 'imageSize' | 'dynamicRefreshLeaseUntil'
+    >
+  ): boolean {
+    return (
+      record.imageSize === 0 &&
+      record.imageEtag === computeETag(`btc-provisioning:${record.id}`) &&
+      record.dynamicRefreshLeaseUntil !== null &&
+      record.dynamicRefreshLeaseUntil.getTime() > Date.now()
+    );
+  }
+
+  private async waitForBtcProvisioning(gid: string, contentId: string): Promise<void> {
+    const deadline = Date.now() + BTC_PROVISIONING_WAIT_MS;
+    while (Date.now() < deadline) {
+      const record = await this.prisma.content.findUnique({
+        where: { id: contentId },
+        select: { id: true, imageEtag: true, imageSize: true, dynamicRefreshLeaseUntil: true },
+      });
+      if (!record || !this.isBtcProvisioning(record)) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new ConflictError(`BTC weekly provisioning did not complete for group ${gid}`);
+  }
+
+  private async finalizeBtcConsolidation(
+    gid: string,
+    fallbackManifestEtag: string
+  ): Promise<{ kept: BtcConsolidationRecord | null; manifestEtag: string }> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await lockGroupRow(tx, gid);
+      const existing = await this.loadBtcConsolidationRecords(tx, gid);
+      const plan = planBtcWeeklyConsolidation(existing);
+      const keptId = plan.keepId;
+      const removed = existing.filter((record) => plan.removeIds.includes(record.id));
+      let manifestEtag = fallbackManifestEtag;
+      if (removed.length > 0) {
         await tx.content.deleteMany({ where: { id: { in: plan.removeIds } } });
         await compactContentSortOrders(tx, gid);
-        currentManifestEtag = await this.groups.recomputeManifestEtag(gid, tx);
-        if (kept) {
-          const compactedKept = await tx.content.findUnique({
-            where: { id: kept.id },
-            select: { sortOrder: true },
-          });
-          kept.sortOrder = compactedKept?.sortOrder ?? kept.sortOrder;
-        }
-      });
-      await Promise.allSettled(
-        existing
-          .filter((record) => plan.removeIds.includes(record.id))
-          .map(async (record) =>
-            Promise.allSettled([
-              this.blob.delete(gid, record.id, 'image'),
-              deleteContentAudioBlob(this.blob, gid, record.id, record.audioEtag),
-            ])
-          )
-      );
-    }
-
-    if (kept) {
-      return [
-        toContentMutationResponse(
-          kept.id,
-          kept.sortOrder,
-          kept.imageEtag,
-          kept.audioEtag,
-          currentManifestEtag,
-          kept.contentEtag
-        ),
-      ];
-    }
-    return [await this.append(gid, ownerUserId, createBtcWeeklyRequest())];
+        manifestEtag = await this.groups.recomputeManifestEtag(gid, tx);
+      }
+      const kept =
+        keptId === null ? null : (existing.find((record) => record.id === keptId) ?? null);
+      if (kept) {
+        const compactedKept = await tx.content.findUnique({
+          where: { id: kept.id },
+          select: { sortOrder: true },
+        });
+        kept.sortOrder = compactedKept?.sortOrder ?? kept.sortOrder;
+      }
+      return { kept, removed, manifestEtag };
+    });
+    await Promise.allSettled(
+      result.removed.map(async (record) =>
+        Promise.allSettled([
+          this.blob.delete(gid, record.id, 'image'),
+          deleteContentAudioBlob(this.blob, gid, record.id, record.audioEtag),
+        ])
+      )
+    );
+    return result;
   }
 
   async patch(

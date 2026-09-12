@@ -4,7 +4,12 @@ import type { BlobService } from '../../infra/blob/blob.service';
 import { DynamicContentService } from './dynamic-content.service';
 
 describe('DynamicContentService BTC weekly consolidation', () => {
-  function createService(existing: unknown[], deletedIds: string[] = []) {
+  function createService(
+    existing: unknown[],
+    deletedIds: string[] = [],
+    render: 'pass' | 'fail' = 'pass'
+  ) {
+    const records = existing as Array<Record<string, unknown>>;
     let compactDbWriteCalls = 0;
     const tx = {
       $queryRaw: async () => [{ id: 'group-1' }],
@@ -15,11 +20,37 @@ describe('DynamicContentService BTC weekly consolidation', () => {
       content: {
         deleteMany: async ({ where }: { where: { id: { in: string[] } } }) => {
           deletedIds.push(...where.id.in);
+          for (const id of where.id.in) {
+            const index = records.findIndex((record) => record.id === id);
+            if (index >= 0) records.splice(index, 1);
+          }
           return { count: where.id.in.length };
         },
-        findMany: async () => existing,
+        delete: async ({ where }: { where: { id: string } }) => {
+          const index = records.findIndex((record) => record.id === where.id);
+          if (index >= 0) records.splice(index, 1);
+          return { id: where.id };
+        },
+        findMany: async () => records,
+        findFirst: async () => {
+          const sortOrders = records
+            .map((record) => record.sortOrder)
+            .filter((sortOrder): sortOrder is number => typeof sortOrder === 'number');
+          return sortOrders.length === 0 ? null : { sortOrder: Math.max(...sortOrders) };
+        },
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const record = {
+            ...data,
+            contentEtag: 'created-content',
+            audioEtag: null,
+            imageSize: data.imageSize ?? 0,
+            dynamicRefreshLeaseUntil: data.dynamicRefreshLeaseUntil ?? null,
+          };
+          records.push(record);
+          return record;
+        },
         findUnique: async ({ where }: { where: { id: string } }) =>
-          existing.find((record) => record.id === where.id) ?? null,
+          records.find((record) => record.id === where.id) ?? null,
       },
     };
     const prisma = {
@@ -27,7 +58,9 @@ describe('DynamicContentService BTC weekly consolidation', () => {
         findUnique: async () => ({ manifestEtag: 'group-etag' }),
       },
       content: {
-        findMany: async () => existing,
+        findMany: async () => records,
+        findUnique: async ({ where }: { where: { id: string } }) =>
+          records.find((record) => record.id === where.id) ?? null,
       },
       $transaction: async (operation: (client: unknown) => Promise<unknown>) => operation(tx),
     };
@@ -38,12 +71,32 @@ describe('DynamicContentService BTC weekly consolidation', () => {
     const blob = {
       delete: async () => undefined,
     };
+    const renderer = {
+      renderDynamicContent: async (contentId: string) => {
+        if (render === 'fail') throw new Error('render fixture failure');
+        const record = records.find((candidate) => candidate.id === contentId);
+        if (record) {
+          record.imageEtag = 'rendered-image';
+          record.imageSize = 128;
+          record.dynamicRefreshLeaseUntil = null;
+        }
+        return {
+          contentId,
+          imageEtag: 'rendered-image',
+          contentEtag: 'rendered-content',
+          audioEtag: null,
+          groupEtag: 'rendered-group',
+          renderedAt: new Date(),
+          unchanged: false,
+        };
+      },
+    };
     const service = new DynamicContentService(
       prisma as unknown as PrismaService,
       blob as unknown as BlobService,
       groups as never,
       {} as never,
-      {} as never
+      renderer as never
     );
     let appendCalls = 0;
     (service as { append: unknown }).append = async () => {
@@ -61,6 +114,7 @@ describe('DynamicContentService BTC weekly consolidation', () => {
       service,
       getAppendCalls: () => appendCalls,
       getCompactDbWriteCalls: () => compactDbWriteCalls,
+      getRecords: () => records,
     };
   }
 
@@ -196,5 +250,71 @@ describe('DynamicContentService BTC weekly consolidation', () => {
       },
     ]);
     expect(getAppendCalls()).toBe(0);
+  });
+
+  it('serializes concurrent provisioning and renders before legacy cleanup', async () => {
+    const deletedIds: string[] = [];
+    const { service, getRecords } = createService(
+      [
+        {
+          id: 'daily',
+          sortOrder: 0,
+          contentEtag: 'daily',
+          imageEtag: 'daily',
+          imageSize: 128,
+          audioEtag: null,
+          dynamicConfig: { type: 'btc_price', period: 'daily' },
+          dynamicRefreshLeaseUntil: null,
+        },
+        {
+          id: 'monthly',
+          sortOrder: 1,
+          contentEtag: 'monthly',
+          imageEtag: 'monthly',
+          imageSize: 128,
+          audioEtag: null,
+          dynamicConfig: { type: 'btc_price', period: 'monthly' },
+          dynamicRefreshLeaseUntil: null,
+        },
+      ],
+      deletedIds
+    );
+
+    const results = await Promise.all([
+      service.appendBtcTrio('group-1', 'user-1'),
+      service.appendBtcTrio('group-1', 'user-1'),
+    ]);
+
+    expect(results).toHaveLength(2);
+    expect(results[0][0].id).toBe(results[1][0].id);
+    expect(deletedIds).toEqual(['daily', 'monthly']);
+    expect(getRecords()).toHaveLength(1);
+    expect(getRecords()[0].dynamicConfig).toMatchObject({ period: 'weekly' });
+  });
+
+  it('rolls back the weekly placeholder when rendering fails and preserves legacy records', async () => {
+    const deletedIds: string[] = [];
+    const { service, getRecords } = createService(
+      [
+        {
+          id: 'daily',
+          sortOrder: 0,
+          contentEtag: 'daily',
+          imageEtag: 'daily',
+          imageSize: 128,
+          audioEtag: null,
+          dynamicConfig: { type: 'btc_price', period: 'daily' },
+          dynamicRefreshLeaseUntil: null,
+        },
+      ],
+      deletedIds,
+      'fail'
+    );
+
+    await expect(service.appendBtcTrio('group-1', 'user-1')).rejects.toThrow(
+      'render fixture failure'
+    );
+    expect(getRecords().map((record) => record.id)).toEqual(['daily']);
+    expect(deletedIds).toEqual([]);
   });
 });
