@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import deque
 import json
 import re
 import subprocess
@@ -16,6 +17,7 @@ from serial import SerialException
 COLLECTOR_CONTRACT_VERSION = "m4-sanitized-structural-v3"
 MAX_PENDING_INPUT_CHARS = 8192
 MAX_EVENTS_PER_LINE = 64
+MAX_SEEN_EVENT_BATCHES = 2048
 REQUIRED_PRODUCER_EVENT_CLASSES = (
     "FRAME_MARKER",
     "VOICE_FONT_MARKER",
@@ -259,6 +261,7 @@ class CaptureAccumulator:
         self.rejected_count = 0
         self.interrupted = False
         self._seen_event_batches: set[tuple[tuple[str, str], ...]] = set()
+        self._seen_event_batch_order: deque[tuple[tuple[str, str], ...]] = deque()
         self._required_seen: set[str] = set()
 
     def feed(self, chunk: bytes | str) -> list[dict[str, str]]:
@@ -286,6 +289,10 @@ class CaptureAccumulator:
                 events.append({"event": "CAPTURE_DUPLICATE_EVENT", "value": "DROPPED"})
                 continue
             self._seen_event_batches.add(batch)
+            self._seen_event_batch_order.append(batch)
+            if len(self._seen_event_batch_order) > MAX_SEEN_EVENT_BATCHES:
+                expired = self._seen_event_batch_order.popleft()
+                self._seen_event_batches.discard(expired)
             for event in line_events:
                 if event["event"] in REQUIRED_PRODUCER_EVENT_CLASSES:
                     self._required_seen.add(event["event"])
@@ -511,6 +518,11 @@ def self_test() -> int:
     assert summary["terminal"] == "PASS"
     assert summary["missing_required"] == []
     assert summary["reordered_input_tolerated"] is True
+    bounded = CaptureAccumulator()
+    for sequence in range(MAX_SEEN_EVENT_BATCHES + 32):
+        bounded.feed(f"frame marker phase=server_current seq={sequence} frame_id_present=1\n")
+    assert len(bounded._seen_event_batches) <= MAX_SEEN_EVENT_BATCHES
+    assert len(bounded._seen_event_batch_order) <= MAX_SEEN_EVENT_BATCHES
     interrupted = CaptureAccumulator()
     interrupted.feed(b"frame marker phase=server_current")
     assert interrupted.mark_interrupted() == {
