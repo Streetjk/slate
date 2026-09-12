@@ -13,6 +13,121 @@ import serial
 from serial import SerialException
 
 
+COLLECTOR_CONTRACT_VERSION = "m4-sanitized-structural-v3"
+MAX_PENDING_INPUT_CHARS = 8192
+MAX_EVENTS_PER_LINE = 64
+REQUIRED_PRODUCER_EVENT_CLASSES = (
+    "FRAME_MARKER",
+    "VOICE_FONT_MARKER",
+    "VOICE_LAYOUT_MARKER",
+    "WEATHER_LIFECYCLE_MARKER",
+)
+
+
+FRAME_MARKER_RE = re.compile(
+    r"\bframe marker phase=(server_current|requested|received|sync_result|active)"
+    r"(?P<fields>[^\r\n]{0,260})"
+)
+VOICE_FONT_MARKER_RE = re.compile(r"\bvoice font marker(?P<fields>[^\r\n]{0,320})")
+VOICE_FONT_MISSING_RE = re.compile(r"\bvoice font marker missing_codepoint=0x([0-9A-Fa-f]{1,6})\b")
+VOICE_LAYOUT_MARKER_RE = re.compile(r"\bvoice layout marker(?P<fields>[^\r\n]{0,220})")
+WEATHER_LIFECYCLE_MARKER_RE = re.compile(
+    r"\[slate\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|"
+    r"db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) "
+    r"type=weather error_present=([01])\b"
+)
+PRODUCER_SCHEMA_RE = re.compile(r"\bmarker_schema=([0-9]+)\b")
+SENSITIVE_FIELD_RE = re.compile(
+    r"(?:^|\s)(?:transcript|audio|payload|device(?:_id)?|mac|ip|ssid|token|credential|"
+    r"auth_header|url|stack|exception|content)="
+)
+
+
+def _bounded_field(fields: str, name: str, maximum: int = 100000) -> str | None:
+    match = re.search(rf"(?:^|\s){name}=([0-9]+)(?=\s|$)", fields)
+    if not match:
+        return None
+    value = int(match.group(1))
+    return str(value) if value <= maximum else None
+
+
+def _enum_field(fields: str, name: str, allowed: tuple[str, ...]) -> str | None:
+    choices = "|".join(re.escape(value) for value in allowed)
+    match = re.search(rf"(?:^|\s){name}=({choices})(?=\s|$)", fields)
+    return match.group(1) if match else None
+
+
+def _bool_field(fields: str, name: str) -> str | None:
+    value = _enum_field(fields, name, ("0", "1"))
+    return {"0": "NO", "1": "YES"}.get(value) if value else None
+
+
+def extract_producer_events(line: str) -> list[dict[str, str]]:
+    """Parse the producer contract without retaining producer text or payloads."""
+    events: list[dict[str, str]] = []
+    if SENSITIVE_FIELD_RE.search(line):
+        return [{"event": "CAPTURE_REJECTED", "value": "UNAPPROVED_FIELD"}]
+    schema = PRODUCER_SCHEMA_RE.search(line)
+    if schema and schema.group(1) != "2":
+        return [{"event": "CAPTURE_REJECTED", "value": "STALE_SCHEMA"}]
+
+    frame = FRAME_MARKER_RE.search(line)
+    if frame:
+        fields = frame.group("fields")
+        events.append({"event": "FRAME_MARKER", "value": "OBSERVED"})
+        events.append({"event": "FRAME_MARKER_PHASE", "value": frame.group(1)})
+        for name in ("ok", "seq"):
+            value = _bounded_field(fields, name)
+            if value is not None:
+                events.append({"event": f"FRAME_MARKER_{name.upper()}", "value": value})
+        for name in ("frame_id_present", "frame_available"):
+            value = _bool_field(fields, name)
+            if value is not None:
+                events.append({"event": f"FRAME_MARKER_{name.upper()}", "value": value})
+        value = _enum_field(fields, "frame_id_match", ("match", "mismatch", "unknown"))
+        if value is not None:
+            events.append({"event": "FRAME_MARKER_FRAME_ID_MATCH", "value": value})
+
+    font = VOICE_FONT_MARKER_RE.search(line)
+    if font:
+        fields = font.group("fields")
+        events.append({"event": "VOICE_FONT_MARKER", "value": "OBSERVED"})
+        for source, target in (
+            ("direct_descriptor", "VOICE_FONT_DIRECT_DESCRIPTOR_FOUND"),
+            ("direct_bitmap", "VOICE_FONT_DIRECT_BITMAP_FOUND"),
+            ("fallback_descriptor", "VOICE_FONT_FALLBACK_DESCRIPTOR_FOUND"),
+            ("fallback_bitmap", "VOICE_FONT_FALLBACK_BITMAP_FOUND"),
+        ):
+            value = _bool_field(fields, source)
+            if value is not None:
+                events.append({"event": target, "value": value})
+        fallback = _enum_field(fields, "fallback", ("Zfull_16", "none"))
+        if fallback is not None:
+            events.append({"event": "VOICE_FONT_FALLBACK_CLASS", "value": fallback})
+    missing = VOICE_FONT_MISSING_RE.search(line)
+    if missing:
+        events.append({"event": "VOICE_FONT_MISSING_CODEPOINT", "value": missing.group(1).upper()})
+
+    layout = VOICE_LAYOUT_MARKER_RE.search(line)
+    if layout:
+        fields = layout.group("fields")
+        events.append({"event": "VOICE_LAYOUT_MARKER", "value": "OBSERVED"})
+        for name in ("measured_width", "final_width", "final_height", "text_chars"):
+            value = _bounded_field(fields, name, maximum=100000)
+            if value is not None:
+                events.append({"event": f"VOICE_LAYOUT_{name.upper()}", "value": value})
+
+    weather = WEATHER_LIFECYCLE_MARKER_RE.search(line)
+    if weather:
+        events.extend(
+            [
+                {"event": "WEATHER_LIFECYCLE_MARKER", "value": "OBSERVED"},
+                {"event": "WEATHER_LIFECYCLE_STAGE", "value": weather.group(1)},
+                {"event": "WEATHER_LIFECYCLE_ERROR_PRESENT", "value": "YES" if weather.group(2) == "1" else "NO"},
+            ]
+        )
+    return events[:MAX_EVENTS_PER_LINE]
+
 VOICE_PATTERNS = {
     "DEVICE_AUTHENTICATED_POLL_RESULT": r"PASS",
     "VOICE_CONFIG_REQUEST_START": r"YES",
@@ -126,6 +241,79 @@ def extract_structural_events(line: str) -> list[dict[str, str]]:
     return events
 
 
+def extract_sanitized_line_events(line: str) -> list[dict[str, str]]:
+    """Apply producer, key/value and structural parsers without returning raw input."""
+    producer_events = extract_producer_events(line)
+    if producer_events:
+        return producer_events[:MAX_EVENTS_PER_LINE]
+    return (extract_voice_events(line) + extract_structural_events(line))[:MAX_EVENTS_PER_LINE]
+
+
+class CaptureAccumulator:
+    """Bounded fragmented-line capture with explicit duplicate/missing accounting."""
+
+    def __init__(self) -> None:
+        self.pending = ""
+        self.line_count = 0
+        self.duplicate_count = 0
+        self.rejected_count = 0
+        self.interrupted = False
+        self._seen_event_batches: set[tuple[tuple[str, str], ...]] = set()
+        self._required_seen: set[str] = set()
+
+    def feed(self, chunk: bytes | str) -> list[dict[str, str]]:
+        text = chunk.decode("utf-8", "replace") if isinstance(chunk, bytes) else chunk
+        if not text:
+            return []
+        self.pending += text
+        events: list[dict[str, str]] = []
+        if len(self.pending) > MAX_PENDING_INPUT_CHARS:
+            last_newline = self.pending.rfind("\n")
+            self.pending = self.pending[last_newline + 1 :] if last_newline >= 0 else ""
+            events.append({"event": "CAPTURE_BUFFER_OVERFLOW", "value": "DROPPED"})
+        while "\n" in self.pending:
+            line, self.pending = self.pending.split("\n", 1)
+            line = line.rstrip("\r")
+            self.line_count += 1
+            line_events = extract_sanitized_line_events(line)
+            if not line_events:
+                continue
+            if any(event["event"] == "CAPTURE_REJECTED" for event in line_events):
+                self.rejected_count += 1
+            batch = tuple((event["event"], event["value"]) for event in line_events)
+            if batch in self._seen_event_batches:
+                self.duplicate_count += 1
+                events.append({"event": "CAPTURE_DUPLICATE_EVENT", "value": "DROPPED"})
+                continue
+            self._seen_event_batches.add(batch)
+            for event in line_events:
+                if event["event"] in REQUIRED_PRODUCER_EVENT_CLASSES:
+                    self._required_seen.add(event["event"])
+            events.extend(line_events)
+        return events[:MAX_EVENTS_PER_LINE]
+
+    def mark_interrupted(self) -> dict[str, str] | None:
+        if not self.pending:
+            return None
+        self.pending = ""
+        self.interrupted = True
+        return {"event": "CAPTURE_INTERRUPTED", "value": "PARTIAL_LINE_DROPPED"}
+
+    def summary(self) -> dict[str, object]:
+        missing = [name for name in REQUIRED_PRODUCER_EVENT_CLASSES if name not in self._required_seen]
+        terminal = "PASS" if not missing and not self.pending and not self.interrupted else "MISSING_EVIDENCE"
+        return {
+            "contract_version": COLLECTOR_CONTRACT_VERSION,
+            "terminal": terminal,
+            "missing_required": missing,
+            "lines": self.line_count,
+            "duplicates_dropped": self.duplicate_count,
+            "rejected": self.rejected_count,
+            "interrupted": self.interrupted,
+            "reordered_input_tolerated": True,
+        }
+
+
 def backend_snapshot() -> dict[str, object]:
     remote = """set -eu
 local=$(curl -fsS --max-time 8 -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/healthz || true)
@@ -135,7 +323,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+|frame marker phase=(server_current|requested|received|sync_result|active)( (ok|seq|frame_id_present|frame_id_match|frame_available)=[A-Za-z0-9_.=-]+)*|voice font marker( (artifact|fw|font|direct_descriptor|direct_bitmap|fallback|fallback_descriptor|fallback_bitmap)=[A-Za-z0-9_.+-]+)*|voice layout marker( (measured_width|final_width|final_height|text_chars)=[0-9]+)*|\\[slate\\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) type=weather error_present=[01])' | sort -u || true
 """
     try:
         completed = subprocess.run(
@@ -157,7 +345,7 @@ docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_R
         elif line.startswith("MYSQL="):
             result["mysql"] = line.removeprefix("MYSQL=")
         else:
-            voice.extend(extract_voice_events(line))
+            voice.extend(extract_sanitized_line_events(line))
     result["voice"] = voice
     return result
 
@@ -278,6 +466,62 @@ def self_test() -> int:
     assert extract_voice_events("T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000050") == [
         {"event": "T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS", "value": "1725800000050"}
     ]
+
+    # The producer contract is lower-case and intentionally differs from the
+    # legacy uppercase key/value contract.  These seven fixtures are the
+    # exact producer shapes used by the M01 regression packet.
+    producer_fixtures = [
+        "frame marker phase=server_current seq=2 frame_id_present=1 frame_id_match=match",
+        "frame marker phase=requested seq=2 frame_id_present=1 frame_id_match=unknown",
+        "frame marker phase=received seq=2 frame_id_present=1 frame_id_match=mismatch",
+        "frame marker phase=sync_result ok=1 seq=2 frame_id_present=1 frame_id_match=match",
+        "voice font marker artifact=voice_font_16+zfull_16 fw=fixture font=Voice_Font_16 direct_descriptor=1 direct_bitmap=1 fallback=Zfull_16 fallback_descriptor=1 fallback_bitmap=1",
+        "voice layout marker measured_width=144 final_width=162 final_height=48 text_chars=6",
+        "[slate] weather lifecycle marker stage=frontend_view type=weather error_present=0",
+    ]
+    fixture_events = [extract_producer_events(fixture) for fixture in producer_fixtures]
+    assert all(events for events in fixture_events)
+    assert {event["event"] for events in fixture_events for event in events} >= {
+        "FRAME_MARKER",
+        "VOICE_FONT_MARKER",
+        "VOICE_LAYOUT_MARKER",
+        "WEATHER_LIFECYCLE_MARKER",
+    }
+    assert extract_producer_events(
+        "frame marker phase=server_current schema=1 device_id=private"
+    ) == [{"event": "CAPTURE_REJECTED", "value": "UNAPPROVED_FIELD"}]
+    assert extract_producer_events("voice layout marker marker_schema=1 measured_width=1") == [
+        {"event": "CAPTURE_REJECTED", "value": "STALE_SCHEMA"}
+    ]
+    assert extract_producer_events("voice font marker transcript=must_not_escape") == [
+        {"event": "CAPTURE_REJECTED", "value": "UNAPPROVED_FIELD"}
+    ]
+
+    # Fragmentation, reordering and exact duplicate handling are explicit and
+    # bounded; duplicate producer lines do not become a false new event.
+    capture = CaptureAccumulator()
+    reordered = producer_fixtures[3:5] + producer_fixtures[:3] + producer_fixtures[5:]
+    stream = "\n".join(reordered + [reordered[0]]) + "\n"
+    first_half = stream[: len(stream) // 2].encode()
+    second_half = stream[len(stream) // 2 :].encode()
+    assert capture.feed(first_half)
+    capture.feed(second_half)
+    assert capture.duplicate_count == 1
+    summary = capture.summary()
+    assert summary["terminal"] == "PASS"
+    assert summary["missing_required"] == []
+    assert summary["reordered_input_tolerated"] is True
+    interrupted = CaptureAccumulator()
+    interrupted.feed(b"frame marker phase=server_current")
+    assert interrupted.mark_interrupted() == {
+        "event": "CAPTURE_INTERRUPTED",
+        "value": "PARTIAL_LINE_DROPPED",
+    }
+    assert interrupted.summary()["terminal"] == "MISSING_EVIDENCE"
+    oversized = CaptureAccumulator()
+    overflow_events = oversized.feed("x" * (MAX_PENDING_INPUT_CHARS + 1))
+    assert {event["event"] for event in overflow_events} == {"CAPTURE_BUFFER_OVERFLOW"}
+    assert oversized.summary()["terminal"] == "MISSING_EVIDENCE"
     assert extract_voice_events("T_BACKEND_FIRST_AUDIO_RECEIVED=YES") == [
         {"event": "T_BACKEND_FIRST_AUDIO_RECEIVED", "value": "YES"}
     ]
@@ -464,7 +708,7 @@ def self_test() -> int:
     assert "secret_device_token" not in poll_dumped
     assert "sensitive_content" not in poll_dumped
 
-    print("slate-m4-sanitized-observer-v2: PASS")
+    print(f"slate-m4-sanitized-observer-v2 {COLLECTOR_CONTRACT_VERSION}: PASS")
     return 0
 
 
@@ -478,10 +722,20 @@ def main() -> int:
     if args.self_test:
         return self_test()
     counts = {name: 0 for name in SERIAL_MARKERS}
-    line_count = 0
+    capture = CaptureAccumulator()
     last_backend = 0.0
     started = time.monotonic()
-    print(json.dumps({"observer": "ARMED", "serial_port": args.port, "raw_content": "NOT_RETAINED"}), flush=True)
+    print(
+        json.dumps(
+            {
+                "observer": "ARMED",
+                "contract_version": COLLECTOR_CONTRACT_VERSION,
+                "serial_port": args.port,
+                "raw_content": "NOT_RETAINED",
+            }
+        ),
+        flush=True,
+    )
     device = None
     try:
         while time.monotonic() - started < args.duration:
@@ -496,30 +750,45 @@ def main() -> int:
             try:
                 raw = device.readline()
             except (SerialException, OSError):
+                interrupted = capture.mark_interrupted()
+                if interrupted:
+                    print(json.dumps({"events": [interrupted]}, sort_keys=True), flush=True)
                 device.close()
                 device = None
                 print(json.dumps({"observer": "SERIAL_DISCONNECTED"}), flush=True)
                 continue
             if raw:
-                line_count += 1
                 line = raw.decode("utf-8", "replace")
                 for name, pattern in SERIAL_MARKERS.items():
                     if pattern.search(line):
                         counts[name] += 1
-                events = extract_voice_events(line) + extract_structural_events(line)
+                events = capture.feed(raw)
                 if events:
-                    print(json.dumps({"serial_line_count": line_count, "events": events}, sort_keys=True), flush=True)
+                    print(json.dumps({"serial_line_count": capture.line_count, "events": events}, sort_keys=True), flush=True)
             now = time.monotonic()
             if now - last_backend >= args.interval:
                 last_backend = now
-                print(json.dumps({"serial_counts": {"lines": line_count, **counts}}, sort_keys=True), flush=True)
+                print(json.dumps({"serial_counts": {"lines": capture.line_count, **counts}}, sort_keys=True), flush=True)
                 print(json.dumps({"backend": backend_snapshot()}, sort_keys=True), flush=True)
     except KeyboardInterrupt:
         pass
     finally:
         if device is not None:
             device.close()
-        print(json.dumps({"observer": "STOPPED", "serial_counts": {"lines": line_count, **counts}}, sort_keys=True), flush=True)
+        interrupted = capture.mark_interrupted()
+        if interrupted:
+            print(json.dumps({"events": [interrupted]}, sort_keys=True), flush=True)
+        print(
+            json.dumps(
+                {
+                    "observer": "STOPPED",
+                    "serial_counts": {"lines": capture.line_count, **counts},
+                    "capture_summary": capture.summary(),
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
     return 0
 
 
