@@ -88,6 +88,19 @@ describe('GeminiAssistantService', () => {
     expect(JSON.stringify(clientOptions)).not.toContain('apiKey');
   });
 
+  it('uses a current-turn trilingual response contract', async () => {
+    const seen: GenerateContentParameters[] = [];
+    const service = new GeminiAssistantService(config(), () => fakeClient({ text: '回覆' }, seen));
+
+    await service.answer(request({ language: 'zh_hant' }));
+
+    const instruction = String(seen[0]?.config?.systemInstruction);
+    expect(instruction).toContain('current user turn');
+    expect(instruction).toContain('Traditional Chinese');
+    expect(instruction).toContain('previous turn language');
+    expect(instruction).not.toContain('English or Japanese');
+  });
+
   it('uses the explicitly selected Developer API runtime file reference', async () => {
     const seen: GenerateContentParameters[] = [];
     const clientOptions: Record<string, unknown>[] = [];

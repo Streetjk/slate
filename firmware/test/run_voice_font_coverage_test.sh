@@ -91,13 +91,23 @@ for w in ["今日", "何曜日", "ですか", "の", "ひらがな", "カタカ�
     for ch in w:
         assert ord(ch) in total_cps, f"Character '{ch}' in '{w}' not resolved"
 
-# Japanese weather and conversational glyph assertions (including U+66C7 '曇')
+# Japanese weather and conversational glyph assertions (including U+66C7 '曇'
+# and the newly repaired U+697D '楽').
 assert 0x66C7 in voice_cps, "U+66C7 ('曇') missing from Voice_Font_16 direct glyphs"
 assert 0x66C7 in total_cps, "U+66C7 ('曇') not resolved in reachable font set"
+assert 0x697D in voice_cps, "U+697D ('楽') missing from Voice_Font_16 direct glyphs"
+assert 0x697D in total_cps, "U+697D ('楽') not resolved in reachable font set"
+assert 0x66F2 in voice_cps, "U+66F2 ('曲') missing from Voice_Font_16 direct glyphs"
+assert 0x66F2 in total_cps, "U+66F2 ('曲') not resolved in reachable font set"
 
 japanese_representative_samples = [
     "こんにちは。今日の天気どう？日本の首都はどこですか？一年は何ヶ月ありますか？日本の通貨は何ですか？",
     "今日の天気は曇りです",
+    "楽",
+    "楽曲",
+    "THE YELLOW MONKEYの楽曲タイトル",
+    "曇り時々雨",
+    "の",
 ]
 for rep_sample in japanese_representative_samples:
     missing_rep = [f"'{ch}' (U+{ord(ch):04X})" for ch in rep_sample if ord(ch) not in total_cps]
@@ -118,6 +128,13 @@ chinese_sample = "天气预报 正在聆听 已连接 网络连接 日历日程 
 missing_zh = [f"'{ch}' (U+{ord(ch):04X})" for ch in chinese_sample if ord(ch) not in total_cps]
 assert not missing_zh, f"Chinese sample has missing glyphs: {missing_zh}"
 
+# Han-only Traditional-Chinese input uses the same language-agnostic
+# Voice_Font_16 -> Zfull_16 atlas and must not select a different runtime face.
+# This is bounded common-glyph coverage, not a claim of full CJK completeness.
+traditional_chinese_sample = "中文 台中"
+missing_zh_hant = [f"'{ch}' (U+{ord(ch):04X})" for ch in traditional_chinese_sample if ord(ch) not in total_cps]
+assert not missing_zh_hant, f"Traditional Chinese sample has missing glyphs: {missing_zh_hant}"
+
 # Explicit fallback path verification: ensure non-ASCII Chinese characters resolve via fallback_cps
 fallback_resolved = [ch for ch in chinese_sample if ord(ch) in fallback_cps and ch != " "]
 assert len(fallback_resolved) >= 20, f"Expected Chinese glyphs to resolve via fallback, found: {len(fallback_resolved)}"
@@ -127,10 +144,12 @@ print(f"Fallback font glyphs: {len(fallback_cps)}")
 print(f"Combined reachable glyphs: {len(total_cps)}")
 print(f"Japanese sample '{sample_text}': 100% resolved")
 print(f"U+66C7 ('曇') assertion: PASS (direct voice font)")
+print(f"U+697D ('楽') assertion: PASS (direct voice font)")
 for rep_sample in japanese_representative_samples:
     print(f"Japanese representative '{rep_sample}': 100% resolved")
 print(f"English sample '{english_sample}': 100% resolved")
 print(f"GB2312 Chinese sample '{chinese_sample}': 100% resolved")
+print(f"Traditional Chinese sample '{traditional_chinese_sample}': 100% resolved")
 PY
 
 echo "run_voice_font_coverage_test: PASS"

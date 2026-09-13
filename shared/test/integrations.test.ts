@@ -12,6 +12,8 @@ import {
   ProposedCalendarEvent,
   TTS_VOICE_LABELS,
   TTS_VOICES,
+  classifyVoiceInputLanguage,
+  responseLanguageForInputClass,
   VoiceTranscript,
   WebSearchToolInput,
 } from '../src/types/integrations.js';
@@ -21,6 +23,22 @@ const timedStart = '2026-09-04T15:00:00+08:00';
 const timedEnd = '2026-09-04T16:00:00+08:00';
 
 describe('shared integration contracts', () => {
+  test('classifies EN, JA, Traditional Chinese and explicit mixed fallback', () => {
+    expect(classifyVoiceInputLanguage('How many days are in a week?')).toBe('EN');
+    expect(classifyVoiceInputLanguage('日本の首都はどこですか？')).toBe('JA');
+    expect(classifyVoiceInputLanguage('臺灣的首都是哪裡？')).toBe('ZH_HANT');
+    expect(classifyVoiceInputLanguage('東京')).toBe('UNKNOWN');
+    expect(classifyVoiceInputLanguage('日本')).toBe('UNKNOWN');
+    expect(classifyVoiceInputLanguage('大阪')).toBe('UNKNOWN');
+    expect(classifyVoiceInputLanguage('京都')).toBe('UNKNOWN');
+    expect(classifyVoiceInputLanguage('')).toBe('OTHER');
+    expect(classifyVoiceInputLanguage('台灣 weather')).toBe('OTHER');
+    expect(responseLanguageForInputClass('EN')).toBe('en');
+    expect(responseLanguageForInputClass('JA')).toBe('ja');
+    expect(responseLanguageForInputClass('ZH_HANT')).toBe('zh_hant');
+    expect(responseLanguageForInputClass('OTHER')).toBe('auto');
+    expect(responseLanguageForInputClass('UNKNOWN')).toBe('auto');
+  });
   test('keeps user-facing TTS labels in English while preserving provider IDs', () => {
     expect(Object.keys(TTS_VOICE_LABELS).sort()).toEqual([...TTS_VOICES].sort());
     expect(Object.values(TTS_VOICE_LABELS).every((label) => !/[\u3400-\u9fff]/u.test(label))).toBe(

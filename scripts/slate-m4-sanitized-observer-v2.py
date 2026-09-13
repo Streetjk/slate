@@ -30,7 +30,8 @@ FRAME_MARKER_RE = re.compile(
     r"\bframe marker phase=(server_current|requested|received|sync_result|active)"
     r"(?P<fields>[^\r\n]{0,260})"
 )
-VOICE_FONT_MARKER_RE = re.compile(r"\bvoice font marker(?P<fields>[^\r\n]{0,320})")
+VOICE_FONT_MARKER_RE = re.compile(r"\bvoice font marker(?P<fields>[^\r\n]{0,360})")
+VOICE_FONT_CODEPOINT_RE = re.compile(r"\bvoice font marker[^\r\n]{0,360}?codepoint=0x([0-9A-Fa-f]{1,6})\b")
 VOICE_FONT_MISSING_RE = re.compile(r"\bvoice font marker missing_codepoint=0x([0-9A-Fa-f]{1,6})\b")
 VOICE_LAYOUT_MARKER_RE = re.compile(r"\bvoice layout marker(?P<fields>[^\r\n]{0,220})")
 WEATHER_LIFECYCLE_MARKER_RE = re.compile(
@@ -94,6 +95,15 @@ def extract_producer_events(line: str) -> list[dict[str, str]]:
     if font:
         fields = font.group("fields")
         events.append({"event": "VOICE_FONT_MARKER", "value": "OBSERVED"})
+        schema_value = _bounded_field(fields, "marker_schema", maximum=9)
+        if schema_value is not None:
+            events.append({"event": "VOICE_FONT_MARKER_SCHEMA", "value": schema_value})
+        codepoint = VOICE_FONT_CODEPOINT_RE.search(line)
+        if codepoint:
+            events.append({"event": "VOICE_FONT_CODEPOINT_HEX", "value": codepoint.group(1).upper()})
+        update = _enum_field(fields, "update", ("INITIAL_BUBBLE", "IN_PLACE_ASSISTANT_UPDATE"))
+        if update is not None:
+            events.append({"event": "VOICE_FONT_UPDATE_KIND", "value": update})
         for source, target in (
             ("direct_descriptor", "VOICE_FONT_DIRECT_DESCRIPTOR_FOUND"),
             ("direct_bitmap", "VOICE_FONT_DIRECT_BITMAP_FOUND"),
@@ -106,6 +116,15 @@ def extract_producer_events(line: str) -> list[dict[str, str]]:
         fallback = _enum_field(fields, "fallback", ("Zfull_16", "none"))
         if fallback is not None:
             events.append({"event": "VOICE_FONT_FALLBACK_CLASS", "value": fallback})
+        placeholder = _enum_field(fields, "placeholder", ("YES", "NO", "UNKNOWN"))
+        if placeholder is not None:
+            events.append({"event": "VOICE_FONT_PLACEHOLDER_USED", "value": placeholder})
+        resolved = _enum_field(fields, "resolved_font", ("Voice_Font_16", "Zfull_16", "none", "other"))
+        if resolved is not None:
+            events.append({"event": "VOICE_FONT_RESOLVED_FONT", "value": resolved})
+        bitmap_result = _enum_field(fields, "layout", ("BITMAP_FOUND", "BITMAP_MISSING"))
+        if bitmap_result is not None:
+            events.append({"event": "VOICE_FONT_BITMAP_RESULT", "value": bitmap_result})
     missing = VOICE_FONT_MISSING_RE.search(line)
     if missing:
         events.append({"event": "VOICE_FONT_MISSING_CODEPOINT", "value": missing.group(1).upper()})
@@ -114,6 +133,12 @@ def extract_producer_events(line: str) -> list[dict[str, str]]:
     if layout:
         fields = layout.group("fields")
         events.append({"event": "VOICE_LAYOUT_MARKER", "value": "OBSERVED"})
+        schema_value = _bounded_field(fields, "marker_schema", maximum=9)
+        if schema_value is not None:
+            events.append({"event": "VOICE_LAYOUT_MARKER_SCHEMA", "value": schema_value})
+        update = _enum_field(fields, "update", ("INITIAL_BUBBLE", "IN_PLACE_ASSISTANT_UPDATE"))
+        if update is not None:
+            events.append({"event": "VOICE_LAYOUT_UPDATE_KIND", "value": update})
         for name in ("measured_width", "final_width", "final_height", "text_chars"):
             value = _bounded_field(fields, name, maximum=100000)
             if value is not None:
@@ -165,6 +190,10 @@ VOICE_PATTERNS = {
     "PROVIDER_LIVE_ERROR_CALLBACK": r"YES",
     "PROVIDER_LIVE_CLOSE_CALLBACK": r"YES",
     "VOICE_TURN_INDEX": r"[0-9]+",
+    "TURN_INDEX": r"[0-9]+",
+    "TURN_LANGUAGE_SOURCE": r"(?:ASR_METADATA|PROVIDER_METADATA|SESSION_PREF|SCRIPT_CUE|AUTO_UNKNOWN)",
+    "TURN_LANGUAGE_CLASS": r"(?:EN|JA|ZH_HANT|OTHER|UNKNOWN)",
+    "TURN_RESPONSE_LANGUAGE": r"(?:en|ja|zh_hant|auto)",
     "VOICE_TURN_START": r"(?:YES|NO)",
     "VOICE_TURN_START_MS": r"[0-9]+",
     "BACKEND_OPERATION_QUEUE_DEPTH": r"[0-9]+",
@@ -329,7 +358,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+|frame marker phase=(server_current|requested|received|sync_result|active)( (ok|seq|frame_id_present|frame_id_match|frame_available)=[A-Za-z0-9_.=-]+)*|voice font marker( (artifact|fw|font|direct_descriptor|direct_bitmap|fallback|fallback_descriptor|fallback_bitmap)=[A-Za-z0-9_.+-]+)*|voice layout marker( (measured_width|final_width|final_height|text_chars)=[0-9]+)*|\\[slate\\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) type=weather error_present=[01])' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|TURN_INDEX|TURN_LANGUAGE_SOURCE|TURN_LANGUAGE_CLASS|TURN_RESPONSE_LANGUAGE|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+|frame marker phase=(server_current|requested|received|sync_result|active)( (ok|seq|frame_id_present|frame_id_match|frame_available)=[A-Za-z0-9_.=-]+)*|voice font marker( (marker_schema|update|artifact|fw|font|codepoint|resolved_font|direct_descriptor|direct_bitmap|fallback|fallback_descriptor|fallback_bitmap|placeholder|layout)=[A-Za-z0-9_.+-]+)*|voice layout marker( (marker_schema|update|measured_width|final_width|final_height|text_chars|layout)=[A-Za-z0-9_.+-]+)*|\\[slate\\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) type=weather error_present=[01])' | sort -u || true
 """
     try:
         completed = subprocess.run(
@@ -472,6 +501,9 @@ def self_test() -> int:
     assert extract_voice_events("T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000050") == [
         {"event": "T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS", "value": "1725800000050"}
     ]
+    assert extract_voice_events("TURN_LANGUAGE_CLASS=ZH_HANT") == [
+        {"event": "TURN_LANGUAGE_CLASS", "value": "ZH_HANT"}
+    ]
 
     # The producer contract is lower-case and intentionally differs from the
     # legacy uppercase key/value contract.  These seven fixtures are the
@@ -481,8 +513,10 @@ def self_test() -> int:
         "frame marker phase=requested seq=2 frame_id_present=1 frame_id_match=unknown",
         "frame marker phase=received seq=2 frame_id_present=1 frame_id_match=mismatch",
         "frame marker phase=sync_result ok=1 seq=2 frame_id_present=1 frame_id_match=match",
-        "voice font marker artifact=voice_font_16+zfull_16 fw=fixture font=Voice_Font_16 direct_descriptor=1 direct_bitmap=1 fallback=Zfull_16 fallback_descriptor=1 fallback_bitmap=1",
-        "voice layout marker measured_width=144 final_width=162 final_height=48 text_chars=6",
+        "voice font marker marker_schema=2 update=INITIAL_BUBBLE artifact=voice_font_16+zfull_16 fw=fixture font=Voice_Font_16 codepoint=0x697D resolved_font=Voice_Font_16 direct_descriptor=1 direct_bitmap=1 fallback=Zfull_16 fallback_descriptor=1 fallback_bitmap=1 placeholder=NO layout=BITMAP_FOUND",
+        "voice layout marker marker_schema=2 update=INITIAL_BUBBLE measured_width=144 final_width=162 final_height=48 text_chars=6",
+        "voice font marker marker_schema=2 update=IN_PLACE_ASSISTANT_UPDATE artifact=voice_font_16+zfull_16 fw=fixture font=Voice_Font_16 codepoint=0x697D resolved_font=Zfull_16 direct_descriptor=0 direct_bitmap=0 fallback=Zfull_16 fallback_descriptor=1 fallback_bitmap=1 placeholder=NO layout=BITMAP_FOUND",
+        "voice layout marker marker_schema=2 update=IN_PLACE_ASSISTANT_UPDATE measured_width=128 final_width=146 final_height=48 text_chars=5",
         "[slate] weather lifecycle marker stage=frontend_view type=weather error_present=0",
     ]
     fixture_events = [extract_producer_events(fixture) for fixture in producer_fixtures]
@@ -492,6 +526,20 @@ def self_test() -> int:
         "VOICE_FONT_MARKER",
         "VOICE_LAYOUT_MARKER",
         "WEATHER_LIFECYCLE_MARKER",
+    }
+    font_events = extract_producer_events(producer_fixtures[6])
+    assert {event["event"] for event in font_events} >= {
+        "VOICE_FONT_MARKER_SCHEMA",
+        "VOICE_FONT_UPDATE_KIND",
+        "VOICE_FONT_DIRECT_BITMAP_FOUND",
+        "VOICE_FONT_FALLBACK_BITMAP_FOUND",
+        "VOICE_FONT_CODEPOINT_HEX",
+        "VOICE_FONT_BITMAP_RESULT",
+    }
+    layout_events = extract_producer_events(producer_fixtures[7])
+    assert {event["event"] for event in layout_events} >= {
+        "VOICE_LAYOUT_MARKER_SCHEMA",
+        "VOICE_LAYOUT_UPDATE_KIND",
     }
     assert extract_producer_events(
         "frame marker phase=server_current schema=1 device_id=private"
@@ -648,7 +696,8 @@ def self_test() -> int:
 
     # Backpressure, queue, turn, and reset markers
     new_marker_line = (
-        "VOICE_TURN_INDEX=3 VOICE_TURN_START=YES VOICE_TURN_START_MS=1725800000300 "
+        "VOICE_TURN_INDEX=3 TURN_INDEX=3 TURN_LANGUAGE_SOURCE=SCRIPT_CUE TURN_LANGUAGE_CLASS=ZH_HANT "
+        "VOICE_TURN_START=YES VOICE_TURN_START_MS=1725800000300 "
         "BACKEND_OPERATION_QUEUE_DEPTH=0 BACKEND_PRE_PROVIDER_MIC_QUEUE_FRAMES=2 "
         "BACKEND_PRE_PROVIDER_MIC_QUEUE_BYTES=1920 VOICE_WS_BUFFERED_BYTES=0 "
         "VOICE_WS_SEND_BACKLOG_BYTES=0 BRIDGE_STDIO_WRITE_BACKLOG_BYTES=128 "
@@ -660,6 +709,9 @@ def self_test() -> int:
     new_extracted = extract_voice_events(new_marker_line)
     new_map = {e["event"]: e["value"] for e in new_extracted}
     assert new_map["VOICE_TURN_INDEX"] == "3"
+    assert new_map["TURN_INDEX"] == "3"
+    assert new_map["TURN_LANGUAGE_SOURCE"] == "SCRIPT_CUE"
+    assert new_map["TURN_LANGUAGE_CLASS"] == "ZH_HANT"
     assert new_map["VOICE_TURN_START"] == "YES"
     assert new_map["VOICE_TURN_START_MS"] == "1725800000300"
     assert new_map["BACKEND_OPERATION_QUEUE_DEPTH"] == "0"

@@ -179,7 +179,7 @@ export function assertGeminiLiveBridgeOpen(value: unknown): asserts value is Gem
     epoch <= 0 ||
     typeof value.model !== 'string' ||
     value.model.length === 0 ||
-    (value.language !== 'en' && value.language !== 'ja') ||
+    !['en', 'ja', 'zh_hant', 'auto'].includes(value.language as string) ||
     typeof value.systemInstruction !== 'string' ||
     typeof value.connectTimeoutMs !== 'number' ||
     !Number.isInteger(value.connectTimeoutMs) ||

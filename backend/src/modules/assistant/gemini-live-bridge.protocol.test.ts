@@ -61,6 +61,22 @@ describe('Gemini Live bridge protocol', () => {
     ).toThrow(GeminiLiveBridgeProtocolError);
   });
 
+  it('accepts explicit Traditional Chinese language propagation', () => {
+    expect(() =>
+      assertGeminiLiveBridgeOpen({
+        type: 'open',
+        version: 1,
+        epoch: 1,
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        language: 'zh_hant',
+        systemInstruction: 'synthetic',
+        connectTimeoutMs: 1000,
+        enableWebSearch: false,
+        tools: [],
+      })
+    ).not.toThrow();
+  });
+
   it('rejects malformed or unknown responses', () => {
     expect(() => parseGeminiLiveBridgeResponse('{"type":"ready","version":2,"epoch":1}')).toThrow(
       GeminiLiveBridgeProtocolError

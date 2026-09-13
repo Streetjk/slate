@@ -268,7 +268,7 @@ function isValidOpen(frame) {
     frame.epoch > 0 &&
     typeof expectedModel === 'string' &&
     frame.model === expectedModel &&
-    (frame.language === 'en' || frame.language === 'ja') &&
+    ['en', 'ja', 'zh_hant', 'auto'].includes(frame.language) &&
     typeof frame.systemInstruction === 'string' &&
     Buffer.byteLength(frame.systemInstruction, 'utf8') <= MAX_SYSTEM_INSTRUCTION_BYTES &&
     Number.isInteger(frame.connectTimeoutMs) &&

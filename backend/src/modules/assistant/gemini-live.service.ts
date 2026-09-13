@@ -33,7 +33,7 @@ export interface GeminiLiveConnection {
 }
 
 const LIVE_SYSTEM_INSTRUCTION =
-  'You are the Slate assistant for a monochrome NOTE4 device. Respond in the user language, English or Japanese. Never access, infer, or discuss private Outlook or Microsoft calendar data. Calendar requests may only produce a proposed Google Calendar event for a separate confirmation flow.';
+  "You are the Slate assistant for a monochrome NOTE4 device. Respond in the user's input language: English, Japanese, or Traditional Chinese. Preserve the input script and do not translate a Traditional Chinese request into Japanese. Never access, infer, or discuss private Outlook or Microsoft calendar data. Calendar requests may only produce a proposed Google Calendar event for a separate confirmation flow.";
 
 @Injectable()
 export class GeminiLiveService {
@@ -48,15 +48,15 @@ export class GeminiLiveService {
   ) {}
 
   async connect(
-    language: VoiceLanguageT | undefined,
+    _language: VoiceLanguageT | undefined,
     onEvent: (event: GeminiLiveEvent) => void,
     onError?: (error: Error) => void,
     enableWebSearch = true
   ): Promise<GeminiLiveConnection> {
     this.assertConfigured();
-    const systemInstruction = language
-      ? `${LIVE_SYSTEM_INSTRUCTION} Preferred language: ${language}.`
-      : LIVE_SYSTEM_INSTRUCTION;
+    // The session language is only a transport compatibility field.  A live
+    // session must not pin every later turn to its connect-time value.
+    const systemInstruction = LIVE_SYSTEM_INSTRUCTION;
     if (this.config.liveRuntime === 'node_bridge') {
       if (
         this.config.authMode !== 'developer_api_key' ||
@@ -68,7 +68,7 @@ export class GeminiLiveService {
       }
       try {
         return await this.nodeBridgeFactory(this.config.nodeBridgeOptions()).connect(
-          language ?? 'en',
+          'auto',
           onEvent,
           onError ?? (() => undefined),
           this.config.liveModel,

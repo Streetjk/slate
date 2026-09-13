@@ -318,7 +318,7 @@ describe('NodeGeminiLiveBridge', () => {
     }) as never);
 
     const connection = await bridge.connect(
-      'en',
+      'zh_hant',
       ({ message }) => events.push(message),
       (error) => errors.push(error),
       'gemini-2.5-flash-native-audio-preview-12-2025',
@@ -338,6 +338,7 @@ describe('NodeGeminiLiveBridge', () => {
     });
     expect(JSON.stringify(child.writes[0])).not.toContain('gemini_api_key');
     expect(JSON.stringify(child.writes[0])).not.toContain('credential');
+    expect(child.writes[0]).toMatchObject({ type: 'open', language: 'zh_hant' });
 
     connection.sendAudio(new Uint8Array([1, 2, 3, 4]));
     connection.sendText('synthetic text');

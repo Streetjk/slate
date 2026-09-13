@@ -9,7 +9,12 @@ import {
   GeminiLiveBridgeProtocolError,
 } from './gemini-live-bridge.protocol';
 import { OpusPcmCodec, type VoiceCodec } from './opus-pcm-codec';
-import type { VoiceLanguageT } from 'shared';
+import {
+  classifyVoiceInputLanguage,
+  responseLanguageForInputClass,
+  type VoiceLanguageT,
+  type VoiceInputLanguageClassT,
+} from 'shared';
 
 const MAX_PRE_PROVIDER_MIC_FRAMES = 50;
 const MAX_PRE_PROVIDER_MIC_BYTES = 100 * 1024;
@@ -455,6 +460,11 @@ export class XiaozhiVoiceSession {
     try {
       const inputText = message.serverContent?.inputTranscription?.text;
       if (inputText?.trim()) {
+        const languageClass = classifyVoiceInputLanguage(inputText);
+        this.timing.setTurnLanguageClass(
+          languageClass,
+          responseLanguageForInputClass(languageClass)
+        );
         this.timing.mark('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL');
         this.pendingInputTranscript = mergeTranscriptFragment(
           this.pendingInputTranscript,
@@ -868,6 +878,7 @@ export class VoiceTimingTrace {
     if (this.logger) {
       this.logger.log(`ACTIVE_LISTEN_GENERATION=${turnIndex}`);
       this.logger.log(`VOICE_TURN_INDEX=${turnIndex}`);
+      this.logger.log(`TURN_INDEX=${turnIndex}`);
       this.logger.log('VOICE_TURN_START=YES');
       this.logger.log(`VOICE_TURN_START_MS=${sanitizedMs}`);
     }
@@ -880,6 +891,22 @@ export class VoiceTimingTrace {
 
   getTurn(): number {
     return this.currentTurn;
+  }
+
+  setTurnLanguageClass(
+    languageClass: VoiceInputLanguageClassT,
+    responseLanguage: VoiceLanguageT
+  ): void {
+    const key = 'TURN_LANGUAGE_CLASS';
+    if (this.turnEmitted.has(key)) return;
+    this.turnEmitted.add(key);
+    const source = languageClass === 'UNKNOWN' ? 'AUTO_UNKNOWN' : 'SCRIPT_CUE';
+    if (this.logger) this.logger.log(`TURN_LANGUAGE_SOURCE=${source}`);
+    if (this.logger) this.logger.log(`${key}=${languageClass}`);
+    if (this.logger) this.logger.log(`TURN_RESPONSE_LANGUAGE=${responseLanguage}`);
+    if (this.enabled) {
+      console.info(`[slate-voice-timing] ${key}=${languageClass} turn=${this.currentTurn}`);
+    }
   }
 
   mark(stage: string, timestampMs?: number): void {

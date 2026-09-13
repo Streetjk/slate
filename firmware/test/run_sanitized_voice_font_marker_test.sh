@@ -5,11 +5,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCENE="$ROOT_DIR/main/scenes/xiaozhi/xiaozhi_scene.cc"
 
 test -n "$(grep -F 'LogVoiceFontSelection' "$SCENE")"
+test "$(grep -cF 'LogVoiceFontSelection(display_text, "IN_PLACE_ASSISTANT_UPDATE")' "$SCENE")" -eq 1
+test "$(grep -cF 'LogVoiceFontSelection(display_text, "INITIAL_BUBBLE")' "$SCENE")" -eq 1
+test -n "$(grep -F 'marker_schema=2' "$SCENE")"
 test -n "$(grep -F 'font=Voice_Font_16' "$SCENE")"
 test -n "$(grep -F 'direct_descriptor=' "$SCENE")"
 test -n "$(grep -F 'direct_bitmap=' "$SCENE")"
 test -n "$(grep -F 'fallback_descriptor=' "$SCENE")"
 test -n "$(grep -F 'fallback_bitmap=' "$SCENE")"
+test -n "$(grep -F 'lv_font_get_glyph_bitmap' "$SCENE")"
+test -n "$(grep -F 'resolved_font=' "$SCENE")"
 test -n "$(grep -F 'voice layout marker' "$SCENE")"
 test -n "$(grep -F '"voice_font_16+zfull_16"' "$SCENE")"
 test "$(grep -cF 'ESP_LOG_LEVEL' "$SCENE")" -eq 0

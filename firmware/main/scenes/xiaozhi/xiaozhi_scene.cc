@@ -47,6 +47,11 @@ std::optional<uint32_t> FirstMissingVoiceGlyph(const std::string& text) {
         lv_font_glyph_dsc_t descriptor{};
         if (!lv_font_get_glyph_dsc(&Voice_Font_16, &descriptor, codepoint, codepoint))
             return codepoint;
+        if (descriptor.is_placeholder)
+            return codepoint;
+        descriptor.req_raw_bitmap = 1;
+        if (!lv_font_get_glyph_bitmap(&descriptor, nullptr))
+            return codepoint;
         pos += step;
     }
     return std::nullopt;
@@ -76,7 +81,21 @@ size_t CountUtf8Codepoints(const std::string& text) {
     return count;
 }
 
-void LogVoiceFontSelection(const std::string& text) {
+bool GlyphBitmapFound(const lv_font_t* font, lv_font_glyph_dsc_t* descriptor) {
+    if (!font || !descriptor) return false;
+    if (descriptor->is_placeholder) return false;
+    descriptor->resolved_font = font;
+    descriptor->req_raw_bitmap = 1;
+    return lv_font_get_glyph_bitmap(descriptor, nullptr) != nullptr;
+}
+
+const char* FontName(const lv_font_t* font) {
+    if (font == &Voice_Font_16) return "Voice_Font_16";
+    if (font == &Zfull_16) return "Zfull_16";
+    return font ? "other" : "none";
+}
+
+void LogVoiceFontSelection(const std::string& text, const char* update_kind) {
     const std::optional<uint32_t> missing_codepoint = FirstMissingVoiceGlyph(text);
     const lv_font_t*              fallback          = Voice_Font_16.fallback;
     const std::optional<uint32_t> first_codepoint   = FirstUtf8Codepoint(text);
@@ -84,20 +103,31 @@ void LogVoiceFontSelection(const std::string& text) {
         missing_codepoint ? missing_codepoint : first_codepoint;
     lv_font_glyph_dsc_t           resolved_descriptor{};
     lv_font_glyph_dsc_t           direct_descriptor{};
-    const bool direct_descriptor_found = probe_codepoint &&
-        lv_font_get_glyph_dsc(&Voice_Font_16, &direct_descriptor, *probe_codepoint, *probe_codepoint);
-    const bool direct_bitmap_found =
-        direct_descriptor_found && direct_descriptor.box_w > 0 && direct_descriptor.box_h > 0;
+    const bool direct_descriptor_found = probe_codepoint && Voice_Font_16.get_glyph_dsc &&
+        Voice_Font_16.get_glyph_dsc(&Voice_Font_16, &direct_descriptor, *probe_codepoint, *probe_codepoint);
+    const bool direct_bitmap_found = direct_descriptor_found &&
+        GlyphBitmapFound(&Voice_Font_16, &direct_descriptor);
     const bool fallback_descriptor_found = missing_codepoint && fallback &&
-        lv_font_get_glyph_dsc(fallback, &resolved_descriptor, *missing_codepoint, *missing_codepoint);
-    const bool fallback_bitmap =
-        fallback_descriptor_found && resolved_descriptor.box_w > 0 && resolved_descriptor.box_h > 0;
+        fallback->get_glyph_dsc && fallback->get_glyph_dsc(fallback, &resolved_descriptor,
+                                                            *missing_codepoint, *missing_codepoint);
+    const bool fallback_bitmap = fallback_descriptor_found &&
+        GlyphBitmapFound(fallback, &resolved_descriptor);
+    lv_font_glyph_dsc_t effective_descriptor{};
+    const bool effective_descriptor_found = probe_codepoint &&
+        lv_font_get_glyph_dsc(&Voice_Font_16, &effective_descriptor, *probe_codepoint, *probe_codepoint);
+    const bool effective_bitmap_found = effective_descriptor_found &&
+        GlyphBitmapFound(effective_descriptor.resolved_font, &effective_descriptor);
     ESP_LOGI(kTag,
-             "voice font marker artifact=%s fw=%s font=Voice_Font_16 direct_descriptor=%d "
-             "direct_bitmap=%d fallback=%s fallback_descriptor=%d fallback_bitmap=%d",
-             "voice_font_16+zfull_16", CONFIG_APP_PROJECT_VER, direct_descriptor_found ? 1 : 0,
+             "voice font marker marker_schema=2 update=%s artifact=%s fw=%s font=Voice_Font_16 "
+             "codepoint=0x%04lX resolved_font=%s direct_descriptor=%d direct_bitmap=%d fallback=%s "
+             "fallback_descriptor=%d fallback_bitmap=%d placeholder=%s layout=BITMAP_%s",
+             update_kind, "voice_font_16+zfull_16", CONFIG_APP_PROJECT_VER,
+             static_cast<unsigned long>(probe_codepoint.value_or(0)),
+             FontName(effective_descriptor.resolved_font), direct_descriptor_found ? 1 : 0,
              direct_bitmap_found ? 1 : 0, fallback ? "Zfull_16" : "none",
-             fallback_descriptor_found ? 1 : 0, fallback_bitmap ? 1 : 0);
+             fallback_descriptor_found ? 1 : 0, fallback_bitmap ? 1 : 0,
+             effective_descriptor_found && effective_descriptor.is_placeholder ? "YES" : "NO",
+             effective_bitmap_found ? "FOUND" : "MISSING");
     if (missing_codepoint)
         ESP_LOGW(kTag, "voice font marker missing_codepoint=0x%04lX",
                  static_cast<unsigned long>(*missing_codepoint));
@@ -547,7 +577,12 @@ void XiaozhiScene::RenderXiaozhiMessages(const xiaozhi::XiaozhiSnapshot& snap) {
         if (rendered_messages_key_ != messages_key) {
             const std::string display_text = DisplayText(snap.messages.back().text);
             if (!display_text.empty()) {
+                SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
+                LogVoiceFontSelection(display_text, "IN_PLACE_ASSISTANT_UPDATE");
                 LayoutBubble(last_bubble_, last_label_, display_text);
+                ESP_LOGI(kTag, "voice layout marker marker_schema=2 update=IN_PLACE_ASSISTANT_UPDATE measured_width=%d final_width=%d final_height=%d text_chars=%zu",
+                         lv_obj_get_width(last_label_), lv_obj_get_width(last_bubble_) - 18,
+                         lv_obj_get_height(last_bubble_), CountUtf8Codepoints(display_text));
                 lv_obj_set_height(last_bubble_row_, lv_obj_get_height(last_bubble_) + 2);
                 lv_obj_scroll_to_view_recursive(last_bubble_row_, LV_ANIM_OFF);
             }
@@ -624,9 +659,10 @@ void XiaozhiScene::AppendXiaozhiBubble(const std::string& role, const std::strin
     lv_obj_set_style_text_font(label, &Voice_Font_16, 0);
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
     lv_obj_set_style_text_line_space(label, 4, 0);
-    LogVoiceFontSelection(display_text);
+    SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
+    LogVoiceFontSelection(display_text, "INITIAL_BUBBLE");
     LayoutBubble(bubble, label, display_text);
-    ESP_LOGI(kTag, "voice layout marker measured_width=%d final_width=%d final_height=%d text_chars=%zu",
+    ESP_LOGI(kTag, "voice layout marker marker_schema=2 update=INITIAL_BUBBLE measured_width=%d final_width=%d final_height=%d text_chars=%zu",
              lv_obj_get_width(label), lv_obj_get_width(bubble) - 18, lv_obj_get_height(bubble),
              CountUtf8Codepoints(display_text));
     lv_obj_set_height(row, lv_obj_get_height(bubble) + 2);
