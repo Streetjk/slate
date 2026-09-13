@@ -34,6 +34,15 @@ VOICE_FONT_MARKER_RE = re.compile(r"\bvoice font marker(?P<fields>[^\r\n]{0,360}
 VOICE_FONT_CODEPOINT_RE = re.compile(r"\bvoice font marker[^\r\n]{0,360}?codepoint=0x([0-9A-Fa-f]{1,6})\b")
 VOICE_FONT_MISSING_RE = re.compile(r"\bvoice font marker missing_codepoint=0x([0-9A-Fa-f]{1,6})\b")
 VOICE_LAYOUT_MARKER_RE = re.compile(r"\bvoice layout marker(?P<fields>[^\r\n]{0,220})")
+VOICE_TIMING_MARKER_RE = re.compile(
+    r"\bvoice timing marker marker_schema=2 turn=([0-9]{1,9}) "
+    r"stage=(T_[A-Z0-9_]{1,80}) t_ms=([0-9]{1,16})\b"
+)
+VOICE_LANGUAGE_MARKER_RE = re.compile(
+    r"\bvoice language marker marker_schema=2 turn=([0-9]{1,9}) "
+    r"source=(ASR_METADATA|PROVIDER_METADATA|SESSION_PREF|SCRIPT_CUE|AUTO_UNKNOWN) "
+    r"class=(EN|JA|ZH_HANT|OTHER|UNKNOWN) response=(en|ja|zh_hant|auto)\b"
+)
 WEATHER_LIFECYCLE_MARKER_RE = re.compile(
     r"\[slate\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|"
     r"db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) "
@@ -73,6 +82,26 @@ def extract_producer_events(line: str) -> list[dict[str, str]]:
     schema = PRODUCER_SCHEMA_RE.search(line)
     if schema and schema.group(1) != "2":
         return [{"event": "CAPTURE_REJECTED", "value": "STALE_SCHEMA"}]
+
+    timing = VOICE_TIMING_MARKER_RE.search(line)
+    if timing:
+        turn, stage, timestamp = timing.groups()
+        return [
+            {
+                "event": "VOICE_TIMING_RECORD",
+                "value": f"turn={turn}|stage={stage}|t_ms={timestamp}",
+            }
+        ]
+
+    language = VOICE_LANGUAGE_MARKER_RE.search(line)
+    if language:
+        turn, source, language_class, response = language.groups()
+        return [
+            {
+                "event": "VOICE_LANGUAGE_RECORD",
+                "value": f"turn={turn}|source={source}|class={language_class}|response={response}",
+            }
+        ]
 
     frame = FRAME_MARKER_RE.search(line)
     if frame:
@@ -358,7 +387,7 @@ mysql=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.
 echo HEALTH=$local,$public
 printf 'SLATE=%s\n' "$slate"
 printf 'MYSQL=%s\n' "$mysql"
-docker logs --since 8s slate-note4 2>&1 | grep -oE '(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|TURN_INDEX|TURN_LANGUAGE_SOURCE|TURN_LANGUAGE_CLASS|TURN_RESPONSE_LANGUAGE|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+|frame marker phase=(server_current|requested|received|sync_result|active)( (ok|seq|frame_id_present|frame_id_match|frame_available)=[A-Za-z0-9_.=-]+)*|voice font marker( (marker_schema|update|artifact|fw|font|codepoint|resolved_font|direct_descriptor|direct_bitmap|fallback|fallback_descriptor|fallback_bitmap|placeholder|layout)=[A-Za-z0-9_.+-]+)*|voice layout marker( (marker_schema|update|measured_width|final_width|final_height|text_chars|layout)=[A-Za-z0-9_.+-]+)*|\\[slate\\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) type=weather error_present=[01])' | sort -u || true
+docker logs --since 8s slate-note4 2>&1 | grep -oE 'voice timing marker marker_schema=2 turn=[0-9]+ stage=T_[A-Z0-9_]+ t_ms=[0-9]+|voice language marker marker_schema=2 turn=[0-9]+ source=(ASR_METADATA|PROVIDER_METADATA|SESSION_PREF|SCRIPT_CUE|AUTO_UNKNOWN) class=(EN|JA|ZH_HANT|OTHER|UNKNOWN) response=(en|ja|zh_hant|auto)|(DEVICE_AUTHENTICATED_POLL_RESULT|VOICE_[A-Z0-9_]+|TURN_INDEX|TURN_LANGUAGE_SOURCE|TURN_LANGUAGE_CLASS|TURN_RESPONSE_LANGUAGE|PROVIDER_[A-Z0-9_]+|BACKEND_[A-Z0-9_]+|BRIDGE_[A-Z0-9_]+|UI_[A-Z0-9_]+|HEAP_[A-Z0-9_]+|AUDIO_[A-Z0-9_]+|RESET_[A-Z0-9_]+|WATCHDOG_[A-Z0-9_]+|FIRST_MIC_FRAME_RECEIVED|LIVE_FAILURE_SOURCE|ACTIVE_CONNECT_GENERATION|ACTIVE_LISTEN_GENERATION|LISTENING_STATE_AT_FAILURE|LIVE_SESSION_PRESENT_AT_FAILURE|CONNECTING_PROMISE_PRESENT_AT_FAILURE|T_[A-Z0-9_]+|audio_(pkt_recv|pkt_gate_rejected|pkt_enqueued|decode_ok|decode_fail|player_write_ok|player_write_fail))=[A-Za-z0-9_.=-]+|frame marker phase=(server_current|requested|received|sync_result|active)( (ok|seq|frame_id_present|frame_id_match|frame_available)=[A-Za-z0-9_.=-]+)*|voice font marker( (marker_schema|update|artifact|fw|font|codepoint|resolved_font|direct_descriptor|direct_bitmap|fallback|fallback_descriptor|fallback_bitmap|placeholder|layout)=[A-Za-z0-9_.+-]+)*|voice layout marker( (marker_schema|update|measured_width|final_width|final_height|text_chars|layout)=[A-Za-z0-9_.+-]+)*|\\[slate\\] weather lifecycle marker stage=(db_mark_config_invalid|db_mark_fetch_error|db_clear_error_unchanged|db_clear_error_rendered|db_write_error|frontend_view) type=weather error_present=[01])' || true
 """
     try:
         completed = subprocess.run(
@@ -504,6 +533,43 @@ def self_test() -> int:
     assert extract_voice_events("TURN_LANGUAGE_CLASS=ZH_HANT") == [
         {"event": "TURN_LANGUAGE_CLASS", "value": "ZH_HANT"}
     ]
+
+    # CA-1 atomic records retain turn/language/stage association and allow
+    # repeated same-value stages in different turns to survive collection.
+    timing_record = extract_sanitized_line_events(
+        "voice timing marker marker_schema=2 turn=1 stage=T_PROVIDER_FIRST_OUTPUT_EVENT t_ms=100"
+    )
+    assert timing_record == [
+        {
+            "event": "VOICE_TIMING_RECORD",
+            "value": "turn=1|stage=T_PROVIDER_FIRST_OUTPUT_EVENT|t_ms=100",
+        }
+    ]
+    language_record = extract_sanitized_line_events(
+        "voice language marker marker_schema=2 turn=2 source=SCRIPT_CUE class=ZH_HANT response=zh_hant"
+    )
+    assert language_record == [
+        {
+            "event": "VOICE_LANGUAGE_RECORD",
+            "value": "turn=2|source=SCRIPT_CUE|class=ZH_HANT|response=zh_hant",
+        }
+    ]
+    atomic_capture = CaptureAccumulator()
+    atomic_events = atomic_capture.feed(
+        "\n".join(
+            [
+                "voice timing marker marker_schema=2 turn=1 stage=T_PROVIDER_FIRST_OUTPUT_EVENT t_ms=100",
+                "voice timing marker marker_schema=2 turn=2 stage=T_PROVIDER_FIRST_OUTPUT_EVENT t_ms=100",
+                "voice timing marker marker_schema=2 turn=2 stage=T_PROVIDER_FIRST_OUTPUT_EVENT t_ms=100",
+            ]
+        )
+        + "\n"
+    )
+    assert [event["value"] for event in atomic_events if event["event"] == "VOICE_TIMING_RECORD"] == [
+        "turn=1|stage=T_PROVIDER_FIRST_OUTPUT_EVENT|t_ms=100",
+        "turn=2|stage=T_PROVIDER_FIRST_OUTPUT_EVENT|t_ms=100",
+    ]
+    assert atomic_capture.duplicate_count == 1
 
     # The producer contract is lower-case and intentionally differs from the
     # legacy uppercase key/value contract.  These seven fixtures are the

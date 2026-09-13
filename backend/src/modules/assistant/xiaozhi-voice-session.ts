@@ -460,15 +460,15 @@ export class XiaozhiVoiceSession {
     try {
       const inputText = message.serverContent?.inputTranscription?.text;
       if (inputText?.trim()) {
-        const languageClass = classifyVoiceInputLanguage(inputText);
-        this.timing.setTurnLanguageClass(
-          languageClass,
-          responseLanguageForInputClass(languageClass)
-        );
         this.timing.mark('T_PROVIDER_INPUT_TRANSCRIPTION_FIRST_PARTIAL');
         this.pendingInputTranscript = mergeTranscriptFragment(
           this.pendingInputTranscript,
           inputText
+        );
+        const languageClass = classifyVoiceInputLanguage(this.pendingInputTranscript);
+        this.timing.setTurnLanguageClass(
+          languageClass,
+          responseLanguageForInputClass(languageClass)
         );
         if (!this.lastSentInputTranscript) {
           this.flushInputTranscript();
@@ -858,6 +858,8 @@ export class VoiceTimingTrace {
   private readonly turnEmitted = new Set<string>();
   private readonly turnStages = new Map<number, Map<string, string>>();
   private currentTurn = 1;
+  private turnLanguageClass: VoiceInputLanguageClassT | undefined;
+  private turnResponseLanguage: VoiceLanguageT | undefined;
   private readonly enabled = process.env.SLATE_VOICE_TIMING === '1';
 
   constructor(
@@ -868,6 +870,8 @@ export class VoiceTimingTrace {
   startTurn(turnIndex: number, timestampMs?: number): void {
     this.currentTurn = turnIndex;
     this.turnEmitted.clear();
+    this.turnLanguageClass = undefined;
+    this.turnResponseLanguage = undefined;
     if (!this.turnStages.has(turnIndex)) {
       this.turnStages.set(turnIndex, new Map());
     }
@@ -897,15 +901,27 @@ export class VoiceTimingTrace {
     languageClass: VoiceInputLanguageClassT,
     responseLanguage: VoiceLanguageT
   ): void {
-    const key = 'TURN_LANGUAGE_CLASS';
-    if (this.turnEmitted.has(key)) return;
-    this.turnEmitted.add(key);
+    if (
+      this.turnLanguageClass === languageClass &&
+      this.turnResponseLanguage === responseLanguage
+    ) {
+      return;
+    }
+    this.turnLanguageClass = languageClass;
+    this.turnResponseLanguage = responseLanguage;
     const source = languageClass === 'UNKNOWN' ? 'AUTO_UNKNOWN' : 'SCRIPT_CUE';
-    if (this.logger) this.logger.log(`TURN_LANGUAGE_SOURCE=${source}`);
-    if (this.logger) this.logger.log(`${key}=${languageClass}`);
-    if (this.logger) this.logger.log(`TURN_RESPONSE_LANGUAGE=${responseLanguage}`);
+    if (this.logger) {
+      this.logger.log(
+        `voice language marker marker_schema=2 turn=${this.currentTurn} source=${source} class=${languageClass} response=${responseLanguage}`
+      );
+      this.logger.log(`TURN_LANGUAGE_SOURCE=${source}`);
+      this.logger.log(`TURN_LANGUAGE_CLASS=${languageClass}`);
+      this.logger.log(`TURN_RESPONSE_LANGUAGE=${responseLanguage}`);
+    }
     if (this.enabled) {
-      console.info(`[slate-voice-timing] ${key}=${languageClass} turn=${this.currentTurn}`);
+      console.info(
+        `[slate-voice-timing] language=${languageClass} response=${responseLanguage} turn=${this.currentTurn}`
+      );
     }
   }
 
@@ -932,6 +948,9 @@ export class VoiceTimingTrace {
     }
     this.turnStages.get(this.currentTurn)!.set(stage, sanitizedMs);
     if (this.logger) {
+      this.logger.log(
+        `voice timing marker marker_schema=2 turn=${this.currentTurn} stage=${stage} t_ms=${sanitizedMs}`
+      );
       this.logger.log(`${stage}=YES`);
       this.logger.log(`${stage}_MS=${sanitizedMs}`);
     }
@@ -964,6 +983,8 @@ export class VoiceTimingTrace {
     this.turnEmitted.clear();
     this.turnStages.clear();
     this.currentTurn = 1;
+    this.turnLanguageClass = undefined;
+    this.turnResponseLanguage = undefined;
   }
 }
 

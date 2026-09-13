@@ -2475,17 +2475,20 @@ describe('XiaozhiVoiceSession', () => {
       const timing = new VoiceTimingTrace(fakeLogger, () => currentTime);
 
       timing.mark('T_DEVICE_LISTEN_START');
-      expect(logs).toEqual(['T_DEVICE_LISTEN_START=YES', 'T_DEVICE_LISTEN_START_MS=1725800000100']);
+      expect(logs.filter((entry) => !entry.startsWith('voice timing marker'))).toEqual([
+        'T_DEVICE_LISTEN_START=YES',
+        'T_DEVICE_LISTEN_START_MS=1725800000100',
+      ]);
 
       // Repeated call must be ignored (first-occurrence semantics)
       currentTime = 1725800000200;
       timing.mark('T_DEVICE_LISTEN_START');
-      expect(logs).toHaveLength(2);
+      expect(logs.filter((entry) => !entry.startsWith('voice timing marker'))).toHaveLength(2);
 
       // Provider alias: marking T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN emits both
       currentTime = 1725800000300;
       timing.mark('T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN');
-      expect(logs.slice(2)).toEqual([
+      expect(logs.filter((entry) => entry.startsWith('T_')).slice(2)).toEqual([
         'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN=YES',
         'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000300',
         'T_PROVIDER_SESSION_READY=YES',
@@ -2494,7 +2497,7 @@ describe('XiaozhiVoiceSession', () => {
 
       // Calling T_PROVIDER_SESSION_READY afterwards must not re-emit
       timing.mark('T_PROVIDER_SESSION_READY');
-      expect(logs).toHaveLength(6);
+      expect(logs.filter((entry) => entry.startsWith('T_'))).toHaveLength(6);
 
       // Reverse alias check with fresh trace
       const reverseLogs: string[] = [];
@@ -2503,12 +2506,36 @@ describe('XiaozhiVoiceSession', () => {
       } as unknown as Logger;
       const reverseTiming = new VoiceTimingTrace(reverseLogger, () => 1725800000400);
       reverseTiming.mark('T_PROVIDER_SESSION_READY');
-      expect(reverseLogs).toEqual([
+      expect(reverseLogs.filter((entry) => entry.startsWith('T_'))).toEqual([
         'T_PROVIDER_SESSION_READY=YES',
         'T_PROVIDER_SESSION_READY_MS=1725800000400',
         'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN=YES',
         'T_PROVIDER_SESSION_READY_IF_ALREADY_OPEN_MS=1725800000400',
       ]);
+    });
+
+    it('keeps turn language provisional until later transcription evidence revises it', () => {
+      const logs: string[] = [];
+      const fakeLogger = {
+        log: (msg: string) => logs.push(msg),
+      } as unknown as Logger;
+      const timing = new VoiceTimingTrace(fakeLogger, () => 1725800000500);
+
+      timing.startTurn(1, 1725800000500);
+      timing.setTurnLanguageClass('UNKNOWN', 'auto');
+      timing.setTurnLanguageClass('JA', 'ja');
+      timing.setTurnLanguageClass('JA', 'ja');
+
+      expect(logs.filter((entry) => entry.startsWith('voice language marker'))).toEqual([
+        'voice language marker marker_schema=2 turn=1 source=AUTO_UNKNOWN class=UNKNOWN response=auto',
+        'voice language marker marker_schema=2 turn=1 source=SCRIPT_CUE class=JA response=ja',
+      ]);
+
+      timing.startTurn(2, 1725800000600);
+      timing.setTurnLanguageClass('ZH_HANT', 'zh_hant');
+      expect(logs).toContain(
+        'voice language marker marker_schema=2 turn=2 source=SCRIPT_CUE class=ZH_HANT response=zh_hant'
+      );
     });
 
     it('emits all stage timing markers during turn lifecycle without leaking private data', async () => {
