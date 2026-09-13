@@ -110,3 +110,37 @@ NEXT_ACTION=REQUEST_EXACT_BACKEND_DEPLOYMENT_AUTHORITY;FIRMWARE_FLASH_NOT_REQUIR
 
 PRs #1–#4 remain OPEN / DRAFT / UNMERGED. C9 remains parked and C10 remains
 isolated/deferred.
+
+## Bounded Grok 4.6 max-turns-6 re-adjudication
+
+The lead adjudication was retried with the existing `grok -m grok-4.6`
+route and `--max-turns 6` after the prior attempt ended only at the turn
+limit. The retry returned a complete structural decision and did not edit
+files or perform activation.
+
+```text
+GROK_MAX_TURNS=6
+GROK_ADJUDICATION=DECIDED
+NEW_REPAIR_REQUIRED=NO
+CA1_STATUS=REPAIRED_ATOMIC_TURN_LANGUAGE_STAGE_RECORDS_TURN_CAPTURE_SCOPED_DEDUP_FAIL_CLOSED_MISSING_STAGES_EXACT_REVIEW_PASS
+CA2_STATUS=REPAIRED_MERGE_BEFORE_CLASSIFY_REVISABLE_PROVISIONAL_CLASS_HAN_ONLY_UNKNOWN_PRESERVED_INPUT_RESPONSE_SEPARATED_EXACT_REVIEW_PASS
+WRITER_ASSIGNMENT=NONE
+REQUIRED_ACTION=REQUEST_EXACT_REVIEWED_BACKEND_DEPLOYMENT_AUTHORITY;NO_FIRMWARE_FLASH_REQUIRED_FOR_THIS_REPAIR;LATER_PHYSICAL_REQUALIFICATION_REQUIRES_SEPARATE_AUTHORITY
+PORTFOLIO_DECISION=STOP
+RUNNABLE_SAFE_WORK_COUNT=0
+STOP_CONDITION=NO_NEW_PROVEN_DEFECT_REMAINING_ACTIVATION_OPERATOR_AUTHORITY_GATED
+```
+
+The retry re-bound the exact candidate to source
+`1cb585a6d554e1eddd3b3ed8300a7e3252e3bc31`, backend image
+`sha256:1201ca661bc5a7e7e775f4bf0f67964852b77d31c23aa17156ba766df232ae8e`,
+unchanged firmware
+`sha256:cfa15233f037d8cce3721f3d70539f3395b69d85a61f3279b6ac9d3a8616b13c`,
+and collector
+`m4-sanitized-structural-v3|sha256:6140c29148d35a29fc95a1a77141323e4d3f1037669620b4353b8b7ed31a9f29`.
+No product bytes, provider/model/auth configuration, firmware, database,
+device state or deployment state changed during the retry.
+
+The exact reviewed backend deployment and later bounded physical
+requalification remain operator-authority gates. No firmware flash is
+required for this CA-1/CA-2 repair.
