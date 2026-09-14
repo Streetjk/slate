@@ -1,7 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { API_PREFIX, api } from '@/lib/http';
 
-export type AiUsageProvider = 'codex' | 'agy_gemini' | 'grok';
+export type AiUsageProvider = 'codex' | 'agy_gemini' | 'claude' | 'grok';
+export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
+export type AiUsageQuotaSource = 'unsupported' | 'none';
+export type AiUsageAvailability =
+  | 'AVAILABLE'
+  | 'BINARY_MISSING'
+  | 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE'
+  | 'UNSUPPORTED'
+  | 'ERROR';
+export type AiUsageFreshness = 'fresh' | 'stale' | 'error';
 export type AiUsageSourceStatus =
   | 'AVAILABLE'
   | 'UNAVAILABLE'
@@ -21,6 +30,20 @@ export interface AiUsageCard {
   sessionTotalTokens: number | null;
   lastUpdated: string | null;
   sourceStatus: AiUsageSourceStatus;
+  capability: {
+    binaryPresent: boolean;
+    version: string | null;
+    probeCommand: string;
+  };
+  source: AiUsageSource;
+  usageSupported: boolean;
+  quotaSource: AiUsageQuotaSource;
+  availability: AiUsageAvailability;
+  freshness: AiUsageFreshness;
+  probedAt: string | null;
+  staleAfter: string | null;
+  error: { code: string; message: string } | null;
+  unknownQuotaFields: Record<string, string | number | boolean | null>;
 }
 
 export interface AiUsageSnapshot {

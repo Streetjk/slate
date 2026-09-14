@@ -7,6 +7,7 @@ import {
   type AiUsageCard,
   type AiUsageProvider,
   type AiUsageSnapshot,
+  type AiUsageUnknownValue,
 } from './ai-usage.types';
 import { setBoundedCache } from '../../common/utils/cache-utils';
 
@@ -18,6 +19,7 @@ export const DEFAULT_AI_USAGE_CACHE_TTL_MS = 30_000;
 export const COMMANDS: Record<AiUsageProvider, readonly [string, readonly string[]]> = {
   codex: ['codex', ['--version']],
   agy_gemini: ['agy', ['--version']],
+  claude: ['claude', ['--version']],
   grok: ['grok', ['--version']],
 };
 
@@ -141,7 +143,7 @@ export class AiUsageService {
   ): Promise<AiUsageCard> {
     const [command, args] = COMMANDS[provider];
     try {
-      await this.runner(command, [...args], {
+      const result = await this.runner(command, [...args], {
         timeout: COMMAND_TIMEOUT_MS,
         maxBuffer: MAX_COMMAND_OUTPUT_BYTES,
         shell: false,
@@ -152,21 +154,75 @@ export class AiUsageService {
       // Version output proves only that the supported local CLI is present. It is
       // deliberately not treated as usage data, so unavailable quota fields stay null.
       // Furthermore, a no-usage probe must never be recorded as last-good usage.
-      return unavailableCard(provider, collectedAt, 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
-    } catch {
+      return versionProbeCard(
+        provider,
+        collectedAt,
+        parseCliVersion(result.stdout),
+        probeCommand(command, args)
+      );
+    } catch (error) {
       this.logger.debug(`AI usage source unavailable for ${provider}`);
       const previous = this.staleLastGood.get(provider);
       return previous && previous.sourceStatus === 'AVAILABLE'
-        ? { ...previous, sourceStatus: 'STALE' }
-        : unavailableCard(provider, null, 'UNAVAILABLE');
+        ? { ...previous, sourceStatus: 'STALE', freshness: 'stale' }
+        : probeFailureCard(provider, probeCommand(command, args), error);
     }
   }
+}
+
+function versionProbeCard(
+  provider: AiUsageProvider,
+  probedAt: string,
+  version: string | null,
+  command: string
+): AiUsageCard {
+  return {
+    ...unavailableCard(provider, probedAt, 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE', {
+      capability: { binaryPresent: true, version, probeCommand: command },
+      source: 'version_probe',
+      availability: 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE',
+      freshness: 'fresh',
+      probedAt,
+    }),
+  };
+}
+
+function probeFailureCard(provider: AiUsageProvider, command: string, error: unknown): AiUsageCard {
+  const missing = isMissingCommandError(error);
+  return unavailableCard(provider, null, missing ? 'UNAVAILABLE' : 'ERROR', {
+    capability: { binaryPresent: !missing, version: null, probeCommand: command },
+    availability: missing ? 'BINARY_MISSING' : 'ERROR',
+    freshness: 'error',
+    error: {
+      code: missing ? 'BINARY_MISSING' : 'PROBE_FAILED',
+      message: missing ? 'Allowlisted CLI is not installed' : 'Allowlisted CLI probe failed',
+    },
+  });
+}
+
+function probeCommand(command: string, args: readonly string[]): string {
+  return [command, ...args].join(' ');
 }
 
 export function unavailableCard(
   provider: AiUsageProvider,
   lastUpdated: string | null,
-  sourceStatus: AiUsageCard['sourceStatus']
+  sourceStatus: AiUsageCard['sourceStatus'],
+  metadata: Partial<
+    Pick<
+      AiUsageCard,
+      | 'capability'
+      | 'source'
+      | 'usageSupported'
+      | 'quotaSource'
+      | 'availability'
+      | 'freshness'
+      | 'probedAt'
+      | 'staleAfter'
+      | 'error'
+      | 'unknownQuotaFields'
+    >
+  > = {}
 ): AiUsageCard {
   return {
     provider,
@@ -180,6 +236,20 @@ export function unavailableCard(
     sessionTotalTokens: null,
     lastUpdated,
     sourceStatus,
+    capability: metadata.capability ?? {
+      binaryPresent: false,
+      version: null,
+      probeCommand: COMMANDS[provider].join(' '),
+    },
+    source: metadata.source ?? 'none',
+    usageSupported: metadata.usageSupported ?? false,
+    quotaSource: metadata.quotaSource ?? 'unsupported',
+    availability: metadata.availability ?? availabilityForStatus(sourceStatus),
+    freshness: metadata.freshness ?? freshnessForStatus(sourceStatus),
+    probedAt: metadata.probedAt ?? null,
+    staleAfter: metadata.staleAfter ?? null,
+    error: metadata.error ?? null,
+    unknownQuotaFields: metadata.unknownQuotaFields ?? {},
   };
 }
 
@@ -192,7 +262,8 @@ export function parseSanitizedUsagePayload(
   if (!isRecord(value)) return null;
   const keys = Object.keys(value);
   if (keys.length === 0) return null;
-  if (keys.some((key) => !ALLOWED_PAYLOAD_KEYS.has(key))) return null;
+  const unknownQuotaFields = sanitizeUnknownQuotaFields(value);
+  if (unknownQuotaFields === null) return null;
 
   const usedPercent = boundedPercent(value.usedPercent);
   const remainingPercent = boundedPercent(value.remainingPercent);
@@ -241,7 +312,81 @@ export function parseSanitizedUsagePayload(
     sessionTotalTokens,
     lastUpdated,
     sourceStatus: 'AVAILABLE',
+    capability: {
+      binaryPresent: true,
+      version: null,
+      probeCommand: COMMANDS[provider].join(' '),
+    },
+    source: 'sanitized_metrics',
+    usageSupported: true,
+    quotaSource: 'unsupported',
+    availability: 'AVAILABLE',
+    freshness: 'fresh',
+    probedAt: lastUpdated,
+    staleAfter: null,
+    error: null,
+    unknownQuotaFields,
   };
+}
+
+function availabilityForStatus(status: AiUsageCard['sourceStatus']): AiUsageCard['availability'] {
+  switch (status) {
+    case 'AVAILABLE':
+      return 'AVAILABLE';
+    case 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE':
+      return 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE';
+    case 'ERROR':
+      return 'ERROR';
+    case 'STALE':
+      return 'AVAILABLE';
+    case 'UNAVAILABLE':
+      return 'UNSUPPORTED';
+  }
+}
+
+function freshnessForStatus(status: AiUsageCard['sourceStatus']): AiUsageCard['freshness'] {
+  return status === 'STALE' ? 'stale' : status === 'ERROR' ? 'error' : 'fresh';
+}
+
+function isMissingCommandError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'ENOENT'
+  );
+}
+
+function parseCliVersion(output: string): string | null {
+  const match = output.match(
+    /\b(?:version\s*)?v?(\d+\.\d+(?:\.\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?)\b/i
+  );
+  return match?.[1] ?? null;
+}
+
+function sanitizeUnknownQuotaFields(
+  value: Record<string, unknown>
+): Record<string, AiUsageUnknownValue> | null {
+  const fields: Record<string, AiUsageUnknownValue> = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (ALLOWED_PAYLOAD_KEYS.has(key)) continue;
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(key)) return null;
+    if (typeof fieldValue === 'number') {
+      if (!Number.isFinite(fieldValue) || !Number.isSafeInteger(fieldValue) || fieldValue < 0) {
+        return null;
+      }
+      fields[key] = fieldValue;
+    } else if (typeof fieldValue === 'boolean' || fieldValue === null) {
+      fields[key] = fieldValue;
+    } else if (typeof fieldValue === 'string') {
+      const label = safeLabel(fieldValue);
+      if (label === null) return null;
+      fields[key] = label;
+    } else {
+      return null;
+    }
+  }
+  return fields;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

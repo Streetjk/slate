@@ -42,13 +42,14 @@ describe('AI usage service and command runner', () => {
 
     const snapshot = await service.getSnapshot();
 
-    // Exactly 3 allowlisted commands called
-    expect(recordedCalls.length).toBe(3);
+    // Exactly 4 allowlisted commands called, including required Claude coverage
+    expect(recordedCalls.length).toBe(4);
     const invoked = recordedCalls.map((c) => [c.command, c.args]);
     expect(invoked).toEqual(Object.values(COMMANDS));
     expect(invoked).toEqual([
       ['codex', ['--version']],
       ['agy', ['--version']],
+      ['claude', ['--version']],
       ['grok', ['--version']],
     ]);
 
@@ -72,7 +73,7 @@ describe('AI usage service and command runner', () => {
     }
 
     // Probes return null metrics on version success
-    expect(snapshot.cards.length).toBe(3);
+    expect(snapshot.cards.length).toBe(4);
     for (const card of snapshot.cards) {
       expect(card.usedPercent).toBeNull();
       expect(card.remainingPercent).toBeNull();
@@ -84,6 +85,14 @@ describe('AI usage service and command runner', () => {
       expect(card.sessionTotalTokens).toBeNull();
       expect(typeof card.lastUpdated).toBe('string');
       expect(card.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
+      expect(card.capability.binaryPresent).toBe(true);
+      expect(card.capability.probeCommand).toMatch(/ --version$/);
+      expect(card.source).toBe('version_probe');
+      expect(card.usageSupported).toBe(false);
+      expect(card.quotaSource).toBe('unsupported');
+      expect(card.availability).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
+      expect(card.freshness).toBe('fresh');
+      expect(card.error).toBeNull();
     }
   });
 
@@ -100,11 +109,16 @@ describe('AI usage service and command runner', () => {
 
     const codexCard = snapshot.cards.find((c) => c.provider === 'codex');
     const agyCard = snapshot.cards.find((c) => c.provider === 'agy_gemini');
+    const claudeCard = snapshot.cards.find((c) => c.provider === 'claude');
     const grokCard = snapshot.cards.find((c) => c.provider === 'grok');
 
     expect(codexCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
     expect(grokCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
-    expect(agyCard?.sourceStatus).toBe('UNAVAILABLE');
+    expect(claudeCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
+    expect(agyCard?.sourceStatus).toBe('ERROR');
+    expect(agyCard?.availability).toBe('ERROR');
+    expect(agyCard?.freshness).toBe('error');
+    expect(agyCard?.error?.code).toBe('PROBE_FAILED');
     expect(agyCard?.lastUpdated).toBeNull();
   });
 
@@ -130,8 +144,10 @@ describe('AI usage service and command runner', () => {
     const secondSnapshot = await service.getSnapshot();
     const secondCodex = secondSnapshot.cards.find((c) => c.provider === 'codex');
 
-    // Must be UNAVAILABLE, never STALE!
-    expect(secondCodex?.sourceStatus).toBe('UNAVAILABLE');
+    // A failed capability probe is an error, never stale usage.
+    expect(secondCodex?.sourceStatus).toBe('ERROR');
+    expect(secondCodex?.availability).toBe('ERROR');
+    expect(secondCodex?.freshness).toBe('error');
     expect(secondCodex?.usedPercent).toBeNull();
   });
 
@@ -203,12 +219,12 @@ describe('AI usage service and command runner', () => {
 
     const [snap1, snap2] = await Promise.all([promise1, promise2]);
     expect(snap1).toBe(snap2);
-    expect(callCount).toBe(3); // 3 providers, called exactly once
+    expect(callCount).toBe(4); // 4 providers, called exactly once
 
     // Subsequent call within cache TTL returns cached snapshot without re-running
     const snap3 = await service.getSnapshot();
     expect(snap3).toBe(snap1);
-    expect(callCount).toBe(3);
+    expect(callCount).toBe(4);
   });
 });
 
@@ -254,6 +270,7 @@ describe('AI usage payload sanitization', () => {
           sessionInputTokens: 10,
           sessionOutputTokens: 20,
           sessionTotalTokens: 30,
+          quotaWindowHours: 5,
         },
         '2026-09-10T01:00:00Z'
       )
@@ -266,6 +283,13 @@ describe('AI usage payload sanitization', () => {
       sessionTotalTokens: 30,
       sourceStatus: 'AVAILABLE',
     });
+    expect(
+      parseSanitizedUsagePayload(
+        'grok',
+        { sessionTotalTokens: 30, quotaWindowHours: 5, sourceKind: 'local' },
+        '2026-09-10T01:00:00Z'
+      )?.unknownQuotaFields
+    ).toEqual({ quotaWindowHours: 5, sourceKind: 'local' });
   });
 
   it('fails closed for empty objects, non-objects, and objects without metric fields', () => {
@@ -426,5 +450,14 @@ describe('AI usage payload sanitization', () => {
     expect(card?.windowLabel).toBe('5-hour');
     expect(card?.planOrTier).toBe('Tier 1');
     expect(card?.sourceStatus).toBe('AVAILABLE');
+  });
+
+  it('distinguishes a missing CLI from a failed CLI probe', async () => {
+    const service = new AiUsageService(async () => {
+      throw Object.assign(new Error('not found'), { code: 'ENOENT' });
+    });
+    const snapshot = await service.getSnapshot();
+    expect(snapshot.cards.every((card) => card.availability === 'BINARY_MISSING')).toBe(true);
+    expect(snapshot.cards.every((card) => card.error?.code === 'BINARY_MISSING')).toBe(true);
   });
 });
