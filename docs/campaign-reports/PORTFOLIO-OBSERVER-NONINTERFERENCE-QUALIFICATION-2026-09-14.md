@@ -156,3 +156,37 @@ The reviewer confirmed the pty/ioctl and raw-termios evidence, the bounded
 boot-boundary counter, privacy behavior, and the fail-closed interpretation of
 the one real idle-attach reset. This review does not authorize a campaign
 device attach or physical Voice session.
+
+## Final host-only static identity-resolution slice
+
+Both serial nodes were inspected only through static filesystem metadata,
+`IOSerialBSDClient` properties, IORegistry USB topology, `lsof` ownership
+inspection, and repository history. Neither node was opened or read.
+
+```text
+STATIC_31101_IOSERIAL=IOSerialBSDClient_CALL_OUT_AND_DIAL_IN_PRESENT
+STATIC_31201_IOSERIAL=IOSerialBSDClient_CALL_OUT_AND_DIAL_IN_PRESENT
+STATIC_USB_TOPOLOGY= two sibling Espressif USB JTAG_serial debug unit devices under one USB2 hub
+STATIC_DIRECT_SERIAL_TO_USB_PARENT_LINK=NOT_EXPOSED_BY_SAFE_METADATA
+STATIC_LSOF_OWNER_31101=NONE
+STATIC_LSOF_OWNER_31201=NONE
+STATIC_31101_HISTORY=Slate_observer_and_instrumented_session_path
+STATIC_31201_HISTORY=qualified_NOTE4_campaign_flash_and_physical_path
+STATIC_31101_IDENTITY=CAMPAIGN_RELATED
+STATIC_31201_IDENTITY=CAMPAIGN_RELATED
+STATIC_MAPPING_SUFFICIENCY=SUFFICIENT_FOR_CAMPAIGN_RELATED_CLASSIFICATION
+```
+
+Grok 4.6 adjudicated that `31101` is campaign-related, not a safe
+non-campaign adapter. The sibling USB topology and historical Slate use are
+enough for that classification, but do not authorize opening either node and
+do not prove observer non-interference.
+
+```text
+OPEN_AUTHORIZED=NO
+OBSERVER_NONINTERFERENCE_PROVEN=NO
+PORTFOLIO_DECISION=STOP
+RUNNABLE_SAFE_WORK_COUNT=0
+NEXT_SAFE_ACTION=NONE
+STOP_REASON=31101_CAMPAIGN_RELATED;BOTH_SERIAL_NODES_FORBIDDEN;HOST_ONLY_QUALIFICATION_EXHAUSTED
+```
