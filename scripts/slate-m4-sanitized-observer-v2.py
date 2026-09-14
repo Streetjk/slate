@@ -6,11 +6,14 @@ from __future__ import annotations
 import argparse
 from collections import deque
 import json
+import os
+import pty
 import re
 import subprocess
 import time
 
 import serial
+import serial.serialposix as serialposix
 from serial import SerialException
 
 
@@ -261,6 +264,7 @@ SERIAL_MARKERS = {
     "POLL": re.compile(r"(?i)(poll|sync|authenticated|heartbeat)"),
     "FATAL": re.compile(r"(?i)(guru meditation|abort\(|panic|assert failed|fatal error|stack overflow)"),
 }
+ACTUAL_BOOT_BOUNDARY_RE = re.compile(r"(?i)(?:ESP-ROM|\brst:|\bbootloader\b|\bRebooting\b)")
 STRUCTURAL_PATTERNS = {
     "AUDIO_PACKET_RECEIVED": re.compile(r"\baudio_pkt_recv count=(\d+) bytes=(\d+)"),
     "AUDIO_PACKET_GATE_REJECTED": re.compile(r"\baudio_pkt_gate_rejected(?: count=(\d+))?"),
@@ -274,6 +278,33 @@ STRUCTURAL_PATTERNS = {
     ),
     "REFRESH_MARKER": re.compile(r"\b(refresh_(?:start|done))\b(?: path=(full|partial))?"),
 }
+
+
+def open_observer_serial(port: str) -> serial.Serial:
+    """Open the observer without asserting DTR/RTS on the device path."""
+    device = serial.Serial(port=None, baudrate=115200, timeout=0.2)
+    device.dtr = False
+    device.rts = False
+    device.port = port
+    device.open()
+    return device
+
+
+class ActualBootBoundaryTracker:
+    """Count contiguous boot banners, not broad boot-related log lines."""
+
+    BANNER_COALESCE_SECONDS = 2.0
+
+    def __init__(self) -> None:
+        self.count = 0
+        self._last_banner_at: float | None = None
+
+    def feed(self, line: str, observed_at: float) -> None:
+        if not ACTUAL_BOOT_BOUNDARY_RE.search(line):
+            return
+        if self._last_banner_at is None or observed_at - self._last_banner_at > self.BANNER_COALESCE_SECONDS:
+            self.count += 1
+        self._last_banner_at = observed_at
 
 
 def extract_voice_events(line: str) -> list[dict[str, str]]:
@@ -415,6 +446,39 @@ docker logs --since 8s slate-note4 2>&1 | grep -oE 'voice timing marker marker_s
 
 
 def self_test() -> int:
+    # Qualify the safe serial-open sequence on a local pty. The test records
+    # ioctl requests only and never opens the NOTE4 device.
+    master_fd, slave_fd = pty.openpty()
+    pty_path = os.ttyname(slave_fd)
+    ioctl_requests: list[int] = []
+    original_ioctl = serialposix.fcntl.ioctl
+
+    def recording_ioctl(fd: int, request: int, argument: object) -> object:
+        ioctl_requests.append(request)
+        return original_ioctl(fd, request, argument)
+
+    serialposix.fcntl.ioctl = recording_ioctl
+    pty_device = None
+    try:
+        pty_device = open_observer_serial(pty_path)
+        assert pty_device.dtr is False
+        assert pty_device.rts is False
+    finally:
+        serialposix.fcntl.ioctl = original_ioctl
+        if pty_device is not None:
+            pty_device.close()
+        os.close(master_fd)
+        os.close(slave_fd)
+    assert serialposix.TIOCMBIS not in ioctl_requests
+    assert serialposix.TIOCMBIC in ioctl_requests
+
+    tracker = ActualBootBoundaryTracker()
+    tracker.feed("ESP-ROM: boot", 0.0)
+    tracker.feed("rst:0x1 (POWERON),boot:0x8", 0.1)
+    tracker.feed("bootloader", 0.2)
+    tracker.feed("ESP-ROM: next boot", 3.0)
+    assert tracker.count == 2
+
     events = extract_voice_events("VOICE_WS_CONNECT_RESULT=TRANSPORT_FAIL transcript=DO_NOT_RETAIN")
     assert events == [{"event": "VOICE_WS_CONNECT_RESULT", "value": "TRANSPORT_FAIL"}]
     assert "DO_NOT_RETAIN" not in json.dumps(events)
@@ -857,6 +921,7 @@ def main() -> int:
     if args.self_test:
         return self_test()
     counts = {name: 0 for name in SERIAL_MARKERS}
+    reset_boundaries = ActualBootBoundaryTracker()
     capture = CaptureAccumulator()
     last_backend = 0.0
     started = time.monotonic()
@@ -876,7 +941,7 @@ def main() -> int:
         while time.monotonic() - started < args.duration:
             if device is None:
                 try:
-                    device = serial.Serial(port=args.port, baudrate=115200, timeout=0.2)
+                    device = open_observer_serial(args.port)
                     print(json.dumps({"observer": "SERIAL_CONNECTED"}), flush=True)
                 except (SerialException, OSError):
                     print(json.dumps({"observer": "SERIAL_DISCONNECTED"}), flush=True)
@@ -897,13 +962,26 @@ def main() -> int:
                 for name, pattern in SERIAL_MARKERS.items():
                     if pattern.search(line):
                         counts[name] += 1
+                reset_boundaries.feed(line, time.monotonic())
                 events = capture.feed(raw)
                 if events:
                     print(json.dumps({"serial_line_count": capture.line_count, "events": events}, sort_keys=True), flush=True)
             now = time.monotonic()
             if now - last_backend >= args.interval:
                 last_backend = now
-                print(json.dumps({"serial_counts": {"lines": capture.line_count, **counts}}, sort_keys=True), flush=True)
+                print(
+                    json.dumps(
+                        {
+                            "serial_counts": {
+                                "lines": capture.line_count,
+                                **counts,
+                                "ACTUAL_RESET_EVENT_COUNT": reset_boundaries.count,
+                            }
+                        },
+                        sort_keys=True,
+                    ),
+                    flush=True,
+                )
                 print(json.dumps({"backend": backend_snapshot()}, sort_keys=True), flush=True)
     except KeyboardInterrupt:
         pass
@@ -917,7 +995,11 @@ def main() -> int:
             json.dumps(
                 {
                     "observer": "STOPPED",
-                    "serial_counts": {"lines": capture.line_count, **counts},
+                    "serial_counts": {
+                        "lines": capture.line_count,
+                        **counts,
+                        "ACTUAL_RESET_EVENT_COUNT": reset_boundaries.count,
+                    },
                     "capture_summary": capture.summary(),
                 },
                 sort_keys=True,

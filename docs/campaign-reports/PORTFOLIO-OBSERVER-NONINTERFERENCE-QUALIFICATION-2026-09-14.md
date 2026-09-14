@@ -1,0 +1,97 @@
+# Observer Non-Interference Qualification Result
+
+Date: 2026-09-14 (Australia/Perth)
+
+## Gate correction
+
+The anomaly review at `/tmp/slate-observer-anomaly-review-20260914.txt`
+supersedes the prior observer-ready gate. The exact backend and externally
+activated firmware remain accepted; only observer attachment readiness is
+reopened. The physical window was not consumed.
+
+```text
+PHYSICAL_REQUALIFICATION_CONSUMED=NO
+REQUALIFICATION_WINDOW_ARMED=NO
+HUMAN_ACTION_REQUIRED=NO
+```
+
+## Grok decision and tooling-only change
+
+Grok 4.6 classified the original broad BOOT/Wi-Fi counts as insufficient to
+prove resets, but identified a real attach risk: pyserial 3.5 opened the CDC
+port with DTR/RTS defaults asserted. The selected action was tooling-only:
+
+- set DTR and RTS false before opening;
+- qualify the open path on a local pty;
+- count contiguous boot boundaries rather than broad log-line matches;
+- stop before any further device attach if an actual reset boundary appears.
+
+Product/backend/firmware bytes, provider configuration, Wi-Fi and pairing were
+not changed.
+
+```text
+COLLECTOR_SOURCE_PATH=scripts/slate-m4-sanitized-observer-v2.py
+COLLECTOR_ID=m4-sanitized-structural-v3|sha256:9bac9adc2231839542b993d8a8e5af0c29414d327dfee1f4c5590f5faf334576
+COLLECTOR_SELF_TEST=PASS
+PTY_IOCTL_QUALIFICATION=PASS
+PTY_TIOCMBIS_ASSERT=NO
+PTY_TIOCMBIC_DEASSERT=YES
+RAW_PTY_TERMios_QUALIFICATION=PASS
+REAL_DEVICE_TOUCHED_BY_OFFLINE_TESTS=NO
+```
+
+The pty tests prove the userspace change and a raw `os.open`/termios path
+without modem-control ioctl use. They do not claim that either path is safe on
+the campaign USB-Serial/JTAG adapter.
+
+## Single bounded real attach result
+
+After stopping the stale competing observer, one five-second no-interaction
+attach was run with the repaired collector. No Voice input, prompt, provider
+call or physical acceptance step occurred.
+
+```text
+SERIAL_CONNECTED=YES
+SERIAL_DISCONNECTED=NO
+ACTUAL_RESET_EVENT_COUNT_DURING_IDLE_ATTACH=1
+LEGACY_BROAD_BOOT_COUNT=4
+LEGACY_BROAD_WIFI_COUNT=31
+FATAL_EVENT_COUNT=0
+RESET_REASON_CLASS=UNKNOWN
+WATCHDOG_REASON_CLASS=NONE
+SERIAL_LINE_COUNT=121
+REQUIRED_PHYSICAL_PRODUCER_EVENTS=ABSENT_EXPECTED_BEFORE_VOICE
+BACKEND_HEALTH_DURING_ATTACH=HTTP_200_200_SLATE_MYSQL_HEALTHY_RESTARTS_0
+OBSERVER_RAW_CONTENT_RETAINED=NO
+```
+
+This is `PROVEN_ATTACH_RESET` under the bounded structural boundary tracker.
+The result fails observer non-interference. It is not a product failure and
+not a physical Voice result.
+
+## Final gate
+
+```text
+OBSERVER_ATTACH_NONINTERFERENCE=FAIL
+OBSERVER_READY=NO_PRELIMINARY_NONINTERFERENCE_UNPROVEN
+REQUALIFICATION_WINDOW_ARMED=NO
+REAL_DEVICE_REATTACH_ALLOWED=NO
+PHYSICAL_VOICE_RUN=NO
+```
+
+Grok's final adjudication was:
+
+```text
+DECISION_STATUS=DECIDED
+ROOT_CAUSE_WORKING_MODEL=RESET_REMAINS_OUTSIDE_QUALIFIED_USERSPACE_IOCTL_CONTRACT;KERNEL_ADAPTER_OR_HARDWARE_OPEN_PATH
+SELECTED_ACTION=STOP_REAL_DEVICE_ATTACH;FREEZE_ATTACH_AS_RESET_PROOF;OFFLINE_ONLY_DIAGNOSIS
+DEVICE_RESET_EVIDENCE_STATUS=PROVEN_ATTACH_RESET
+HUMAN_ACTION_REQUIRED=NO
+NEXT_SAFE_ACTION=QUALIFY_A_NON_CAMPAIGN_USB_SERIAL_ADAPTER_OR_DRIVER_OPEN_PATH_OFFLINE;LEAVE_NOTE4_UNTOUCHED
+STOP_CONDITION=ACTUAL_RESET_COUNT_GREATER_THAN_ZERO_ON_QUALIFIED_NO_INTERACTION_ATTACH
+```
+
+The next safe lane is offline qualification on a non-campaign adapter/driver
+or equivalent OS-level test environment. Do not reopen the NOTE4 port until
+that work proves non-interference. Do not reset, power-cycle, re-pair, reflash,
+redeploy, or consume the physical window.
