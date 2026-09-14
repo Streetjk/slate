@@ -134,3 +134,25 @@ HUMAN_ACTION_REQUIRED=YES
 Additional hardware or an isolated driver-test environment is required before
 the observer can be qualified. This is not a request to interact with NOTE4;
 the device remains untouched and the physical acceptance remains unconsumed.
+
+## Fresh observer-tooling review
+
+A separate Grok 4.6 review of the exact tooling change returned:
+
+```text
+VERDICT=PASS
+P0=NONE
+P1=NONE
+P2=IDLE_ATTACH_RESET_AND_NO_NONCAMPAIGN_ADAPTER_REMAIN_GATE_FACTS
+SECURITY=PASS_NO_PRIVATE_PAYLOADS_OR_SECRETS
+REVIEWED_COMMIT=1f679d38bd91674b573992d410ecc9f5724a5d9e
+REVIEWED_PATH=scripts/slate-m4-sanitized-observer-v2.py
+OBSERVER_TOOLING_REVIEW=PASS
+NONINTERFERENCE_GATE=FAIL_CLOSED_STOP
+NEXT_SAFE_BOUNDARY=IDENTITY_PROVEN_NONCAMPAIGN_ADAPTER_OR_ISOLATED_OS_DRIVER_HARNESS;NO_SERIAL_NODE_OPEN
+```
+
+The reviewer confirmed the pty/ioctl and raw-termios evidence, the bounded
+boot-boundary counter, privacy behavior, and the fail-closed interpretation of
+the one real idle-attach reset. This review does not authorize a campaign
+device attach or physical Voice session.
