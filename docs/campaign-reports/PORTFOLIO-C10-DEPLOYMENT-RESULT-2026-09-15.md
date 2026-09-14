@@ -74,15 +74,26 @@ The bounded non-private C10 smoke produced:
 
 ```text
 C10_UI_SMOKE=HTTP_200
-C10_API_SMOKE=HTTP_404_DOCUMENTED_BACKEND_ROUTE_NOT_EXPOSED
-C10_API_SCHEMA=NOT_APPLICABLE
+C10_API_SMOKE=HTTP_404_PRIOR_SMOKE_PATH_UNRESOLVED
+C10_API_SCHEMA=NOT_OBSERVED_UNAUTHENTICATED
+C10_ROUTE_SOURCE_WIRING=PASS_GET_/api/v1/ai-usage
+C10_LIVE_LOOPBACK_ROUTE_CHECK=HTTP_401_AUTH_REQUIRED
+C10_LIVE_LOOPBACK_UNKNOWN_ROUTE_CHECK=HTTP_404
+C10_API_404_CLASS=REQUEST_OR_SMOKE_PATH_ERROR_NOT_SOURCE_WIRING
+C10_API_RESPONSE_BODY_RETAINED=NO
 C10_PROVIDER_QUOTA_ACCOUNT_CALLS=0_OBSERVED
 ```
 
-The API `404` is retained as a product/source limitation already present in
-the reviewed C10 readiness evidence. It is not converted into a fabricated
-quota pass, and no quota, subscription, session, account, or provider metric
-was inferred. The UI and application health surface are available.
+The original API `404` is retained as historical evidence that the prior smoke
+request did not establish a usable API result. Its exact URL, auth/headers,
+response envelope and proxy path were not captured. A later safe loopback
+check against the unchanged deployed image returned `401` for
+`/api/v1/ai-usage` and `404` for an intentionally unknown path. This proves
+the reviewed source route is present and auth-gated; it does not prove an
+authenticated API success response. The prior `404` is therefore classified
+as a request/smoke-path error, not a source-wiring gap or intentional absence
+of the route. No quota, subscription, session, account or provider metric was
+inferred, and no response body was retained.
 
 ## Fresh exact deployment review
 
