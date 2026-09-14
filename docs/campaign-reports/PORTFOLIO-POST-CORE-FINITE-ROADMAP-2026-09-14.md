@@ -60,6 +60,12 @@ observation as a core dependency and disallowed human-visible claims without
 it. That contradiction was returned to Grok. The corrected decision is the
 controlling sequencing result:
 
+The C10 source-readiness action in this historical sequencing record has now
+completed. The `C10_DECISION` and `NEXT_SAFE_ACTION` below are retained as
+historical instructions that led to the completed C10 implementation; they
+are not the current next action. The current C10 state is recorded in the
+completion correction below and in the exact deployment packet.
+
 ```text
 DECISION_STATUS=DECIDED
 POST_CORE_PRIORITY_ORDER=B=C10_SOURCE_READINESS;A=C7_PREPARATION;C=C9_PARKED;D=FINAL_HANDOFF
@@ -325,6 +331,34 @@ optional Microsoft OAuth/account consent for C7 Outlook; any C10 account/source
 authority and deployment; exact application/firmware activation authority if a
 new candidate is produced; and any eventual merge/release authority.
 
+### C10 completion correction
+
+The initial C10 preparation fields and the table row above are retained as
+historical preparation evidence. They are superseded for the current frontier
+by the completed source-only implementation and exact local artifact review:
+
+```text
+C10_CURRENT_PR_HEAD=6251317327b52cc08021e1fd6956955b300333c3
+C10_REVIEWED_PRODUCT_SOURCE=965f1a605ff47b64dee20b36c68597db5760b46f
+C10_EXACT_ARTIFACT_IMAGE_ID=sha256:821de0092acd4aa121984a9a9f2f16a7fb26254580f2ed6b62a970dc4eb94dfb
+C10_EXACT_ARTIFACT_PLATFORM=linux/arm64
+C10_EXACT_ARTIFACT_TRANSPORT=LOCAL_LOAD_ONLY_NO_TRANSPORT_DIGEST
+C10_ROLLBACK_IMAGE_ID=sha256:bc755aa2aa78017b327e1f12bf91bebd1f3446f36f8f0def5b328087288207ae
+C10_PROVIDER_SCOPE=CODEX;AGY_GEMINI;CLAUDE;GROK_ADDITIVE_NOT_CLAUDE_REPLACEMENT
+C10_ARTIFACT_REVIEW=PASS_P0_0_P1_0_P2_DOCUMENTED_LIMITATIONS_SECURITY_PASS
+C10_CURRENT_STAGE=SOURCE_AND_EXACT_ARTIFACT_REVIEWED_READY_FOR_SEPARATE_DEPLOYMENT_AUTHORITY_NOT_DEPLOYED
+C10_DEPLOYED=NO
+C10_RUNTIME_HEALTH=UNKNOWN_UNTESTED
+C10_DEPLOYMENT_AUTHORIZED=NO
+C10_NEXT_ACTION=REQUEST_SEPARATE_C10_DEPLOYMENT_AUTHORITY_FOR_EXACT_LOCAL_IMAGE_ID
+```
+
+C7 Outlook remains preparation-only and still requires its separate
+`Calendars.Read` Microsoft consent boundary. C9 remains `PARKED_RESEARCH_ONLY`.
+Neither lane is changed or implicitly activated by C10 completion. The exact
+deployment preconditions and exclusions are in
+`PORTFOLIO-C10-DEPLOYMENT-AUTHORITY-PACKET-2026-09-14.md` on PR #2.
+
 ## Preparation frontier
 
 ```text
@@ -332,7 +366,7 @@ POST_CORE_PREPARED=YES
 POST_CORE_RUNNABLE_SAFE_WORK_COUNT=0
 POST_CORE_PREPARATION_RESULT=COMPLETE_SOURCE_AND_READINESS_PACKETS
 CURRENT_CORE_BOUNDARY_UNCHANGED=YES
-NEXT_POST_CORE_ACTION=AWAIT_CURRENT_NO_SERIAL_PHYSICAL_ACCEPTANCE;THEN_RECONCILE_CORE_RESULT_AND_START_GROK_SELECTED_B_A_C_D_SEQUENCE
+NEXT_POST_CORE_ACTION=AWAIT_CURRENT_NO_SERIAL_PHYSICAL_ACCEPTANCE;THEN_RECONCILE_CORE_RESULT;C10_DEPLOYMENT_REMAINS_SEPARATE_AUTHORITY_GATE
 ```
 
 No physical interaction, OAuth, provider call, deployment, data mutation,
