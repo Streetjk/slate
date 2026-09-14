@@ -292,6 +292,30 @@ describe('AI usage payload sanitization', () => {
     ).toEqual({ quotaWindowHours: 5, sourceKind: 'local' });
   });
 
+  it('rejects sensitive, private, prototype, and URL-shaped unknown field keys', () => {
+    for (const key of [
+      'token',
+      'password',
+      'apiKey',
+      'authorization',
+      'secret',
+      'constructor',
+      '__proto__',
+      'prototype',
+      'sourceUrl',
+      'privateNote',
+    ]) {
+      expect(
+        parseSanitizedUsagePayload(
+          'codex',
+          { sessionTotalTokens: 30, [key]: 'redacted' },
+          '2026-09-10T01:00:00Z'
+        ),
+        key
+      ).toBeNull();
+    }
+  });
+
   it('fails closed for empty objects, non-objects, and objects without metric fields', () => {
     expect(parseSanitizedUsagePayload('codex', {}, '2026-09-10T00:00:00Z')).toBeNull();
     expect(
@@ -459,5 +483,35 @@ describe('AI usage payload sanitization', () => {
     const snapshot = await service.getSnapshot();
     expect(snapshot.cards.every((card) => card.availability === 'BINARY_MISSING')).toBe(true);
     expect(snapshot.cards.every((card) => card.error?.code === 'BINARY_MISSING')).toBe(true);
+  });
+
+  it('keeps unsupported quota, unavailable capability, binary missing, and error states distinct', () => {
+    const unsupported = unavailableCard('codex', null, 'UNAVAILABLE');
+    const unavailable = unavailableCard(
+      'agy_gemini',
+      null,
+      'UNAVAILABLE_NO_MACHINE_READABLE_USAGE',
+      {
+        availability: 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE',
+      }
+    );
+    const missing = unavailableCard('claude', null, 'UNAVAILABLE', {
+      availability: 'BINARY_MISSING',
+    });
+    const error = unavailableCard('grok', null, 'ERROR', { availability: 'ERROR' });
+
+    expect(unsupported.availability).toBe('UNSUPPORTED');
+    expect(unsupported.quotaSource).toBe('unsupported');
+    expect(unavailable.availability).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
+    expect(missing.availability).toBe('BINARY_MISSING');
+    expect(error.availability).toBe('ERROR');
+    expect(
+      new Set([
+        unsupported.availability,
+        unavailable.availability,
+        missing.availability,
+        error.availability,
+      ]).size
+    ).toBe(4);
   });
 });

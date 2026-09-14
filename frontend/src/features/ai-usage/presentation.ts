@@ -17,10 +17,16 @@ const STATUS_LABELS: Record<string, string> = {
   STALE: 'Stale',
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  version_probe: 'CLI capability probe',
+  sanitized_metrics: 'Sanitized metrics',
+  none: 'No source',
+};
+
 export function presentAiUsageCard(card: AiUsageCard) {
   return {
     providerLabel: PROVIDER_LABELS[card.provider] ?? 'Unknown',
-    sourceLabel: card.source === 'version_probe' ? 'CLI capability probe' : 'No source',
+    sourceLabel: SOURCE_LABELS[card.source] ?? 'No source',
     availabilityLabel: STATUS_LABELS[card.availability] ?? 'Unavailable',
     freshnessLabel:
       card.freshness === 'fresh' ? 'Fresh' : card.freshness === 'stale' ? 'Stale' : 'Error',

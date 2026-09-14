@@ -34,6 +34,10 @@ const ALLOWED_PAYLOAD_KEYS = new Set([
   'sessionTotalTokens',
 ]);
 
+const REJECTED_UNKNOWN_FIELD_KEYS =
+  /(^|_)(?:token|tokens|password|secret|credential|cookie|auth|authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|email|account|user|username|id|private|payload|transcript|audio)(_|$)/;
+const REJECTED_UNKNOWN_FIELD_NAMES = new Set(['constructor', 'prototype', '__proto__']);
+
 export interface CommandRunnerOptions {
   timeout: number;
   maxBuffer: number;
@@ -371,6 +375,17 @@ function sanitizeUnknownQuotaFields(
   for (const [key, fieldValue] of Object.entries(value)) {
     if (ALLOWED_PAYLOAD_KEYS.has(key)) continue;
     if (!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(key)) return null;
+    const normalizedKey = key
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .replace(/-/g, '_')
+      .toLowerCase();
+    if (
+      REJECTED_UNKNOWN_FIELD_NAMES.has(normalizedKey) ||
+      REJECTED_UNKNOWN_FIELD_KEYS.test(normalizedKey) ||
+      /(?:url|uri)$/.test(normalizedKey)
+    ) {
+      return null;
+    }
     if (typeof fieldValue === 'number') {
       if (!Number.isFinite(fieldValue) || !Number.isSafeInteger(fieldValue) || fieldValue < 0) {
         return null;

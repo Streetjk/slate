@@ -54,4 +54,36 @@ describe('AI usage presentation', () => {
     expect(error.availabilityLabel).toBe('Error');
     expect(error.remainingLabel).toBe('Unavailable');
   });
+
+  it('maps sanitized metrics and unsupported capability sources without collapsing them', () => {
+    const sanitized = presentAiUsageCard({
+      ...baseCard,
+      source: 'sanitized_metrics',
+      sourceStatus: 'AVAILABLE',
+      availability: 'AVAILABLE',
+      freshness: 'fresh',
+      usageSupported: true,
+      sessionTotalTokens: 30,
+    });
+    const unsupported = presentAiUsageCard({
+      ...baseCard,
+      source: 'none',
+      sourceStatus: 'UNAVAILABLE',
+      availability: 'UNSUPPORTED',
+      freshness: 'fresh',
+    });
+    const missing = presentAiUsageCard({
+      ...baseCard,
+      source: 'none',
+      sourceStatus: 'UNAVAILABLE',
+      availability: 'BINARY_MISSING',
+      freshness: 'fresh',
+    });
+
+    expect(sanitized.sourceLabel).toBe('Sanitized metrics');
+    expect(sanitized.sessionTokensLabel).toBe('30');
+    expect(unsupported.sourceLabel).toBe('No source');
+    expect(unsupported.availabilityLabel).toBe('Unsupported');
+    expect(missing.availabilityLabel).toBe('CLI unavailable');
+  });
 });
