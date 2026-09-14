@@ -95,3 +95,42 @@ The next safe lane is offline qualification on a non-campaign adapter/driver
 or equivalent OS-level test environment. Do not reopen the NOTE4 port until
 that work proves non-interference. Do not reset, power-cycle, re-pair, reflash,
 redeploy, or consume the physical window.
+
+## Host-only offline inventory and stop boundary
+
+The remaining offline qualification was completed without opening any serial
+node. The campaign node remained closed, and the other modem node was not used
+because its campaign identity could not be disproven from available metadata.
+
+```text
+NON_CAMPAIGN_PHYSICAL_ADAPTER=NONE_IDENTITY_PROVEN
+CAMPAIGN_NODE=/dev/cu.usbmodem31201=FORBIDDEN_NOT_OPENED
+OTHER_USB_NODE=/dev/cu.usbmodem31101=IDENTITY_UNPROVEN_NOT_OPENED
+IOKIT_PRODUCT_CLASS=Espressif_USB_JTAG_serial_debug_unit
+SYSTEM_PROFILER=NO_SAFE_METADATA_OUTPUT
+PTY=PASS
+RAW_TERMIOS=PASS
+OFFLINE_DEVICE_QUALIFICATION=EXHAUSTED_IN_THIS_ENVIRONMENT
+```
+
+The host-only pty and raw termios qualifications passed, but they cannot prove
+that the campaign adapter's kernel/USB-CDC/JTAG open path is non-interfering.
+No non-campaign adapter or equivalent isolated OS-level driver harness was
+available. The single bounded real attach remains frozen as
+`ACTUAL_RESET_EVENT_COUNT_DURING_IDLE_ATTACH=1`; it is not repeated and does
+not consume the physical Voice window.
+
+The final offline stop audit was:
+
+```text
+PORTFOLIO_DECISION=STOP
+RUNNABLE_SAFE_WORK_COUNT=0
+NEXT_SAFE_ACTION=KEEP_EVERY_SERIAL_NODE_CLOSED;QUALIFY_IDENTITY_PROVEN_NON_CAMPAIGN_USB_SERIAL_ADAPTER_OR_ISOLATED_OS_DRIVER_HARNESS_WHEN_AVAILABLE
+STOP_REASON=OBSERVER_NONINTERFERENCE_UNPROVEN;NO_NON_CAMPAIGN_ADAPTER_OR_ISOLATED_DRIVER_HARNESS_AVAILABLE;REAL_NOTE4_REATTACH_FORBIDDEN
+OBSERVER_NONINTERFERENCE_PROVEN=NO
+HUMAN_ACTION_REQUIRED=YES
+```
+
+Additional hardware or an isolated driver-test environment is required before
+the observer can be qualified. This is not a request to interact with NOTE4;
+the device remains untouched and the physical acceptance remains unconsumed.
