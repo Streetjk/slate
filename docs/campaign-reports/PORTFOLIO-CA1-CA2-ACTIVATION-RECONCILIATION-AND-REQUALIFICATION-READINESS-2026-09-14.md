@@ -107,6 +107,27 @@ BLOCKERS=none
 Grok's `CONTINUE` is a continuation into the explicitly authorized human
 device boundary, not permission to simulate or consume it from the controller.
 
+The corrected CLI invocation used the required prompt-first form:
+
+```text
+grok -m grok-4.6 --single "$PROMPT" --max-turns 6 --output-format plain
+```
+
+It completed successfully with the same bounded result:
+
+```text
+DECISION_STATUS=READY_FOR_PHYSICAL_BOUNDARY
+APPLICATION_READY=YES
+FIRMWARE_READY=YES
+OBSERVER_READY=YES
+REQUALIFICATION_WINDOW_ARMED=YES
+PORTFOLIO_DECISION=CONTINUE
+RUNNABLE_SAFE_WORK_COUNT=0
+NEXT_SAFE_ACTION=Hold all activation/flash/config work; consume the unused physical window only with the armed sanitized observer live.
+STOP_REASON=none
+BLOCKERS=none
+```
+
 ## Readiness fields
 
 ```text
