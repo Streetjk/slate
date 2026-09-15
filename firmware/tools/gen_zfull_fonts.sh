@@ -99,7 +99,7 @@ import sys
 
 BASE_SYMBOLS = (
     r""" !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"""
-    "，。！？：；、（）《》【】“”‘’—…·楽"
+    "，。！？：；、（）《》【】“”‘’—…·楽沢"
     "☀☁☂☃⚡❄"
     "¥€£₿¢"
     "←↑→↓↖↗↘↙↔↕➜➝➞➤"

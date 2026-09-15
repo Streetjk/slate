@@ -91,20 +91,23 @@ for w in ["今日", "何曜日", "ですか", "の", "ひらがな", "カタカ�
     for ch in w:
         assert ord(ch) in total_cps, f"Character '{ch}' in '{w}' not resolved"
 
-# Japanese weather and conversational glyph assertions (including U+66C7 '曇'
-# and the newly repaired U+697D '楽').
+# Japanese weather and conversational glyph assertions (including U+66C7 '曇',
+# U+697D '楽', and the operator-reported U+6CA2 '沢').
 assert 0x66C7 in voice_cps, "U+66C7 ('曇') missing from Voice_Font_16 direct glyphs"
 assert 0x66C7 in total_cps, "U+66C7 ('曇') not resolved in reachable font set"
 assert 0x697D in voice_cps, "U+697D ('楽') missing from Voice_Font_16 direct glyphs"
 assert 0x697D in total_cps, "U+697D ('楽') not resolved in reachable font set"
 assert 0x66F2 in voice_cps, "U+66F2 ('曲') missing from Voice_Font_16 direct glyphs"
 assert 0x66F2 in total_cps, "U+66F2 ('曲') not resolved in reachable font set"
+assert 0x6CA2 in voice_cps, "U+6CA2 ('沢') missing from Voice_Font_16 direct glyphs"
+assert 0x6CA2 in total_cps, "U+6CA2 ('沢') not resolved in reachable font set"
 
 japanese_representative_samples = [
     "こんにちは。今日の天気どう？日本の首都はどこですか？一年は何ヶ月ありますか？日本の通貨は何ですか？",
     "今日の天気は曇りです",
     "楽",
     "楽曲",
+    "沢",
     "THE YELLOW MONKEYの楽曲タイトル",
     "曇り時々雨",
     "の",
@@ -145,6 +148,7 @@ print(f"Combined reachable glyphs: {len(total_cps)}")
 print(f"Japanese sample '{sample_text}': 100% resolved")
 print(f"U+66C7 ('曇') assertion: PASS (direct voice font)")
 print(f"U+697D ('楽') assertion: PASS (direct voice font)")
+print(f"U+6CA2 ('沢') assertion: PASS (direct voice font)")
 for rep_sample in japanese_representative_samples:
     print(f"Japanese representative '{rep_sample}': 100% resolved")
 print(f"English sample '{english_sample}': 100% resolved")
