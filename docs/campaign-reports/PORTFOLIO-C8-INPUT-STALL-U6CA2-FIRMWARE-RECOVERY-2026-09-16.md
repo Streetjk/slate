@@ -151,3 +151,12 @@ The review confirmed the exact binary and ELF identities, accepted the
 provenance-matching intentional component overlay, and found no blocking
 firmware issue. It explicitly preserved the input-stall uncertainty and did
 not authorize flashing or physical testing.
+
+## Remaining safe-lane audit
+
+The C10 Weather mapping candidate remains reviewed and frozen but un-deployed;
+its deployment is a separate authority. C7 Outlook remains read-only
+preparation with OAuth/account consent still required before connectivity can
+be tested. C9 remains parked research-only. No additional static, test, or
+read-only work was identified after this firmware review, so the portfolio is
+at separate activation authorities rather than an implementation-ready lane.
