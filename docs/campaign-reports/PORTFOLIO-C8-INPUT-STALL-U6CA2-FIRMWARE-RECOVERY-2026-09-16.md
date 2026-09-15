@@ -126,7 +126,8 @@ stall root cause is claimed here. The exact-artifact review is complete. Any
 new firmware flash authority must be requested separately for this exact hash.
 
 ```text
-PHYSICAL_REQUALIFICATION=NOT_RUN
+PRIOR_PHYSICAL_ACCEPTANCE=CONSUMED_OPERATOR_RESULT_PRESERVED
+NEW_FIRMWARE_PHYSICAL_REQUALIFICATION=NOT_RUN
 OBSERVER_NONINTERFERENCE_PROVEN=NO
 RESET_CAUSE_ATTRIBUTION=UNKNOWN
 ```
