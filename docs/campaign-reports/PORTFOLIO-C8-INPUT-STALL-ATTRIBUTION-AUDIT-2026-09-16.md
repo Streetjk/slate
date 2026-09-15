@@ -15,7 +15,7 @@ INPUT_STALL_STATUS=UNPROVEN; mocked/host bounds do not attribute a production st
 FIRST_PROVEN_BOUNDARY=backend mocked soak and host models; production rearm runtime remains unexercised
 SOURCE_DEFECT_PROVEN=NO
 SELECTED_ACTION=test-only/static bind of existing host models to production rearm/drain/coalesce paths
-IMPLEMENTATION_WRITER=CODEX_TEMPORARY_FALLBACK
+IMPLEMENTATION_WRITER=NOT_APPLICABLE_TEST_ONLY_STATIC_HOST_CHANGE
 STOP_CONDITION=fail closed on rearm with non-empty/active playback, overlap without rearm, coalesced loss, or interrupted capture; no offline PASS may be treated as physical attribution
 NEXT_SAFE_ACTION=extend the existing host/mocked tests with multi-turn long-output coverage only
 ```
