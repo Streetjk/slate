@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post, Put, UseGuards } from '@nestjs/common';
 import { MacAddress, type DeviceStateT, type RegisterDeviceResponseT } from 'shared';
 import { CurrentDevice, Public } from '../../common/nest/decorators/auth-context.decorators';
 import { DeviceAuthGuard } from '../../common/nest/guards/device-auth.guard';
@@ -13,6 +13,8 @@ import { deviceRegisterRateLimit } from './device-rate-limits';
 
 @Controller()
 export class DeviceFirmwareController {
+  private readonly logger = new Logger(DeviceFirmwareController.name);
+
   constructor(
     private readonly devices: DeviceFirmwareService,
     private readonly groups: GroupsService
@@ -41,7 +43,25 @@ export class DeviceFirmwareController {
   @UseGuards(DeviceAuthGuard)
   @Post('devices/current/poll')
   async poll(@CurrentDevice() dev: DeviceContext, @Body() body: PollDto): Promise<DeviceStateT> {
-    return this.devices.poll(dev.deviceId, body.telemetry);
+    const result = await this.devices.poll(dev.deviceId, body.telemetry);
+    this.logger.log('DEVICE_AUTHENTICATED_POLL_RESULT=PASS');
+    return result;
+  }
+
+  // The firmware already owns the device secret. Return only the Slate voice
+  // protocol path and version; never return a vendor activation challenge or a
+  // second credential. The WebSocket itself is authenticated by that secret.
+  @Public()
+  @UseGuards(DeviceAuthGuard)
+  @Get('devices/current/voice/config')
+  voiceConfig(): { websocket: { path: string; version: number } } {
+    this.logger.log('VOICE_CONFIG_RESPONSE_CLASS=2xx');
+    return {
+      websocket: {
+        path: '/api/v1/voice/websocket',
+        version: 1,
+      },
+    };
   }
 
   @Public()

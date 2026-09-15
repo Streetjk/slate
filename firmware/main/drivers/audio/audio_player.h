@@ -87,6 +87,8 @@ class AudioPlayer {
     size_t            pending_len_  = 0;
     std::atomic<bool> stop_flag_{false};
     std::atomic<bool> xiaozhi_active_{false};
+    std::atomic<uint32_t> write_xiaozhi_ok_count_{0};
+    std::atomic<uint32_t> write_xiaozhi_fail_count_{0};
     TaskHandle_t      task_ = nullptr;
 
     esp_pm_lock_handle_t no_light_sleep_lock_ = nullptr;

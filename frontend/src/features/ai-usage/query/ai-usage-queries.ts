@@ -1,0 +1,64 @@
+import { useQuery } from '@tanstack/react-query';
+import { API_PREFIX, api } from '@/lib/http';
+
+export type AiUsageProvider = 'codex' | 'agy_gemini' | 'claude' | 'grok';
+export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
+export type AiUsageQuotaSource = 'unsupported' | 'none';
+export type AiUsageAvailability =
+  | 'AVAILABLE'
+  | 'BINARY_MISSING'
+  | 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE'
+  | 'UNSUPPORTED'
+  | 'ERROR';
+export type AiUsageFreshness = 'fresh' | 'stale' | 'error';
+export type AiUsageSourceStatus =
+  | 'AVAILABLE'
+  | 'UNAVAILABLE'
+  | 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE'
+  | 'ERROR'
+  | 'STALE';
+
+export interface AiUsageCard {
+  provider: AiUsageProvider;
+  usedPercent: number | null;
+  remainingPercent: number | null;
+  resetAt: string | null;
+  windowLabel: string | null;
+  planOrTier: string | null;
+  sessionInputTokens: number | null;
+  sessionOutputTokens: number | null;
+  sessionTotalTokens: number | null;
+  lastUpdated: string | null;
+  sourceStatus: AiUsageSourceStatus;
+  capability: {
+    binaryPresent: boolean;
+    version: string | null;
+    probeCommand: string;
+  };
+  source: AiUsageSource;
+  usageSupported: boolean;
+  quotaSource: AiUsageQuotaSource;
+  availability: AiUsageAvailability;
+  freshness: AiUsageFreshness;
+  probedAt: string | null;
+  staleAfter: string | null;
+  error: { code: string; message: string } | null;
+  unknownQuotaFields: Record<string, string | number | boolean | null>;
+}
+
+export interface AiUsageSnapshot {
+  cards: AiUsageCard[];
+  collectedAt: string;
+}
+
+export function useAiUsage() {
+  return useQuery({
+    queryKey: ['ai-usage'],
+    queryFn: async () => {
+      const { data } = await api.get<AiUsageSnapshot>(`${API_PREFIX}/ai-usage`);
+      return data;
+    },
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+  });
+}

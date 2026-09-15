@@ -1,8 +1,10 @@
 #include "app/app.h"
 
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_pm.h>
 #include <esp_sleep.h>
+#include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <nvs_flash.h>
@@ -477,6 +479,27 @@ void App::FinalizePm() {
 void App::Init() {
     ConfigureLogLevels();
     ESP_LOGI(kTag, "init begin");
+    const esp_reset_reason_t rst = esp_reset_reason();
+    const char* rst_name = "UNKNOWN";
+    const char* wdt_name = "NONE";
+    switch (rst) {
+        case ESP_RST_POWERON: rst_name = "POWERON"; break;
+        case ESP_RST_SW: rst_name = "SW"; break;
+        case ESP_RST_PANIC: rst_name = "PANIC"; break;
+        case ESP_RST_INT_WDT: rst_name = "INT_WDT"; wdt_name = "INT_WDT"; break;
+        case ESP_RST_TASK_WDT: rst_name = "TASK_WDT"; wdt_name = "TASK_WDT"; break;
+        case ESP_RST_WDT: rst_name = "WDT"; wdt_name = "WDT"; break;
+        case ESP_RST_DEEPSLEEP: rst_name = "DEEPSLEEP"; break;
+        case ESP_RST_BROWNOUT: rst_name = "BROWNOUT"; break;
+        case ESP_RST_SDIO: rst_name = "SDIO"; break;
+        default: rst_name = "UNKNOWN"; break;
+    }
+    ESP_LOGI(kTag, "RESET_REASON_CLASS=%s", rst_name);
+    ESP_LOGI(kTag, "WATCHDOG_REASON_CLASS=%s", wdt_name);
+    ESP_LOGI(kTag, "HEAP_INTERNAL_FREE_BYTES=%u",
+             static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+    ESP_LOGI(kTag, "HEAP_SPIRAM_FREE_BYTES=%u",
+             static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
     InitStorage();
     InitDevices();
     InitEventBus();
