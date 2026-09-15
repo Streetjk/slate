@@ -34,4 +34,33 @@ describe('dynamic BTC reuse policy', () => {
       )
     ).toBe(false);
   });
+
+  it('accepts recent google_news within reuse cap and rejects expired', () => {
+    const newsData = {
+      edition: 'both',
+      updatedAt: '2026-09-01T00:00:00.000Z',
+      sections: [],
+    };
+    // 30 minutes later (within 3600s cap): accepted
+    expect(
+      canReuseDynamicData(
+        'google_news',
+        newsData,
+        FRAME_BYTES,
+        { type: 'google_news', edition: 'both' },
+        new Date('2026-09-01T00:30:00.000Z')
+      )
+    ).toBe(true);
+
+    // 2 hours later (beyond 3600s cap): rejected
+    expect(
+      canReuseDynamicData(
+        'google_news',
+        newsData,
+        FRAME_BYTES,
+        { type: 'google_news', edition: 'both' },
+        new Date('2026-09-01T02:00:01.000Z')
+      )
+    ).toBe(false);
+  });
 });

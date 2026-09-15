@@ -21,7 +21,7 @@ describe('ContentsMutationController multipart parameters', () => {
   });
 
   it('delegates BTC trio provisioning to the dynamic content service', async () => {
-    const response = [{ id: 'daily' }, { id: 'weekly' }, { id: 'monthly' }];
+    const response = [{ id: 'weekly' }];
     const dynamicContent = {
       appendBtcTrio: async (groupId: string, userId: string) => {
         expect(groupId).toBe('group-1');

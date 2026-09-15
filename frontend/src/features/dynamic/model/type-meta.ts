@@ -9,6 +9,7 @@ import {
   Flame,
   Bitcoin,
   Mail,
+  Newspaper,
   Type as TypeIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -26,16 +27,16 @@ export interface DynamicTypeMeta {
 export const DYNAMIC_TYPE_META = {
   daily_calendar: {
     label: 'Calendar',
-    hint: 'Date · weekday · lunar date · solar term',
-    description: "Shows today's Gregorian date, lunar date, and sexagenary cycle.",
+    hint: 'Perth date · English weekday · WA holiday',
+    description: "Shows today's English Gregorian date in Australia/Perth.",
     hasConfigurableParams: false,
     supportsAudio: true,
     Icon: Calendar,
   },
   month_calendar: {
     label: 'Monthly calendar',
-    hint: 'Full month · lunar dates · holidays',
-    description: 'Shows the calendar for the current month.',
+    hint: 'English month grid · WA public holidays',
+    description: 'Shows the current month in English with confirmed WA public holidays.',
     hasConfigurableParams: false,
     supportsAudio: true,
     Icon: CalendarDays,
@@ -43,7 +44,7 @@ export const DYNAMIC_TYPE_META = {
   weather: {
     label: 'Weather',
     hint: 'Live temperature / humidity / wind speed',
-    description: 'Shows live weather by city. Data comes from QWeather.',
+    description: 'Shows live metric weather by city using Open-Meteo or QWeather.',
     hasConfigurableParams: true,
     supportsAudio: true,
     Icon: CloudSun,
@@ -88,6 +89,14 @@ export const DYNAMIC_TYPE_META = {
     supportsAudio: false,
     Icon: Mail,
   },
+  google_news: {
+    label: 'Google News',
+    hint: 'Australia · Taiwan · combined editions',
+    description: 'Shows compact headlines from fixed Google News RSS editions.',
+    hasConfigurableParams: true,
+    supportsAudio: false,
+    Icon: Newspaper,
+  },
   dashboard: {
     label: 'External data',
     hint: 'Template + JSON data push',
@@ -124,6 +133,7 @@ export const DYNAMIC_TYPE_ORDER = [
   'earthquake_report',
   'btc_price',
   'outlook_calendar',
+  'google_news',
   'hot_list',
   'dashboard',
   'font_test',

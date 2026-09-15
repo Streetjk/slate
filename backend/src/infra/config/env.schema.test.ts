@@ -40,10 +40,42 @@ describe('EnvSchema', () => {
   it('uses the approved ADC model defaults without defining a Gemini API key', () => {
     const parsed = EnvSchema.parse(baseEnv);
 
+    expect(parsed.GEMINI_AUTH_MODE).toBe('vertex_adc');
+    expect(parsed.GEMINI_DEVELOPER_API_KEY_ENABLED).toBe(false);
+    expect(parsed.GEMINI_PRODUCTION_DEVELOPER_API_KEY_ENABLED).toBe(false);
+    expect(parsed.GEMINI_LIVE_RUNTIME).toBe('bun_sdk');
+    expect(parsed.GEMINI_NODE_EXECUTABLE).toBe('node');
+    expect(parsed.GEMINI_NODE_BRIDGE_SCRIPT).toBe(
+      './src/modules/assistant/gemini-live-node-bridge-runtime.mjs'
+    );
     expect(parsed.GEMINI_TEXT_MODEL).toBe('gemini-3.7-flash');
     expect(parsed.GEMINI_LIVE_MODEL).toBe('gemini-live-2.5-flash-native-audio');
     expect(parsed.GEMINI_LIVE_CONNECT_TIMEOUT_MS).toBe(15_000);
     expect(Object.hasOwn(parsed, 'GEMINI_API_KEY')).toBe(false);
+  });
+
+  it('accepts only a runtime file reference for the explicitly selected Developer API mode', () => {
+    const parsed = EnvSchema.parse({
+      ...baseEnv,
+      GEMINI_AUTH_MODE: 'developer_api_key',
+      GEMINI_API_KEY_FILE: '/run/secrets/gemini_api_key',
+      GEMINI_DEVELOPER_API_KEY_ENABLED: true,
+    });
+
+    expect(parsed.GEMINI_AUTH_MODE).toBe('developer_api_key');
+    expect(parsed.GEMINI_API_KEY_FILE).toBe('/run/secrets/gemini_api_key');
+    expect(parsed.GEMINI_DEVELOPER_API_KEY_ENABLED).toBe(true);
+    expect(Object.hasOwn(parsed, 'GEMINI_API_KEY')).toBe(false);
+  });
+
+  it('normalizes an empty Developer API credential file reference to undefined', () => {
+    const parsed = EnvSchema.parse({
+      ...baseEnv,
+      GEMINI_AUTH_MODE: 'developer_api_key',
+      GEMINI_API_KEY_FILE: '  ',
+    });
+
+    expect(parsed.GEMINI_API_KEY_FILE).toBeUndefined();
   });
 
   it('defaults Google Calendar to the primary calendar without an API key setting', () => {

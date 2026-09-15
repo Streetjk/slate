@@ -97,8 +97,64 @@ export const ProposedCalendarEvent = CalendarEventFields.strict().superRefine(
 );
 export type ProposedCalendarEventT = z.infer<typeof ProposedCalendarEvent>;
 
-export const VoiceLanguage = z.enum(['en', 'ja']);
+export const VoiceLanguage = z.enum(['en', 'ja', 'zh_hant', 'auto']);
 export type VoiceLanguageT = z.infer<typeof VoiceLanguage>;
+
+/** Coarse, privacy-safe input classes used for response-language selection. */
+export const VoiceInputLanguageClass = z.enum(['EN', 'JA', 'ZH_HANT', 'OTHER', 'UNKNOWN']);
+export type VoiceInputLanguageClassT = z.infer<typeof VoiceInputLanguageClass>;
+
+const KANA_RE = /[\u3040-\u30ff]/u;
+const HAN_RE = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u;
+const LATIN_RE = /[A-Za-z]/u;
+const DISTINCTIVE_TRADITIONAL_RE = /[臺灣裡哪嗎這與為麼國會從對說]/u;
+
+/**
+ * Classify input without retaining or logging its text. Japanese kana wins
+ * over Han. Han-only text is UNKNOWN unless it contains a documented
+ * distinctive Traditional-Chinese cue; this avoids classifying 東京/日本 as
+ * Chinese. Mixed/empty input is explicitly OTHER rather than silently English.
+ */
+export function classifyVoiceInputLanguage(text: string): VoiceInputLanguageClassT {
+  const value = text.trim();
+  if (!value) return 'OTHER';
+  const hasKana = KANA_RE.test(value);
+  const hasHan = HAN_RE.test(value);
+  const hasLatin = LATIN_RE.test(value);
+  if (hasKana) return 'JA';
+  if (hasHan && hasLatin) return 'OTHER';
+  if (hasHan && DISTINCTIVE_TRADITIONAL_RE.test(value)) return 'ZH_HANT';
+  if (hasHan) return 'UNKNOWN';
+  if (hasLatin) return 'EN';
+  return 'OTHER';
+}
+
+/** Explicit fallback for ambiguous input; ZH_HANT never falls through here. */
+export function responseLanguageForInputClass(
+  languageClass: VoiceInputLanguageClassT
+): VoiceLanguageT {
+  switch (languageClass) {
+    case 'JA':
+      return 'ja';
+    case 'ZH_HANT':
+      return 'zh_hant';
+    case 'EN':
+      return 'en';
+    case 'OTHER':
+    case 'UNKNOWN':
+      return 'auto';
+  }
+}
+
+export function voiceLanguageLabel(language: VoiceLanguageT): string {
+  return language === 'ja'
+    ? 'Japanese'
+    : language === 'zh_hant'
+      ? 'Traditional Chinese'
+      : language === 'auto'
+        ? 'the current turn language'
+        : 'English';
+}
 
 export const VoiceTranscript = z.object({
   text: z.string(),

@@ -237,6 +237,9 @@ bool BgRefreshScene::RenderChangedFrame(SceneContext& ctx) {
     ctx.epd->WriteRaw1bpp(0, y, FrameView::kWidth, h, raw.data() + y * kBpr, h * kBpr);
     ctx.epd->RequestUrgentPartialRefresh();
     ctx.epd->Unlock();
+    ESP_LOGI(kTag, "frame marker phase=active seq=%d frame_id_present=%d frame_id_match=%s", seq,
+             meta.manifest_content_id.empty() ? 0 : 1,
+             meta.manifest_content_id.empty() ? "unknown" : "unknown");
 
     StartWatcher(ctx.epd);
     return true;

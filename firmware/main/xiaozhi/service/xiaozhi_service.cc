@@ -9,10 +9,11 @@
 #include "drivers/audio/audio_player.h"
 #include "events/event_bus.h"
 #include "storage/nvs/volume_store.h"
-#include "xiaozhi/config/activation_client.h"
+#include "xiaozhi/config/slate_voice_config_client.h"
 #include "xiaozhi/config/settings.h"
 #include "xiaozhi/service/audio_service.h"
 #include "xiaozhi/service/message_handler.h"
+#include "utils/timing_trace.h"
 #include "xiaozhi/service/xiaozhi_phase.h"
 
 namespace {
@@ -22,8 +23,6 @@ const char* XiaozhiStateName(xiaozhi::XiaozhiState state) {
     switch (state) {
         case xiaozhi::XiaozhiState::kCheckingConfig:
             return "checking_config";
-        case xiaozhi::XiaozhiState::kAwaitingActivation:
-            return "awaiting_activation";
         case xiaozhi::XiaozhiState::kReadyIdle:
             return "ready_idle";
         case xiaozhi::XiaozhiState::kConnecting:
@@ -159,7 +158,6 @@ void XiaozhiService::ToggleXiaozhi() {
             }
             break;
         case XiaozhiState::kCheckingConfig:
-        case XiaozhiState::kAwaitingActivation:
             break;
     }
 }
@@ -186,6 +184,10 @@ void XiaozhiService::StopConversation(bool send_goodbye) {
             SetState(XiaozhiState::kStopping, "Voice service is stopping...");
     }
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        turn_history_.ResetTurn();
+    }
     if (protocol)
         protocol->CloseAudioChannel(send_goodbye);
     EndAudioSession();
@@ -441,8 +443,8 @@ void XiaozhiService::ConfigTask() {
     while (in_mode_.load(std::memory_order_relaxed) && !config_stop_requested_.load(std::memory_order_relaxed) &&
            !settings::HasProtocolConfig()) {
         SetState(XiaozhiState::kCheckingConfig, "Loading voice configuration...");
-        ActivationClient       client;
-        ActivationConfigResult result = client.Fetch();
+        SlateVoiceConfigClient client;
+        SlateVoiceConfigResult result = client.Fetch();
         if (config_stop_requested_.load(std::memory_order_relaxed) || !in_mode_.load(std::memory_order_relaxed))
             return;
         {
@@ -454,24 +456,13 @@ void XiaozhiService::ConfigTask() {
             SetState(XiaozhiState::kReadyIdle, "Voice ready");
             return;
         }
-        if (result.has_activation_challenge) {
-            if (!result.activation_code.empty())
-                SetActivation(result.activation_message, result.activation_code);
-            esp_err_t activate_err = client.Activate(result.activation_challenge);
-            if (activate_err != ESP_OK && activate_err != ESP_ERR_TIMEOUT)
-                ESP_LOGW(kTag, "activation challenge failed err=%s", esp_err_to_name(activate_err));
-        }
-        if (result.has_activation) {
-            SetActivation(result.activation_message, result.activation_code);
-        } else if (!result.ok) {
+        if (!result.ok) {
             SetError(result.error.empty() ? "Voice configuration failed" : result.error);
-        } else if (result.has_activation_challenge) {
-            SetState(XiaozhiState::kCheckingConfig, "Confirming voice activation...");
         } else {
-            SetError("Voice service returned no protocol configuration");
+            SetError("Slate voice service returned no protocol configuration");
         }
 
-        const int delay_steps = result.has_activation ? 30 : 100;
+        const int delay_steps = 100;
         for (int i = 0; i < delay_steps && in_mode_.load(std::memory_order_relaxed) &&
                         !config_stop_requested_.load(std::memory_order_relaxed) && !settings::HasProtocolConfig();
              ++i)
@@ -648,6 +639,7 @@ void XiaozhiService::ConversationTask() {
         return;
     }
     xiaozhi_phase_.store(XiaozhiPhase::kRunning, std::memory_order_relaxed);
+    SLATE_TIMING_LOG(kTag, "T_DEVICE_LISTEN_START");
     active_protocol->SendStartListening(ListeningMode::kAutoStop);
     pending_listen_after_playback_.store(false, std::memory_order_relaxed);
     audio_->EnableVoiceProcessing(true);
@@ -660,6 +652,7 @@ void XiaozhiService::ConversationTask() {
             break;
 
         if (pending_listen_after_playback_.load(std::memory_order_relaxed) && audio_->WaitForPlaybackQueueEmpty(0)) {
+            SLATE_TIMING_LOG(kTag, "T_DEVICE_LISTEN_START");
             active_protocol->SendStartListening(ListeningMode::kAutoStop);
             pending_listen_after_playback_.store(false, std::memory_order_relaxed);
             audio_->EnableVoiceProcessing(true);
@@ -702,8 +695,11 @@ void XiaozhiService::ConfigureProtocolCallbacks(Protocol* protocol) {
     protocol->OnIncomingAudio([this, token](std::unique_ptr<AudioStreamPacket> packet) {
         if (token != conversation_token_.load(std::memory_order_acquire))
             return;
-        if (CurrentState() == XiaozhiState::kSpeaking)
+        if (CurrentState() == XiaozhiState::kSpeaking) {
             audio_->PushPacketToDecodeQueue(std::move(packet));
+        } else {
+            ESP_LOGW(kTag, "audio_pkt_gate_rejected state=%d", static_cast<int>(CurrentState()));
+        }
     });
     protocol->OnIncomingJson([this, token](const cJSON* root) {
         if (token != conversation_token_.load(std::memory_order_acquire))
@@ -822,17 +818,30 @@ void XiaozhiService::SetState(XiaozhiState state, const std::string& status) {
         snapshot_.has_protocol = settings::HasProtocolConfig();
         if (!status.empty())
             snapshot_.status = status;
+        if (state == XiaozhiState::kListening) {
+            turn_history_.StartListening();
+            snapshot_.user_text.clear();
+            snapshot_.assistant_text.clear();
+            ESP_LOGI(kTag, "UI_EVENT_QUEUE_WAITING=%u", static_cast<unsigned>(evt::QueueWaiting()));
+            ESP_LOGI(kTag, "UI_EVENT_QUEUE_SPACES=%u", static_cast<unsigned>(evt::QueueSpaces()));
+            ESP_LOGI(kTag, "HEAP_INTERNAL_FREE_BYTES=%u",
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+            ESP_LOGI(kTag, "HEAP_SPIRAM_FREE_BYTES=%u",
+                     static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+            if (audio_) {
+                ESP_LOGI(kTag, "AUDIO_DECODE_QUEUE_LEN=%u", static_cast<unsigned>(audio_->DecodeQueueSize()));
+                ESP_LOGI(kTag, "AUDIO_SEND_QUEUE_LEN=%u", static_cast<unsigned>(audio_->SendQueueSize()));
+                ESP_LOGI(kTag, "AUDIO_PLAYBACK_QUEUE_LEN=%u", static_cast<unsigned>(audio_->PlaybackQueueSize()));
+            }
+        }
         if (state == XiaozhiState::kReadyIdle)
             snapshot_.emotion = "neutral";
         if (state == XiaozhiState::kReadyIdle) {
+            turn_history_.Clear();
             snapshot_.messages.clear();
             snapshot_.user_text.clear();
             snapshot_.assistant_text.clear();
             snapshot_.calendar_proposal = {};
-        }
-        if (state != XiaozhiState::kAwaitingActivation) {
-            snapshot_.activation_message.clear();
-            snapshot_.activation_code.clear();
         }
         if (state != XiaozhiState::kError)
             snapshot_.error.clear();
@@ -853,41 +862,37 @@ void XiaozhiService::SetError(const std::string& error) {
     PostChanged();
 }
 
-void XiaozhiService::SetActivation(const std::string& message, const std::string& code) {
-    {
-        std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.state              = XiaozhiState::kAwaitingActivation;
-        snapshot_.status             = "Voice activation";
-        snapshot_.emotion            = "thinking";
-        snapshot_.activation_message = message;
-        snapshot_.activation_code    = code;
-        snapshot_.has_protocol       = false;
-        snapshot_.error.clear();
-        ClearAlertLocked();
-    }
-    PostChanged();
-}
-
 void XiaozhiService::SetUserText(const std::string& text) {
+    if (text.empty())
+        return;
+    bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.user_text = text;
-        if (!text.empty())
-            snapshot_.messages.push_back({"user", text});
-        TrimMessagesLocked();
+        changed             = turn_history_.SetUserText(text);
+        snapshot_.user_text = turn_history_.user_text();
+        snapshot_.messages  = turn_history_.messages();
     }
-    PostChanged();
+    if (changed)
+        PostChanged();
 }
 
 void XiaozhiService::SetAssistantText(const std::string& text) {
+    if (text.empty())
+        return;
+    bool changed = false;
     {
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
-        snapshot_.assistant_text = text;
-        if (!text.empty())
-            snapshot_.messages.push_back({"assistant", text});
-        TrimMessagesLocked();
+        changed                  = turn_history_.SetAssistantText(text);
+        snapshot_.assistant_text = turn_history_.assistant_text();
+        snapshot_.messages       = turn_history_.messages();
     }
-    PostChanged();
+    if (changed)
+        PostChanged();
+}
+
+void XiaozhiService::UpsertMessageLocked(const std::string& role, const std::string& text) {
+    turn_history_.UpsertMessage(role, text);
+    snapshot_.messages = turn_history_.messages();
 }
 
 void XiaozhiService::SetAlert(const std::string& status, const std::string& message, const std::string& emotion) {
@@ -912,9 +917,8 @@ void XiaozhiService::ClearAlertLocked() {
 }
 
 void XiaozhiService::TrimMessagesLocked() {
-    if (snapshot_.messages.size() > 12)
-        snapshot_.messages.erase(snapshot_.messages.begin(),
-                                 snapshot_.messages.begin() + (snapshot_.messages.size() - 12));
+    turn_history_.TrimMessages();
+    snapshot_.messages = turn_history_.messages();
 }
 
 XiaozhiState XiaozhiService::CurrentState() {
@@ -923,7 +927,7 @@ XiaozhiState XiaozhiService::CurrentState() {
 }
 
 void XiaozhiService::PostChanged() {
-    evt::PostSimple(UiEventKind::kXiaozhiChanged, pdMS_TO_TICKS(50));
+    evt::PostCoalesced(UiEventKind::kXiaozhiChanged, evt::kNoWait);
 }
 
 }  // namespace xiaozhi

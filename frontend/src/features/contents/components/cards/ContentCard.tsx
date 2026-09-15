@@ -12,6 +12,7 @@ import { ContentCardShell } from './ContentCardShell';
 import { useDeleteContentWithConfirm } from '@/features/contents/hooks/useDeleteContentWithConfirm';
 import { FrameBitmapPreview } from '@/components/eink/FrameBitmapPreview';
 import { useSortableStyle } from '@/components/dnd/useSortableStyle';
+import { weatherLifecycleMarker } from './weather-lifecycle';
 
 interface ContentCardProps {
   gid: string;
@@ -34,6 +35,9 @@ export const ContentCard = memo(function ContentCard({ gid, content, onEdit }: C
     successToast: 'Refreshed',
     errorToast: 'Refresh failed',
   });
+  if (isDynamic && content.dynamic_type === 'weather') {
+    console.info(weatherLifecycleMarker(content));
+  }
 
   return (
     <ContentCardShell
