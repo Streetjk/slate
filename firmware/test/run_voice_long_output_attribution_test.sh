@@ -31,6 +31,8 @@ wait_start = audio.find("bool AudioService::WaitForPlaybackQueueEmpty")
 wait_end = audio.find("size_t AudioService::DecodeQueueSize", wait_start)
 wait_body = audio[wait_start:wait_end]
 require(wait_body, r"decode_queue_\.empty\(\).*?playback_queue_\.empty\(\).*?!decode_active_.*?!playback_active_", "playback drain includes queues and active flags")
+if re.search(r"encode_queue_|send_queue_", wait_body):
+    raise SystemExit("FAIL: playback-only rearm predicate unexpectedly widened to transport queues")
 require(audio, r"bool AudioService::IsIdle\(\).*?encode_queue_\.empty\(\).*?decode_queue_\.empty\(\).*?playback_queue_\.empty\(\).*?send_queue_\.empty\(\)", "full audio idle predicate")
 require(audio, r"kMaxPlaybackTasks\s*=\s*2", "playback queue bound")
 require(audio, r"kMaxDecodePackets\s*=", "decode queue bound")

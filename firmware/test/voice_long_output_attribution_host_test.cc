@@ -99,6 +99,13 @@ class LongOutputAttributionModel {
 
     void CompleteTtsStop() { pending_listen_after_playback_ = true; }
 
+    void SetTransportBacklog(std::size_t encode_frames, std::size_t send_frames) {
+        assert(encode_frames <= kEncodeQueueCapacity);
+        assert(send_frames <= kSendQueueCapacity);
+        encode_queue_ = encode_frames;
+        send_queue_ = send_frames;
+    }
+
     bool WaitForPlaybackQueueEmptyZero() const {
         return decode_queue_ == 0 && playback_queue_ == 0 && !decode_active_ && !playback_active_;
     }
@@ -112,6 +119,11 @@ class LongOutputAttributionModel {
         voice_processing_ = true;
         ++listen_start_count_;
         return true;
+    }
+
+    void InputEncodeTick() {
+        if (voice_processing_)
+            ++input_encode_ticks_;
     }
 
     void ConsumeUiEvent() {
@@ -142,6 +154,9 @@ class LongOutputAttributionModel {
     std::size_t max_encode_queue() const { return max_encode_queue_; }
     std::size_t max_send_queue() const { return max_send_queue_; }
     std::size_t max_playback_queue() const { return max_playback_queue_; }
+    std::size_t transport_encode_queue() const { return encode_queue_; }
+    std::size_t transport_send_queue() const { return send_queue_; }
+    int input_encode_ticks() const { return input_encode_ticks_; }
     int listen_start_count() const { return listen_start_count_; }
     int turn_complete_count() const { return turn_complete_count_; }
     int interrupt_count() const { return interrupt_count_; }
@@ -170,6 +185,7 @@ class LongOutputAttributionModel {
     int rearm_poll_count_ = 0;
     int button_event_count_ = 0;
     int interrupt_count_ = 0;
+    int input_encode_ticks_ = 0;
 };
 
 static void TestLongOutputAcrossRepeatedTurns() {
@@ -226,6 +242,29 @@ static void TestInFlightPlaybackAndInterruptedCaptureFailClosed() {
     assert(model.interrupt_count() == 1);
 }
 
+static void TestRearmWithTransportBacklogIsExplicitlyDiagnostic() {
+    LongOutputAttributionModel model;
+    model.StartTurn(1);
+    model.StopInputAndStartLongOutput();
+    model.QueueDecodedPlaybackFrame();
+    model.SetTransportBacklog(2, LongOutputAttributionModel::kSendQueueCapacity);
+    model.CompleteTtsStop();
+
+    // The production rearm predicate waits for decode/playback completion but
+    // intentionally does not wait for encode/send queues. Keep this case
+    // explicit so a passing host test cannot be misread as full-pipeline
+    // readiness or as proof that transport backlog is harmless on hardware.
+    assert(!model.PollRearm());
+    model.DrainOneAudioStep();
+    assert(model.PollRearm());
+    model.InputEncodeTick();
+    assert(model.listening());
+    assert(model.voice_processing());
+    assert(model.input_encode_ticks() == 1);
+    assert(model.transport_encode_queue() == 2);
+    assert(model.transport_send_queue() == LongOutputAttributionModel::kSendQueueCapacity - 1);
+}
+
 static void TestUiBackpressureDoesNotDuplicateCoalescedChanges() {
     LongOutputAttributionModel model;
     model.StartTurn(1);
@@ -243,9 +282,10 @@ static void TestUiBackpressureDoesNotDuplicateCoalescedChanges() {
 int main() {
     TestLongOutputAcrossRepeatedTurns();
     TestInFlightPlaybackAndInterruptedCaptureFailClosed();
+    TestRearmWithTransportBacklogIsExplicitlyDiagnostic();
     TestUiBackpressureDoesNotDuplicateCoalescedChanges();
     std::cout << "voice_long_output_attribution_host_test: PASS "
                  "(100 turns, 1000 partials, rearm ordering, in-flight playback, "
-                 "queue bounds, coalescing, interruption fail-closed)\n";
+                 "queue bounds, transport-backlog boundary, coalescing, interruption fail-closed)\n";
     return 0;
 }
