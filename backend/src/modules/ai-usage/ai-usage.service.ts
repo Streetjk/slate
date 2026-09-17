@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { execFile } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import {
   AI_USAGE_PROVIDERS,
@@ -8,6 +10,7 @@ import {
   type AiUsageProvider,
   type AiUsageSnapshot,
   type AiUsageUnknownValue,
+  type AiUsageAuthInfo,
 } from './ai-usage.types';
 import { setBoundedCache } from '../../common/utils/cache-utils';
 
@@ -21,6 +24,32 @@ export const COMMANDS: Record<AiUsageProvider, readonly [string, readonly string
   agy_gemini: ['agy', ['--version']],
   claude: ['claude', ['--version']],
   grok: ['grok', ['--version']],
+};
+
+export const AUTH_LOGIN: Record<
+  AiUsageProvider,
+  { mode: AiUsageAuthInfo['mode']; command: string; hint: string }
+> = {
+  codex: {
+    mode: 'oauth',
+    command: 'codex login --device-auth',
+    hint: 'Use the Codex device OAuth flow; credentials remain in the local Codex store.',
+  },
+  agy_gemini: {
+    mode: 'oauth',
+    command: 'agy',
+    hint: 'Launch AGY and complete Google OAuth sign-in when prompted.',
+  },
+  claude: {
+    mode: 'oauth',
+    command: 'claude auth login',
+    hint: 'Use Claude Code account OAuth; Slate never receives the OAuth tokens.',
+  },
+  grok: {
+    mode: 'oauth',
+    command: 'grok --oauth',
+    hint: 'Launch Grok with OAuth enabled and finish the provider sign-in flow.',
+  },
 };
 
 const ALLOWED_PAYLOAD_KEYS = new Set([
@@ -63,6 +92,7 @@ export interface AiUsageServiceOptions {
   cacheTtlMs?: number;
   safeCwd?: string;
   sourceEnv?: NodeJS.ProcessEnv;
+  homeDir?: string;
 }
 
 export function buildSanitizedChildEnv(
@@ -85,6 +115,7 @@ export class AiUsageService {
   private readonly cacheTtlMs: number;
   private readonly safeCwd: string;
   private readonly sanitizedEnv: Record<string, string>;
+  private readonly homeDir: string;
   private cachedSnapshot: { snapshot: AiUsageSnapshot; cachedAt: number } | null = null;
   private inflightSnapshot: Promise<AiUsageSnapshot> | null = null;
 
@@ -96,6 +127,7 @@ export class AiUsageService {
     this.cacheTtlMs = options?.cacheTtlMs ?? DEFAULT_AI_USAGE_CACHE_TTL_MS;
     this.safeCwd = options?.safeCwd ?? tmpdir();
     this.sanitizedEnv = buildSanitizedChildEnv(options?.sourceEnv ?? process.env);
+    this.homeDir = options?.homeDir ?? homedir();
   }
 
   getSnapshot(): Promise<AiUsageSnapshot> {
@@ -162,14 +194,20 @@ export class AiUsageService {
         provider,
         collectedAt,
         parseCliVersion(result.stdout),
-        probeCommand(command, args)
+        probeCommand(command, args),
+        detectLocalAuth(provider, this.homeDir, collectedAt)
       );
     } catch (error) {
       this.logger.debug(`AI usage source unavailable for ${provider}`);
       const previous = this.staleLastGood.get(provider);
       return previous && previous.sourceStatus === 'AVAILABLE'
         ? { ...previous, sourceStatus: 'STALE', freshness: 'stale' }
-        : probeFailureCard(provider, probeCommand(command, args), error);
+        : probeFailureCard(
+            provider,
+            probeCommand(command, args),
+            error,
+            detectLocalAuth(provider, this.homeDir, collectedAt)
+          );
     }
   }
 }
@@ -178,7 +216,8 @@ function versionProbeCard(
   provider: AiUsageProvider,
   probedAt: string,
   version: string | null,
-  command: string
+  command: string,
+  auth: AiUsageAuthInfo
 ): AiUsageCard {
   return {
     ...unavailableCard(provider, probedAt, 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE', {
@@ -187,11 +226,17 @@ function versionProbeCard(
       availability: 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE',
       freshness: 'fresh',
       probedAt,
+      auth,
     }),
   };
 }
 
-function probeFailureCard(provider: AiUsageProvider, command: string, error: unknown): AiUsageCard {
+function probeFailureCard(
+  provider: AiUsageProvider,
+  command: string,
+  error: unknown,
+  auth: AiUsageAuthInfo
+): AiUsageCard {
   const missing = isMissingCommandError(error);
   return unavailableCard(provider, null, missing ? 'UNAVAILABLE' : 'ERROR', {
     capability: { binaryPresent: !missing, version: null, probeCommand: command },
@@ -201,6 +246,7 @@ function probeFailureCard(provider: AiUsageProvider, command: string, error: unk
       code: missing ? 'BINARY_MISSING' : 'PROBE_FAILED',
       message: missing ? 'Allowlisted CLI is not installed' : 'Allowlisted CLI probe failed',
     },
+    auth,
   });
 }
 
@@ -225,6 +271,7 @@ export function unavailableCard(
       | 'staleAfter'
       | 'error'
       | 'unknownQuotaFields'
+      | 'auth'
     >
   > = {}
 ): AiUsageCard {
@@ -254,6 +301,7 @@ export function unavailableCard(
     staleAfter: metadata.staleAfter ?? null,
     error: metadata.error ?? null,
     unknownQuotaFields: metadata.unknownQuotaFields ?? {},
+    auth: metadata.auth ?? unknownAuth(provider, lastUpdated ?? new Date().toISOString()),
   };
 }
 
@@ -330,7 +378,57 @@ export function parseSanitizedUsagePayload(
     staleAfter: null,
     error: null,
     unknownQuotaFields,
+    auth: unknownAuth(provider, lastUpdated),
   };
+}
+
+function unknownAuth(provider: AiUsageProvider, checkedAt: string): AiUsageAuthInfo {
+  const login = AUTH_LOGIN[provider];
+  return {
+    mode: login.mode,
+    status: 'UNKNOWN',
+    source: 'none',
+    loginCommand: login.command,
+    loginHint: login.hint,
+    checkedAt,
+  };
+}
+
+export function detectLocalAuth(
+  provider: AiUsageProvider,
+  homeDir: string,
+  checkedAt: string
+): AiUsageAuthInfo {
+  const login = AUTH_LOGIN[provider];
+  const detected = localAuthMetadataPresent(provider, homeDir);
+  return {
+    mode: login.mode,
+    status: detected === null ? 'UNKNOWN' : detected ? 'LOCAL_AUTH_PRESENT' : 'NOT_DETECTED',
+    source: detected === null ? 'none' : 'local_metadata',
+    loginCommand: login.command,
+    loginHint: login.hint,
+    checkedAt,
+  };
+}
+
+function localAuthMetadataPresent(provider: AiUsageProvider, homeDir: string): boolean | null {
+  try {
+    switch (provider) {
+      case 'codex':
+        return existsSync(join(homeDir, '.codex', 'auth.json'));
+      case 'claude':
+        return existsSync(join(homeDir, '.claude', '.credentials.json'));
+      case 'agy_gemini':
+        return (
+          existsSync(join(homeDir, '.gemini', 'google_accounts.json')) ||
+          existsSync(join(homeDir, '.claude', 'agy-g1-cache.json'))
+        );
+      case 'grok':
+        return existsSync(join(homeDir, '.grok', 'auth.json'));
+    }
+  } catch {
+    return null;
+  }
 }
 
 function availabilityForStatus(status: AiUsageCard['sourceStatus']): AiUsageCard['availability'] {

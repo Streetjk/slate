@@ -11,6 +11,7 @@ export type AiUsageAvailability =
   | 'UNSUPPORTED'
   | 'ERROR';
 export type AiUsageFreshness = 'fresh' | 'stale' | 'error';
+export type AiUsageAuthStatus = 'LOCAL_AUTH_PRESENT' | 'NOT_DETECTED' | 'UNKNOWN';
 export type AiUsageSourceStatus =
   | 'AVAILABLE'
   | 'UNAVAILABLE'
@@ -44,6 +45,14 @@ export interface AiUsageCard {
   staleAfter: string | null;
   error: { code: string; message: string } | null;
   unknownQuotaFields: Record<string, string | number | boolean | null>;
+  auth: {
+    mode: 'oauth' | 'adc';
+    status: AiUsageAuthStatus;
+    source: 'local_metadata' | 'none';
+    loginCommand: string;
+    loginHint: string;
+    checkedAt: string;
+  };
 }
 
 export interface AiUsageSnapshot {

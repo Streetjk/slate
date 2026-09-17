@@ -1,7 +1,9 @@
-import { Activity } from 'lucide-react';
+import { useState } from 'react';
+import { Activity, Check, Copy, LogIn } from 'lucide-react';
 import { Section } from '@/components/layout/Section';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Spinner } from '@/components/ui/Spinner';
+import { Button } from '@/components/ui/Button';
 import { useAiUsage, type AiUsageCard } from '../query/ai-usage-queries';
 import { presentAiUsageCard } from '../presentation';
 
@@ -10,7 +12,7 @@ export function AiUsageSection() {
   return (
     <Section
       title="AI usage"
-      subtitle="Read-only local usage sources; unavailable metrics are never guessed."
+      subtitle="Local usage + OAuth status. Provider credentials stay in the provider CLI and are never returned to Slate."
       badge={<Activity size={18} />}
     >
       {usage.isPending ? (
@@ -32,6 +34,17 @@ export function AiUsageSection() {
 
 function UsageCard({ card }: { card: AiUsageCard }) {
   const presented = presentAiUsageCard(card);
+  const [showLogin, setShowLogin] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyLoginCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(presented.loginCommand);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <article className="border border-ink bg-paper p-4 min-h-[150px]">
@@ -50,7 +63,38 @@ function UsageCard({ card }: { card: AiUsageCard }) {
         <Metric label="Remaining" value={presented.remainingLabel} />
         <Metric label="Reset" value={presented.resetLabel} />
         <Metric label="Session tokens" value={presented.sessionTokensLabel} />
+        <Metric label={presented.authModeLabel} value={presented.authStatusLabel} />
       </dl>
+      <div className="mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          iconLeft={<LogIn size={14} />}
+          onClick={() => {
+            setShowLogin((value) => !value);
+            setCopied(false);
+          }}
+        >
+          OAuth login
+        </Button>
+        {showLogin ? (
+          <div className="mt-3 border border-line bg-cream p-3">
+            <p className="font-sans text-[11px] leading-5 text-stone">{presented.loginHint}</p>
+            <code className="mt-2 block break-all font-mono text-[11px] text-ink">
+              {presented.loginCommand}
+            </code>
+            <Button
+              className="mt-3"
+              variant="soft"
+              size="sm"
+              iconLeft={copied ? <Check size={14} /> : <Copy size={14} />}
+              onClick={copyLoginCommand}
+            >
+              {copied ? 'Copied' : 'Copy command'}
+            </Button>
+          </div>
+        ) : null}
+      </div>
       <p className="mt-4 font-mono text-[10px] text-stone">Updated {presented.updatedLabel}</p>
     </article>
   );

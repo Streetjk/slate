@@ -17,6 +17,12 @@ const STATUS_LABELS: Record<string, string> = {
   STALE: 'Stale',
 };
 
+const AUTH_STATUS_LABELS: Record<string, string> = {
+  LOCAL_AUTH_PRESENT: 'Local OAuth metadata detected',
+  NOT_DETECTED: 'No OAuth session detected',
+  UNKNOWN: 'OAuth status unknown',
+};
+
 const SOURCE_LABELS: Record<string, string> = {
   version_probe: 'CLI capability probe',
   sanitized_metrics: 'Sanitized metrics',
@@ -37,6 +43,10 @@ export function presentAiUsageCard(card: AiUsageCard) {
     resetLabel: formatDate(card.resetAt),
     sessionTokensLabel: formatTokens(card.sessionTotalTokens),
     updatedLabel: formatDate(card.lastUpdated),
+    authStatusLabel: AUTH_STATUS_LABELS[card.auth.status] ?? 'OAuth status unknown',
+    authModeLabel: card.auth.mode === 'adc' ? 'ADC' : 'OAuth',
+    loginCommand: card.auth.loginCommand,
+    loginHint: card.auth.loginHint,
   };
 }
 

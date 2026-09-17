@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'bun:test';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   AiUsageService,
   buildSanitizedChildEnv,
+  detectLocalAuth,
   COMMAND_TIMEOUT_MS,
   COMMANDS,
   MAX_COMMAND_OUTPUT_BYTES,
@@ -225,6 +229,61 @@ describe('AI usage service and command runner', () => {
     const snap3 = await service.getSnapshot();
     expect(snap3).toBe(snap1);
     expect(callCount).toBe(4);
+  });
+});
+
+describe('AI usage OAuth metadata detection', () => {
+  it('detects local sessions without exposing credential contents', () => {
+    const home = mkdtempSync(join(tmpdir(), 'slate-ai-auth-'));
+    try {
+      mkdirSync(join(home, '.codex'), { recursive: true });
+      mkdirSync(join(home, '.claude'), { recursive: true });
+      mkdirSync(join(home, '.gemini'), { recursive: true });
+      mkdirSync(join(home, '.grok'), { recursive: true });
+      writeFileSync(
+        join(home, '.codex', 'auth.json'),
+        JSON.stringify({ auth_mode: 'chatgpt', tokens: { access_token: 'do-not-leak' } })
+      );
+      writeFileSync(join(home, '.claude', '.credentials.json'), '{"oauthToken":"do-not-leak"}');
+      writeFileSync(join(home, '.gemini', 'google_accounts.json'), '{"active":"private"}');
+      writeFileSync(
+        join(home, '.grok', 'auth.json'),
+        JSON.stringify({
+          profile: { auth_mode: 'oauth', expires_at: '2999-01-01T00:00:00Z', token: 'x' },
+        })
+      );
+
+      const checkedAt = '2026-09-17T00:00:00.000Z';
+      const values = ['codex', 'agy_gemini', 'claude', 'grok'].map((provider) =>
+        detectLocalAuth(provider as keyof typeof COMMANDS, home, checkedAt)
+      );
+      for (const value of values) {
+        expect(value.status).toBe('LOCAL_AUTH_PRESENT');
+        expect(value.source).toBe('local_metadata');
+        expect(value.checkedAt).toBe(checkedAt);
+        expect(value.loginCommand.length).toBeGreaterThan(0);
+        expect(JSON.stringify(value)).not.toContain('do-not-leak');
+      }
+      expect(values.map((value) => value.loginCommand)).toEqual([
+        'codex login --device-auth',
+        'agy',
+        'claude auth login',
+        'grok --oauth',
+      ]);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it('reports not detected when local auth metadata is absent', () => {
+    const home = mkdtempSync(join(tmpdir(), 'slate-ai-auth-empty-'));
+    try {
+      const auth = detectLocalAuth('codex', home, '2026-09-17T00:00:00.000Z');
+      expect(auth.status).toBe('NOT_DETECTED');
+      expect(auth.loginCommand).toBe('codex login --device-auth');
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 

@@ -28,6 +28,14 @@ const baseCard: AiUsageCard = {
   staleAfter: null,
   error: null,
   unknownQuotaFields: {},
+  auth: {
+    mode: 'oauth',
+    status: 'LOCAL_AUTH_PRESENT',
+    source: 'local_metadata',
+    loginCommand: 'claude auth login',
+    loginHint: 'Use Claude Code account OAuth.',
+    checkedAt: '2026-09-14T00:00:00.000Z',
+  },
 };
 
 describe('AI usage presentation', () => {
@@ -38,6 +46,18 @@ describe('AI usage presentation', () => {
     expect(presented.availabilityLabel).toBe('Quota unavailable');
     expect(presented.versionLabel).toBe('2.1.266');
     expect(presented.usedLabel).toBe('Unavailable');
+    expect(presented.authStatusLabel).toBe('Local OAuth metadata detected');
+    expect(presented.authModeLabel).toBe('OAuth');
+    expect(presented.loginCommand).toBe('claude auth login');
+  });
+
+  it('renders OAuth not-detected state without inventing account details', () => {
+    const presented = presentAiUsageCard({
+      ...baseCard,
+      auth: { ...baseCard.auth, status: 'NOT_DETECTED' },
+    });
+    expect(presented.authStatusLabel).toBe('No OAuth session detected');
+    expect(JSON.stringify(presented)).not.toContain('@');
   });
 
   it('renders stale and error states without inventing metrics', () => {

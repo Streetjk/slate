@@ -10,6 +10,18 @@ export type AiUsageAvailability =
   | 'UNSUPPORTED'
   | 'ERROR';
 export type AiUsageFreshness = 'fresh' | 'stale' | 'error';
+export type AiUsageAuthMode = 'oauth' | 'adc';
+export type AiUsageAuthStatus = 'LOCAL_AUTH_PRESENT' | 'NOT_DETECTED' | 'UNKNOWN';
+export type AiUsageAuthSource = 'local_metadata' | 'none';
+
+export interface AiUsageAuthInfo {
+  mode: AiUsageAuthMode;
+  status: AiUsageAuthStatus;
+  source: AiUsageAuthSource;
+  loginCommand: string;
+  loginHint: string;
+  checkedAt: string;
+}
 
 export interface AiUsageCapability {
   binaryPresent: boolean;
@@ -53,6 +65,7 @@ export interface AiUsageCard {
   staleAfter: string | null;
   error: AiUsageError | null;
   unknownQuotaFields: Record<string, AiUsageUnknownValue>;
+  auth: AiUsageAuthInfo;
 }
 
 export interface AiUsageSnapshot {
