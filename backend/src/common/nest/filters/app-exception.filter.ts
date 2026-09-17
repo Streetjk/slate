@@ -16,6 +16,10 @@ import {
 import { mapPrismaError } from '../../errors/prisma-error.map';
 import { currentRequestId } from '../../http/request-context';
 import { safeRequestId } from '../../http/request-id';
+import {
+  isVoiceConfigRequest,
+  VOICE_CONFIG_RESPONSE_CLASS_LOGGED_KEY,
+} from '../guards/device-auth.guard';
 
 interface ErrorEnvelope {
   error: string;
@@ -36,6 +40,14 @@ export class AppExceptionFilter implements ExceptionFilter {
     if (shouldIgnoreAbortError(exception, reply)) return;
 
     const appErr = this.normalize(exception);
+    const reqAny = req as unknown as Record<string | symbol, unknown> | undefined;
+    if (isVoiceConfigRequest(req?.url) && !reqAny?.[VOICE_CONFIG_RESPONSE_CLASS_LOGGED_KEY]) {
+      const responseClass = appErr.httpStatus >= 500 ? '5xx' : '4xx';
+      this.logger.log(`VOICE_CONFIG_RESPONSE_CLASS=${responseClass}`);
+      if (reqAny) {
+        reqAny[VOICE_CONFIG_RESPONSE_CLASS_LOGGED_KEY] = true;
+      }
+    }
     const requestId = requestIdFor(req);
     const envelope: ErrorEnvelope = {
       error: appErr.code,

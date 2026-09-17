@@ -39,11 +39,15 @@ require_repo_relative() {
     esac
 }
 
-need lv_font_conv
 need python3
 require_repo_relative ZFULL_TTF "$ZFULL_TTF"
 
 cd "$REPO_ROOT"
+
+LV_FONT_CONV_BIN="lv_font_conv"
+if ! command -v "$LV_FONT_CONV_BIN" >/dev/null 2>&1; then
+    LV_FONT_CONV_BIN="npx --no-install lv_font_conv"
+fi
 
 if [ ! -f "$ZFULL_TTF" ]; then
     echo "error: missing Zfull font: $ZFULL_TTF" >&2
@@ -95,7 +99,7 @@ import sys
 
 BASE_SYMBOLS = (
     r""" !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"""
-    "，。！？：；、（）《》【】“”‘’—…·"
+    "，。！？：；、（）《》【】“”‘’—…·楽沢"
     "☀☁☂☃⚡❄"
     "¥€£₿¢"
     "←↑→↓↖↗↘↙↔↕➜➝➞➤"
@@ -125,7 +129,7 @@ generate_font() {
     shift 4
 
     echo "generating $OUT_DIR/$output"
-    lv_font_conv \
+    $LV_FONT_CONV_BIN \
         --no-compress \
         --bpp 1 \
         --size "$size" \

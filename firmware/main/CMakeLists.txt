@@ -49,7 +49,7 @@ set(SOURCES
     "sync/sync_manifest.cc"
     "sync/sync_poll.cc"
 
-    "xiaozhi/config/activation_client.cc"
+    "xiaozhi/config/slate_voice_config_client.cc"
     "xiaozhi/config/settings.cc"
     "xiaozhi/mcp/mcp_dispatcher.cc"
     "xiaozhi/mcp/mcp_tools.cc"
@@ -85,6 +85,7 @@ set(SOURCES
     "storage/nvs/nvs_store.cc"
     "storage/nvs/volume_store.cc"
 
+    "resources/fonts/voice_font_16.c"
     "resources/fonts/zfull_16.c"
     "resources/fonts/zfull_12.c"
     "resources/fonts/font_awesome_14_1.c"

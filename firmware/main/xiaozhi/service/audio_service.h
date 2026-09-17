@@ -37,6 +37,9 @@ class AudioService {
     std::unique_ptr<AudioStreamPacket> PopPacketFromSendQueue();
     bool                               IsIdle();
     bool                               WaitForPlaybackQueueEmpty(int timeout_ms = 2000);
+    size_t                             DecodeQueueSize() const;
+    size_t                             SendQueueSize() const;
+    size_t                             PlaybackQueueSize() const;
 
    private:
     struct PcmTask {
@@ -129,6 +132,13 @@ class AudioService {
     std::atomic<uint32_t>                          queue_epoch_{0};
     std::atomic<bool>                              decode_active_{false};
     std::atomic<bool>                              playback_active_{false};
+    std::atomic<bool>                              first_playback_timing_emitted_{false};
+    std::atomic<bool>                              first_audio_timing_emitted_{false};
+    std::atomic<bool>                              first_decode_timing_emitted_{false};
+    std::atomic<uint32_t>                          decode_enqueued_count_{0};
+    std::atomic<uint32_t>                          decode_enqueue_dropped_count_{0};
+    std::atomic<uint32_t>                          decode_success_count_{0};
+    std::atomic<uint32_t>                          decode_failure_count_{0};
 #if defined(CONFIG_LOG_DEFAULT_LEVEL_DEBUG)
     DiagCounters diag_;
 #endif

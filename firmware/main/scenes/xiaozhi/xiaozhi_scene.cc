@@ -1,11 +1,13 @@
 #include "scenes/xiaozhi/xiaozhi_scene.h"
 
 #include <esp_log.h>
+#include <sdkconfig.h>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "drivers/display/epd_ssd1683.h"
@@ -14,6 +16,7 @@
 #include "scenes/core/scene_stack.h"
 #include "scenes/settings/settings_scene.h"
 #include "ui/theme.h"
+#include "utils/timing_trace.h"
 #include "utils/utf8_utils.h"
 #include "xiaozhi/service/xiaozhi_service.h"
 
@@ -33,12 +36,122 @@ std::string DisplayText(const std::string& text) {
     return util::TrimForScreen(util::SanitizeForScreen(text), 120);
 }
 
+std::optional<uint32_t> FirstMissingVoiceGlyph(const std::string& text) {
+    for (size_t pos = 0; pos < text.size();) {
+        uint32_t codepoint = 0;
+        size_t   step      = 1;
+        if (!util::DecodeUtf8Codepoint(text, pos, codepoint, step)) {
+            ++pos;
+            continue;
+        }
+        lv_font_glyph_dsc_t descriptor{};
+        if (!lv_font_get_glyph_dsc(&Voice_Font_16, &descriptor, codepoint, codepoint))
+            return codepoint;
+        if (descriptor.is_placeholder)
+            return codepoint;
+        descriptor.req_raw_bitmap = 1;
+        if (!lv_font_get_glyph_bitmap(&descriptor, nullptr))
+            return codepoint;
+        pos += step;
+    }
+    return std::nullopt;
+}
+
+std::optional<uint32_t> FirstUtf8Codepoint(const std::string& text) {
+    for (size_t pos = 0; pos < text.size();) {
+        uint32_t codepoint = 0;
+        size_t   step      = 1;
+        if (!util::DecodeUtf8Codepoint(text, pos, codepoint, step))
+            return std::nullopt;
+        return codepoint;
+    }
+    return std::nullopt;
+}
+
+size_t CountUtf8Codepoints(const std::string& text) {
+    size_t count = 0;
+    for (size_t pos = 0; pos < text.size();) {
+        uint32_t codepoint = 0;
+        size_t   step      = 1;
+        if (!util::DecodeUtf8Codepoint(text, pos, codepoint, step))
+            step = 1;
+        pos += step;
+        ++count;
+    }
+    return count;
+}
+
+bool GlyphBitmapFound(const lv_font_t* font, lv_font_glyph_dsc_t* descriptor) {
+    if (!font || !descriptor) return false;
+    if (descriptor->is_placeholder) return false;
+    descriptor->resolved_font = font;
+    descriptor->req_raw_bitmap = 1;
+    return lv_font_get_glyph_bitmap(descriptor, nullptr) != nullptr;
+}
+
+const char* FontName(const lv_font_t* font) {
+    if (font == &Voice_Font_16) return "Voice_Font_16";
+    if (font == &Zfull_16) return "Zfull_16";
+    return font ? "other" : "none";
+}
+
+void LogVoiceFontSelection(const std::string& text, const char* update_kind) {
+    const std::optional<uint32_t> missing_codepoint = FirstMissingVoiceGlyph(text);
+    const lv_font_t*              fallback          = Voice_Font_16.fallback;
+    const std::optional<uint32_t> first_codepoint   = FirstUtf8Codepoint(text);
+    const std::optional<uint32_t> probe_codepoint   =
+        missing_codepoint ? missing_codepoint : first_codepoint;
+    lv_font_glyph_dsc_t           resolved_descriptor{};
+    lv_font_glyph_dsc_t           direct_descriptor{};
+    const bool direct_descriptor_found = probe_codepoint && Voice_Font_16.get_glyph_dsc &&
+        Voice_Font_16.get_glyph_dsc(&Voice_Font_16, &direct_descriptor, *probe_codepoint, *probe_codepoint);
+    const bool direct_bitmap_found = direct_descriptor_found &&
+        GlyphBitmapFound(&Voice_Font_16, &direct_descriptor);
+    const bool fallback_descriptor_found = missing_codepoint && fallback &&
+        fallback->get_glyph_dsc && fallback->get_glyph_dsc(fallback, &resolved_descriptor,
+                                                            *missing_codepoint, *missing_codepoint);
+    const bool fallback_bitmap = fallback_descriptor_found &&
+        GlyphBitmapFound(fallback, &resolved_descriptor);
+    lv_font_glyph_dsc_t effective_descriptor{};
+    const bool effective_descriptor_found = probe_codepoint &&
+        lv_font_get_glyph_dsc(&Voice_Font_16, &effective_descriptor, *probe_codepoint, *probe_codepoint);
+    const bool effective_bitmap_found = effective_descriptor_found &&
+        GlyphBitmapFound(effective_descriptor.resolved_font, &effective_descriptor);
+    ESP_LOGI(kTag,
+             "voice font marker marker_schema=2 update=%s artifact=%s fw=%s font=Voice_Font_16 "
+             "codepoint=0x%04lX resolved_font=%s direct_descriptor=%d direct_bitmap=%d fallback=%s "
+             "fallback_descriptor=%d fallback_bitmap=%d placeholder=%s layout=BITMAP_%s",
+             update_kind, "voice_font_16+zfull_16", CONFIG_APP_PROJECT_VER,
+             static_cast<unsigned long>(probe_codepoint.value_or(0)),
+             FontName(effective_descriptor.resolved_font), direct_descriptor_found ? 1 : 0,
+             direct_bitmap_found ? 1 : 0, fallback ? "Zfull_16" : "none",
+             fallback_descriptor_found ? 1 : 0, fallback_bitmap ? 1 : 0,
+             effective_descriptor_found && effective_descriptor.is_placeholder ? "YES" : "NO",
+             effective_bitmap_found ? "FOUND" : "MISSING");
+    if (missing_codepoint)
+        ESP_LOGW(kTag, "voice font marker missing_codepoint=0x%04lX",
+                 static_cast<unsigned long>(*missing_codepoint));
+}
+
 std::string MessagesKey(const xiaozhi::XiaozhiSnapshot& snap) {
     std::string key;
     for (const auto& msg : snap.messages) {
         key += msg.role;
         key.push_back('\x1F');
         key += util::SanitizeForScreen(msg.text);
+        key.push_back('\x1E');
+    }
+    return key;
+}
+
+std::string MessagesPrefixKey(const xiaozhi::XiaozhiSnapshot& snap) {
+    if (snap.messages.size() <= 1)
+        return "";
+    std::string key;
+    for (size_t i = 0; i + 1 < snap.messages.size(); ++i) {
+        key += snap.messages[i].role;
+        key.push_back('\x1F');
+        key += util::SanitizeForScreen(snap.messages[i].text);
         key.push_back('\x1E');
     }
     return key;
@@ -105,7 +218,6 @@ std::string StatusTitle(const xiaozhi::XiaozhiSnapshot& snap) {
         case xiaozhi::XiaozhiState::kConnecting:
         case xiaozhi::XiaozhiState::kStopping:
         case xiaozhi::XiaozhiState::kCheckingConfig:
-        case xiaozhi::XiaozhiState::kAwaitingActivation:
         case xiaozhi::XiaozhiState::kError:
             return snap.status.empty() ? "Voice AI" : snap.status;
     }
@@ -192,6 +304,11 @@ void XiaozhiScene::OnExit(SceneContext& ctx) {
         hint_label_             = nullptr;
         rendered_message_count_ = 0;
         rendered_messages_key_.clear();
+        rendered_prefix_key_.clear();
+        last_bubble_row_        = nullptr;
+        last_bubble_            = nullptr;
+        last_label_             = nullptr;
+        last_bubble_role_.clear();
     });
     if (service_entered_) {
         if (auto* service = Service(ctx))
@@ -354,6 +471,7 @@ void XiaozhiScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
 void XiaozhiScene::Render(SceneContext& ctx, bool full) {
     if (!root_)
         return;
+    SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
     SyncRender(ctx, [this]() { RenderContent(); }, full);
 }
 
@@ -387,11 +505,6 @@ void XiaozhiScene::RenderContent() {
         switch (snap.state) {
             case xiaozhi::XiaozhiState::kCheckingConfig:
                 RenderSystemMessage("Loading voice configuration...", false, "");
-                break;
-            case xiaozhi::XiaozhiState::kAwaitingActivation:
-                RenderSystemMessage(
-                    snap.activation_message.empty() ? "Enter the activation code in the voice console" : DisplayText(snap.activation_message),
-                    true, snap.activation_code);
                 break;
             case xiaozhi::XiaozhiState::kReadyIdle:
                 lv_obj_clear_flag(standby_icon_label_, LV_OBJ_FLAG_HIDDEN);
@@ -450,7 +563,38 @@ void XiaozhiScene::RenderXiaozhiMessages(const xiaozhi::XiaozhiSnapshot& snap) {
     lv_obj_clear_flag(xiaozhi_area_, LV_OBJ_FLAG_HIDDEN);
     const bool        state_changed = rendered_state_ != static_cast<int>(snap.state);
     const std::string messages_key  = MessagesKey(snap);
-    const bool        should_rebuild =
+    const std::string prefix_key    = MessagesPrefixKey(snap);
+
+    const bool can_update_in_place =
+        last_label_ && last_bubble_ && last_bubble_row_ &&
+        rendered_message_count_ == snap.messages.size() &&
+        !snap.messages.empty() &&
+        snap.messages.back().role == "assistant" &&
+        last_bubble_role_ == "assistant" &&
+        prefix_key == rendered_prefix_key_;
+
+    if (can_update_in_place) {
+        if (rendered_messages_key_ != messages_key) {
+            const std::string display_text = DisplayText(snap.messages.back().text);
+            if (!display_text.empty()) {
+                SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
+                LogVoiceFontSelection(display_text, "IN_PLACE_ASSISTANT_UPDATE");
+                LayoutBubble(last_bubble_, last_label_, display_text);
+                ESP_LOGI(kTag, "voice layout marker marker_schema=2 update=IN_PLACE_ASSISTANT_UPDATE measured_width=%d final_width=%d final_height=%d text_chars=%zu",
+                         lv_obj_get_width(last_label_), lv_obj_get_width(last_bubble_) - 18,
+                         lv_obj_get_height(last_bubble_), CountUtf8Codepoints(display_text));
+                lv_obj_set_height(last_bubble_row_, lv_obj_get_height(last_bubble_) + 2);
+                lv_obj_scroll_to_view_recursive(last_bubble_row_, LV_ANIM_OFF);
+            }
+            rendered_messages_key_ = messages_key;
+        }
+        if (xiaozhi_content_ && lv_obj_get_child_cnt(xiaozhi_content_) > 0 && xiaozhi_empty_label_)
+            lv_obj_add_flag(xiaozhi_empty_label_, LV_OBJ_FLAG_HIDDEN);
+        rendered_state_ = static_cast<int>(snap.state);
+        return;
+    }
+
+    const bool should_rebuild =
         state_changed || rendered_message_count_ != snap.messages.size() || rendered_messages_key_ != messages_key;
     if (state_changed && snap.state == xiaozhi::XiaozhiState::kListening && snap.messages.empty())
         ClearXiaozhiMessages();
@@ -461,10 +605,13 @@ void XiaozhiScene::RenderXiaozhiMessages(const xiaozhi::XiaozhiSnapshot& snap) {
             AppendXiaozhiBubble(msg.role, msg.text);
         rendered_message_count_ = snap.messages.size();
         rendered_messages_key_  = messages_key;
+        rendered_prefix_key_    = prefix_key;
     }
 
     if (xiaozhi_content_ && lv_obj_get_child_cnt(xiaozhi_content_) == 0)
         ShowEmptyXiaozhiHint();
+    else if (xiaozhi_empty_label_)
+        lv_obj_add_flag(xiaozhi_empty_label_, LV_OBJ_FLAG_HIDDEN);
 
     rendered_state_ = static_cast<int>(snap.state);
 }
@@ -475,6 +622,11 @@ void XiaozhiScene::ClearXiaozhiMessages() {
     lv_obj_clean(xiaozhi_content_);
     rendered_message_count_ = 0;
     rendered_messages_key_.clear();
+    rendered_prefix_key_.clear();
+    last_bubble_row_  = nullptr;
+    last_bubble_      = nullptr;
+    last_label_       = nullptr;
+    last_bubble_role_.clear();
 }
 
 void XiaozhiScene::ShowEmptyXiaozhiHint() {
@@ -504,10 +656,15 @@ void XiaozhiScene::AppendXiaozhiBubble(const std::string& role, const std::strin
     lv_obj_t* bubble = lv_obj_create(row);
     StyleBubble(bubble);
     lv_obj_t* label = lv_label_create(bubble);
-    lv_obj_set_style_text_font(label, &Zfull_16, 0);
+    lv_obj_set_style_text_font(label, &Voice_Font_16, 0);
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
     lv_obj_set_style_text_line_space(label, 4, 0);
+    SLATE_TIMING_LOG(kTag, "T_UI_RENDER_REQUEST");
+    LogVoiceFontSelection(display_text, "INITIAL_BUBBLE");
     LayoutBubble(bubble, label, display_text);
+    ESP_LOGI(kTag, "voice layout marker marker_schema=2 update=INITIAL_BUBBLE measured_width=%d final_width=%d final_height=%d text_chars=%zu",
+             lv_obj_get_width(label), lv_obj_get_width(bubble) - 18, lv_obj_get_height(bubble),
+             CountUtf8Codepoints(display_text));
     lv_obj_set_height(row, lv_obj_get_height(bubble) + 2);
 
     if (system)
@@ -518,6 +675,11 @@ void XiaozhiScene::AppendXiaozhiBubble(const std::string& role, const std::strin
         lv_obj_align(bubble, LV_ALIGN_LEFT_MID, 18, 0);
 
     lv_obj_scroll_to_view_recursive(row, LV_ANIM_OFF);
+
+    last_bubble_row_  = row;
+    last_bubble_      = bubble;
+    last_label_       = label;
+    last_bubble_role_ = role;
 }
 
 void XiaozhiScene::LayoutBubble(lv_obj_t* bubble, lv_obj_t* label, const std::string& text) {

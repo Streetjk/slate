@@ -256,6 +256,47 @@ describe('DynamicFrameRendererService', () => {
     }
   });
 
+  it('renders mapped Open-Meteo WMO icons through the real weather frame path', async () => {
+    const weatherContext = (code: number, forecastCodes: number[]): DynamicRenderContext => ({
+      type: 'weather',
+      frameName: 'Weather renderer WMO regression',
+      config: { type: 'weather', location_label: 'Perth' },
+      data: {
+        tempC: 24,
+        feelsLikeC: 25,
+        humidity: 61,
+        windDisplay: 'W 3',
+        code,
+        fc: forecastCodes.map((forecastCode, index) => ({
+          label: ['Today', 'Tomorrow', 'Day after'][index],
+          text: 'synthetic',
+          tempMin: 18,
+          tempMax: 26,
+          code: forecastCode,
+        })),
+      },
+      renderedAt,
+    });
+
+    // 61, 0, 80, and 95 are representative current/forecast Open-Meteo
+    // inputs. 1234 is intentionally unsupported and must remain 999.svg.
+    const mapped = await renderer.render(weatherContext(61, [0, 80, 95]));
+    const mappedAgain = await renderer.render(weatherContext(61, [0, 80, 95]));
+    const unknown = await renderer.render(weatherContext(1234, [1234, 1234, 1234]));
+
+    expect(mapped.byteLength).toBe(FRAME_BYTES);
+    expect(Buffer.compare(mapped, mappedAgain)).toBe(0);
+    expect(Buffer.compare(mapped, unknown)).not.toBe(0);
+
+    // The hero and forecast rectangles exclude their labels/metrics. A
+    // nonzero mapped-vs-999 difference proves the mask reached the renderer,
+    // rather than only proving a filename mapping in isolation.
+    expect(differingPixels(mapped, unknown, 43, 55, 70, 70)).toBeGreaterThan(0);
+    expect(differingPixels(mapped, unknown, 65, 190, 30, 45)).toBeGreaterThan(0);
+    expect(differingPixels(mapped, unknown, 185, 190, 30, 45)).toBeGreaterThan(0);
+    expect(differingPixels(mapped, unknown, 305, 190, 30, 45)).toBeGreaterThan(0);
+  });
+
   it('renders every font-test catalog entry', async () => {
     for (const font of FONT_TEST_FONTS) {
       const frame = await renderer.render({
@@ -459,6 +500,23 @@ function isBlack(frame: Buffer, x: number, y: number): boolean {
   const bpr = FRAME_WIDTH >> 3;
   const byte = frame[y * bpr + (x >> 3)]!;
   return ((byte >> (7 - (x & 7))) & 1) === 0;
+}
+
+function differingPixels(
+  left: Buffer,
+  right: Buffer,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): number {
+  let differences = 0;
+  for (let yy = y; yy < y + h; yy++) {
+    for (let xx = x; xx < x + w; xx++) {
+      if (isBlack(left, xx, yy) !== isBlack(right, xx, yy)) differences++;
+    }
+  }
+  return differences;
 }
 
 function loadTestFont(file: string): Promise<BitmapFont> {

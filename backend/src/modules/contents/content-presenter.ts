@@ -86,6 +86,7 @@ export function contentToDetail(
     dynamic_last_rendered_at: row.dynamicLastRunAt?.toISOString() ?? null,
     dynamic_next_render_at: row.dynamicNextRunAt?.toISOString() ?? null,
     dynamic_render_error: row.dynamicLastError ?? null,
+    dynamic_render_error_present: row.dynamicLastError != null,
     audio_text: row.audioText ?? null,
     audio_error: row.audioLastError ?? null,
     audio_updated_at: row.audioUpdatedAt?.toISOString() ?? null,

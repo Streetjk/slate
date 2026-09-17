@@ -140,27 +140,109 @@ describe('DynamicContentRendererService queueing', () => {
       }
     );
   });
+
+  it('fails with Unknown dynamic type when dynamic type is not registered', async () => {
+    const service = createService({
+      dynamicType: 'unregistered_type',
+      fetchData: () => Promise.resolve({}),
+      registryGet: () => undefined,
+    });
+
+    await expect(service.renderDynamicContent('content-1', { force: true })).rejects.toThrow(
+      'Unknown dynamic type: unregistered_type'
+    );
+  });
+
+  it('dispatches google_news to registered provider and renders frame successfully', async () => {
+    let renderedType = '';
+    const service = createService({
+      dynamicType: 'google_news',
+      dynamicConfig: { type: 'google_news', edition: 'both' },
+      fetchData: () =>
+        Promise.resolve({
+          edition: 'both',
+          updatedAt: '2026-09-01T13:00:00Z',
+          sections: [{ edition: 'au', label: 'AU', items: [] }],
+        }),
+      frameRender: async (ctx) => {
+        renderedType = ctx.type;
+        return Buffer.alloc(FRAME_BYTES, 0xff);
+      },
+    });
+
+    await expect(service.renderDynamicContent('content-1', { force: true })).resolves.toMatchObject(
+      {
+        contentId: 'content-1',
+        unchanged: false,
+      }
+    );
+    expect(renderedType).toBe('google_news');
+  });
+
+  it('marks error and throws Invalid configuration when weather config is malformed', async () => {
+    let markedMessage = '';
+    const loggerMessages: string[] = [];
+    const service = createService(
+      {
+        dynamicType: 'weather',
+        dynamicConfig: { type: 'weather', provider: 'invalid_provider' },
+        validateConfig: () => {
+          throw new Error('Invalid provider: Invalid enum value');
+        },
+        updateContent: async (_id, data) => {
+          markedMessage = String(data.dynamicLastError ?? '');
+        },
+        fetchData: () => Promise.resolve({}),
+      },
+      loggerMessages
+    );
+
+    await expect(service.renderDynamicContent('content-1', { force: true })).rejects.toThrow(
+      'Dynamic configuration is invalid: Invalid provider: Invalid enum value'
+    );
+    expect(markedMessage).toContain('Invalid configuration: Invalid provider: Invalid enum value');
+
+    const lifecycleMessages = loggerMessages.filter((message) =>
+      message.includes('weather lifecycle marker')
+    );
+    expect(lifecycleMessages.join('\n')).toContain('stage=db_mark_config_invalid');
+    expect(lifecycleMessages.join('\n')).toContain('type=weather');
+    expect(lifecycleMessages.join('\n')).toContain('error_present=1');
+    expect(lifecycleMessages.join('\n')).not.toContain('content_id=');
+    expect(lifecycleMessages.join('\n')).not.toContain('content-1');
+    expect(lifecycleMessages.join('\n')).not.toContain('Invalid provider');
+  });
 });
 
-function createService(opts: {
-  fetchData: () => Promise<unknown>;
-  syncAudio?: () => Promise<boolean>;
-  audioEtag?: string | null;
-  currentAudioEtag?: string | null;
-  dynamicData?: unknown;
-  dynamicLastRunAt?: Date | null;
-  imageSize?: number;
-}): DynamicContentRendererService {
+function createService(
+  opts: {
+    fetchData: () => Promise<unknown>;
+    syncAudio?: () => Promise<boolean>;
+    audioEtag?: string | null;
+    currentAudioEtag?: string | null;
+    dynamicData?: unknown;
+    dynamicLastRunAt?: Date | null;
+    imageSize?: number;
+    dynamicType?: string;
+    dynamicConfig?: unknown;
+    validateConfig?: (raw: unknown) => unknown;
+    registryGet?: (type: string) => unknown;
+    frameRender?: (ctx: { type: string }) => Promise<Buffer>;
+    updateContent?: (id: string, data: Record<string, unknown>) => Promise<unknown>;
+  },
+  loggerMessages: string[] = []
+): DynamicContentRendererService {
   const content = {
     id: 'content-1',
     groupId: 'group-1',
     frameName: null,
     kind: 'dynamic',
-    dynamicType: 'weather',
-    dynamicConfig: {},
+    dynamicType: opts.dynamicType ?? 'weather',
+    dynamicConfig: opts.dynamicConfig ?? {},
     dynamicData: opts.dynamicData ?? null,
     dynamicLastRunAt: opts.dynamicLastRunAt ?? null,
     dynamicNextRunAt: null,
+    dynamicLastError: null,
     audioEtag: opts.audioEtag ?? null,
     imageEtag: 'old-image-etag',
     imageSize: opts.imageSize ?? 0,
@@ -178,7 +260,10 @@ function createService(opts: {
         }
         return content;
       },
-      update: async () => content,
+      update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+        if (opts.updateContent) await opts.updateContent(args.where.id, args.data);
+        return content;
+      },
     },
   };
   const blob = {
@@ -187,19 +272,21 @@ function createService(opts: {
     delete: async () => undefined,
   };
   const registry = {
-    get: () => ({
-      type: 'weather',
-      definition: { default_ttl_sec: 300 },
-      provider: {
-        type: 'weather',
-        validateConfig: () => ({}),
-        fetchData: opts.fetchData,
-      },
-    }),
+    get:
+      (opts.registryGet as unknown as (type: string) => unknown) ??
+      ((t: string) => ({
+        type: t,
+        definition: { default_ttl_sec: 300 },
+        provider: {
+          type: t,
+          validateConfig: opts.validateConfig ?? ((raw) => raw),
+          fetchData: opts.fetchData,
+        },
+      })),
     defaultTtlSec: () => 300,
   };
   const frameRenderer = {
-    render: async () => Buffer.alloc(FRAME_BYTES, 0xff),
+    render: opts.frameRender ?? (async () => Buffer.alloc(FRAME_BYTES, 0xff)),
   };
   const groups = {
     recomputeGroupEtags: async () => ({
@@ -211,7 +298,7 @@ function createService(opts: {
   const dynamicAudio = {
     sync: opts.syncAudio ?? (async () => false),
   };
-  return new DynamicContentRendererService(
+  const service = new DynamicContentRendererService(
     prisma as unknown as PrismaService,
     blob as unknown as BlobService,
     registry as unknown as DynamicContentRegistry,
@@ -219,6 +306,12 @@ function createService(opts: {
     groups as unknown as GroupsService,
     dynamicAudio as unknown as DynamicAudioService
   );
+  (service as unknown as { logger: unknown }).logger = {
+    warn: (message: string) => loggerMessages.push(message),
+    error: (message: string) => loggerMessages.push(message),
+    log: (message: string) => loggerMessages.push(message),
+  };
+  return service;
 }
 
 function deferred<T>(): {

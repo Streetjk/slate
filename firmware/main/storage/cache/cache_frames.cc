@@ -20,6 +20,7 @@ bool WriteFrameMetaFile(const std::string& path, const cache::FrameMeta& meta) {
     if (!root)
         return false;
     cJSON_AddStringToObject(root, "status_bar_text", meta.status_bar_text.c_str());
+    cJSON_AddStringToObject(root, "manifest_content_id", meta.manifest_content_id.c_str());
     cJSON_AddStringToObject(root, "content_etag", meta.content_etag.c_str());
     cJSON_AddStringToObject(root, "image_etag", meta.image_etag.c_str());
     cJSON_AddStringToObject(root, "audio_etag", meta.audio_etag.c_str());
@@ -47,12 +48,15 @@ bool ReadFrameMetaFile(const std::string& path, cache::FrameMeta& out) {
     if (!root)
         return false;
     cJSON* cap        = cJSON_GetObjectItemCaseSensitive(root, "status_bar_text");
+    cJSON* frame_id   = cJSON_GetObjectItemCaseSensitive(root, "manifest_content_id");
     cJSON* etag       = cJSON_GetObjectItemCaseSensitive(root, "content_etag");
     cJSON* image_etag = cJSON_GetObjectItemCaseSensitive(root, "image_etag");
     cJSON* audio_etag = cJSON_GetObjectItemCaseSensitive(root, "audio_etag");
     cJSON* ttl        = cJSON_GetObjectItemCaseSensitive(root, "ttl_sec");
     if (cJSON_IsString(cap) && cap->valuestring)
         out.status_bar_text = cap->valuestring;
+    if (cJSON_IsString(frame_id) && frame_id->valuestring)
+        out.manifest_content_id = frame_id->valuestring;
     if (cJSON_IsString(etag) && etag->valuestring)
         out.content_etag = etag->valuestring;
     if (cJSON_IsString(image_etag) && image_etag->valuestring)

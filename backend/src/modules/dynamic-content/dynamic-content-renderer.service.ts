@@ -206,6 +206,7 @@ export class DynamicContentRendererService {
       config = entry.provider.validateConfig(content.dynamicConfig);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      this.logWeatherLifecycle(content, 'db_mark_config_invalid', true);
       await this.markError(content, `Invalid configuration: ${message}`, now);
       throw new ValidationError(`Dynamic configuration is invalid: ${message}`);
     }
@@ -225,6 +226,7 @@ export class DynamicContentRendererService {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       fetchErrorMessage = message;
+      this.logWeatherLifecycle(content, 'db_mark_fetch_error', true);
       this.logger.warn(
         `Dynamic data fetch failed for content ${contentId} of type ${content.dynamicType}: ${message}`
       );
@@ -272,6 +274,7 @@ export class DynamicContentRendererService {
           dynamicLastError: fetchErrorMessage ? fetchErrorMessage.slice(0, 512) : null,
         },
       });
+      this.logWeatherLifecycle(content, 'db_clear_error_unchanged', false);
       const audioSync = await this.syncDynamicAudioBestEffort(contentId, now);
       const etags = await this.groups.recomputeGroupEtags(content.groupId);
       return {
@@ -302,6 +305,7 @@ export class DynamicContentRendererService {
           dynamicLastError: fetchErrorMessage ? fetchErrorMessage.slice(0, 512) : null,
         },
       });
+      this.logWeatherLifecycle(content, 'db_clear_error_rendered', false);
     } catch (err) {
       if (previousImage) await this.blob.write(content.groupId, content.id, 'image', previousImage);
       else {
@@ -370,11 +374,12 @@ export class DynamicContentRendererService {
   }
 
   private async markError(
-    content: Pick<DynamicRenderContentRow, 'id' | 'dynamicRefreshAttempts'>,
+    content: Pick<DynamicRenderContentRow, 'id' | 'dynamicType' | 'dynamicRefreshAttempts'>,
     message: string,
     now: Date
   ): Promise<void> {
     try {
+      this.logWeatherLifecycle(content, 'db_write_error', true);
       // 失败时按累计失败次数指数退避推进 dynamicNextRunAt/refreshDueAt。否则 nextRunAt
       // 停在过去 → nextWakeSec 返回 0 → 设备每最小间隔空醒重试，持续失败时耗电。
       // 渲染成功路径会把 attempts 清零（见 doRender 的 update），退避自然复位。
@@ -396,6 +401,17 @@ export class DynamicContentRendererService {
         `Failed to mark dynamic render error for content ${content.id}: ${formatError(err)}`
       );
     }
+  }
+
+  private logWeatherLifecycle(
+    content: Pick<DynamicRenderContentRow, 'id' | 'dynamicType'>,
+    stage: string,
+    errorPresent: boolean
+  ): void {
+    if (content.dynamicType !== 'weather') return;
+    this.logger.warn(
+      `weather lifecycle marker stage=${stage} type=weather error_present=${errorPresent ? 1 : 0}`
+    );
   }
 }
 

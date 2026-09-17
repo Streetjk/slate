@@ -11,10 +11,12 @@ export class WeatherCityController {
   @RateLimit(weatherCitySearchRateLimit)
   @Get('weather/cities')
   async searchWeatherCities(
-    @Query('q') query: string | undefined
+    @Query('q') query: string | undefined,
+    @Query('provider') provider: string | undefined
   ): Promise<WeatherCitySearchResult[]> {
     const q = validateWeatherCityQuery(query);
     if (q.length < 1) return [];
-    return this.weather.searchCities(q, 8);
+    const selectedProvider = provider === 'qweather' ? 'qweather' : 'open_meteo';
+    return this.weather.searchCities(q, 8, Date.now(), selectedProvider);
   }
 }
