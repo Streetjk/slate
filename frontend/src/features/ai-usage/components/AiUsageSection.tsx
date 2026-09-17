@@ -34,7 +34,6 @@ export function AiUsageSection() {
 
 function UsageCard({ card }: { card: AiUsageCard }) {
   const presented = presentAiUsageCard(card);
-  const [showLogin, setShowLogin] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const copyLoginCommand = async () => {
@@ -47,56 +46,60 @@ function UsageCard({ card }: { card: AiUsageCard }) {
   };
 
   return (
-    <article className="border border-ink bg-paper p-4 min-h-[150px]">
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="font-serif text-[22px] font-bold">{presented.providerLabel}</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone">
-          {presented.statusLabel}
-        </span>
-      </div>
-      <p className="mt-2 font-mono text-[10px] text-stone">
-        {presented.availabilityLabel} · {presented.sourceLabel} · {presented.freshnessLabel}
-      </p>
-      <dl className="mt-4 space-y-2 font-sans text-[12px]">
-        <Metric label="CLI version" value={presented.versionLabel} />
-        <Metric label="Used" value={presented.usedLabel} />
-        <Metric label="Remaining" value={presented.remainingLabel} />
-        <Metric label="Reset" value={presented.resetLabel} />
-        <Metric label="Session tokens" value={presented.sessionTokensLabel} />
-        <Metric label={presented.authModeLabel} value={presented.authStatusLabel} />
-      </dl>
-      <div className="mt-4">
+    <details
+      className="group border border-ink bg-paper min-h-[150px] transition-colors open:bg-cream/40"
+      onToggle={(event) => {
+        if (!(event.currentTarget as HTMLDetailsElement).open) setCopied(false);
+      }}
+    >
+      <summary className="list-none cursor-pointer p-4 outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset hover:bg-cream/60">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-serif text-[22px] font-bold">{presented.providerLabel}</h3>
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone">
+            {presented.statusLabel}
+          </span>
+        </div>
+        <p className="mt-2 font-mono text-[10px] text-stone">
+          {presented.availabilityLabel} · {presented.sourceLabel} · {presented.freshnessLabel}
+        </p>
+        <dl className="mt-4 space-y-2 font-sans text-[12px]">
+          <Metric label="CLI version" value={presented.versionLabel} />
+          <Metric label="Used" value={presented.usedLabel} />
+          <Metric label="Remaining" value={presented.remainingLabel} />
+          <Metric label="Reset" value={presented.resetLabel} />
+          <Metric label="Session tokens" value={presented.sessionTokensLabel} />
+          <Metric label={presented.authModeLabel} value={presented.authStatusLabel} />
+        </dl>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
+          <span className="inline-flex items-center gap-2 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-ink">
+            <LogIn size={14} />
+            OAuth login
+          </span>
+          <span
+            className="font-mono text-[11px] text-stone transition-transform group-open:rotate-90"
+            aria-hidden="true"
+          >
+            →
+          </span>
+        </div>
+        <p className="mt-3 font-mono text-[10px] text-stone">Updated {presented.updatedLabel}</p>
+      </summary>
+      <div className="mx-4 mb-4 border border-line bg-cream p-3">
+        <p className="font-sans text-[11px] leading-5 text-stone">{presented.loginHint}</p>
+        <code className="mt-2 block break-all font-mono text-[11px] text-ink">
+          {presented.loginCommand}
+        </code>
         <Button
-          variant="outline"
+          className="mt-3"
+          variant="soft"
           size="sm"
-          iconLeft={<LogIn size={14} />}
-          onClick={() => {
-            setShowLogin((value) => !value);
-            setCopied(false);
-          }}
+          iconLeft={copied ? <Check size={14} /> : <Copy size={14} />}
+          onClick={copyLoginCommand}
         >
-          OAuth login
+          {copied ? 'Copied' : 'Copy command'}
         </Button>
-        {showLogin ? (
-          <div className="mt-3 border border-line bg-cream p-3">
-            <p className="font-sans text-[11px] leading-5 text-stone">{presented.loginHint}</p>
-            <code className="mt-2 block break-all font-mono text-[11px] text-ink">
-              {presented.loginCommand}
-            </code>
-            <Button
-              className="mt-3"
-              variant="soft"
-              size="sm"
-              iconLeft={copied ? <Check size={14} /> : <Copy size={14} />}
-              onClick={copyLoginCommand}
-            >
-              {copied ? 'Copied' : 'Copy command'}
-            </Button>
-          </div>
-        ) : null}
       </div>
-      <p className="mt-4 font-mono text-[10px] text-stone">Updated {presented.updatedLabel}</p>
-    </article>
+    </details>
   );
 }
 
