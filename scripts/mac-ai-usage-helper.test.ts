@@ -5,21 +5,21 @@ describe('Mac AI usage helper device auth sanitization', () => {
   it('extracts only an allowlisted Codex verification URL and one-time code', () => {
     const parsed = extractDeviceAuthFields(
       'codex',
-      '\u001b[32mOpen https://auth.openai.com/codex/device\u001b[0m\nEnter code ABCD-EFGH\naccess_token=do-not-return'
+      '\u001b[32mOpen https://auth.openai.com/codex/device\u001b[0m\nEnter this one-time code\nK7GI-5GIST\naccess_token=do-not-return'
     );
     expect(parsed).toEqual({
       verificationUri: 'https://auth.openai.com/codex/device',
-      userCode: 'ABCD-EFGH',
+      userCode: 'K7GI-5GIST',
     });
   });
 
   it('rejects unrelated URLs and does not surface token-shaped output', () => {
     const parsed = extractDeviceAuthFields(
       'grok',
-      'Open https://evil.example/device\naccess_token=SECRETSECRET\nVisit https://auth.x.ai/device and enter WXYZ-1234'
+      'Open https://evil.example/device\naccess_token=SECRETSECRET\nVisit https://accounts.x.ai/oauth2/device?user_code=7FW6-WN5T and enter 7FW6-WN5T'
     );
-    expect(parsed.verificationUri).toBe('https://auth.x.ai/device');
-    expect(parsed.userCode).toBe('WXYZ-1234');
+    expect(parsed.verificationUri).toBe('https://accounts.x.ai/oauth2/device?user_code=7FW6-WN5T');
+    expect(parsed.userCode).toBe('7FW6-WN5T');
     expect(JSON.stringify(parsed)).not.toContain('SECRETSECRET');
   });
 

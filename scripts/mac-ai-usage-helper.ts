@@ -43,7 +43,7 @@ const PROVIDERS: Record<HelperProvider, ProviderSpec> = {
     command: process.env.SLATE_GROK_BIN ?? join(homedir(), '.local', 'bin', 'grok'),
     versionArgs: ['--version'],
     deviceAuthArgs: ['login', '--device-auth'],
-    allowedHosts: ['auth.x.ai', 'x.ai', 'grok.com'],
+    allowedHosts: ['accounts.x.ai', 'auth.x.ai', 'x.ai', 'grok.com'],
   },
 };
 
@@ -86,13 +86,18 @@ export function extractDeviceAuthFields(
   }
 
   let userCode: string | null = null;
-  for (const line of clean.split(/\r?\n/)) {
-    if (!/(?:code|enter|activate|verification)/i.test(line)) continue;
-    const match = line.match(/\b[A-Z0-9]{4}(?:-[A-Z0-9]{4})+\b|\b[A-Z0-9]{8,12}\b/);
-    if (match) {
-      userCode = match[0];
-      break;
+  const lines = clean.split(/\r?\n/);
+  const codePattern = /\b[A-Z0-9]{4,6}(?:-[A-Z0-9]{4,6})+\b|\b[A-Z0-9]{8,12}\b/;
+  for (let index = 0; index < lines.length; index++) {
+    if (!/(?:code|enter|activate|verification)/i.test(lines[index] ?? '')) continue;
+    for (let offset = 0; offset <= 2 && index + offset < lines.length; offset++) {
+      const match = (lines[index + offset] ?? '').match(codePattern);
+      if (match) {
+        userCode = match[0];
+        break;
+      }
     }
+    if (userCode) break;
   }
   return { verificationUri, userCode };
 }
