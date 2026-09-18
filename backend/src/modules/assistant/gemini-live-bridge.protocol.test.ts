@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'bun:test';
+import {
+  assertGeminiLiveBridgeOpen,
+  encodeGeminiLiveBridgeFrame,
+  GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+  GeminiLiveBridgeProtocolError,
+  parseGeminiLiveBridgeResponse,
+} from './gemini-live-bridge.protocol';
+
+describe('Gemini Live bridge protocol', () => {
+  it('encodes versioned frames without a credential field', () => {
+    const frame = encodeGeminiLiveBridgeFrame({
+      type: 'text',
+      version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+      text: 'synthetic input',
+    });
+
+    expect(frame).toBe('{"type":"text","version":1,"text":"synthetic input"}\n');
+    expect(frame).not.toContain('credential');
+    expect(frame).not.toContain('apiKey');
+  });
+
+  it('rejects oversized outbound frames', () => {
+    expect(() =>
+      encodeGeminiLiveBridgeFrame({
+        type: 'text',
+        version: GEMINI_LIVE_BRIDGE_PROTOCOL_VERSION,
+        text: 'x'.repeat(2 * 1024 * 1024),
+      })
+    ).toThrow('bridge frame is too large');
+  });
+
+  it('accepts only a complete open frame', () => {
+    expect(() =>
+      assertGeminiLiveBridgeOpen({
+        type: 'open',
+        version: 1,
+        epoch: 1,
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        language: 'ja',
+        systemInstruction: 'synthetic',
+        connectTimeoutMs: 15_000,
+        enableWebSearch: true,
+        tools: [],
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      assertGeminiLiveBridgeOpen({
+        type: 'open',
+        version: 1,
+        epoch: 1,
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        language: 'en',
+        systemInstruction: 'synthetic',
+        connectTimeoutMs: 15_000,
+        enableWebSearch: false,
+        tools: [],
+        credential: 'must-not-be-accepted',
+      })
+    ).toThrow(GeminiLiveBridgeProtocolError);
+  });
+
+  it('rejects malformed or unknown responses', () => {
+    expect(() => parseGeminiLiveBridgeResponse('{"type":"ready","version":2,"epoch":1}')).toThrow(
+      GeminiLiveBridgeProtocolError
+    );
+    expect(() => parseGeminiLiveBridgeResponse('{"type":"unknown","version":1}')).toThrow(
+      GeminiLiveBridgeProtocolError
+    );
+    expect(() =>
+      parseGeminiLiveBridgeResponse('{"type":"error","version":1,"epoch":1,"code":"raw-secret"}')
+    ).toThrow(GeminiLiveBridgeProtocolError);
+  });
+
+  it('accepts sanitized errors and server messages', () => {
+    expect(
+      parseGeminiLiveBridgeResponse(
+        '{"type":"error","version":1,"epoch":1,"code":"BRIDGE_PROVIDER_CONNECTION_FAILED"}'
+      )
+    ).toEqual({
+      type: 'error',
+      version: 1,
+      epoch: 1,
+      code: 'BRIDGE_PROVIDER_CONNECTION_FAILED',
+    });
+    expect(
+      parseGeminiLiveBridgeResponse(
+        '{"type":"server_message","version":1,"epoch":1,"message":{"synthetic":true}}'
+      )
+    ).toEqual({
+      type: 'server_message',
+      version: 1,
+      epoch: 1,
+      message: { synthetic: true },
+    });
+  });
+});

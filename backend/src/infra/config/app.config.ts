@@ -30,6 +30,9 @@ export class AppConfig {
   get dbAllowPublicKeyRetrieval() {
     return this.cs.get('DB_ALLOW_PUBLIC_KEY_RETRIEVAL', { infer: true });
   }
+  get aiUsageMacHelperUrl() {
+    return this.cs.get('AI_USAGE_MAC_HELPER_URL', { infer: true });
+  }
   get backgroundWorkers() {
     return this.cs.get('BACKGROUND_WORKERS', { infer: true });
   }

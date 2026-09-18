@@ -1,0 +1,67 @@
+# Campaign 8D1M-G M4 Failure Dossier
+
+```text
+CAMPAIGN=8D1M-G
+STATUS=M4_FAILED_VOICE_SERVICE_UNAVAILABLE
+PR_NUMBER=2
+PR_STATE=OPEN
+PR_DRAFT=YES
+PR_MERGED=NO
+```
+
+The exact C3 ARM64 backend remained deployed and healthy. The exact app-only
+firmware write had passed its digest verification. The operator then reported
+`voice service unavailable` during/after the M4 physical session. The prior
+human bubble observations are retained but are not treated as terminal
+acceptance after this contradictory service result.
+
+```text
+UX_BACKEND_SOURCE_SHA=aae1c1fefce5e6c4ca4dbc2cd4d50f44ed4863d3
+UX_BACKEND_ARM64_IMAGE=sha256:e2a116a21624043ccf3a2b1578de060637bb1e91206b2989eeef95bd98309871
+FIRMWARE_APP_SHA256=edf94e0c4f78b1f6f40475679eeffd16aeb629cd50127beb25c2ab1f6a122abb
+FIRMWARE_FLASH_OFFSET=0x10000
+CONTAINERD_ROOT=/mnt/ssd-tmp/slate-tools/containerd-root
+CONTAINERD_STATE=/run/containerd-v5
+DOCKER_ROOT=/mnt/ssd-tmp/slate-tools/docker-data
+SLATE=running|healthy|restart=0
+MYSQL=running|healthy|restart=0
+LOCAL_HEALTH=HTTP_200
+PUBLIC_HEALTH=HTTP_200
+LOCAL_WS_UPGRADE_PROBE=HTTP_101
+PUBLIC_WS_UPGRADE_PROBE=HTTP_101
+VOICE_CONFIG_UNAUTH_PROBE=HTTP_401
+NO_VENDOR_STATIC_TEST=PASS
+M4_OBSERVER=CONNECTION_80_BUBBLE_UI_16_VENDOR_0_FATAL_0
+M4_BACKEND_STABILITY=PASS_596S_HEALTH_GREEN
+M4_PHYSICAL_LATENCY=UNQUANTIFIED_OPERATOR_PLACEHOLDER
+```
+
+Zero-provider diagnostics did not prove a source defect. The configured
+public WebSocket route is reachable, the unauthenticated config route rejects
+access as expected, and no sanitized backend/serial error markers were
+observed. The generic firmware error string covers multiple config and
+protocol failure branches, so another physical/provider attempt is required
+to distinguish them.
+
+```text
+M4_PROVIDER_SESSION_STARTED=UNKNOWN
+M4_PROVIDER_CALL_COUNT=UNKNOWN
+M4_MIC_AUDIO_REACHED_PROVIDER=UNKNOWN
+M4_PROVIDER_SESSION_COUNTED=NO_PENDING_ATTRIBUTION
+PROVIDER_RETRY=NO
+RAW_AUDIO_RETAINED=NO
+RAW_PROVIDER_PAYLOAD_RETAINED=NO
+TRANSCRIPT_CONTENT_RETAINED=NO
+PRODUCTION_MODEL_CHANGED=NO
+CREDENTIAL_CHANGED=NO
+BILLING_CHANGED=NO
+VERTEX_CHANGED=NO
+READY_NODE_COUNT=0
+READONLY_READY_NODE_COUNT=0
+WAITING_HUMAN_COUNT=1
+EXTERNALLY_BLOCKED_COUNT=0
+HUMAN_ACTION_REQUIRED=YES
+HUMAN_ACTION_REASON=ONE_COMBINED_PHYSICAL_RETEST_AFTER_ZERO_PRIVATE_DATA_REQUALIFICATION
+TERMINAL_REASON=GENERIC_VOICE_FAILURE_UNATTRIBUTED_WITHOUT_SANITIZED_STAGE_OBSERVABILITY
+NEXT_ACTION=HUMAN_BOUNDARY_FOR_ONE_REQUALIFIED_COMBINED_M4_RETEST
+```

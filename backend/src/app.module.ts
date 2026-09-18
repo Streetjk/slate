@@ -23,6 +23,7 @@ import { JwtAuthGuard } from './common/nest/guards/jwt-auth.guard';
 import { RateLimitGuard } from './common/rate-limit/rate-limit-guard';
 import { AssistantModule } from './modules/assistant/assistant.module';
 import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
+import { AiUsageModule } from './modules/ai-usage/ai-usage.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.
     DevicesModule,
     AssistantModule,
     GoogleCalendarModule,
+    AiUsageModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },
