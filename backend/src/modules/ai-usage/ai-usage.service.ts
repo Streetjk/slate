@@ -47,8 +47,8 @@ export const AUTH_LOGIN: Record<
   },
   grok: {
     mode: 'oauth',
-    command: 'grok --oauth',
-    hint: 'Launch Grok with OAuth enabled and finish the provider sign-in flow.',
+    command: 'grok login --device-auth',
+    hint: 'Use Grok device OAuth; credentials remain in the local Grok store.',
   },
 };
 
@@ -301,7 +301,7 @@ export function unavailableCard(
     staleAfter: metadata.staleAfter ?? null,
     error: metadata.error ?? null,
     unknownQuotaFields: metadata.unknownQuotaFields ?? {},
-    auth: metadata.auth ?? unknownAuth(provider, lastUpdated ?? new Date().toISOString()),
+    auth: metadata.auth ?? unknownAuthInfo(provider, lastUpdated ?? new Date().toISOString()),
   };
 }
 
@@ -378,11 +378,11 @@ export function parseSanitizedUsagePayload(
     staleAfter: null,
     error: null,
     unknownQuotaFields,
-    auth: unknownAuth(provider, lastUpdated),
+    auth: unknownAuthInfo(provider, lastUpdated),
   };
 }
 
-function unknownAuth(provider: AiUsageProvider, checkedAt: string): AiUsageAuthInfo {
+export function unknownAuthInfo(provider: AiUsageProvider, checkedAt: string): AiUsageAuthInfo {
   const login = AUTH_LOGIN[provider];
   return {
     mode: login.mode,
@@ -391,6 +391,7 @@ function unknownAuth(provider: AiUsageProvider, checkedAt: string): AiUsageAuthI
     loginCommand: login.command,
     loginHint: login.hint,
     checkedAt,
+    deviceAuthAvailable: provider === 'codex' || provider === 'grok',
   };
 }
 
@@ -408,6 +409,7 @@ export function detectLocalAuth(
     loginCommand: login.command,
     loginHint: login.hint,
     checkedAt,
+    deviceAuthAvailable: provider === 'codex' || provider === 'grok',
   };
 }
 

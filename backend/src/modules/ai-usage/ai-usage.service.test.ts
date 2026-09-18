@@ -268,7 +268,7 @@ describe('AI usage OAuth metadata detection', () => {
         'codex login --device-auth',
         'agy',
         'claude auth login',
-        'grok --oauth',
+        'grok login --device-auth',
       ]);
     } finally {
       rmSync(home, { recursive: true, force: true });

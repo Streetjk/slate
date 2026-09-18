@@ -12,7 +12,7 @@ export type AiUsageAvailability =
 export type AiUsageFreshness = 'fresh' | 'stale' | 'error';
 export type AiUsageAuthMode = 'oauth' | 'adc';
 export type AiUsageAuthStatus = 'LOCAL_AUTH_PRESENT' | 'NOT_DETECTED' | 'UNKNOWN';
-export type AiUsageAuthSource = 'local_metadata' | 'none';
+export type AiUsageAuthSource = 'local_metadata' | 'mac_helper' | 'none';
 
 export interface AiUsageAuthInfo {
   mode: AiUsageAuthMode;
@@ -21,6 +21,7 @@ export interface AiUsageAuthInfo {
   loginCommand: string;
   loginHint: string;
   checkedAt: string;
+  deviceAuthAvailable: boolean;
 }
 
 export interface AiUsageCapability {
@@ -71,4 +72,23 @@ export interface AiUsageCard {
 export interface AiUsageSnapshot {
   cards: AiUsageCard[];
   collectedAt: string;
+}
+
+export type AiUsageDeviceAuthProvider = 'codex' | 'grok';
+export type AiUsageDeviceAuthStatus =
+  | 'STARTING'
+  | 'WAITING_USER'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'EXPIRED'
+  | 'CANCELLED';
+
+export interface AiUsageDeviceAuthFlow {
+  flowId: string;
+  provider: AiUsageDeviceAuthProvider;
+  status: AiUsageDeviceAuthStatus;
+  verificationUri: string | null;
+  userCode: string | null;
+  expiresAt: string;
+  error: string | null;
 }
