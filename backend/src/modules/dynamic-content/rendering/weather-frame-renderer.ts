@@ -13,7 +13,7 @@ import {
 } from './frame-renderer-layout';
 import { textWidth } from './fonts/bitmap-font';
 import type { FontSet } from './fonts/dynamic-frame-font.service';
-import { formatShortTime } from './helpers/frame-date-utils';
+import { formatForecastDate, formatShortTime } from './helpers/frame-date-utils';
 import { isRecord, pickText } from './helpers/frame-value-utils';
 import { loadWeatherIconMask } from './helpers/weather-icons';
 import {
@@ -104,18 +104,26 @@ export async function renderWeatherFrame(
     const x = CONTENT_LEFT + index * colW;
     if (index > 0) draw.drawVRule(c, x, forecastTop + 10, 110, 'dashed');
     const label = pickText(record.label, ['Today', 'Tomorrow', 'Day after'][index] ?? '');
+    const dateLabel = formatForecastDate(record.date);
     const text = pickText(record.text, forecastTextFromVal(record.val));
     const min = pickText(record.tempMin, '');
     const max = pickText(record.tempMax, '');
     const range = formatTemperatureRange(min, max) || forecastRangeFromVal(record.val);
     const center = Math.round(x + colW / 2);
-    draw.drawText(c, fonts.sans16, label, center, forecastTop + 14, {
+    draw.drawText(c, fonts.sans16, label, center, forecastTop + 10, {
       align: 'center',
       maxWidth: colW - 12,
       ellipsis: true,
     });
-    drawWeatherIcon(c, forecastIcons[index] ?? null, center, forecastTop + 55);
-    draw.drawText(c, fonts.metric12, range || '--', center, forecastTop + 84, {
+    if (dateLabel) {
+      draw.drawText(c, fonts.metric12, dateLabel, center, forecastTop + 31, {
+        align: 'center',
+        maxWidth: colW - 12,
+        ellipsis: true,
+      });
+    }
+    drawWeatherIcon(c, forecastIcons[index] ?? null, center, forecastTop + 58);
+    draw.drawText(c, fonts.metric12, range || '--', center, forecastTop + 86, {
       align: 'center',
       maxWidth: colW - 12,
       ellipsis: true,

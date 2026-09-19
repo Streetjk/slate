@@ -152,6 +152,7 @@ describe('forecastLabel', () => {
     });
     expect(data.windDisplay).toBe('5 km/h');
     expect(data.fc.map((day) => day.label)).toEqual(['Today', 'Tomorrow', 'Day after']);
+    expect(data.fc.map((day) => day.date)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03']);
     expect(data.fc[1]?.text).toBe('Drizzle');
   });
 

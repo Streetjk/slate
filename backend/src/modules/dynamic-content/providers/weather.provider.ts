@@ -16,6 +16,7 @@ import { QweatherConfig } from './qweather.config';
 
 export interface WeatherForecastDay {
   label: string;
+  date: string;
   val: string;
   text: string;
   tempMin: number | string;
@@ -213,6 +214,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
       const text = openMeteoWeatherText(code);
       return {
         label: forecastLabel(date, config.tz, ctx.now) ?? FC_LABELS[index] ?? '--',
+        date: typeof date === 'string' ? date : '',
         val: `${text}  ${min}~${max}°`,
         text,
         tempMin: min,
@@ -328,6 +330,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
         const tempMax = toDisplayNumber(day.tempMax);
         return {
           label: forecastLabel(day.fxDate, config.tz, ctx.now) ?? FC_LABELS[index] ?? '--',
+          date: day.fxDate ?? '',
           val: `${dayText}${night}  ${tempMin}~${tempMax}°`,
           text: `${dayText}${night}`,
           tempMin,
@@ -339,6 +342,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
     while (fc.length < 3) {
       fc.push({
         label: FC_LABELS[fc.length]!,
+        date: '',
         val: '--',
         text: '--',
         tempMin: '--',
@@ -446,7 +450,9 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
       code: typeof data.code === 'number' ? data.code : 999,
       obsTime: data.obsTime ?? now.toISOString(),
       updatedAt: data.updatedAt ?? now.toISOString(),
-      fc: Array.isArray(data.fc) ? data.fc.slice(0, 3) : [],
+      fc: Array.isArray(data.fc)
+        ? data.fc.slice(0, 3).map((day) => ({ ...day, date: day.date ?? '' }))
+        : [],
     };
   }
 }
@@ -466,6 +472,7 @@ async function fetchJson<T>(url: string, apiKey: string): Promise<T> {
 
 const WeatherForecastDayFallback = z.object({
   label: z.string(),
+  date: z.string().optional(),
   val: z.string(),
   text: z.string(),
   tempMin: z.union([z.number(), z.string()]),
