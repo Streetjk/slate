@@ -31,6 +31,8 @@ export function defaultDynamicFrameName(type: DynamicTypeT, config: DynamicConfi
       return 'Outlook calendar';
     case 'google_news':
       return 'Google News';
+    case 'ai_usage':
+      return 'AI Usage';
     case 'dashboard':
       return config.type === 'dashboard' ? dashboardStatusTitle(config) : 'External data';
     case 'font_test':
@@ -112,6 +114,8 @@ export function dynamicStatusTitle(config: DynamicConfigT | null | undefined): s
       return 'Outlook calendar';
     case 'google_news':
       return 'Google News';
+    case 'ai_usage':
+      return 'AI Usage';
     case 'dashboard':
       return dashboardStatusTitle(config);
     case 'font_test':

@@ -49,10 +49,13 @@ function UsageCard({ card }: { card: AiUsageCard }) {
   const authFlow = useAiUsageDeviceAuth(flowId);
   const cancelAuth = useCancelAiUsageDeviceAuth();
   const flow = authFlow.data;
+  const authConnected = card.auth.status === 'LOCAL_AUTH_PRESENT' || flow?.status === 'COMPLETED';
 
   useEffect(() => {
     if (flow?.status !== 'COMPLETED') return;
-    void queryClient.invalidateQueries({ queryKey: ['ai-usage'] });
+    void queryClient.refetchQueries({ queryKey: ['ai-usage'], type: 'active' }).then(() => {
+      setFlowId(null);
+    });
   }, [flow?.status, queryClient]);
 
   const copyValue = async (value: string, kind: 'command' | 'code') => {
@@ -101,7 +104,10 @@ function UsageCard({ card }: { card: AiUsageCard }) {
           <Metric label="Remaining" value={presented.remainingLabel} />
           <Metric label="Reset" value={presented.resetLabel} />
           <Metric label="Session tokens" value={presented.sessionTokensLabel} />
-          <Metric label={presented.authModeLabel} value={presented.authStatusLabel} />
+          <Metric
+            label={presented.authModeLabel}
+            value={authConnected ? 'Connected' : presented.authStatusLabel}
+          />
         </dl>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
           <span className="inline-flex items-center gap-2 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-ink">

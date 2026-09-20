@@ -74,6 +74,11 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
         max_events: 8,
         refresh_interval_sec: 600,
       };
+    case 'ai_usage':
+      return {
+        type: 'ai_usage',
+        refresh_interval_sec: 300,
+      };
     case 'dashboard':
       return {
         type: 'dashboard',

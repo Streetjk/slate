@@ -107,6 +107,7 @@ function DynamicConfigFields({
   switch (config.type) {
     case 'daily_calendar':
     case 'month_calendar':
+    case 'ai_usage':
       return null;
     case 'weather':
       return <WeatherConfigPanel config={config} onChange={onChange} />;

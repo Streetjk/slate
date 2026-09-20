@@ -10,6 +10,7 @@ import {
   Bitcoin,
   Mail,
   Newspaper,
+  Gauge,
   Type as TypeIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -97,6 +98,14 @@ export const DYNAMIC_TYPE_META = {
     supportsAudio: false,
     Icon: Newspaper,
   },
+  ai_usage: {
+    label: 'AI Usage',
+    hint: 'Provider login status · CLI version',
+    description: 'Shows Codex, AGY/Gemini, Claude and Grok connection status from the Mac helper.',
+    hasConfigurableParams: false,
+    supportsAudio: false,
+    Icon: Gauge,
+  },
   dashboard: {
     label: 'External data',
     hint: 'Template + JSON data push',
@@ -134,6 +143,7 @@ export const DYNAMIC_TYPE_ORDER = [
   'btc_price',
   'outlook_calendar',
   'google_news',
+  'ai_usage',
   'hot_list',
   'dashboard',
   'font_test',

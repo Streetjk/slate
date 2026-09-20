@@ -85,6 +85,21 @@ describe('DynamicFrameRendererService', () => {
         renderedAt,
       },
       {
+        type: 'ai_usage',
+        frameName: 'AI Usage',
+        config: { type: 'ai_usage', refresh_interval_sec: 300 },
+        data: {
+          providers: [
+            { id: 'codex', label: 'Codex', version: 'codex-cli 0.155.0', status: 'connected' },
+            { id: 'agy_gemini', label: 'AGY / Gemini', version: '1.2.7', status: 'connected' },
+            { id: 'claude', label: 'Claude', version: '2.1.266', status: 'sign_in' },
+            { id: 'grok', label: 'Grok', version: 'grok 1.0.34', status: 'connected' },
+          ],
+          updatedAt: renderedAt.toISOString(),
+        },
+        renderedAt,
+      },
+      {
         type: 'weather',
         frameName: '天气',
         config: { location_label: '北京' },

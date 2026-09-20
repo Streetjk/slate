@@ -68,8 +68,10 @@ export function useAiUsage() {
       const { data } = await api.get<AiUsageSnapshot>(`${API_PREFIX}/ai-usage`);
       return data;
     },
-    refetchInterval: 5 * 60_000,
-    staleTime: 4 * 60_000,
+    refetchInterval: 60_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 

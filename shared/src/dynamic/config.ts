@@ -19,6 +19,7 @@ export const DynamicType = z.enum([
   'btc_price',
   'outlook_calendar',
   'google_news',
+  'ai_usage',
   'dashboard',
   'font_test',
   'hot_list',
@@ -202,6 +203,12 @@ export const GoogleNewsConfig = z.object({
 });
 export type GoogleNewsConfigT = z.infer<typeof GoogleNewsConfig>;
 
+export const AiUsageConfig = z.object({
+  type: z.literal('ai_usage'),
+  refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(300),
+});
+export type AiUsageConfigT = z.infer<typeof AiUsageConfig>;
+
 export const DashboardTemplateRef = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('system'),
@@ -246,6 +253,7 @@ export const DynamicConfig = z.discriminatedUnion('type', [
   BtcPriceConfig,
   OutlookCalendarConfig,
   GoogleNewsConfig,
+  AiUsageConfig,
   DashboardConfig,
   FontTestConfig,
   HotListConfig,

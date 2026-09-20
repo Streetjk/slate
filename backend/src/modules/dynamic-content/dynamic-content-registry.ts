@@ -25,7 +25,9 @@ import hotListDefinition from './definitions/hot-list.json' with { type: 'json' 
 import btcPriceDefinition from './definitions/btc-price.json' with { type: 'json' };
 import outlookCalendarDefinition from './definitions/outlook-calendar.json' with { type: 'json' };
 import googleNewsDefinition from './definitions/google-news.json' with { type: 'json' };
+import aiUsageDefinition from './definitions/ai-usage.json' with { type: 'json' };
 import { GoogleNewsProvider } from './providers/google-news.provider';
+import { AiUsageProvider } from './providers/ai-usage.provider';
 
 /**
  * 中央注册表。启动时把所有 (definition, provider) 对装进 Map。
@@ -50,7 +52,8 @@ export class DynamicContentRegistry implements OnModuleInit {
     private readonly hotListProvider: HotListProvider,
     private readonly btcPriceProvider: BtcPriceProvider,
     private readonly outlookCalendarProvider: OutlookCalendarProvider,
-    private readonly googleNewsProvider: GoogleNewsProvider
+    private readonly googleNewsProvider: GoogleNewsProvider,
+    private readonly aiUsageProvider: AiUsageProvider
   ) {}
 
   onModuleInit(): void {
@@ -71,6 +74,7 @@ export class DynamicContentRegistry implements OnModuleInit {
     this.register(normalizeDefinition(btcPriceDefinition), this.btcPriceProvider);
     this.register(normalizeDefinition(outlookCalendarDefinition), this.outlookCalendarProvider);
     this.register(normalizeDefinition(googleNewsDefinition), this.googleNewsProvider);
+    this.register(normalizeDefinition(aiUsageDefinition), this.aiUsageProvider);
   }
 
   private register(def: DynamicContentDefinition, provider: DynamicContentEntry['provider']): void {

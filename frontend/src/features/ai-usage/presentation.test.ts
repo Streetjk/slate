@@ -46,7 +46,7 @@ describe('AI usage presentation', () => {
     expect(presented.availabilityLabel).toBe('Quota unavailable');
     expect(presented.versionLabel).toBe('2.1.266');
     expect(presented.usedLabel).toBe('Unavailable');
-    expect(presented.authStatusLabel).toBe('Local OAuth metadata detected');
+    expect(presented.authStatusLabel).toBe('Connected');
     expect(presented.authModeLabel).toBe('OAuth');
     expect(presented.loginCommand).toBe('claude auth login');
   });

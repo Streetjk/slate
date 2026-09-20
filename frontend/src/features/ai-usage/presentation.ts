@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const AUTH_STATUS_LABELS: Record<string, string> = {
-  LOCAL_AUTH_PRESENT: 'Local OAuth metadata detected',
+  LOCAL_AUTH_PRESENT: 'Connected',
   NOT_DETECTED: 'No OAuth session detected',
   UNKNOWN: 'OAuth status unknown',
 };
