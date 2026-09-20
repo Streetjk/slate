@@ -99,10 +99,15 @@ export async function renderWeatherFrame(
 
   draw.drawRule(c, CONTENT_LEFT, forecastTop, CONTENT_WIDTH, 'dashed');
   const colW = Math.floor(CONTENT_WIDTH / 3);
+  const forecastLabelY = forecastTop + 8;
+  const forecastDateY = forecastTop + 29;
+  const forecastIconY = forecastTop + 64;
+  const forecastRangeY = forecastTop + 92;
+  const forecastTextY = forecastTop + 114;
   for (let index = 0; index < forecastRecords.length; index++) {
     const record = forecastRecords[index]!;
     const x = CONTENT_LEFT + index * colW;
-    if (index > 0) draw.drawVRule(c, x, forecastTop + 10, 110, 'dashed');
+    if (index > 0) draw.drawVRule(c, x, forecastTop + 8, 124, 'dashed');
     const label = pickText(record.label, ['Today', 'Tomorrow', 'Day after'][index] ?? '');
     const dateLabel = formatForecastDate(record.date);
     const text = pickText(record.text, forecastTextFromVal(record.val));
@@ -110,25 +115,25 @@ export async function renderWeatherFrame(
     const max = pickText(record.tempMax, '');
     const range = formatTemperatureRange(min, max) || forecastRangeFromVal(record.val);
     const center = Math.round(x + colW / 2);
-    draw.drawText(c, fonts.sans16, label, center, forecastTop + 10, {
+    draw.drawText(c, fonts.sans16, label, center, forecastLabelY, {
       align: 'center',
       maxWidth: colW - 12,
       ellipsis: true,
     });
     if (dateLabel) {
-      draw.drawText(c, fonts.metric12, dateLabel, center, forecastTop + 31, {
+      draw.drawStrongText(c, fonts.sans16, dateLabel, center, forecastDateY, {
         align: 'center',
         maxWidth: colW - 12,
         ellipsis: true,
       });
     }
-    drawWeatherIcon(c, forecastIcons[index] ?? null, center, forecastTop + 58);
-    draw.drawText(c, fonts.metric12, range || '--', center, forecastTop + 86, {
+    drawWeatherIcon(c, forecastIcons[index] ?? null, center, forecastIconY);
+    draw.drawText(c, fonts.metric12, range || '--', center, forecastRangeY, {
       align: 'center',
       maxWidth: colW - 12,
       ellipsis: true,
     });
-    draw.drawText(c, fonts.sans16, text || '--', center, forecastTop + 108, {
+    draw.drawText(c, fonts.sans16, text || '--', center, forecastTextY, {
       align: 'center',
       maxWidth: colW - 12,
       ellipsis: true,
