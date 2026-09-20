@@ -31,16 +31,11 @@ interface OwnedFlow {
   expiresAtMs: number;
 }
 
-export type AiUsageHelperFetch = typeof fetch;
-
 @Injectable()
 export class AiUsageAuthFlowService {
   private readonly ownedFlows = new Map<string, OwnedFlow>();
 
-  constructor(
-    private readonly config: AppConfig,
-    private readonly helperFetch: AiUsageHelperFetch = fetch
-  ) {}
+  constructor(private readonly config: AppConfig) {}
 
   async enrichSnapshot(snapshot: AiUsageSnapshot): Promise<AiUsageSnapshot> {
     const helper = await this.getProviderSnapshot();
@@ -153,7 +148,7 @@ export class AiUsageAuthFlowService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), HELPER_TIMEOUT_MS);
     try {
-      const response = await this.helperFetch(new URL(path, ensureTrailingSlash(base)), {
+      const response = await fetch(new URL(path, ensureTrailingSlash(base)), {
         ...init,
         redirect: 'error',
         signal: controller.signal,

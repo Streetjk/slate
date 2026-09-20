@@ -21,7 +21,9 @@ describe('AI usage Mac helper bridge', () => {
           access_token: 'MUST_NOT_FLOW',
         },
       });
-    const service = new AiUsageAuthFlowService(config(), fakeFetch as typeof fetch);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fakeFetch as typeof fetch;
+    const service = new AiUsageAuthFlowService(config());
     const card = unavailableCard('codex', null, 'UNAVAILABLE', {
       auth: unknownAuthInfo('codex', '2026-09-18T00:00:00.000Z'),
     });
@@ -33,6 +35,7 @@ describe('AI usage Mac helper bridge', () => {
       deviceAuthAvailable: true,
     });
     expect(JSON.stringify(result)).not.toContain('MUST_NOT_FLOW');
+    globalThis.fetch = originalFetch;
   });
 
   it('binds helper device flows to the authenticated Slate user', async () => {
@@ -67,11 +70,14 @@ describe('AI usage Mac helper bridge', () => {
       }
       return new Response(null, { status: 204 });
     };
-    const service = new AiUsageAuthFlowService(config(), fakeFetch as typeof fetch);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fakeFetch as typeof fetch;
+    const service = new AiUsageAuthFlowService(config());
     const started = await service.start('user-a', 'codex');
     expect(started.flowId).not.toBe('helper-flow');
     await expect(service.status('user-b', started.flowId)).rejects.toThrow('not found');
     expect((await service.status('user-a', started.flowId)).status).toBe('COMPLETED');
     expect(calls.some((call) => call.url.includes('helper-flow'))).toBe(true);
+    globalThis.fetch = originalFetch;
   });
 });
