@@ -18,6 +18,18 @@ describe('AI usage Mac helper bridge', () => {
           authMetadataDetected: true,
           deviceAuthAvailable: true,
           checkedAt: '2026-09-18T00:00:00.000Z',
+          quota: {
+            observedAt: '2026-09-18T00:00:01.000Z',
+            windows: [
+              {
+                label: '5h',
+                usedPercent: 23,
+                remainingPercent: 77,
+                resetAt: '2026-09-18T05:00:00.000Z',
+                resetLabel: '18 Sep 1:00pm',
+              },
+            ],
+          },
           access_token: 'MUST_NOT_FLOW',
         },
       });
@@ -29,6 +41,18 @@ describe('AI usage Mac helper bridge', () => {
     });
     const result = await service.enrichSnapshot({ cards: [card], collectedAt: 'now' });
     expect(result.cards[0]?.capability.version).toBe('codex-cli 0.153.4');
+    expect(result.cards[0]).toMatchObject({
+      sourceStatus: 'AVAILABLE',
+      availability: 'AVAILABLE',
+      source: 'sanitized_metrics',
+      usageSupported: true,
+      quotaSource: 'mac_helper',
+      usedPercent: 23,
+      remainingPercent: 77,
+      resetAt: '2026-09-18T05:00:00.000Z',
+      windowLabel: '5h',
+      lastUpdated: '2026-09-18T00:00:01.000Z',
+    });
     expect(result.cards[0]?.auth).toMatchObject({
       status: 'LOCAL_AUTH_PRESENT',
       source: 'mac_helper',

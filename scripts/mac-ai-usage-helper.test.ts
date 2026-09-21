@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { extractDeviceAuthFields, readProviderQuota, stripAnsi } from './mac-ai-usage-helper';
+import {
+  extractDeviceAuthFields,
+  parseZaiQuotaPayload,
+  readProviderQuota,
+  stripAnsi,
+} from './mac-ai-usage-helper';
 
 describe('Mac AI usage helper device auth sanitization', () => {
   it('extracts only an allowlisted Codex verification URL and one-time code', () => {
@@ -40,6 +45,46 @@ describe('Mac AI usage helper quota normalization', () => {
     }
     expect(JSON.stringify(quota)).not.toContain('token');
     expect(JSON.stringify(quota)).not.toContain('email');
+  });
+
+  it('parses Z.ai credit windows without exposing credential data', () => {
+    const quota = parseZaiQuotaPayload(
+      {
+        fetchedAt: '2026-09-21T11:37:26.048Z',
+        quota: {
+          level: 'lite',
+          limits: [
+            {
+              type: 'CREDIT_LIMIT',
+              unit: 3,
+              percentage: 0,
+              currentValue: 0,
+              usage: 2000,
+              remaining: 2000,
+            },
+            {
+              type: 'CREDIT_LIMIT',
+              unit: 6,
+              percentage: 13,
+              nextResetTime: 1790150863983,
+              currentValue: 1346,
+              usage: 10000,
+              remaining: 8653,
+            },
+          ],
+        },
+        apiKey: 'DO_NOT_COPY',
+      },
+      Date.parse('2026-09-21T11:37:30.000Z')
+    );
+    expect(
+      quota?.windows.map((window) => [window.label, window.usedPercent, window.remainingPercent])
+    ).toEqual([
+      ['5h', 0, 100],
+      ['Weekly', 13, 87],
+    ]);
+    expect(quota?.windows[1]?.resetLabel).toBeTruthy();
+    expect(JSON.stringify(quota)).not.toContain('DO_NOT_COPY');
   });
 
   it('uses a fresh local Grok billing percentage when available', () => {

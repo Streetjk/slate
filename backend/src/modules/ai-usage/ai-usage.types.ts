@@ -2,7 +2,7 @@ export const AI_USAGE_PROVIDERS = ['codex', 'agy_gemini', 'zai', 'grok'] as cons
 export type AiUsageProvider = (typeof AI_USAGE_PROVIDERS)[number];
 
 export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
-export type AiUsageQuotaSource = 'unsupported' | 'none';
+export type AiUsageQuotaSource = 'unsupported' | 'mac_helper' | 'none';
 export type AiUsageAvailability =
   | 'AVAILABLE'
   | 'BINARY_MISSING'

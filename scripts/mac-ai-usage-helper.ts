@@ -53,6 +53,7 @@ export interface HelperQuotaWindow {
   label: string;
   usedPercent: number;
   remainingPercent: number;
+  resetAt: string | null;
   resetLabel: string | null;
 }
 
@@ -67,8 +68,12 @@ const AGY_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
 const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
 const GROK_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
 const GROK_REFRESH_INTERVAL_MS = 10 * 60_000;
+const ZAI_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const ZAI_REFRESH_INTERVAL_MS = 5 * 60_000;
 const AGY_USAGE_BIN =
   process.env.SLATE_AGY_USAGE_BIN ?? join(homedir(), '.local', 'bin', 'agy-usage');
+const ZAI_USAGE_BIN =
+  process.env.SLATE_ZAI_USAGE_BIN ?? join(homedir(), '.bun', 'bin', 'zai-usage');
 
 export function readProviderQuota(
   provider: HelperProvider,
@@ -76,6 +81,7 @@ export function readProviderQuota(
 ): HelperQuotaSnapshot | null {
   if (provider === 'codex') return readCodexQuota(nowMs);
   if (provider === 'grok') return readGrokQuota(nowMs);
+  if (provider === 'zai') return zaiQuotaCache;
   if (provider === 'agy_gemini') {
     return agyQuotaCache?.[provider] ?? readAgyQuota(provider, nowMs);
   }
@@ -89,6 +95,9 @@ let agyQuotaRefreshPromise: Promise<
 > | null = null;
 let grokQuotaRefreshedAtMs = 0;
 let grokQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
+let zaiQuotaCache: HelperQuotaSnapshot | null = null;
+let zaiQuotaRefreshedAtMs = 0;
+let zaiQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
 
 async function getProviderQuota(
   provider: HelperProvider,
@@ -112,6 +121,27 @@ async function getProviderQuota(
     const observedMs = Date.parse(cached.observedAt);
     return Number.isFinite(observedMs) && nowMs - observedMs <= AGY_QUOTA_MAX_AGE_SEC * 1000
       ? cached
+      : null;
+  }
+  if (provider === 'zai') {
+    if (!zaiQuotaCache || nowMs - zaiQuotaRefreshedAtMs >= ZAI_REFRESH_INTERVAL_MS) {
+      zaiQuotaRefreshPromise ??= refreshZaiQuota(nowMs).finally(() => {
+        zaiQuotaRefreshPromise = null;
+      });
+      try {
+        const refreshed = await zaiQuotaRefreshPromise;
+        if (refreshed) {
+          zaiQuotaCache = refreshed;
+          zaiQuotaRefreshedAtMs = Date.now();
+        }
+      } catch {
+        // Keep a still-fresh in-memory value if refresh fails.
+      }
+    }
+    if (!zaiQuotaCache) return null;
+    const observedMs = Date.parse(zaiQuotaCache.observedAt);
+    return Number.isFinite(observedMs) && nowMs - observedMs <= ZAI_QUOTA_MAX_AGE_SEC * 1000
+      ? zaiQuotaCache
       : null;
   }
   if (provider === 'grok') {
@@ -170,6 +200,7 @@ async function refreshAgyQuota(
           label,
           usedPercent: 100 - remainingPercent,
           remainingPercent,
+          resetAt: safeResetIso(bucket.reset_time),
           resetLabel: compactResetLabel(bucket.reset_time),
         });
       }
@@ -192,6 +223,84 @@ async function refreshAgyQuota(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function refreshZaiQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
+  if (!existsSync(ZAI_USAGE_BIN)) return null;
+  const key = readZaiApiKey();
+  if (!key) return null;
+  const proc = Bun.spawn([ZAI_USAGE_BIN, 'summary', '--json'], {
+    stdout: 'pipe',
+    stderr: 'ignore',
+    env: { ...safeCliEnv(), ZAI_API_KEY: key },
+    cwd: homedir(),
+  });
+  const timer = setTimeout(() => proc.kill(), 15_000);
+  try {
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+    if (proc.exitCode !== 0) return null;
+    return parseZaiQuotaPayload(JSON.parse(output), nowMs);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function parseZaiQuotaPayload(
+  value: unknown,
+  nowMs = Date.now()
+): HelperQuotaSnapshot | null {
+  if (!isRecord(value)) return null;
+  const quota = isRecord(value.quota) ? value.quota : {};
+  const limits = Array.isArray(quota.limits) ? quota.limits : [];
+  const windows: HelperQuotaWindow[] = [];
+  for (const item of limits) {
+    if (!isRecord(item)) continue;
+    const type = typeof item.type === 'string' ? item.type : '';
+    if (type !== 'CREDIT_LIMIT' && type !== 'TOKENS_LIMIT') continue;
+    const unit = finiteNumber(item.unit);
+    if (unit !== 3 && unit !== 6) continue;
+    const usedPercent = percentNumber(item.percentage);
+    if (usedPercent === null) continue;
+    const remainingPercent = Math.max(0, 100 - usedPercent);
+    windows.push({
+      label: unit === 3 ? '5h' : 'Weekly',
+      usedPercent,
+      remainingPercent,
+      resetAt: safeResetIso(item.nextResetTime),
+      resetLabel: compactResetLabel(item.nextResetTime),
+    });
+  }
+  if (windows.length === 0) return null;
+  windows.sort((a, b) => (a.label === '5h' ? -1 : b.label === '5h' ? 1 : 0));
+  const observedAt =
+    safeIsoText(value.fetchedAt) ?? safeIsoText(value.updatedAt) ?? new Date(nowMs).toISOString();
+  const observedMs = Date.parse(observedAt);
+  return {
+    windows,
+    observedAt,
+    ageSeconds: Number.isFinite(observedMs)
+      ? Math.max(0, Math.round((nowMs - observedMs) / 1000))
+      : 0,
+  };
+}
+
+function readZaiApiKey(): string | null {
+  const path = process.env.ZAI_KEYFILE ?? join(homedir(), 'Cre', 'Zai.txt');
+  try {
+    const text = readFileSync(path, 'utf8').replaceAll(String.fromCharCode(13), '');
+    for (const line of text.split(String.fromCharCode(10))) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('ZAI_API_KEY=')) continue;
+      const key = trimmed.slice('ZAI_API_KEY='.length).trim();
+      return key || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 async function refreshGrokQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
@@ -244,11 +353,12 @@ function readCodexQuota(nowMs: number): HelperQuotaSnapshot | null {
             : key === 'primary'
               ? 'Primary'
               : 'Secondary';
+    const resetAt = safeResetIso(row.resets_at);
     const resetLabel =
       typeof row.resets_at === 'string' && row.resets_at.trim()
         ? row.resets_at.trim().slice(0, 40)
-        : null;
-    return [{ label, usedPercent, remainingPercent, resetLabel }];
+        : compactResetLabel(row.resets_at);
+    return [{ label, usedPercent, remainingPercent, resetAt, resetLabel }];
   });
   if (windows.length === 0) return null;
   return {
@@ -289,6 +399,7 @@ function readGrokQuota(nowMs: number): HelperQuotaSnapshot | null {
             label: 'Weekly',
             usedPercent,
             remainingPercent: 100 - usedPercent,
+            resetAt: safeResetIso(period.end),
             resetLabel,
           },
         ],
@@ -320,6 +431,7 @@ function readAgyQuota(provider: 'agy_gemini', nowMs: number): HelperQuotaSnapsho
       label: '5h',
       usedPercent: 100 - fiveHourRemaining,
       remainingPercent: fiveHourRemaining,
+      resetAt: safeResetIso(raw[prefix + '_5h_reset']),
       resetLabel: safeResetText(raw[prefix + '_5h_reset']),
     });
   }
@@ -328,6 +440,7 @@ function readAgyQuota(provider: 'agy_gemini', nowMs: number): HelperQuotaSnapsho
       label: 'Weekly',
       usedPercent: 100 - weeklyRemaining,
       remainingPercent: weeklyRemaining,
+      resetAt: safeResetIso(raw[prefix + '_weekly_reset']),
       resetLabel: safeResetText(raw[prefix + '_weekly_reset']),
     });
   }
@@ -373,9 +486,26 @@ function percentNumber(value: unknown): number | null {
   return number !== null && number >= 0 && number <= 100 ? Math.round(number) : null;
 }
 
-function compactResetLabel(value: unknown): string | null {
+function safeResetIso(value: unknown): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value).toISOString();
+  }
   if (typeof value !== 'string' || !value.trim()) return null;
-  const time = Date.parse(value);
+  const numeric = Number(value);
+  const time = Number.isFinite(numeric) && numeric > 10_000_000_000 ? numeric : Date.parse(value);
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
+function compactResetLabel(value: unknown): string | null {
+  let time: number;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    time = value;
+  } else if (typeof value === 'string' && value.trim()) {
+    const numeric = Number(value);
+    time = Number.isFinite(numeric) && numeric > 10_000_000_000 ? numeric : Date.parse(value);
+  } else {
+    return null;
+  }
   if (!Number.isFinite(time)) return safeResetText(value);
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Australia/Perth',

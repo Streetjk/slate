@@ -3,7 +3,7 @@ import { API_PREFIX, api } from '@/lib/http';
 
 export type AiUsageProvider = 'codex' | 'agy_gemini' | 'zai' | 'grok';
 export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
-export type AiUsageQuotaSource = 'unsupported' | 'none';
+export type AiUsageQuotaSource = 'unsupported' | 'mac_helper' | 'none';
 export type AiUsageAvailability =
   | 'AVAILABLE'
   | 'BINARY_MISSING'

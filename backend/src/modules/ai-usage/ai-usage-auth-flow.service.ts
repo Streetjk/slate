@@ -11,6 +11,14 @@ import type {
 const HELPER_TIMEOUT_MS = 3_000;
 const OWNED_FLOW_TTL_MS = 12 * 60_000;
 
+interface HelperQuotaWindow {
+  label: string;
+  usedPercent: number;
+  remainingPercent: number;
+  resetAt?: string | null;
+  resetLabel?: string | null;
+}
+
 interface HelperProviderState {
   provider: AiUsageProvider;
   cliPresent: boolean;
@@ -18,6 +26,11 @@ interface HelperProviderState {
   authMetadataDetected: boolean;
   deviceAuthAvailable: boolean;
   checkedAt: string;
+  quota?: {
+    windows?: HelperQuotaWindow[];
+    observedAt?: string;
+    ageSeconds?: number;
+  } | null;
 }
 
 type HelperProviderSnapshot = Partial<Record<AiUsageProvider, HelperProviderState>>;
@@ -46,25 +59,43 @@ export class AiUsageAuthFlowService {
         const state = helper[card.provider];
         if (!state) return card;
         const helperHasCli = state.cliPresent;
+        const helperQuota = normalizeHelperQuota(state.quota);
         const preserveAvailableMetrics =
           card.sourceStatus === 'AVAILABLE' || card.sourceStatus === 'STALE';
         return {
           ...card,
-          ...(preserveAvailableMetrics
-            ? {}
-            : {
-                sourceStatus: helperHasCli
-                  ? ('UNAVAILABLE_NO_MACHINE_READABLE_USAGE' as const)
-                  : ('UNAVAILABLE' as const),
-                availability: helperHasCli
-                  ? ('UNAVAILABLE_NO_MACHINE_READABLE_USAGE' as const)
-                  : ('BINARY_MISSING' as const),
+          ...(helperQuota
+            ? {
+                usedPercent: helperQuota.usedPercent,
+                remainingPercent: helperQuota.remainingPercent,
+                resetAt: helperQuota.resetAt,
+                windowLabel: helperQuota.windowLabel,
+                lastUpdated: helperQuota.observedAt,
+                sourceStatus: 'AVAILABLE' as const,
+                availability: 'AVAILABLE' as const,
                 freshness: 'fresh' as const,
-                source: helperHasCli ? ('version_probe' as const) : ('none' as const),
+                source: 'sanitized_metrics' as const,
+                usageSupported: true,
+                quotaSource: 'mac_helper' as const,
                 probedAt: state.checkedAt,
-                lastUpdated: state.checkedAt,
+                staleAfter: null,
                 error: null,
-              }),
+              }
+            : preserveAvailableMetrics
+              ? {}
+              : {
+                  sourceStatus: helperHasCli
+                    ? ('UNAVAILABLE_NO_MACHINE_READABLE_USAGE' as const)
+                    : ('UNAVAILABLE' as const),
+                  availability: helperHasCli
+                    ? ('UNAVAILABLE_NO_MACHINE_READABLE_USAGE' as const)
+                    : ('BINARY_MISSING' as const),
+                  freshness: 'fresh' as const,
+                  source: helperHasCli ? ('version_probe' as const) : ('none' as const),
+                  probedAt: state.checkedAt,
+                  lastUpdated: state.checkedAt,
+                  error: null,
+                }),
           capability: {
             ...card.capability,
             binaryPresent: state.cliPresent,
@@ -165,4 +196,44 @@ export class AiUsageAuthFlowService {
 
 function ensureTrailingSlash(value: string): string {
   return value.endsWith('/') ? value : `${value}/`;
+}
+
+function normalizeHelperQuota(quota: HelperProviderState['quota']): {
+  usedPercent: number;
+  remainingPercent: number;
+  resetAt: string | null;
+  windowLabel: string;
+  observedAt: string;
+} | null {
+  if (!quota || !Array.isArray(quota.windows) || quota.windows.length === 0) return null;
+  const first = quota.windows[0];
+  if (!first) return null;
+  const usedPercent = boundedPercent(first.usedPercent);
+  const remainingPercent = boundedPercent(first.remainingPercent);
+  const windowLabel = typeof first.label === 'string' ? first.label.trim().slice(0, 32) : '';
+  const observedAt = safeIso(quota.observedAt);
+  if (usedPercent === null || remainingPercent === null || !windowLabel || !observedAt) return null;
+  return {
+    usedPercent,
+    remainingPercent,
+    resetAt: safeIso(first.resetAt),
+    windowLabel,
+    observedAt,
+  };
+}
+
+function boundedPercent(value: unknown): number | null {
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(number) && number >= 0 && number <= 100 ? Math.round(number) : null;
+}
+
+function safeIso(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
