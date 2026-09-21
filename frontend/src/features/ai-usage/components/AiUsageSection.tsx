@@ -111,8 +111,8 @@ function UsageCard({ card }: { card: AiUsageCard }) {
         </dl>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
           <span className="inline-flex items-center gap-2 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-ink">
-            <LogIn size={14} />
-            OAuth login
+            {authConnected ? <Check size={14} /> : <LogIn size={14} />}
+            {authConnected ? 'OAuth connected' : 'OAuth login'}
           </span>
           <span
             className="font-mono text-[11px] text-stone transition-transform group-open:rotate-90"
@@ -124,7 +124,9 @@ function UsageCard({ card }: { card: AiUsageCard }) {
         <p className="mt-3 font-mono text-[10px] text-stone">Updated {presented.updatedLabel}</p>
       </summary>
       <div className="mx-4 mb-4 border border-line bg-cream p-3">
-        {card.auth.deviceAuthAvailable ? (
+        {authConnected ? (
+          <ConnectedAuthPanel provider={presented.providerLabel} />
+        ) : card.auth.deviceAuthAvailable ? (
           <DeviceAuthPanel
             flow={flow}
             pending={startAuth.isPending || authFlow.isFetching}
@@ -150,6 +152,20 @@ function UsageCard({ card }: { card: AiUsageCard }) {
         )}
       </div>
     </details>
+  );
+}
+
+function ConnectedAuthPanel({ provider }: { provider: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Check size={16} className="mt-0.5 shrink-0" />
+      <div>
+        <p className="font-sans text-[12px] font-medium text-ink">Connected on Mac mini</p>
+        <p className="mt-1 font-sans text-[11px] leading-5 text-stone">
+          {provider} OAuth metadata is detected. No login action is required.
+        </p>
+      </div>
+    </div>
   );
 }
 
