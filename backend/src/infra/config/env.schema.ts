@@ -88,7 +88,7 @@ export const EnvSchema = z.object({
   MICROSOFT_CLIENT_ID: OptionalEnv(z.string().min(1)),
   MICROSOFT_CLIENT_SECRET: OptionalEnv(z.string().min(1)),
   MICROSOFT_REDIRECT_URI: OptionalEnv(z.string().url()),
-  MICROSOFT_AUTHORITY: z.string().url().default('https://login.microsoftonline.com/common'),
+  MICROSOFT_AUTHORITY: z.string().url().default('https://login.microsoftonline.com/organizations'),
   TOKEN_ENCRYPTION_KEY: TokenEncryptionKey,
   AI_USAGE_MAC_HELPER_URL: OptionalEnv(z.string().url()),
   BACKGROUND_WORKERS: BooleanEnv.default(true),
