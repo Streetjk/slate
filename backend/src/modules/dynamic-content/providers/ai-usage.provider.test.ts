@@ -16,6 +16,17 @@ describe('AiUsageProvider', () => {
           version: 'codex-cli 0.155.0',
           authMetadataDetected: true,
           checkedAt: '2026-09-20T22:04:44.815Z',
+          quota: {
+            observedAt: '2026-09-20T22:04:30.000Z',
+            windows: [
+              {
+                label: 'Weekly',
+                usedPercent: 20,
+                remainingPercent: 80,
+                resetLabel: 'Sep 26 4:49pm',
+              },
+            ],
+          },
           access_token: 'DO_NOT_COPY',
           email: 'secret@example.com',
         },
@@ -52,6 +63,10 @@ describe('AiUsageProvider', () => {
       ['grok', 'connected'],
     ]);
     expect(data.providers[0]?.version).toBe('codex-cli 0.155.0');
+    expect(data.providers[0]?.quotaWindows).toEqual([
+      { label: 'Weekly', usedPercent: 20, remainingPercent: 80, resetLabel: 'Sep 26 4:49pm' },
+    ]);
+    expect(data.providers[1]?.quotaWindows).toEqual([]);
     expect(data.updatedAt).toBe('2026-09-20T22:04:44.815Z');
     expect(JSON.stringify(data)).not.toContain('DO_NOT_COPY');
     expect(JSON.stringify(data)).not.toContain('secret@example.com');

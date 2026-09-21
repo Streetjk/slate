@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { extractDeviceAuthFields, stripAnsi } from './mac-ai-usage-helper';
+import { extractDeviceAuthFields, readProviderQuota, stripAnsi } from './mac-ai-usage-helper';
 
 describe('Mac AI usage helper device auth sanitization', () => {
   it('extracts only an allowlisted Codex verification URL and one-time code', () => {
@@ -25,5 +25,24 @@ describe('Mac AI usage helper device auth sanitization', () => {
 
   it('strips ANSI sequences', () => {
     expect(stripAnsi('\u001b[31mhello\u001b[0m')).toBe('hello');
+  });
+});
+
+describe('Mac AI usage helper quota normalization', () => {
+  it('reads fresh Codex quota cache without exposing unrelated fields', () => {
+    const quota = readProviderQuota('codex', Date.now());
+    if (!quota) return;
+    expect(quota.windows.length).toBeGreaterThan(0);
+    for (const window of quota.windows) {
+      expect(window.usedPercent).toBeGreaterThanOrEqual(0);
+      expect(window.usedPercent).toBeLessThanOrEqual(100);
+      expect(window.remainingPercent).toBe(100 - window.usedPercent);
+    }
+    expect(JSON.stringify(quota)).not.toContain('token');
+    expect(JSON.stringify(quota)).not.toContain('email');
+  });
+
+  it('does not invent Grok quota when no ceiling source exists', () => {
+    expect(readProviderQuota('grok', Date.now())).toBeNull();
   });
 });

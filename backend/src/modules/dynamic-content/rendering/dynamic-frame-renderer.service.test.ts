@@ -90,10 +90,41 @@ describe('DynamicFrameRendererService', () => {
         config: { type: 'ai_usage', refresh_interval_sec: 300 },
         data: {
           providers: [
-            { id: 'codex', label: 'Codex', version: 'codex-cli 0.155.0', status: 'connected' },
-            { id: 'agy_gemini', label: 'AGY / Gemini', version: '1.2.7', status: 'connected' },
-            { id: 'claude', label: 'Claude', version: '2.1.266', status: 'sign_in' },
-            { id: 'grok', label: 'Grok', version: 'grok 1.0.34', status: 'connected' },
+            {
+              id: 'codex',
+              label: 'Codex',
+              version: 'codex-cli 0.155.0',
+              status: 'connected',
+              quotaWindows: [
+                {
+                  label: 'Weekly',
+                  usedPercent: 20,
+                  remainingPercent: 80,
+                  resetLabel: 'Sep 26 4:49pm',
+                },
+              ],
+            },
+            {
+              id: 'agy_gemini',
+              label: 'AGY / Gemini',
+              version: '1.2.7',
+              status: 'connected',
+              quotaWindows: [],
+            },
+            {
+              id: 'claude',
+              label: 'Claude',
+              version: '2.1.266',
+              status: 'sign_in',
+              quotaWindows: [],
+            },
+            {
+              id: 'grok',
+              label: 'Grok',
+              version: 'grok 1.0.34',
+              status: 'connected',
+              quotaWindows: [],
+            },
           ],
           updatedAt: renderedAt.toISOString(),
         },

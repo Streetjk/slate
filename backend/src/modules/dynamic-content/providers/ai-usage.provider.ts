@@ -3,11 +3,20 @@ import { AiUsageConfig, type AiUsageConfigT } from 'shared';
 import { AppConfig } from '../../../infra/config/app.config';
 import type { DataProvider, DynamicContentFetchCtx } from '../dynamic-content.types';
 
+export interface AiUsagePanelQuotaWindow {
+  label: string;
+  usedPercent: number;
+  remainingPercent: number;
+  resetLabel: string | null;
+}
+
 export interface AiUsagePanelProvider {
   id: 'codex' | 'agy_gemini' | 'claude' | 'grok';
   label: string;
   version: string;
   status: 'connected' | 'sign_in' | 'unknown';
+  quotaWindows: AiUsagePanelQuotaWindow[];
+  quotaObservedAt: string | null;
 }
 
 export interface AiUsagePanelData {
@@ -49,6 +58,7 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
       const record = isRecord(raw) ? raw : {};
       const providers = PROVIDERS.map(({ id, label }) => {
         const state = isRecord(record[id]) ? record[id] : {};
+        const quota = isRecord(state.quota) ? state.quota : {};
         return {
           id,
           label,
@@ -59,6 +69,8 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
               : state.authMetadataDetected === false
                 ? ('sign_in' as const)
                 : ('unknown' as const),
+          quotaWindows: normalizeQuotaWindows(quota.windows),
+          quotaObservedAt: safeIso(quota.observedAt),
         };
       });
       const checkedAt = PROVIDERS.map(({ id }) => {
@@ -90,6 +102,40 @@ function safeIso(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const time = Date.parse(value);
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
+function normalizeQuotaWindows(value: unknown): AiUsagePanelQuotaWindow[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => {
+      if (!isRecord(item)) return [];
+      const label = typeof item.label === 'string' ? item.label.trim().slice(0, 24) : '';
+      const usedPercent = safePercent(item.usedPercent);
+      const remainingPercent = safePercent(item.remainingPercent);
+      if (!label || usedPercent === null || remainingPercent === null) return [];
+      return [
+        {
+          label,
+          usedPercent,
+          remainingPercent,
+          resetLabel:
+            typeof item.resetLabel === 'string' && item.resetLabel.trim()
+              ? item.resetLabel.trim().slice(0, 40)
+              : null,
+        },
+      ];
+    })
+    .slice(0, 2);
+}
+
+function safePercent(value: unknown): number | null {
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(number) && number >= 0 && number <= 100 ? Math.round(number) : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -46,6 +46,147 @@ const PROVIDERS: Record<HelperProvider, ProviderSpec> = {
     allowedHosts: ['accounts.x.ai', 'auth.x.ai', 'x.ai', 'grok.com'],
   },
 };
+
+export interface HelperQuotaWindow {
+  label: string;
+  usedPercent: number;
+  remainingPercent: number;
+  resetLabel: string | null;
+}
+
+export interface HelperQuotaSnapshot {
+  windows: HelperQuotaWindow[];
+  observedAt: string;
+  ageSeconds: number;
+}
+
+const CODEX_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const AGY_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+
+export function readProviderQuota(
+  provider: HelperProvider,
+  nowMs = Date.now()
+): HelperQuotaSnapshot | null {
+  if (provider === 'codex') {
+    return readCodexQuota(nowMs);
+  }
+  if (provider === 'agy_gemini' || provider === 'claude') {
+    return readAgyQuota(provider, nowMs);
+  }
+  return null;
+}
+
+function readCodexQuota(nowMs: number): HelperQuotaSnapshot | null {
+  const path = join(homedir(), '.claude', 'codex-quota-cache.json');
+  const raw = readJsonRecord(path);
+  if (!raw) return null;
+  const observedSec = finiteNumber(raw.event_epoch) ?? finiteNumber(raw.fetched_at);
+  if (observedSec === null) return null;
+  const ageSeconds = Math.max(0, nowMs / 1000 - observedSec);
+  if (ageSeconds > CODEX_QUOTA_MAX_AGE_SEC) return null;
+
+  const windows = ['primary', 'secondary'].flatMap((key) => {
+    const row = isRecord(raw[key]) ? raw[key] : null;
+    if (!row) return [];
+    const usedPercent = percentNumber(row.used_pct);
+    const remainingPercent = percentNumber(row.rem_pct);
+    if (usedPercent === null || remainingPercent === null) return [];
+    const windowMinutes = finiteNumber(row.window_minutes);
+    const label =
+      windowMinutes === 300
+        ? '5h'
+        : windowMinutes === 10080
+          ? 'Weekly'
+          : windowMinutes
+            ? Math.round(windowMinutes) + 'm'
+            : key === 'primary'
+              ? 'Primary'
+              : 'Secondary';
+    const resetLabel =
+      typeof row.resets_at === 'string' && row.resets_at.trim()
+        ? row.resets_at.trim().slice(0, 40)
+        : null;
+    return [{ label, usedPercent, remainingPercent, resetLabel }];
+  });
+  if (windows.length === 0) return null;
+  return {
+    windows,
+    observedAt: new Date(observedSec * 1000).toISOString(),
+    ageSeconds: Math.round(ageSeconds),
+  };
+}
+
+function readAgyQuota(
+  provider: 'agy_gemini' | 'claude',
+  nowMs: number
+): HelperQuotaSnapshot | null {
+  const path = join(homedir(), '.claude', 'agy-g1-cache.json');
+  const raw = readJsonRecord(path);
+  if (!raw) return null;
+  const fetchedSec = finiteNumber(raw.fetched_at);
+  if (fetchedSec === null) return null;
+  const ageSeconds = Math.max(0, nowMs / 1000 - fetchedSec);
+  if (ageSeconds > AGY_QUOTA_MAX_AGE_SEC) return null;
+
+  const prefix = provider === 'agy_gemini' ? 'gemini' : 'claude';
+  const weeklyRemaining = percentNumber(raw[prefix + '_weekly_pct']);
+  const fiveHourRemaining = percentNumber(raw[prefix + '_5h_pct']);
+  const windows: HelperQuotaWindow[] = [];
+  if (fiveHourRemaining !== null) {
+    windows.push({
+      label: '5h',
+      usedPercent: 100 - fiveHourRemaining,
+      remainingPercent: fiveHourRemaining,
+      resetLabel: safeResetText(raw[prefix + '_5h_reset']),
+    });
+  }
+  if (weeklyRemaining !== null) {
+    windows.push({
+      label: 'Weekly',
+      usedPercent: 100 - weeklyRemaining,
+      remainingPercent: weeklyRemaining,
+      resetLabel: safeResetText(raw[prefix + '_weekly_reset']),
+    });
+  }
+  if (windows.length === 0) return null;
+  return {
+    windows,
+    observedAt: new Date(fetchedSec * 1000).toISOString(),
+    ageSeconds: Math.round(ageSeconds),
+  };
+}
+
+function readJsonRecord(path: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function finiteNumber(value: unknown): number | null {
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(number) ? number : null;
+}
+
+function percentNumber(value: unknown): number | null {
+  const number = finiteNumber(value);
+  return number !== null && number >= 0 && number <= 100 ? Math.round(number) : null;
+}
+
+function safeResetText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 40) : null;
+}
 
 interface FlowState {
   id: string;
@@ -194,6 +335,7 @@ async function providersSnapshot() {
           version,
           authMetadataDetected: authMetadataDetected(provider),
           deviceAuthAvailable: Boolean(spec.deviceAuthArgs),
+          quota: readProviderQuota(provider),
           checkedAt,
         },
       ] as const;
