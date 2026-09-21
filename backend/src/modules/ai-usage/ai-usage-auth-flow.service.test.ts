@@ -51,6 +51,14 @@ describe('AI usage Mac helper bridge', () => {
       remainingPercent: 77,
       resetAt: '2026-09-18T05:00:00.000Z',
       windowLabel: '5h',
+      quotaWindows: [
+        {
+          label: '5h',
+          usedPercent: 23,
+          remainingPercent: 77,
+          resetAt: '2026-09-18T05:00:00.000Z',
+        },
+      ],
       lastUpdated: '2026-09-18T00:00:01.000Z',
     });
     expect(result.cards[0]?.auth).toMatchObject({

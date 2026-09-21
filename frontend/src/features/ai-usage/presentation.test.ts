@@ -83,6 +83,20 @@ describe('AI usage presentation', () => {
       availability: 'AVAILABLE',
       freshness: 'fresh',
       usageSupported: true,
+      quotaWindows: [
+        {
+          label: '5h',
+          usedPercent: 0,
+          remainingPercent: 100,
+          resetAt: null,
+        },
+        {
+          label: 'Weekly',
+          usedPercent: 13,
+          remainingPercent: 87,
+          resetAt: '2026-09-23T08:07:43.983Z',
+        },
+      ],
       sessionTotalTokens: 30,
     });
     const unsupported = presentAiUsageCard({
@@ -102,6 +116,8 @@ describe('AI usage presentation', () => {
 
     expect(sanitized.sourceLabel).toBe('Sanitized metrics');
     expect(sanitized.sessionTokensLabel).toBe('30');
+    expect(sanitized.quotaWindows.map((window) => window.label)).toEqual(['5h', 'Weekly']);
+    expect(sanitized.quotaWindows[1]?.usedLabel).toBe('13%');
     expect(unsupported.sourceLabel).toBe('No source');
     expect(unsupported.availabilityLabel).toBe('Unsupported');
     expect(missing.availabilityLabel).toBe('CLI unavailable');

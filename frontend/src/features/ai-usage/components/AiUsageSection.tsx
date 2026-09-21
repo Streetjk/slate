@@ -100,9 +100,15 @@ function UsageCard({ card }: { card: AiUsageCard }) {
         </p>
         <dl className="mt-4 space-y-2 font-sans text-[12px]">
           <Metric label="CLI version" value={presented.versionLabel} />
-          <Metric label="Used" value={presented.usedLabel} />
-          <Metric label="Remaining" value={presented.remainingLabel} />
-          <Metric label="Reset" value={presented.resetLabel} />
+          {presented.quotaWindows.length > 0 ? (
+            <QuotaWindows windows={presented.quotaWindows} />
+          ) : (
+            <>
+              <Metric label="Used" value={presented.usedLabel} />
+              <Metric label="Remaining" value={presented.remainingLabel} />
+              <Metric label="Reset" value={presented.resetLabel} />
+            </>
+          )}
           <Metric label="Session tokens" value={presented.sessionTokensLabel} />
           <Metric
             label={presented.authModeLabel}
@@ -330,6 +336,41 @@ function deviceAuthStatusLabel(status: string): string {
     default:
       return 'OAuth status unknown';
   }
+}
+
+function QuotaWindows({
+  windows,
+}: {
+  windows: Array<{
+    label: string;
+    usedPercent: number;
+    usedLabel: string;
+    remainingLabel: string;
+    resetLabel: string;
+  }>;
+}) {
+  return (
+    <div className="space-y-3">
+      {windows.map((window) => (
+        <div key={window.label}>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-stone">{window.label}</dt>
+            <dd className="text-right text-ink">
+              {window.usedLabel} used · {window.remainingLabel} left
+            </dd>
+          </div>
+          <div className="mt-1 h-1.5 border border-line" aria-hidden="true">
+            <div className="h-full bg-ink" style={{ width: String(window.usedPercent) + '%' }} />
+          </div>
+          {window.resetLabel !== 'Unavailable' ? (
+            <div className="mt-1 text-right font-mono text-[9px] text-stone">
+              Reset {window.resetLabel}
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

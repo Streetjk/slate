@@ -57,35 +57,55 @@ export function renderAiUsageFrame(
     });
 
     if (primary && usedPercent !== null) {
-      const barX = CONTENT_LEFT;
-      const barY = y + 20;
-      const barW = 272;
-      const barH = 10;
-      c.strokeRect(barX, barY, barW, barH);
-      const innerW = Math.max(0, barW - 4);
-      const fillW = Math.round((innerW * usedPercent) / 100);
-      if (fillW > 0) c.fillRect(barX + 2, barY + 2, fillW, barH - 4);
-
-      draw.drawStrongText(c, fonts.sans16, String(usedPercent) + '%', CONTENT_RIGHT, y + 16, {
-        align: 'right',
-        maxWidth: 54,
-        ellipsis: true,
-      });
-
       const primaryLabel = pickText(primary.label, 'Quota');
-      const resetLabel = pickText(primary.resetLabel, '');
       const secondaryPercent = secondary ? numberPercent(secondary.usedPercent) : null;
-      const secondaryText =
-        secondary && secondaryPercent !== null
-          ? pickText(secondary.label, '') + ' ' + String(secondaryPercent) + '%'
-          : '';
-      const detail =
-        secondaryText ||
-        (resetLabel ? primaryLabel + ' · reset ' + resetLabel : primaryLabel + ' used');
-      draw.drawText(c, fonts.metric12, detail, CONTENT_LEFT, y + 34, {
-        maxWidth: CONTENT_WIDTH,
-        ellipsis: true,
-      });
+
+      if (secondary && secondaryPercent !== null) {
+        drawCompactQuotaWindow(
+          c,
+          fonts,
+          draw,
+          y + 18,
+          primaryLabel,
+          usedPercent,
+          CONTENT_LEFT,
+          CONTENT_RIGHT
+        );
+        drawCompactQuotaWindow(
+          c,
+          fonts,
+          draw,
+          y + 32,
+          pickText(secondary.label, 'Weekly'),
+          secondaryPercent,
+          CONTENT_LEFT,
+          CONTENT_RIGHT
+        );
+      } else {
+        const barX = CONTENT_LEFT;
+        const barY = y + 20;
+        const barW = 272;
+        const barH = 10;
+        c.strokeRect(barX, barY, barW, barH);
+        const innerW = Math.max(0, barW - 4);
+        const fillW = Math.round((innerW * usedPercent) / 100);
+        if (fillW > 0) c.fillRect(barX + 2, barY + 2, fillW, barH - 4);
+
+        draw.drawStrongText(c, fonts.sans16, String(usedPercent) + '%', CONTENT_RIGHT, y + 16, {
+          align: 'right',
+          maxWidth: 54,
+          ellipsis: true,
+        });
+
+        const resetLabel = pickText(primary.resetLabel, '');
+        const detail = resetLabel
+          ? primaryLabel + ' · reset ' + resetLabel
+          : primaryLabel + ' used';
+        draw.drawText(c, fonts.metric12, detail, CONTENT_LEFT, y + 34, {
+          maxWidth: CONTENT_WIDTH,
+          ellipsis: true,
+        });
+      }
     } else {
       const version = pickText(row.version, 'Unavailable');
       draw.drawText(c, fonts.sans16, 'Quota unavailable', CONTENT_LEFT, y + 20, {
@@ -125,4 +145,39 @@ function numberPercent(value: unknown): number | null {
         ? Number(value)
         : Number.NaN;
   return Number.isFinite(number) && number >= 0 && number <= 100 ? Math.round(number) : null;
+}
+
+function drawCompactQuotaWindow(
+  c: BitmapCanvas,
+  fonts: FontSet,
+  draw: FrameDrawKit,
+  y: number,
+  label: string,
+  usedPercent: number,
+  left: number,
+  right: number
+): void {
+  const barX = left + 52;
+  const barW = Math.max(80, right - barX - 48);
+  const barH = 6;
+  draw.drawText(c, fonts.metric12, shortQuotaLabel(label), left, y, {
+    maxWidth: 44,
+    ellipsis: true,
+  });
+  c.strokeRect(barX, y + 2, barW, barH);
+  const innerW = Math.max(0, barW - 4);
+  const fillW = Math.round((innerW * usedPercent) / 100);
+  if (fillW > 0) c.fillRect(barX + 2, y + 4, fillW, barH - 4);
+  draw.drawStrongText(c, fonts.metric12, String(usedPercent) + '%', right, y, {
+    align: 'right',
+    maxWidth: 44,
+    ellipsis: true,
+  });
+}
+
+function shortQuotaLabel(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized.includes('5h')) return '5h';
+  if (normalized.includes('week')) return 'Weekly';
+  return value.slice(0, 8);
 }

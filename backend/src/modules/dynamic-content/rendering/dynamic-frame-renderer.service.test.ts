@@ -116,7 +116,20 @@ describe('DynamicFrameRendererService', () => {
               label: 'Z.ai',
               version: 'glm-5.3-flash (Z.ai)',
               status: 'connected',
-              quotaWindows: [],
+              quotaWindows: [
+                {
+                  label: '5h',
+                  usedPercent: 0,
+                  remainingPercent: 100,
+                  resetLabel: null,
+                },
+                {
+                  label: 'Weekly',
+                  usedPercent: 13,
+                  remainingPercent: 87,
+                  resetLabel: 'Sep 23 at 4:07 PM',
+                },
+              ],
             },
             {
               id: 'grok',

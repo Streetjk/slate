@@ -70,6 +70,7 @@ export class AiUsageAuthFlowService {
                 remainingPercent: helperQuota.remainingPercent,
                 resetAt: helperQuota.resetAt,
                 windowLabel: helperQuota.windowLabel,
+                quotaWindows: helperQuota.windows,
                 lastUpdated: helperQuota.observedAt,
                 sourceStatus: 'AVAILABLE' as const,
                 availability: 'AVAILABLE' as const,
@@ -204,21 +205,44 @@ function normalizeHelperQuota(quota: HelperProviderState['quota']): {
   resetAt: string | null;
   windowLabel: string;
   observedAt: string;
+  windows: Array<{
+    label: string;
+    usedPercent: number;
+    remainingPercent: number;
+    resetAt: string | null;
+  }>;
 } | null {
   if (!quota || !Array.isArray(quota.windows) || quota.windows.length === 0) return null;
-  const first = quota.windows[0];
-  if (!first) return null;
-  const usedPercent = boundedPercent(first.usedPercent);
-  const remainingPercent = boundedPercent(first.remainingPercent);
-  const windowLabel = typeof first.label === 'string' ? first.label.trim().slice(0, 32) : '';
   const observedAt = safeIso(quota.observedAt);
-  if (usedPercent === null || remainingPercent === null || !windowLabel || !observedAt) return null;
+  if (!observedAt) return null;
+
+  const windows = quota.windows
+    .flatMap((window) => {
+      if (!window) return [];
+      const usedPercent = boundedPercent(window.usedPercent);
+      const remainingPercent = boundedPercent(window.remainingPercent);
+      const label = typeof window.label === 'string' ? window.label.trim().slice(0, 32) : '';
+      if (usedPercent === null || remainingPercent === null || !label) return [];
+      return [
+        {
+          label,
+          usedPercent,
+          remainingPercent,
+          resetAt: safeIso(window.resetAt),
+        },
+      ];
+    })
+    .slice(0, 2);
+
+  const first = windows[0];
+  if (!first) return null;
   return {
-    usedPercent,
-    remainingPercent,
-    resetAt: safeIso(first.resetAt),
-    windowLabel,
+    usedPercent: first.usedPercent,
+    remainingPercent: first.remainingPercent,
+    resetAt: first.resetAt,
+    windowLabel: first.label,
     observedAt,
+    windows,
   };
 }
 

@@ -64,6 +64,7 @@ export interface HelperQuotaSnapshot {
 }
 
 const CODEX_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const CODEX_REFRESH_INTERVAL_MS = 5 * 60_000;
 const AGY_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
 const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
 const GROK_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
@@ -88,6 +89,9 @@ export function readProviderQuota(
   return null;
 }
 
+let codexQuotaCache: HelperQuotaSnapshot | null = null;
+let codexQuotaRefreshedAtMs = 0;
+let codexQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
 let agyQuotaCache: Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>> | null = null;
 let agyQuotaRefreshedAtMs = 0;
 let agyQuotaRefreshPromise: Promise<
@@ -103,7 +107,25 @@ async function getProviderQuota(
   provider: HelperProvider,
   nowMs = Date.now()
 ): Promise<HelperQuotaSnapshot | null> {
-  if (provider === 'codex') return readCodexQuota(nowMs);
+  if (provider === 'codex') {
+    let current = readCodexQuota(nowMs) ?? codexQuotaCache;
+    if (!current || nowMs - codexQuotaRefreshedAtMs >= CODEX_REFRESH_INTERVAL_MS) {
+      codexQuotaRefreshPromise ??= refreshCodexQuota(nowMs).finally(() => {
+        codexQuotaRefreshPromise = null;
+      });
+      try {
+        const refreshed = await codexQuotaRefreshPromise;
+        if (refreshed) {
+          codexQuotaCache = refreshed;
+          codexQuotaRefreshedAtMs = Date.now();
+          current = refreshed;
+        }
+      } catch {
+        // Keep any still-fresh cache value if local event parsing fails.
+      }
+    }
+    return current;
+  }
   if (provider === 'agy_gemini') {
     if (!agyQuotaCache || nowMs - agyQuotaRefreshedAtMs >= AGY_REFRESH_INTERVAL_MS) {
       agyQuotaRefreshPromise ??= refreshAgyQuota(nowMs).finally(() => {
@@ -327,6 +349,98 @@ async function refreshGrokQuota(nowMs: number): Promise<HelperQuotaSnapshot | nu
   return readGrokQuota(nowMs);
 }
 
+export function parseCodexRateLimitEvent(
+  value: unknown,
+  nowMs = Date.now()
+): HelperQuotaSnapshot | null {
+  if (!isRecord(value)) return null;
+  const payload = isRecord(value.payload) ? value.payload : {};
+  const limits = isRecord(payload.rate_limits) ? payload.rate_limits : {};
+  if (typeof limits.limit_id === 'string' && limits.limit_id !== 'codex') return null;
+  const observedAt = safeIsoText(value.timestamp ?? value.ts ?? payload.timestamp);
+  if (!observedAt) return null;
+  const observedMs = Date.parse(observedAt);
+  const ageSeconds = Math.max(0, Math.round((nowMs - observedMs) / 1000));
+  if (ageSeconds > CODEX_QUOTA_MAX_AGE_SEC) return null;
+
+  const windows: HelperQuotaWindow[] = [];
+  for (const key of ['primary', 'secondary']) {
+    const row = isRecord(limits[key]) ? limits[key] : null;
+    if (!row) continue;
+    const usedPercent = percentNumber(row.used_percent);
+    if (usedPercent === null) continue;
+    const windowMinutes = finiteNumber(row.window_minutes);
+    const label =
+      windowMinutes === 300
+        ? '5h'
+        : windowMinutes === 10080
+          ? 'Weekly'
+          : windowMinutes
+            ? Math.round(windowMinutes) + 'm'
+            : key === 'primary'
+              ? 'Primary'
+              : 'Secondary';
+    windows.push({
+      label,
+      usedPercent,
+      remainingPercent: 100 - usedPercent,
+      resetAt: safeResetIso(row.resets_at),
+      resetLabel: compactResetLabel(row.resets_at),
+    });
+  }
+  if (windows.length === 0) return null;
+  windows.sort((a, b) => (a.label === '5h' ? -1 : b.label === '5h' ? 1 : 0));
+  return { windows, observedAt, ageSeconds };
+}
+
+async function refreshCodexQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
+  const script = [
+    'import datetime as dt, glob, json, os, pathlib, sys',
+    'home=pathlib.Path.home()',
+    "paths=sorted(glob.glob(str(home/'.codex'/'sessions'/'**'/'*.jsonl'), recursive=True), key=os.path.getmtime, reverse=True)[:80]",
+    'best=None; best_epoch=-1',
+    'for path_s in paths:',
+    '  path=pathlib.Path(path_s)',
+    '  try:',
+    "    with path.open('rb') as f:",
+    "      f.seek(0, os.SEEK_END); size=f.tell(); pos=size; buf=b''",
+    '      while pos>0 and size-pos < 524288:',
+    '        rs=min(65536,pos); pos-=rs; f.seek(pos); buf=f.read(rs)+buf',
+    '      for raw in reversed(buf.splitlines()):',
+    "        if b'rate_limits' not in raw: continue",
+    "        try: obj=json.loads(raw.decode('utf-8','ignore'))",
+    '        except Exception: continue',
+    "        payload=obj.get('payload') or {}; limits=payload.get('rate_limits')",
+    "        if not isinstance(limits,dict) or limits.get('limit_id') not in (None,'codex'): continue",
+    "        ts=obj.get('timestamp') or obj.get('ts') or payload.get('timestamp')",
+    "        try: epoch=dt.datetime.fromisoformat(str(ts).replace('Z','+00:00')).timestamp()",
+    '        except Exception: epoch=os.path.getmtime(path)',
+    '        if epoch>best_epoch: best_epoch=epoch; best=obj',
+    '        break',
+    '  except Exception: continue',
+    'if best is None: sys.exit(1)',
+    'print(json.dumps(best))',
+  ].join(String.fromCharCode(10));
+
+  const proc = Bun.spawn(['python3', '-c', script], {
+    stdout: 'pipe',
+    stderr: 'ignore',
+    env: safeCliEnv(),
+    cwd: homedir(),
+  });
+  const timer = setTimeout(() => proc.kill(), 5_000);
+  try {
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+    if (proc.exitCode !== 0 || !output.trim()) return null;
+    return parseCodexRateLimitEvent(JSON.parse(output), nowMs);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function readCodexQuota(nowMs: number): HelperQuotaSnapshot | null {
   const path = join(homedir(), '.claude', 'codex-quota-cache.json');
   const raw = readJsonRecord(path);
@@ -486,27 +600,25 @@ function percentNumber(value: unknown): number | null {
   return number !== null && number >= 0 && number <= 100 ? Math.round(number) : null;
 }
 
-function safeResetIso(value: unknown): string | null {
+function resetEpochMs(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return new Date(value).toISOString();
+    return value > 10_000_000_000 ? value : value * 1000;
   }
   if (typeof value !== 'string' || !value.trim()) return null;
   const numeric = Number(value);
-  const time = Number.isFinite(numeric) && numeric > 10_000_000_000 ? numeric : Date.parse(value);
-  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+  if (Number.isFinite(numeric)) return numeric > 10_000_000_000 ? numeric : numeric * 1000;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function safeResetIso(value: unknown): string | null {
+  const time = resetEpochMs(value);
+  return time === null ? null : new Date(time).toISOString();
 }
 
 function compactResetLabel(value: unknown): string | null {
-  let time: number;
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    time = value;
-  } else if (typeof value === 'string' && value.trim()) {
-    const numeric = Number(value);
-    time = Number.isFinite(numeric) && numeric > 10_000_000_000 ? numeric : Date.parse(value);
-  } else {
-    return null;
-  }
-  if (!Number.isFinite(time)) return safeResetText(value);
+  const time = resetEpochMs(value);
+  if (time === null) return safeResetText(value);
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Australia/Perth',
     month: 'short',

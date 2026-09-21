@@ -41,6 +41,13 @@ export function presentAiUsageCard(card: AiUsageCard) {
     usedLabel: formatPercentage(card.usedPercent),
     remainingLabel: formatPercentage(card.remainingPercent),
     resetLabel: formatDate(card.resetAt),
+    quotaWindows: (card.quotaWindows ?? []).map((window) => ({
+      label: window.label,
+      usedPercent: window.usedPercent,
+      usedLabel: formatPercentage(window.usedPercent),
+      remainingLabel: formatPercentage(window.remainingPercent),
+      resetLabel: formatDate(window.resetAt),
+    })),
     sessionTokensLabel: formatTokens(card.sessionTotalTokens),
     updatedLabel: formatDate(card.lastUpdated),
     authStatusLabel:

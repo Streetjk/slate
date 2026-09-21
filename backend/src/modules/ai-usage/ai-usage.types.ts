@@ -44,12 +44,20 @@ export type AiUsageSourceStatus =
 
 export type AiUsageUnknownValue = string | number | boolean | null;
 
+export interface AiUsageQuotaWindow {
+  label: string;
+  usedPercent: number;
+  remainingPercent: number;
+  resetAt: string | null;
+}
+
 export interface AiUsageCard {
   provider: AiUsageProvider;
   usedPercent: number | null;
   remainingPercent: number | null;
   resetAt: string | null;
   windowLabel: string | null;
+  quotaWindows?: AiUsageQuotaWindow[];
   planOrTier: string | null;
   sessionInputTokens: number | null;
   sessionOutputTokens: number | null;

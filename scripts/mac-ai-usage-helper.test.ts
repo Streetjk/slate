@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
   extractDeviceAuthFields,
+  parseCodexRateLimitEvent,
   parseZaiQuotaPayload,
   readProviderQuota,
   stripAnsi,
@@ -34,6 +35,31 @@ describe('Mac AI usage helper device auth sanitization', () => {
 });
 
 describe('Mac AI usage helper quota normalization', () => {
+  it('parses fresh Codex session rate-limit events with Unix-second resets', () => {
+    const quota = parseCodexRateLimitEvent(
+      {
+        timestamp: '2026-09-21T12:05:00.000Z',
+        payload: {
+          rate_limits: {
+            limit_id: 'codex',
+            primary: {
+              used_percent: 23,
+              window_minutes: 10080,
+              resets_at: 1790412574,
+            },
+          },
+        },
+      },
+      Date.parse('2026-09-21T12:05:10.000Z')
+    );
+    expect(quota?.windows[0]).toMatchObject({
+      label: 'Weekly',
+      usedPercent: 23,
+      remainingPercent: 77,
+      resetAt: '2026-09-26T08:49:34.000Z',
+    });
+  });
+
   it('reads fresh Codex quota cache without exposing unrelated fields', () => {
     const quota = readProviderQuota('codex', Date.now());
     if (!quota) return;
