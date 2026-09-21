@@ -42,7 +42,12 @@ describe('Mac AI usage helper quota normalization', () => {
     expect(JSON.stringify(quota)).not.toContain('email');
   });
 
-  it('does not invent Grok quota when no ceiling source exists', () => {
-    expect(readProviderQuota('grok', Date.now())).toBeNull();
+  it('uses a fresh local Grok billing percentage when available', () => {
+    const quota = readProviderQuota('grok', Date.now());
+    if (!quota) return;
+    expect(quota.windows[0]?.label).toBe('Weekly');
+    expect(quota.windows[0]?.usedPercent).toBeGreaterThanOrEqual(0);
+    expect(quota.windows[0]?.usedPercent).toBeLessThanOrEqual(100);
+    expect(quota.windows[0]?.remainingPercent).toBe(100 - quota.windows[0]!.usedPercent);
   });
 });

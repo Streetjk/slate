@@ -62,18 +62,163 @@ export interface HelperQuotaSnapshot {
 
 const CODEX_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
 const AGY_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
+const GROK_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const GROK_REFRESH_INTERVAL_MS = 10 * 60_000;
+const AGY_USAGE_BIN =
+  process.env.SLATE_AGY_USAGE_BIN ?? join(homedir(), '.local', 'bin', 'agy-usage');
 
 export function readProviderQuota(
   provider: HelperProvider,
   nowMs = Date.now()
 ): HelperQuotaSnapshot | null {
-  if (provider === 'codex') {
-    return readCodexQuota(nowMs);
-  }
+  if (provider === 'codex') return readCodexQuota(nowMs);
+  if (provider === 'grok') return readGrokQuota(nowMs);
   if (provider === 'agy_gemini' || provider === 'claude') {
-    return readAgyQuota(provider, nowMs);
+    return agyQuotaCache?.[provider] ?? readAgyQuota(provider, nowMs);
   }
   return null;
+}
+
+let agyQuotaCache: Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>> | null =
+  null;
+let agyQuotaRefreshedAtMs = 0;
+let agyQuotaRefreshPromise: Promise<
+  Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>>
+> | null = null;
+let grokQuotaRefreshedAtMs = 0;
+let grokQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
+
+async function getProviderQuota(
+  provider: HelperProvider,
+  nowMs = Date.now()
+): Promise<HelperQuotaSnapshot | null> {
+  if (provider === 'codex') return readCodexQuota(nowMs);
+  if (provider === 'agy_gemini' || provider === 'claude') {
+    if (!agyQuotaCache || nowMs - agyQuotaRefreshedAtMs >= AGY_REFRESH_INTERVAL_MS) {
+      agyQuotaRefreshPromise ??= refreshAgyQuota(nowMs).finally(() => {
+        agyQuotaRefreshPromise = null;
+      });
+      try {
+        agyQuotaCache = await agyQuotaRefreshPromise;
+        agyQuotaRefreshedAtMs = Date.now();
+      } catch {
+        // Fail closed to any still-fresh in-memory cache; otherwise no quota.
+      }
+    }
+    const cached = agyQuotaCache?.[provider] ?? null;
+    if (!cached) return null;
+    const observedMs = Date.parse(cached.observedAt);
+    return Number.isFinite(observedMs) && nowMs - observedMs <= AGY_QUOTA_MAX_AGE_SEC * 1000
+      ? cached
+      : null;
+  }
+  if (provider === 'grok') {
+    let current = readGrokQuota(nowMs);
+    if (!current || nowMs - grokQuotaRefreshedAtMs >= GROK_REFRESH_INTERVAL_MS) {
+      grokQuotaRefreshPromise ??= refreshGrokQuota(nowMs).finally(() => {
+        grokQuotaRefreshPromise = null;
+      });
+      try {
+        current = await grokQuotaRefreshPromise;
+        grokQuotaRefreshedAtMs = Date.now();
+      } catch {
+        current = readGrokQuota(nowMs);
+      }
+    }
+    return current;
+  }
+  return null;
+}
+
+async function refreshAgyQuota(
+  nowMs: number
+): Promise<Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>>> {
+  if (!existsSync(AGY_USAGE_BIN)) return {};
+  const proc = Bun.spawn([AGY_USAGE_BIN, '--refresh', 'json'], {
+    stdout: 'pipe',
+    stderr: 'ignore',
+    env: safeCliEnv(),
+    cwd: homedir(),
+  });
+  const timer = setTimeout(() => proc.kill(), 15_000);
+  try {
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+    if (proc.exitCode !== 0) return {};
+    const parsed = JSON.parse(output);
+    if (!isRecord(parsed)) return {};
+    const observedAt = safeIsoText(parsed.updated_at) ?? new Date(nowMs).toISOString();
+    const quotaSummary = isRecord(parsed.quota_summary) ? parsed.quota_summary : {};
+    const groups = Array.isArray(quotaSummary.groups) ? quotaSummary.groups : [];
+    const result: Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>> = {};
+    for (const group of groups) {
+      if (!isRecord(group)) continue;
+      const name = typeof group.display_name === 'string' ? group.display_name.toLowerCase() : '';
+      const provider = name.includes('gemini')
+        ? 'agy_gemini'
+        : name.includes('claude')
+          ? 'claude'
+          : null;
+      if (!provider) continue;
+      const buckets = Array.isArray(group.buckets) ? group.buckets : [];
+      const windows: HelperQuotaWindow[] = [];
+      for (const bucket of buckets) {
+        if (!isRecord(bucket) || bucket.disabled === true) continue;
+        const remainingPercent = percentNumber(bucket.remaining_pct);
+        if (remainingPercent === null) continue;
+        const window = typeof bucket.window === 'string' ? bucket.window.trim().toLowerCase() : '';
+        const label = window === '5h' ? 'AGY 5h' : window === 'weekly' ? 'AGY Weekly' : 'AGY quota';
+        windows.push({
+          label,
+          usedPercent: 100 - remainingPercent,
+          remainingPercent,
+          resetLabel: compactResetLabel(bucket.reset_time),
+        });
+      }
+      if (windows.length > 0) {
+        const observedMs = Date.parse(observedAt);
+        result[provider] = {
+          windows: windows.sort((a, b) =>
+            a.label.includes('5h') ? -1 : b.label.includes('5h') ? 1 : 0
+          ),
+          observedAt,
+          ageSeconds: Number.isFinite(observedMs)
+            ? Math.max(0, Math.round((nowMs - observedMs) / 1000))
+            : 0,
+        };
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function refreshGrokQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
+  const grok = PROVIDERS.grok.command;
+  if (!existsSync(grok)) return null;
+  try {
+    const proc = Bun.spawn([grok, 'dashboard'], {
+      stdout: 'ignore',
+      stderr: 'ignore',
+      stdin: 'pipe',
+      env: { ...safeCliEnv(), TERM: 'xterm-256color' },
+      cwd: homedir(),
+    });
+    const timer = setTimeout(() => proc.kill(), 4_000);
+    try {
+      await Promise.race([proc.exited, new Promise((resolve) => setTimeout(resolve, 4_500))]);
+    } finally {
+      clearTimeout(timer);
+      if (proc.exitCode === null) proc.kill();
+    }
+  } catch {
+    // The local log may still contain a usable fresh billing snapshot.
+  }
+  return readGrokQuota(nowMs);
 }
 
 function readCodexQuota(nowMs: number): HelperQuotaSnapshot | null {
@@ -114,6 +259,50 @@ function readCodexQuota(nowMs: number): HelperQuotaSnapshot | null {
     observedAt: new Date(observedSec * 1000).toISOString(),
     ageSeconds: Math.round(ageSeconds),
   };
+}
+
+function readGrokQuota(nowMs: number): HelperQuotaSnapshot | null {
+  const path = join(homedir(), '.grok', 'logs', 'unified.jsonl');
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+  const lines = text.split(String.fromCharCode(10));
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index] ?? '';
+    if (!line.includes('billing: fetched credits config')) continue;
+    try {
+      const row = JSON.parse(line);
+      if (!isRecord(row)) continue;
+      const ctx = isRecord(row.ctx) ? row.ctx : isRecord(row.context) ? row.context : {};
+      const config = isRecord(ctx.config) ? ctx.config : {};
+      const usedPercent = percentNumber(config.creditUsagePercent);
+      const observedAt = safeIsoText(row.ts ?? row.timestamp ?? row.time);
+      if (usedPercent === null || !observedAt) continue;
+      const observedMs = Date.parse(observedAt);
+      const ageSeconds = Math.max(0, Math.round((nowMs - observedMs) / 1000));
+      if (ageSeconds > GROK_QUOTA_MAX_AGE_SEC) return null;
+      const period = isRecord(config.currentPeriod) ? config.currentPeriod : {};
+      const resetLabel = compactResetLabel(period.end);
+      return {
+        windows: [
+          {
+            label: 'Weekly',
+            usedPercent,
+            remainingPercent: 100 - usedPercent,
+            resetLabel,
+          },
+        ],
+        observedAt,
+        ageSeconds,
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function readAgyQuota(
@@ -169,6 +358,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function safeIsoText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
 function finiteNumber(value: unknown): number | null {
   const number =
     typeof value === 'number'
@@ -182,6 +377,21 @@ function finiteNumber(value: unknown): number | null {
 function percentNumber(value: unknown): number | null {
   const number = finiteNumber(value);
   return number !== null && number >= 0 && number <= 100 ? Math.round(number) : null;
+}
+
+function compactResetLabel(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return safeResetText(value);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Australia/Perth',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(time));
+  return parts.replace(',', '').replace(/s(AM|PM)$/i, (match) => match.toLowerCase());
 }
 
 function safeResetText(value: unknown): string | null {
@@ -335,7 +545,7 @@ async function providersSnapshot() {
           version,
           authMetadataDetected: authMetadataDetected(provider),
           deviceAuthAvailable: Boolean(spec.deviceAuthArgs),
-          quota: readProviderQuota(provider),
+          quota: await getProviderQuota(provider),
           checkedAt,
         },
       ] as const;
