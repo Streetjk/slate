@@ -12,7 +12,7 @@ import type { FontSet } from './fonts/dynamic-frame-font.service';
 import { formatShortTime } from './helpers/frame-date-utils';
 import { isRecord, pickText } from './helpers/frame-value-utils';
 
-const PROVIDER_LABELS = ['Codex', 'AGY / Gemini', 'Z.ai', 'Grok'];
+const PROVIDER_LABELS = ['Codex', 'Grok', 'AGY / Gemini', 'Z.ai'];
 
 export function renderAiUsageFrame(
   c: BitmapCanvas,

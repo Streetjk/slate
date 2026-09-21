@@ -58,9 +58,9 @@ describe('AiUsageProvider', () => {
 
     expect(data.providers.map((entry) => [entry.id, entry.status])).toEqual([
       ['codex', 'connected'],
+      ['grok', 'connected'],
       ['agy_gemini', 'connected'],
       ['zai', 'connected'],
-      ['grok', 'connected'],
     ]);
     expect(data.providers[0]?.version).toBe('codex-cli 0.155.0');
     expect(data.providers[0]?.quotaWindows).toEqual([

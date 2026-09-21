@@ -26,9 +26,9 @@ export interface AiUsagePanelData {
 
 const PROVIDERS: Array<{ id: AiUsagePanelProvider['id']; label: string }> = [
   { id: 'codex', label: 'Codex' },
+  { id: 'grok', label: 'Grok' },
   { id: 'agy_gemini', label: 'AGY / Gemini' },
   { id: 'zai', label: 'Z.ai' },
-  { id: 'grok', label: 'Grok' },
 ];
 
 @Injectable()

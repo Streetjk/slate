@@ -15,6 +15,8 @@ import {
 } from '../query/ai-usage-queries';
 import { presentAiUsageCard } from '../presentation';
 
+const WEB_PROVIDER_ORDER: AiUsageCard['provider'][] = ['codex', 'agy_gemini', 'grok', 'zai'];
+
 export function AiUsageSection() {
   const usage = useAiUsage();
   return (
@@ -28,10 +30,15 @@ export function AiUsageSection() {
           <Spinner label="Loading" />
         </div>
       ) : usage.data?.cards?.length ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {usage.data.cards.map((card, index) => (
-            <UsageCard key={card?.provider ?? index} card={card} />
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...usage.data.cards]
+            .sort(
+              (a, b) =>
+                WEB_PROVIDER_ORDER.indexOf(a.provider) - WEB_PROVIDER_ORDER.indexOf(b.provider)
+            )
+            .map((card, index) => (
+              <UsageCard key={card?.provider ?? index} card={card} />
+            ))}
         </div>
       ) : (
         <EmptyState icon={<Activity size={26} />} title="Usage unavailable" />
