@@ -1,4 +1,4 @@
-export const AI_USAGE_PROVIDERS = ['codex', 'agy_gemini', 'claude', 'grok'] as const;
+export const AI_USAGE_PROVIDERS = ['codex', 'agy_gemini', 'zai', 'grok'] as const;
 export type AiUsageProvider = (typeof AI_USAGE_PROVIDERS)[number];
 
 export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
@@ -10,7 +10,7 @@ export type AiUsageAvailability =
   | 'UNSUPPORTED'
   | 'ERROR';
 export type AiUsageFreshness = 'fresh' | 'stale' | 'error';
-export type AiUsageAuthMode = 'oauth' | 'adc';
+export type AiUsageAuthMode = 'oauth' | 'adc' | 'api_key';
 export type AiUsageAuthStatus = 'LOCAL_AUTH_PRESENT' | 'NOT_DETECTED' | 'UNKNOWN';
 export type AiUsageAuthSource = 'local_metadata' | 'mac_helper' | 'none';
 

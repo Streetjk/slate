@@ -22,7 +22,7 @@ export const DEFAULT_AI_USAGE_CACHE_TTL_MS = 30_000;
 export const COMMANDS: Record<AiUsageProvider, readonly [string, readonly string[]]> = {
   codex: ['codex', ['--version']],
   agy_gemini: ['agy', ['--version']],
-  claude: ['claude', ['--version']],
+  zai: ['glm53', []],
   grok: ['grok', ['--version']],
 };
 
@@ -40,10 +40,10 @@ export const AUTH_LOGIN: Record<
     command: 'agy',
     hint: 'Launch AGY and complete Google OAuth sign-in when prompted.',
   },
-  claude: {
-    mode: 'oauth',
-    command: 'claude auth login',
-    hint: 'Use Claude Code account OAuth; Slate never receives the OAuth tokens.',
+  zai: {
+    mode: 'api_key',
+    command: 'glm53',
+    hint: 'Z.ai uses the configured local API key for glm-5.3-flash on the Mac mini.',
   },
   grok: {
     mode: 'oauth',
@@ -418,8 +418,8 @@ function localAuthMetadataPresent(provider: AiUsageProvider, homeDir: string): b
     switch (provider) {
       case 'codex':
         return existsSync(join(homeDir, '.codex', 'auth.json'));
-      case 'claude':
-        return existsSync(join(homeDir, '.claude', '.credentials.json'));
+      case 'zai':
+        return existsSync(process.env.ZAI_KEYFILE ?? join(homeDir, 'Cre', 'Zai.txt'));
       case 'agy_gemini':
         return (
           existsSync(join(homeDir, '.gemini', 'google_accounts.json')) ||

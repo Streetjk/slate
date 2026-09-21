@@ -3,7 +3,7 @@ import type { AiUsageCard, AiUsageProvider } from './query/ai-usage-queries';
 const PROVIDER_LABELS: Record<AiUsageProvider, string> = {
   codex: 'Codex',
   agy_gemini: 'AGY / Gemini',
-  claude: 'Claude',
+  zai: 'Z.ai',
   grok: 'Grok',
 };
 
@@ -43,8 +43,16 @@ export function presentAiUsageCard(card: AiUsageCard) {
     resetLabel: formatDate(card.resetAt),
     sessionTokensLabel: formatTokens(card.sessionTotalTokens),
     updatedLabel: formatDate(card.lastUpdated),
-    authStatusLabel: AUTH_STATUS_LABELS[card.auth.status] ?? 'OAuth status unknown',
-    authModeLabel: card.auth.mode === 'adc' ? 'ADC' : 'OAuth',
+    authStatusLabel:
+      card.auth.mode === 'api_key'
+        ? card.auth.status === 'LOCAL_AUTH_PRESENT'
+          ? 'API key detected'
+          : card.auth.status === 'NOT_DETECTED'
+            ? 'No API key detected'
+            : 'API key status unknown'
+        : (AUTH_STATUS_LABELS[card.auth.status] ?? 'OAuth status unknown'),
+    authModeLabel:
+      card.auth.mode === 'adc' ? 'ADC' : card.auth.mode === 'api_key' ? 'API key' : 'OAuth',
     loginCommand: card.auth.loginCommand,
     loginHint: card.auth.loginHint,
   };

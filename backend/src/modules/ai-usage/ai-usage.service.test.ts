@@ -46,14 +46,14 @@ describe('AI usage service and command runner', () => {
 
     const snapshot = await service.getSnapshot();
 
-    // Exactly 4 allowlisted commands called, including required Claude coverage
+    // Exactly 4 allowlisted commands called, including required Z.ai coverage
     expect(recordedCalls.length).toBe(4);
     const invoked = recordedCalls.map((c) => [c.command, c.args]);
     expect(invoked).toEqual(Object.values(COMMANDS));
     expect(invoked).toEqual([
       ['codex', ['--version']],
       ['agy', ['--version']],
-      ['claude', ['--version']],
+      ['glm53', []],
       ['grok', ['--version']],
     ]);
 
@@ -90,7 +90,11 @@ describe('AI usage service and command runner', () => {
       expect(typeof card.lastUpdated).toBe('string');
       expect(card.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
       expect(card.capability.binaryPresent).toBe(true);
-      expect(card.capability.probeCommand).toMatch(/ --version$/);
+      if (card.provider === 'zai') {
+        expect(card.capability.probeCommand).toBe('glm53');
+      } else {
+        expect(card.capability.probeCommand).toMatch(/ --version$/);
+      }
       expect(card.source).toBe('version_probe');
       expect(card.usageSupported).toBe(false);
       expect(card.quotaSource).toBe('unsupported');
@@ -113,12 +117,12 @@ describe('AI usage service and command runner', () => {
 
     const codexCard = snapshot.cards.find((c) => c.provider === 'codex');
     const agyCard = snapshot.cards.find((c) => c.provider === 'agy_gemini');
-    const claudeCard = snapshot.cards.find((c) => c.provider === 'claude');
+    const zaiCard = snapshot.cards.find((c) => c.provider === 'zai');
     const grokCard = snapshot.cards.find((c) => c.provider === 'grok');
 
     expect(codexCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
     expect(grokCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
-    expect(claudeCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
+    expect(zaiCard?.sourceStatus).toBe('UNAVAILABLE_NO_MACHINE_READABLE_USAGE');
     expect(agyCard?.sourceStatus).toBe('ERROR');
     expect(agyCard?.availability).toBe('ERROR');
     expect(agyCard?.freshness).toBe('error');
@@ -238,13 +242,14 @@ describe('AI usage OAuth metadata detection', () => {
     try {
       mkdirSync(join(home, '.codex'), { recursive: true });
       mkdirSync(join(home, '.claude'), { recursive: true });
+      mkdirSync(join(home, 'Cre'), { recursive: true });
       mkdirSync(join(home, '.gemini'), { recursive: true });
       mkdirSync(join(home, '.grok'), { recursive: true });
       writeFileSync(
         join(home, '.codex', 'auth.json'),
         JSON.stringify({ auth_mode: 'chatgpt', tokens: { access_token: 'do-not-leak' } })
       );
-      writeFileSync(join(home, '.claude', '.credentials.json'), '{"oauthToken":"do-not-leak"}');
+      writeFileSync(join(home, 'Cre', 'Zai.txt'), 'ZAI_API_KEY=do-not-leak');
       writeFileSync(join(home, '.gemini', 'google_accounts.json'), '{"active":"private"}');
       writeFileSync(
         join(home, '.grok', 'auth.json'),
@@ -254,7 +259,7 @@ describe('AI usage OAuth metadata detection', () => {
       );
 
       const checkedAt = '2026-09-17T00:00:00.000Z';
-      const values = ['codex', 'agy_gemini', 'claude', 'grok'].map((provider) =>
+      const values = ['codex', 'agy_gemini', 'zai', 'grok'].map((provider) =>
         detectLocalAuth(provider as keyof typeof COMMANDS, home, checkedAt)
       );
       for (const value of values) {
@@ -267,7 +272,7 @@ describe('AI usage OAuth metadata detection', () => {
       expect(values.map((value) => value.loginCommand)).toEqual([
         'codex login --device-auth',
         'agy',
-        'claude auth login',
+        'glm53',
         'grok login --device-auth',
       ]);
     } finally {
@@ -554,7 +559,7 @@ describe('AI usage payload sanitization', () => {
         availability: 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE',
       }
     );
-    const missing = unavailableCard('claude', null, 'UNAVAILABLE', {
+    const missing = unavailableCard('zai', null, 'UNAVAILABLE', {
       availability: 'BINARY_MISSING',
     });
     const error = unavailableCard('grok', null, 'ERROR', { availability: 'ERROR' });

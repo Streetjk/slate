@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API_PREFIX, api } from '@/lib/http';
 
-export type AiUsageProvider = 'codex' | 'agy_gemini' | 'claude' | 'grok';
+export type AiUsageProvider = 'codex' | 'agy_gemini' | 'zai' | 'grok';
 export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
 export type AiUsageQuotaSource = 'unsupported' | 'none';
 export type AiUsageAvailability =
@@ -46,7 +46,7 @@ export interface AiUsageCard {
   error: { code: string; message: string } | null;
   unknownQuotaFields: Record<string, string | number | boolean | null>;
   auth: {
-    mode: 'oauth' | 'adc';
+    mode: 'oauth' | 'adc' | 'api_key';
     status: AiUsageAuthStatus;
     source: 'local_metadata' | 'mac_helper' | 'none';
     loginCommand: string;

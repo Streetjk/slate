@@ -7,7 +7,7 @@ export const DEFAULT_HELPER_PORT = 19091;
 export const FLOW_TTL_MS = 10 * 60_000;
 export const MAX_CAPTURE_BYTES = 32 * 1024;
 
-export type HelperProvider = 'codex' | 'agy_gemini' | 'claude' | 'grok';
+export type HelperProvider = 'codex' | 'agy_gemini' | 'zai' | 'grok';
 export type DeviceAuthProvider = 'codex' | 'grok';
 export type DeviceAuthStatus =
   | 'STARTING'
@@ -20,6 +20,7 @@ export type DeviceAuthStatus =
 interface ProviderSpec {
   command: string;
   versionArgs: string[];
+  fixedVersion?: string;
   deviceAuthArgs?: string[];
   allowedHosts?: string[];
 }
@@ -35,9 +36,10 @@ const PROVIDERS: Record<HelperProvider, ProviderSpec> = {
     command: process.env.SLATE_AGY_BIN ?? join(homedir(), '.local', 'bin', 'agy'),
     versionArgs: ['--version'],
   },
-  claude: {
-    command: process.env.SLATE_CLAUDE_BIN ?? '/opt/homebrew/bin/claude',
-    versionArgs: ['--version'],
+  zai: {
+    command: process.env.SLATE_ZAI_BIN ?? join(homedir(), '.local', 'bin', 'glm53'),
+    versionArgs: [],
+    fixedVersion: process.env.SLATE_ZAI_MODEL ?? 'glm-5.3-flash (Z.ai)',
   },
   grok: {
     command: process.env.SLATE_GROK_BIN ?? join(homedir(), '.local', 'bin', 'grok'),
@@ -74,17 +76,16 @@ export function readProviderQuota(
 ): HelperQuotaSnapshot | null {
   if (provider === 'codex') return readCodexQuota(nowMs);
   if (provider === 'grok') return readGrokQuota(nowMs);
-  if (provider === 'agy_gemini' || provider === 'claude') {
+  if (provider === 'agy_gemini') {
     return agyQuotaCache?.[provider] ?? readAgyQuota(provider, nowMs);
   }
   return null;
 }
 
-let agyQuotaCache: Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>> | null =
-  null;
+let agyQuotaCache: Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>> | null = null;
 let agyQuotaRefreshedAtMs = 0;
 let agyQuotaRefreshPromise: Promise<
-  Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>>
+  Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>>
 > | null = null;
 let grokQuotaRefreshedAtMs = 0;
 let grokQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
@@ -94,7 +95,7 @@ async function getProviderQuota(
   nowMs = Date.now()
 ): Promise<HelperQuotaSnapshot | null> {
   if (provider === 'codex') return readCodexQuota(nowMs);
-  if (provider === 'agy_gemini' || provider === 'claude') {
+  if (provider === 'agy_gemini') {
     if (!agyQuotaCache || nowMs - agyQuotaRefreshedAtMs >= AGY_REFRESH_INTERVAL_MS) {
       agyQuotaRefreshPromise ??= refreshAgyQuota(nowMs).finally(() => {
         agyQuotaRefreshPromise = null;
@@ -133,7 +134,7 @@ async function getProviderQuota(
 
 async function refreshAgyQuota(
   nowMs: number
-): Promise<Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>>> {
+): Promise<Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>>> {
   if (!existsSync(AGY_USAGE_BIN)) return {};
   const proc = Bun.spawn([AGY_USAGE_BIN, '--refresh', 'json'], {
     stdout: 'pipe',
@@ -151,15 +152,11 @@ async function refreshAgyQuota(
     const observedAt = safeIsoText(parsed.updated_at) ?? new Date(nowMs).toISOString();
     const quotaSummary = isRecord(parsed.quota_summary) ? parsed.quota_summary : {};
     const groups = Array.isArray(quotaSummary.groups) ? quotaSummary.groups : [];
-    const result: Partial<Record<'agy_gemini' | 'claude', HelperQuotaSnapshot | null>> = {};
+    const result: Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>> = {};
     for (const group of groups) {
       if (!isRecord(group)) continue;
       const name = typeof group.display_name === 'string' ? group.display_name.toLowerCase() : '';
-      const provider = name.includes('gemini')
-        ? 'agy_gemini'
-        : name.includes('claude')
-          ? 'claude'
-          : null;
+      const provider = name.includes('gemini') ? 'agy_gemini' : null;
       if (!provider) continue;
       const buckets = Array.isArray(group.buckets) ? group.buckets : [];
       const windows: HelperQuotaWindow[] = [];
@@ -305,10 +302,7 @@ function readGrokQuota(nowMs: number): HelperQuotaSnapshot | null {
   return null;
 }
 
-function readAgyQuota(
-  provider: 'agy_gemini' | 'claude',
-  nowMs: number
-): HelperQuotaSnapshot | null {
+function readAgyQuota(provider: 'agy_gemini', nowMs: number): HelperQuotaSnapshot | null {
   const path = join(homedir(), '.claude', 'agy-g1-cache.json');
   const raw = readJsonRecord(path);
   if (!raw) return null;
@@ -317,7 +311,7 @@ function readAgyQuota(
   const ageSeconds = Math.max(0, nowMs / 1000 - fetchedSec);
   if (ageSeconds > AGY_QUOTA_MAX_AGE_SEC) return null;
 
-  const prefix = provider === 'agy_gemini' ? 'gemini' : 'claude';
+  const prefix = 'gemini';
   const weeklyRemaining = percentNumber(raw[prefix + '_weekly_pct']);
   const fiveHourRemaining = percentNumber(raw[prefix + '_5h_pct']);
   const windows: HelperQuotaWindow[] = [];
@@ -485,6 +479,7 @@ async function collectText(stream: ReadableStream<Uint8Array> | null, flow: Flow
 
 async function providerVersion(spec: ProviderSpec): Promise<string | null> {
   if (!existsSync(spec.command)) return null;
+  if (spec.fixedVersion) return spec.fixedVersion;
   try {
     const proc = Bun.spawn([spec.command, ...spec.versionArgs], {
       stdout: 'pipe',
@@ -507,8 +502,8 @@ function authMetadataDetected(provider: HelperProvider): boolean {
   switch (provider) {
     case 'codex':
       return existsSync(join(home, '.codex', 'auth.json'));
-    case 'claude':
-      return existsSync(join(home, '.claude', '.credentials.json'));
+    case 'zai':
+      return existsSync(process.env.ZAI_KEYFILE ?? join(home, 'Cre', 'Zai.txt'));
     case 'agy_gemini':
       return (
         existsSync(join(home, '.gemini', 'google_accounts.json')) ||

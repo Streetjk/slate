@@ -11,7 +11,7 @@ export interface AiUsagePanelQuotaWindow {
 }
 
 export interface AiUsagePanelProvider {
-  id: 'codex' | 'agy_gemini' | 'claude' | 'grok';
+  id: 'codex' | 'agy_gemini' | 'zai' | 'grok';
   label: string;
   version: string;
   status: 'connected' | 'sign_in' | 'unknown';
@@ -27,7 +27,7 @@ export interface AiUsagePanelData {
 const PROVIDERS: Array<{ id: AiUsagePanelProvider['id']; label: string }> = [
   { id: 'codex', label: 'Codex' },
   { id: 'agy_gemini', label: 'AGY / Gemini' },
-  { id: 'claude', label: 'Claude' },
+  { id: 'zai', label: 'Z.ai' },
   { id: 'grok', label: 'Grok' },
 ];
 

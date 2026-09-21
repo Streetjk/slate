@@ -35,9 +35,9 @@ describe('AiUsageProvider', () => {
           authMetadataDetected: true,
           checkedAt: '2026-09-20T22:04:44.815Z',
         },
-        claude: {
-          version: '2.1.266 (Claude Code)',
-          authMetadataDetected: false,
+        zai: {
+          version: 'glm-5.3-flash (Z.ai)',
+          authMetadataDetected: true,
           checkedAt: '2026-09-20T22:04:44.815Z',
         },
         grok: {
@@ -59,7 +59,7 @@ describe('AiUsageProvider', () => {
     expect(data.providers.map((entry) => [entry.id, entry.status])).toEqual([
       ['codex', 'connected'],
       ['agy_gemini', 'connected'],
-      ['claude', 'sign_in'],
+      ['zai', 'connected'],
       ['grok', 'connected'],
     ]);
     expect(data.providers[0]?.version).toBe('codex-cli 0.155.0');

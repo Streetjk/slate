@@ -112,10 +112,10 @@ describe('DynamicFrameRendererService', () => {
               quotaWindows: [],
             },
             {
-              id: 'claude',
-              label: 'Claude',
-              version: '2.1.266',
-              status: 'sign_in',
+              id: 'zai',
+              label: 'Z.ai',
+              version: 'glm-5.3-flash (Z.ai)',
+              status: 'connected',
               quotaWindows: [],
             },
             {

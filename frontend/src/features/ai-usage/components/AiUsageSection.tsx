@@ -112,7 +112,13 @@ function UsageCard({ card }: { card: AiUsageCard }) {
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
           <span className="inline-flex items-center gap-2 font-sans text-[11px] font-medium uppercase tracking-[0.16em] text-ink">
             {authConnected ? <Check size={14} /> : <LogIn size={14} />}
-            {authConnected ? 'OAuth connected' : 'OAuth login'}
+            {authConnected
+              ? card.auth.mode === 'api_key'
+                ? 'API key connected'
+                : 'OAuth connected'
+              : card.auth.mode === 'api_key'
+                ? 'API key setup'
+                : 'OAuth login'}
           </span>
           <span
             className="font-mono text-[11px] text-stone transition-transform group-open:rotate-90"
@@ -125,7 +131,7 @@ function UsageCard({ card }: { card: AiUsageCard }) {
       </summary>
       <div className="mx-4 mb-4 border border-line bg-cream p-3">
         {authConnected ? (
-          <ConnectedAuthPanel provider={presented.providerLabel} />
+          <ConnectedAuthPanel provider={presented.providerLabel} mode={card.auth.mode} />
         ) : card.auth.deviceAuthAvailable ? (
           <DeviceAuthPanel
             flow={flow}
@@ -155,14 +161,22 @@ function UsageCard({ card }: { card: AiUsageCard }) {
   );
 }
 
-function ConnectedAuthPanel({ provider }: { provider: string }) {
+function ConnectedAuthPanel({
+  provider,
+  mode,
+}: {
+  provider: string;
+  mode: AiUsageCard['auth']['mode'];
+}) {
   return (
     <div className="flex items-start gap-2">
       <Check size={16} className="mt-0.5 shrink-0" />
       <div>
         <p className="font-sans text-[12px] font-medium text-ink">Connected on Mac mini</p>
         <p className="mt-1 font-sans text-[11px] leading-5 text-stone">
-          {provider} OAuth metadata is detected. No login action is required.
+          {mode === 'api_key'
+            ? provider + ' API key metadata is detected. No login action is required.'
+            : provider + ' OAuth metadata is detected. No login action is required.'}
         </p>
       </div>
     </div>
