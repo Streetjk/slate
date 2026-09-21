@@ -35,6 +35,11 @@ export class NotImplementedError extends AppError {
   readonly httpStatus = 501;
 }
 
+export class ServiceUnavailableError extends AppError {
+  readonly code = 'service_unavailable';
+  readonly httpStatus = 503;
+}
+
 export class InternalError extends AppError {
   readonly code = 'internal_server_error';
   readonly httpStatus = 500;

@@ -1,14 +1,7 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Query,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { CurrentUser, Public } from '../../../common/nest/decorators/auth-context.decorators';
 import type { WebUserContext } from '../../../common/nest/auth-context';
+import { ServiceUnavailableError } from '../../../common/errors';
 import { MicrosoftOAuthService } from './microsoft-oauth.service';
 
 @Controller('integrations/microsoft/calendar')
@@ -18,7 +11,7 @@ export class OutlookController {
   @Post('device')
   async startDeviceAuthorization(@CurrentUser() user: WebUserContext) {
     if (!this.oauth.isConfigured()) {
-      throw new ServiceUnavailableException(
+      throw new ServiceUnavailableError(
         'Microsoft Outlook device login requires MICROSOFT_CLIENT_ID'
       );
     }
@@ -42,7 +35,7 @@ export class OutlookController {
   @Get('auth-url')
   async authorizationUrl(@CurrentUser() user: WebUserContext): Promise<{ url: string }> {
     if (!this.oauth.isLegacyConfigured()) {
-      throw new ServiceUnavailableException(
+      throw new ServiceUnavailableError(
         'Legacy Microsoft callback OAuth is not configured on this Slate server'
       );
     }
