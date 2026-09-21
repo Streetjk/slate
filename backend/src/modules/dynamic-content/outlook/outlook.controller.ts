@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, ServiceUnavailableException } from '@nestjs/common';
 import { CurrentUser, Public } from '../../../common/nest/decorators/auth-context.decorators';
 import type { WebUserContext } from '../../../common/nest/auth-context';
 import { MicrosoftOAuthService } from './microsoft-oauth.service';
@@ -9,6 +9,11 @@ export class OutlookController {
 
   @Get('auth-url')
   async authorizationUrl(@CurrentUser() user: WebUserContext): Promise<{ url: string }> {
+    if (!this.oauth.isConfigured()) {
+      throw new ServiceUnavailableException(
+        'Microsoft Outlook OAuth is not configured on this Slate server'
+      );
+    }
     return { url: await this.oauth.createAuthorizationUrl(user.userId) };
   }
 

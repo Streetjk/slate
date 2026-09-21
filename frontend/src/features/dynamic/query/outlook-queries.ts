@@ -2,6 +2,7 @@ import { API_PREFIX, api } from '@/lib/http';
 
 export interface OutlookConnectionStatus {
   connected: boolean;
+  configured: boolean;
   accountEmail?: string;
   expiresAt?: string;
 }

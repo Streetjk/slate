@@ -21,6 +21,7 @@ interface PendingAuthorization {
 
 export interface OutlookConnectionStatus {
   connected: boolean;
+  configured: boolean;
   accountEmail?: string;
   expiresAt?: string;
 }
@@ -35,6 +36,14 @@ export class MicrosoftOAuthService {
     private readonly prisma: PrismaService,
     private readonly encryption: TokenEncryptionService
   ) {}
+
+  isConfigured(): boolean {
+    return Boolean(
+      this.config.microsoftClientId &&
+      this.config.microsoftClientSecret &&
+      this.config.microsoftRedirectUri
+    );
+  }
 
   async createAuthorizationUrl(userId: string): Promise<string> {
     const client = this.client();
@@ -78,9 +87,10 @@ export class MicrosoftOAuthService {
       where: { userId_provider: { userId, provider: OUTLOOK_PROVIDER } },
       select: { accountEmail: true, expiresAt: true },
     });
-    if (!integration) return { connected: false };
+    if (!integration) return { connected: false, configured: this.isConfigured() };
     return {
       connected: true,
+      configured: this.isConfigured(),
       ...(integration.accountEmail ? { accountEmail: integration.accountEmail } : {}),
       expiresAt: integration.expiresAt.toISOString(),
     };
@@ -176,6 +186,7 @@ export class MicrosoftOAuthService {
     });
     return {
       connected: true,
+      configured: true,
       ...(result.account?.username ? { accountEmail: result.account.username } : {}),
       expiresAt: expiresAt.toISOString(),
     };

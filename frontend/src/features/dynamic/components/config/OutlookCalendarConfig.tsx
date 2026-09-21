@@ -19,6 +19,7 @@ export function OutlookCalendarConfigPanel({
 }) {
   const [status, setStatus] = useState<OutlookConnectionStatus | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -27,7 +28,10 @@ export function OutlookCalendarConfigPanel({
         if (active) setStatus(next);
       })
       .catch(() => {
-        if (active) setStatus(null);
+        if (active) {
+          setStatus(null);
+          setConnectionError('Could not read Outlook connection status.');
+        }
       });
     return () => {
       active = false;
@@ -35,10 +39,18 @@ export function OutlookCalendarConfigPanel({
   }, []);
 
   const connect = async () => {
+    setConnectionError(null);
+    if (status?.configured === false) {
+      setConnectionError(
+        'Microsoft Outlook OAuth is not configured on this Slate server. Add the Microsoft app client ID and secret first.'
+      );
+      return;
+    }
     setConnecting(true);
     try {
       await beginOutlookConnection();
     } catch {
+      setConnectionError('Could not start Microsoft Outlook sign-in.');
       setConnecting(false);
     }
   };
@@ -49,8 +61,21 @@ export function OutlookCalendarConfigPanel({
         Outlook is read-only. The agenda uses Australia/Perth time and is refreshed server-side.
       </p>
       <div className="flex items-center gap-3">
-        <Button type="button" size="sm" onClick={() => void connect()} disabled={connecting}>
-          {connecting ? <Spinner /> : status?.connected ? 'Reconnect Outlook' : 'Connect Outlook'}
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void connect()}
+          disabled={connecting || status?.configured === false}
+        >
+          {connecting ? (
+            <Spinner />
+          ) : status?.configured === false ? (
+            'Outlook setup required'
+          ) : status?.connected ? (
+            'Reconnect Outlook'
+          ) : (
+            'Connect Outlook'
+          )}
         </Button>
         {status?.connected && (
           <span className="font-sans text-[11px] text-stone truncate">
@@ -58,6 +83,15 @@ export function OutlookCalendarConfigPanel({
           </span>
         )}
       </div>
+      {status?.configured === false ? (
+        <p className="font-sans text-[11px] leading-5 text-clay">
+          Microsoft OAuth is not configured on this Slate server. Register the Slate callback URL in
+          Microsoft Entra, then add the client ID and client secret to the server.
+        </p>
+      ) : null}
+      {connectionError ? (
+        <p className="font-sans text-[11px] leading-5 text-clay">{connectionError}</p>
+      ) : null}
       <DynamicRefreshSettings config={config} onChange={onChange} />
     </div>
   );
