@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
 import type { OutlookCalendarConfigT } from 'shared';
 import { OutlookIcsService, parseOutlookIcs, validateOutlookIcsUrl } from './outlook-ics.service';
 
@@ -9,6 +9,12 @@ const config: OutlookCalendarConfigT = {
   max_events: 20,
   refresh_interval_sec: 600,
 };
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 describe('OutlookIcsService security and parsing', () => {
   it('accepts Microsoft Outlook published HTTPS ICS URLs and rejects arbitrary/server-local URLs', () => {
@@ -21,6 +27,51 @@ describe('OutlookIcsService security and parsing', () => {
     );
     expect(() => validateOutlookIcsUrl('https://127.0.0.1/calendar.ics')).toThrow('Microsoft');
     expect(() => validateOutlookIcsUrl('https://example.com/calendar.ics')).toThrow('Microsoft');
+  });
+
+  it('fetches published ICS feeds with a browser user agent for Exchange Online compatibility', async () => {
+    let userAgent: string | null = null;
+    globalThis.fetch = (async (
+      _input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1]
+    ) => {
+      userAgent = new Headers(init?.headers).get('user-agent');
+      return new Response(
+        [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//Slate Test//EN',
+          'BEGIN:VEVENT',
+          'UID:ua-test',
+          'DTSTAMP:20260921T000000Z',
+          'DTSTART:20260922T010000Z',
+          'DTEND:20260922T020000Z',
+          'SUMMARY:Browser UA Test',
+          'END:VEVENT',
+          'END:VCALENDAR',
+        ].join('\r\n'),
+        { status: 200, headers: { 'content-type': 'text/calendar' } }
+      );
+    }) as typeof fetch;
+
+    const service = new OutlookIcsService(
+      {
+        userIntegration: {
+          upsert: async () => ({}),
+          findUnique: async () => ({ updatedAt: new Date('2026-09-22T00:00:00.000Z') }),
+        },
+        content: { updateMany: async () => ({ count: 1 }) },
+      } as never,
+      { encrypt: () => 'encrypted' } as never
+    );
+
+    await service.connect(
+      'user-a',
+      'https://outlook.office365.com/owa/calendar/opaque-token/calendar.ics'
+    );
+
+    expect(userAgent).toContain('Mozilla/5.0');
+    expect(userAgent).toContain('Chrome/');
   });
 
   it('normalizes timed, all-day, and recurring events without exposing feed metadata', () => {

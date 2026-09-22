@@ -11,6 +11,10 @@ const MAX_ICS_BYTES = 2 * 1024 * 1024;
 const MAX_ICS_COMPONENTS = 10_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 3;
+// Exchange Online can reject published ICS requests from non-browser clients with
+// OwaBasicUnsupportedException/HTTP 500 while serving the same URL to browsers.
+const OUTLOOK_ICS_USER_AGENT =
+  'Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 const ICS_EXPIRES_AT = new Date('2100-01-01T00:00:00.000Z');
 const ALLOWED_OUTLOOK_ICS_HOSTS = [
   'outlook.office365.com',
@@ -213,7 +217,10 @@ async function fetchIcsText(initialUrl: URL): Promise<string> {
     try {
       const response = await fetch(current, {
         method: 'GET',
-        headers: { accept: 'text/calendar, text/plain;q=0.9, */*;q=0.1' },
+        headers: {
+          accept: 'text/calendar, text/plain;q=0.9, */*;q=0.1',
+          'user-agent': OUTLOOK_ICS_USER_AGENT,
+        },
         redirect: 'manual',
         signal: controller.signal,
       });
