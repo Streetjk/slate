@@ -24,16 +24,8 @@ export function renderAiUsageFrame(
   const rawProviders = Array.isArray(data.providers)
     ? data.providers.filter(isRecord).slice(0, 4)
     : [];
-  const top = CONTENT_SAFE_TOP + 8;
-
-  draw.drawStrongText(c, fonts.sans16, 'AI Usage', FRAME_WIDTH / 2, top, {
-    align: 'center',
-    maxWidth: CONTENT_WIDTH,
-  });
-  draw.drawRule(c, CONTENT_LEFT, top + 24, CONTENT_WIDTH, 'dashed');
-
-  const rowTop = top + 34;
-  const rowHeight = 52;
+  const rowTop = CONTENT_SAFE_TOP + 6;
+  const rowHeight = 61;
   for (let index = 0; index < 4; index++) {
     const row = rawProviders[index] ?? {};
     const y = rowTop + index * rowHeight;
@@ -65,7 +57,7 @@ export function renderAiUsageFrame(
           c,
           fonts,
           draw,
-          y + 18,
+          y + 21,
           primaryLabel,
           usedPercent,
           CONTENT_LEFT,
@@ -75,33 +67,34 @@ export function renderAiUsageFrame(
           c,
           fonts,
           draw,
-          y + 32,
-          pickText(secondary.label, 'Weekly'),
+          y + 40,
+          pickText(secondary.label, 'wk'),
           secondaryPercent,
           CONTENT_LEFT,
           CONTENT_RIGHT
         );
       } else {
         const barX = CONTENT_LEFT;
-        const barY = y + 20;
-        const barW = 272;
-        const barH = 10;
+        const barY = y + 23;
+        const barW = 292;
+        const barH = 12;
         c.strokeRect(barX, barY, barW, barH);
         const innerW = Math.max(0, barW - 4);
         const fillW = Math.round((innerW * usedPercent) / 100);
         if (fillW > 0) c.fillRect(barX + 2, barY + 2, fillW, barH - 4);
 
-        draw.drawStrongText(c, fonts.sans16, String(usedPercent) + '%', CONTENT_RIGHT, y + 16, {
+        draw.drawStrongText(c, fonts.sans16, String(usedPercent) + '%', CONTENT_RIGHT, y + 19, {
           align: 'right',
           maxWidth: 54,
           ellipsis: true,
         });
 
         const resetLabel = pickText(primary.resetLabel, '');
+        const displayPrimaryLabel = shortQuotaLabel(primaryLabel);
         const detail = resetLabel
-          ? primaryLabel + ' · reset ' + resetLabel
-          : primaryLabel + ' used';
-        draw.drawText(c, fonts.metric12, detail, CONTENT_LEFT, y + 34, {
+          ? displayPrimaryLabel + ' · reset ' + resetLabel
+          : displayPrimaryLabel + ' used';
+        draw.drawText(c, fonts.metric12, detail, CONTENT_LEFT, y + 41, {
           maxWidth: CONTENT_WIDTH,
           ellipsis: true,
         });
@@ -119,7 +112,7 @@ export function renderAiUsageFrame(
       });
     }
 
-    if (index < 3) draw.drawRule(c, CONTENT_LEFT, y + 46, CONTENT_WIDTH, 'dashed');
+    if (index < 3) draw.drawRule(c, CONTENT_LEFT, y + 55, CONTENT_WIDTH, 'dashed');
   }
 
   const updated = formatShortTime(data.updatedAt, ctx.renderedAt, 'Australia/Perth');
@@ -157,9 +150,9 @@ function drawCompactQuotaWindow(
   left: number,
   right: number
 ): void {
-  const barX = left + 52;
+  const barX = left + 36;
   const barW = Math.max(80, right - barX - 48);
-  const barH = 6;
+  const barH = 8;
   draw.drawText(c, fonts.metric12, shortQuotaLabel(label), left, y, {
     maxWidth: 44,
     ellipsis: true,
@@ -178,6 +171,6 @@ function drawCompactQuotaWindow(
 function shortQuotaLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
   if (normalized.includes('5h')) return '5h';
-  if (normalized.includes('week')) return 'Weekly';
+  if (normalized.includes('week')) return 'wk';
   return value.slice(0, 8);
 }
