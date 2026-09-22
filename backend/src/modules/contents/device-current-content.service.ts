@@ -102,18 +102,38 @@ export class DeviceCurrentContentService {
   async navigateCurrentContent(
     deviceId: string,
     input: { seq: number; manifest_etag: string; direction: 'next' | 'prev' }
-  ): Promise<{ handled: boolean; stale: boolean; manifest_etag: string | null }> {
+  ): Promise<{
+    handled: boolean;
+    stale: boolean;
+    manifest_etag: string | null;
+    content: ContentSummaryT | null;
+  }> {
     const request = await this.resolveCurrentContentRequest(deviceId, {
       current_content_seq: input.seq,
       manifest_etag: input.manifest_etag,
     });
-    if (!request) return { handled: false, stale: true, manifest_etag: null };
+    if (!request) {
+      return { handled: false, stale: true, manifest_etag: null, content: null };
+    }
 
     const result = await this.dynamicContent.navigateDeviceView(request.contentId, input.direction);
+    if (!result.handled) {
+      return { handled: false, stale: false, manifest_etag: null, content: null };
+    }
+
+    const updated = await this.prisma.content.findUnique({
+      where: { id: request.contentId },
+      select: CONTENT_SELECT,
+    });
+    if (!updated || updated.groupId !== request.groupId || updated.sortOrder !== request.seq) {
+      return { handled: false, stale: true, manifest_etag: null, content: null };
+    }
+
     return {
-      handled: result.handled,
+      handled: true,
       stale: false,
       manifest_etag: result.manifestEtag,
+      content: contentToSummary(updated),
     };
   }
 

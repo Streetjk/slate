@@ -31,6 +31,7 @@ inline constexpr char kBound[]               = "bound";
 inline constexpr char kCode[]                = "code";
 inline constexpr char kContentCount[]        = "content_count";
 inline constexpr char kContentEtag[]         = "content_etag";
+inline constexpr char kContent[]             = "content";
 inline constexpr char kContents[]            = "contents";
 inline constexpr char kCurrent[]             = "current";
 inline constexpr char kCurrentContent[]      = "current_content";
@@ -678,6 +679,11 @@ bool ApiClient::NavigateCurrentContent(int seq, const std::string& manifest_etag
     out.handled       = JsonBool(result, proto::kHandled, false);
     out.stale         = JsonBool(result, proto::kStale, false);
     out.manifest_etag = JsonString(result, proto::kManifestEtag);
+    cJSON* content    = cJSON_GetObjectItemCaseSensitive(result, proto::kContent);
+    if (cJSON_IsObject(content)) {
+        ParseContentMeta(content, out.content);
+        out.has_content = !out.content.id.empty() && !out.content.image_etag.empty();
+    }
     cJSON_Delete(result);
     return true;
 }

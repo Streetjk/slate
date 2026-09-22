@@ -69,9 +69,11 @@ struct VoiceConfig {
 };
 
 struct ContentNavigationResult {
-    bool        handled = false;
-    bool        stale   = false;
+    bool        handled     = false;
+    bool        stale       = false;
+    bool        has_content = false;
     std::string manifest_etag;
+    ContentMeta content;
 };
 
 struct Manifest {

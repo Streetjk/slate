@@ -83,6 +83,7 @@ export const NavigateCurrentContentResponse = z.object({
   handled: z.boolean(),
   stale: z.boolean(),
   manifest_etag: z.string().nullable(),
+  content: ContentSummary.nullable(),
 });
 export type NavigateCurrentContentResponseT = z.infer<typeof NavigateCurrentContentResponse>;
 

@@ -36,11 +36,6 @@ std::string MarkedGroupName(const char* raw) {
     return "《" + ShortGroupName(raw) + "》";
 }
 
-bool SupportsContextNavigation(const std::string& dynamic_type) {
-    return dynamic_type == "daily_calendar" || dynamic_type == "month_calendar" ||
-           dynamic_type == "outlook_calendar" || dynamic_type == "btc_price";
-}
-
 std::string FormatGroupSyncCaption(const UiEvent& e) {
     char buf[96];
     switch (e.u.group_sync.mode) {
@@ -165,22 +160,22 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
         case UiEventKind::kButtonShort: {
             switch (e.u.button.btn) {
                 case ButtonId::kUp:
-                    if (SupportsContextNavigation(current_dynamic_type_)) {
-                        ESP_LOGD(kTag, "button short btn=up action=context_next type=%s",
+                    if (!current_dynamic_type_.empty()) {
+                        ESP_LOGD(kTag, "button short btn=up action=tile_next type=%s",
                                  current_dynamic_type_.c_str());
                         SyncService::Get().NavigateContentNext();
                     } else {
-                        ESP_LOGD(kTag, "button short btn=up action=next_frame");
+                        ESP_LOGD(kTag, "button short btn=up action=next_image");
                         NextFrame(ctx);
                     }
                     break;
                 case ButtonId::kDown:
-                    if (SupportsContextNavigation(current_dynamic_type_)) {
-                        ESP_LOGD(kTag, "button short btn=down action=context_prev type=%s",
+                    if (!current_dynamic_type_.empty()) {
+                        ESP_LOGD(kTag, "button short btn=down action=tile_prev type=%s",
                                  current_dynamic_type_.c_str());
                         SyncService::Get().NavigateContentPrev();
                     } else {
-                        ESP_LOGD(kTag, "button short btn=down action=prev_frame");
+                        ESP_LOGD(kTag, "button short btn=down action=prev_image");
                         PrevFrame(ctx);
                     }
                     break;
@@ -252,7 +247,7 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
             }
             if (content_count_ > 0) {
                 SyncRender(ctx, [this]() { ApplyEmptyState(); }, /*force_full*/ false);
-                LoadFrame(ctx, idx_, /*force_full*/ true,
+                LoadFrame(ctx, idx_, /*force_full*/ !same_group,
                           same_group ? AudioBehavior::StopIfUnavailable : AudioBehavior::RestartIfAvailable);
             } else {
                 if (ctx.audio)

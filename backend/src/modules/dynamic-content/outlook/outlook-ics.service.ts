@@ -11,6 +11,8 @@ const MAX_ICS_BYTES = 16 * 1024 * 1024;
 const MAX_ICS_COMPONENTS = 10_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 3;
+const ICS_FEED_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_ICS_FEED_CACHE_ENTRIES = 32;
 // Exchange Online can reject published ICS requests from non-browser clients with
 // OwaBasicUnsupportedException/HTTP 500 while serving the same URL to browsers.
 const OUTLOOK_ICS_USER_AGENT =
@@ -36,6 +38,10 @@ interface IcsConnection {
 @Injectable()
 export class OutlookIcsService {
   private readonly logger = new Logger(OutlookIcsService.name);
+  private readonly feedCache = new Map<
+    string,
+    { revision: string; body: string; expiresAt: number }
+  >();
   constructor(
     private readonly prisma: PrismaService,
     private readonly encryption: TokenEncryptionService
@@ -104,6 +110,7 @@ export class OutlookIcsService {
   }
 
   async disconnect(userId: string): Promise<void> {
+    this.feedCache.delete(userId);
     await this.prisma.userIntegration.deleteMany({
       where: { userId, provider: OUTLOOK_ICS_PROVIDER },
     });
@@ -131,8 +138,30 @@ export class OutlookIcsService {
   ): Promise<CalendarEventT[]> {
     const connection = await this.connection(userId);
     if (!connection) throw new Error('Outlook ICS feed is not connected');
-    const body = await fetchIcsText(new URL(connection.url));
+    const revision = connection.updatedAt.toISOString();
+    const cached = this.feedCache.get(userId);
+    let body: string;
+    if (cached && cached.revision === revision && cached.expiresAt > Date.now()) {
+      body = cached.body;
+    } else {
+      body = await fetchIcsText(new URL(connection.url));
+      this.cacheFeed(userId, revision, body);
+    }
     return parseOutlookIcs(body, config, now);
+  }
+
+  private cacheFeed(userId: string, revision: string, body: string): void {
+    this.feedCache.delete(userId);
+    this.feedCache.set(userId, {
+      revision,
+      body,
+      expiresAt: Date.now() + ICS_FEED_CACHE_TTL_MS,
+    });
+    while (this.feedCache.size > MAX_ICS_FEED_CACHE_ENTRIES) {
+      const oldest = this.feedCache.keys().next().value;
+      if (!oldest) break;
+      this.feedCache.delete(oldest);
+    }
   }
 
   private async armOutlookRefresh(userId: string): Promise<void> {

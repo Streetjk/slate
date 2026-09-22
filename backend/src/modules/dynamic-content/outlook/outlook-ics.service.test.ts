@@ -5,6 +5,7 @@ import { OutlookIcsService, parseOutlookIcs, validateOutlookIcsUrl } from './out
 const config: OutlookCalendarConfigT = {
   type: 'outlook_calendar',
   tz: 'Australia/Perth',
+  day_offset: 0,
   days_ahead: 7,
   max_events: 20,
   refresh_interval_sec: 600,
@@ -170,6 +171,52 @@ describe('OutlookIcsService security and parsing', () => {
     expect(events.some((event) => event.title === 'Site Day' && event.allDay)).toBe(true);
     expect(events.filter((event) => event.title === 'Daily Standup')).toHaveLength(3);
     expect(JSON.stringify(events)).not.toContain('opaque-token');
+  });
+
+  it('reuses the fetched ICS body while browsing adjacent days', async () => {
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      return new Response(
+        [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//Slate Test//EN',
+          'BEGIN:VEVENT',
+          'UID:cache-test',
+          'DTSTAMP:20260921T000000Z',
+          'DTSTART:20260922T010000Z',
+          'DTEND:20260922T020000Z',
+          'SUMMARY:Cached Calendar',
+          'END:VEVENT',
+          'END:VCALENDAR',
+        ].join('\r\n'),
+        { status: 200, headers: { 'content-type': 'text/calendar' } }
+      );
+    }) as typeof fetch;
+
+    const service = new OutlookIcsService(
+      {
+        userIntegration: {
+          findUnique: async () => ({
+            encryptedAccessToken: 'encrypted-url',
+            updatedAt: new Date('2026-09-22T00:00:00.000Z'),
+          }),
+        },
+      } as never,
+      {
+        decrypt: () => 'https://outlook.office365.com/owa/calendar/opaque-token/calendar.ics',
+      } as never
+    );
+
+    await service.listCalendarView('user-a', config, new Date('2026-09-22T00:00:00.000Z'));
+    await service.listCalendarView(
+      'user-a',
+      { ...config, day_offset: 1 },
+      new Date('2026-09-22T00:00:00.000Z')
+    );
+
+    expect(fetchCalls).toBe(1);
   });
 
   it('returns status metadata without returning or decrypting the saved URL', async () => {

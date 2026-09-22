@@ -215,14 +215,33 @@ void SyncService::DoContentNavigate(const std::string& direction) {
         RequestUserActiveSync();
         return;
     }
+    if (!nav.has_content || nav.content.seq != seq || nav.manifest_etag.empty()) {
+        ESP_LOGW(kTag, "content navigate fast path unavailable direction=%s seq=%d action=resync", direction.c_str(), seq);
+        RequestUserActiveSync();
+        return;
+    }
 
-    const std::string expected_etag = nav.manifest_etag.empty() ? cached.manifest_etag : nav.manifest_etag;
     evt::PostSyncStarted(evt::kNoWait);
-    bool group_changed = false;
-    const bool ok = SyncManifestAndFrames(gid, expected_etag, cached.name, cached.content_count,
-                                          SyncReason::kUserActive, group_changed);
-    evt::PostSyncFinished(ok, group_changed, evt::kNoWait);
-    ESP_LOGI(kTag, "content navigate done direction=%s seq=%d ok=%d changed=%d elapsed_ms=%lld",
-             direction.c_str(), seq, ok ? 1 : 0, group_changed ? 1 : 0,
+    bool changed = false;
+    bool ok      = SyncCurrentContent(gid, nav.content, changed);
+    if (ok) {
+        ok = cache::WriteManifest(gid, nav.manifest_etag, cached.content_count, cached.name) &&
+             cache::WriteStateMeta(gid, nav.manifest_etag);
+    }
+    if (ok)
+        cache::TouchGroup(gid);
+
+    if (ok && changed) {
+        const bool posted = evt::PostGroupReady(UiEventKind::kSyncedGroupReady, gid, cached.name,
+                                                cached.content_count, /*content_changed=*/true,
+                                                pdMS_TO_TICKS(2000));
+        if (!posted)
+            ESP_LOGW(kTag, "content navigate refresh event failed direction=%s seq=%d", direction.c_str(), seq);
+    }
+    evt::PostSyncFinished(ok, changed, evt::kNoWait);
+    if (!ok)
+        RequestUserActiveSync();
+    ESP_LOGI(kTag, "content navigate done direction=%s seq=%d ok=%d changed=%d mode=single_frame elapsed_ms=%lld",
+             direction.c_str(), seq, ok ? 1 : 0, changed ? 1 : 0,
              (long long)(time_utils::NowMs() - started_ms));
 }
