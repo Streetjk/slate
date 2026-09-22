@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+import { CalendarDataService } from '../calendar-data.service';
 import { DailyCalendarProvider } from './daily-calendar.provider';
+import { MonthCalendarProvider } from './month-calendar.provider';
 
 describe('DailyCalendarProvider', () => {
   it('uses the configured Perth civil date and English weekday', async () => {
@@ -42,5 +44,25 @@ describe('DailyCalendarProvider', () => {
       weekday: 'Monday',
       publicHoliday: "King's Birthday",
     });
+  });
+});
+
+describe('MonthCalendarProvider', () => {
+  it('keeps real today separate from a shifted month view', async () => {
+    const provider = new MonthCalendarProvider(new CalendarDataService());
+    const config = provider.validateConfig({
+      type: 'month_calendar',
+      tz: 'Australia/Perth',
+      month_offset: 1,
+    });
+
+    const data = await provider.fetchData(config, {
+      now: new Date('2026-09-23T00:00:00.000Z'),
+    });
+
+    expect(data.calendar.today).toBe('2026-09-23');
+    expect(data.calendar.coverage.from).toBe('2026-10-01');
+    expect(data.calendar.months['2026-10']).toBeDefined();
+    expect(data.calendar.months[data.calendar.today.slice(0, 7)]).toBeUndefined();
   });
 });

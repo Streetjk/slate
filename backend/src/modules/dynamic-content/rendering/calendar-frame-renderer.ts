@@ -82,6 +82,7 @@ export function renderMonthCalendarFrame(
   const days = getPath(ctx.data, `calendar.months.${monthKey}.days`);
   const first = weekdayFor(parts.year, parts.month, 1);
   const total = daysInMonth(parts.year, parts.month);
+  const today = getPath(ctx.data, 'calendar.today');
 
   const x0 = 14;
   const y0 = 32;
@@ -109,7 +110,8 @@ export function renderMonthCalendarFrame(
     const row = Math.floor(pos / 7);
     const x = x0 + col * colW;
     const y = y0 + headerH + row * rowH;
-    const isToday = day === parts.day;
+    const iso = `${parts.year}-${pad2(parts.month)}-${pad2(day)}`;
+    const isToday = typeof today === 'string' && iso === today;
 
     if (isToday) {
       c.fillRect(x + Math.floor(colW / 2) - 11, y + 1, 22, 18, PIXEL_BLACK);
@@ -121,7 +123,6 @@ export function renderMonthCalendarFrame(
       color: isToday ? PIXEL_WHITE : PIXEL_BLACK,
     });
 
-    const iso = `${parts.year}-${pad2(parts.month)}-${pad2(day)}`;
     const dayData = isRecord(days) ? days[iso] : null;
     const sub = monthCellSubtitle(dayData);
     if (sub) {

@@ -241,8 +241,8 @@ bool EpdSsd1683::WaitForRefreshIdle(int timeout_ms) {
 
 void EpdSsd1683::RequestUrgentPartialRefresh() {
     // 设标志位 + notify,立即返回。不在这里等 LVGL,因为 flush_cb 也会 notify;
-    // RefreshTaskLoop 头部的 sliding debounce（50 ms 内有新 notify 就续 50 ms，
-    // 最长 500 ms）会自然吸收「ShowCar 后 LVGL 50 ms 才 flush」这一段时间。
+    // RefreshTaskLoop 会对 urgent 请求使用短 debounce，对普通 LVGL/background
+    // invalidate 继续使用较长 sliding debounce 来合并碎片 flush。
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
     urgent_refresh_      = true;
     refresh_in_progress_ = true;
@@ -342,16 +342,30 @@ bool EpdSsd1683::RefreshTaskShouldStop() {
 }
 
 void EpdSsd1683::DebounceRefreshNotify() {
-    constexpr TickType_t kDebounceMs    = 50;   // 每来一次新 notify，续 50 ms
-    constexpr TickType_t kDebounceMaxMs = 500;  // 兜底：总等待最多 500 ms，防止 LVGL 永不静默
+    constexpr TickType_t kNormalDebounceMs    = 50;
+    constexpr TickType_t kNormalDebounceMaxMs = 500;
+    constexpr TickType_t kUrgentDebounceMs    = 15;
+    constexpr TickType_t kUrgentDebounceMaxMs = 80;
 
-    // Sliding debounce：在 50 ms 窗口内吸收所有新 notify，每来一次重置窗口，
-    // 直到 50 ms 没有新 notify 才进入真正的刷新。这一步把 LVGL 把整屏
-    // invalidate 分成多个 chunk 多次调用 flush_cb 的"碎片"合并成一轮刷新。
+    auto urgent_requested = [this]() {
+        xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+        const bool urgent = urgent_refresh_ || force_full_refresh_;
+        xSemaphoreGive(dirty_mutex_);
+        return urgent;
+    };
+
+    // Background/LVGL invalidations keep the conservative 50–500 ms sliding
+    // debounce so fragmented flushes coalesce. User-triggered page navigation
+    // sets the urgent flag after the complete frame is already in memory, so a
+    // much shorter window is enough and improves perceived page-change latency.
+    bool       urgent      = urgent_requested();
+    TickType_t debounce_ms = urgent ? kUrgentDebounceMs : kNormalDebounceMs;
     const TickType_t first_tick = xTaskGetTickCount();
-    const TickType_t hard_max   = first_tick + pdMS_TO_TICKS(kDebounceMaxMs);
-    TickType_t       deadline   = first_tick + pdMS_TO_TICKS(kDebounceMs);
-    unsigned         absorbed   = 0;
+    TickType_t hard_max =
+        first_tick + pdMS_TO_TICKS(urgent ? kUrgentDebounceMaxMs : kNormalDebounceMaxMs);
+    TickType_t deadline = first_tick + pdMS_TO_TICKS(debounce_ms);
+    unsigned   absorbed = 0;
+
     while (true) {
         const TickType_t now = xTaskGetTickCount();
         if (now >= deadline || now >= hard_max)
@@ -359,10 +373,18 @@ void EpdSsd1683::DebounceRefreshNotify() {
         const TickType_t wait = (deadline < hard_max ? deadline : hard_max) - now;
         if (ulTaskNotifyTake(pdTRUE, wait) > 0) {
             ++absorbed;
-            deadline = xTaskGetTickCount() + pdMS_TO_TICKS(kDebounceMs);
+            const TickType_t after_notify = xTaskGetTickCount();
+            if (!urgent && urgent_requested()) {
+                urgent      = true;
+                debounce_ms = kUrgentDebounceMs;
+                const TickType_t urgent_max = after_notify + pdMS_TO_TICKS(kUrgentDebounceMaxMs);
+                if (urgent_max < hard_max)
+                    hard_max = urgent_max;
+            }
+            deadline = after_notify + pdMS_TO_TICKS(debounce_ms);
         }
     }
-    ESP_LOGD(kTag, "debounce done absorbed=%u elapsed_ticks=%lu", absorbed,
+    ESP_LOGD(kTag, "debounce done urgent=%d absorbed=%u elapsed_ticks=%lu", urgent ? 1 : 0, absorbed,
              static_cast<unsigned long>(xTaskGetTickCount() - first_tick));
 }
 

@@ -11,7 +11,7 @@ const MAX_ICS_BYTES = 16 * 1024 * 1024;
 const MAX_ICS_COMPONENTS = 10_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 3;
-const ICS_FEED_CACHE_TTL_MS = 5 * 60 * 1000;
+const ICS_FEED_CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_ICS_FEED_CACHE_ENTRIES = 32;
 // Exchange Online can reject published ICS requests from non-browser clients with
 // OwaBasicUnsupportedException/HTTP 500 while serving the same URL to browsers.
@@ -35,12 +35,14 @@ interface IcsConnection {
   updatedAt: Date;
 }
 
+type ParsedIcs = ReturnType<typeof ical.sync.parseICS>;
+
 @Injectable()
 export class OutlookIcsService {
   private readonly logger = new Logger(OutlookIcsService.name);
   private readonly feedCache = new Map<
     string,
-    { revision: string; body: string; expiresAt: number }
+    { revision: string; parsed: ParsedIcs; expiresAt: number }
   >();
   constructor(
     private readonly prisma: PrismaService,
@@ -140,21 +142,22 @@ export class OutlookIcsService {
     if (!connection) throw new Error('Outlook ICS feed is not connected');
     const revision = connection.updatedAt.toISOString();
     const cached = this.feedCache.get(userId);
-    let body: string;
+    let parsed: ParsedIcs;
     if (cached && cached.revision === revision && cached.expiresAt > Date.now()) {
-      body = cached.body;
+      parsed = cached.parsed;
     } else {
-      body = await fetchIcsText(new URL(connection.url));
-      this.cacheFeed(userId, revision, body);
+      const body = await fetchIcsText(new URL(connection.url));
+      parsed = parseIcsDocument(body);
+      this.cacheFeed(userId, revision, parsed);
     }
-    return parseOutlookIcs(body, config, now);
+    return parseOutlookIcsParsed(parsed, config, now);
   }
 
-  private cacheFeed(userId: string, revision: string, body: string): void {
+  private cacheFeed(userId: string, revision: string, parsed: ParsedIcs): void {
     this.feedCache.delete(userId);
     this.feedCache.set(userId, {
       revision,
-      body,
+      parsed,
       expiresAt: Date.now() + ICS_FEED_CACHE_TTL_MS,
     });
     while (this.feedCache.size > MAX_ICS_FEED_CACHE_ENTRIES) {
@@ -315,11 +318,22 @@ export function parseOutlookIcs(
   config: OutlookCalendarConfigT,
   now: Date
 ): CalendarEventT[] {
-  const parsed = ical.sync.parseICS(body);
-  const components = Object.values(parsed);
-  if (components.length > MAX_ICS_COMPONENTS)
-    throw new Error('Outlook ICS feed has too many items');
+  return parseOutlookIcsParsed(parseIcsDocument(body), config, now);
+}
 
+function parseIcsDocument(body: string): ParsedIcs {
+  const parsed = ical.sync.parseICS(body);
+  if (Object.keys(parsed).length > MAX_ICS_COMPONENTS)
+    throw new Error('Outlook ICS feed has too many items');
+  return parsed;
+}
+
+function parseOutlookIcsParsed(
+  parsed: ParsedIcs,
+  config: OutlookCalendarConfigT,
+  now: Date
+): CalendarEventT[] {
+  const components = Object.values(parsed);
   const from = now;
   const to = new Date(now.getTime() + config.days_ahead * 24 * 60 * 60 * 1000);
   const events: CalendarEventT[] = [];

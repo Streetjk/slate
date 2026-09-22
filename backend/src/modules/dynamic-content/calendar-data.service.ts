@@ -24,6 +24,7 @@ export interface CalendarServerData {
   calendar: {
     timezone: string;
     utc_offset_min: number;
+    today: string;
     coverage: { from: string; to: string };
     months: Record<string, { days: Record<string, CalendarDayData> }>;
   };
@@ -31,8 +32,9 @@ export interface CalendarServerData {
 
 @Injectable()
 export class CalendarDataService {
-  buildCurrentAndNextMonth(now: Date, tz: string): CalendarServerData {
+  buildCurrentAndNextMonth(now: Date, tz: string, actualNow: Date = now): CalendarServerData {
     const cur = datePartsInTz(now, tz);
+    const actual = datePartsInTz(actualNow, tz);
     const next =
       cur.month === 12
         ? { year: cur.year + 1, month: 1 }
@@ -46,7 +48,8 @@ export class CalendarDataService {
     return {
       calendar: {
         timezone: tz,
-        utc_offset_min: utcOffsetMin(now, tz),
+        utc_offset_min: utcOffsetMin(actualNow, tz),
+        today: `${monthKey(actual.year, actual.month)}-${String(actual.day).padStart(2, '0')}`,
         coverage: { from, to },
         months,
       },

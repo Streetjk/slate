@@ -23,7 +23,7 @@ export class MonthCalendarProvider implements DataProvider<
     ctx: DynamicContentFetchCtx
   ): Promise<CalendarServerData> {
     return Promise.resolve(
-      this.calendar.buildCurrentAndNextMonth(dynamicViewDate(config, ctx.now), config.tz)
+      this.calendar.buildCurrentAndNextMonth(dynamicViewDate(config, ctx.now), config.tz, ctx.now)
     );
   }
 }
