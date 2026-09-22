@@ -7,7 +7,7 @@ import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { TokenEncryptionService } from '../../../infra/security/token-encryption.service';
 
 export const OUTLOOK_ICS_PROVIDER = 'microsoft_outlook_ics';
-const MAX_ICS_BYTES = 2 * 1024 * 1024;
+const MAX_ICS_BYTES = 16 * 1024 * 1024;
 const MAX_ICS_COMPONENTS = 10_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 3;
@@ -237,9 +237,7 @@ async function fetchIcsText(initialUrl: URL): Promise<string> {
       if (Number.isFinite(declaredLength) && declaredLength > MAX_ICS_BYTES) {
         throw new Error('Outlook ICS feed is too large');
       }
-      const buffer = new Uint8Array(await response.arrayBuffer());
-      if (buffer.byteLength > MAX_ICS_BYTES) throw new Error('Outlook ICS feed is too large');
-      const text = new TextDecoder('utf-8').decode(buffer);
+      const text = await readResponseTextWithLimit(response, MAX_ICS_BYTES);
       if (!text.includes('BEGIN:VCALENDAR') || !text.includes('END:VCALENDAR')) {
         throw new Error('Outlook ICS feed is not a calendar');
       }
@@ -249,6 +247,37 @@ async function fetchIcsText(initialUrl: URL): Promise<string> {
     }
   }
   throw new Error('Outlook ICS feed could not be fetched');
+}
+
+async function readResponseTextWithLimit(response: Response, maxBytes: number): Promise<string> {
+  if (!response.body) return '';
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        throw new Error('Outlook ICS feed is too large');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const buffer = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder('utf-8').decode(buffer);
 }
 
 export function parseOutlookIcs(

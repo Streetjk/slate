@@ -74,6 +74,64 @@ describe('OutlookIcsService security and parsing', () => {
     expect(userAgent).toContain('Chrome/');
   });
 
+  it('accepts an Outlook ICS feed larger than the old 2 MiB limit', async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//Slate Test//EN',
+          'BEGIN:VEVENT',
+          'UID:large-feed-test',
+          'DTSTAMP:20260921T000000Z',
+          'DTSTART:20260922T010000Z',
+          'DTEND:20260922T020000Z',
+          'SUMMARY:Large Feed Test',
+          'END:VEVENT',
+          'END:VCALENDAR',
+        ].join('\r\n'),
+        { status: 200, headers: { 'content-length': String(3 * 1024 * 1024) } }
+      )) as typeof fetch;
+
+    const service = new OutlookIcsService(
+      {
+        userIntegration: {
+          upsert: async () => ({}),
+          findUnique: async () => ({ updatedAt: new Date('2026-09-22T00:00:00.000Z') }),
+        },
+        content: { updateMany: async () => ({ count: 1 }) },
+      } as never,
+      { encrypt: () => 'encrypted' } as never
+    );
+
+    await expect(
+      service.connect(
+        'user-a',
+        'https://outlook.office365.com/owa/calendar/opaque-token/calendar.ics'
+      )
+    ).resolves.toEqual({
+      connected: true,
+      updatedAt: '2026-09-22T00:00:00.000Z',
+    });
+  });
+
+  it('still rejects Outlook ICS feeds above the 16 MiB safety limit', async () => {
+    globalThis.fetch = (async () =>
+      new Response('BEGIN:VCALENDAR\r\nEND:VCALENDAR', {
+        status: 200,
+        headers: { 'content-length': String(16 * 1024 * 1024 + 1) },
+      })) as typeof fetch;
+
+    const service = new OutlookIcsService({} as never, {} as never);
+
+    await expect(
+      service.connect(
+        'user-a',
+        'https://outlook.office365.com/owa/calendar/opaque-token/calendar.ics'
+      )
+    ).rejects.toThrow('too large');
+  });
+
   it('normalizes timed, all-day, and recurring events without exposing feed metadata', () => {
     const body = [
       'BEGIN:VCALENDAR',
