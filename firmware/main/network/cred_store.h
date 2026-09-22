@@ -41,6 +41,10 @@ void ClearSecret();
 // 便利:从 NVS 读 server_url
 std::string GetServerUrl();
 
+// 读取当前 Slate device secret，用于已认证的 voice WebSocket 握手。
+// 不向日志、屏幕或服务端配置响应暴露。
+std::string GetDeviceSecret();
+
 // 工厂重置:清整个 namespace。下次启动进入配网模式。
 void Clear();
 

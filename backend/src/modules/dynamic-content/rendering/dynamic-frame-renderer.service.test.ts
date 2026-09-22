@@ -85,6 +85,65 @@ describe('DynamicFrameRendererService', () => {
         renderedAt,
       },
       {
+        type: 'ai_usage',
+        frameName: 'AI Usage',
+        config: { type: 'ai_usage', refresh_interval_sec: 300 },
+        data: {
+          providers: [
+            {
+              id: 'codex',
+              label: 'Codex',
+              version: 'codex-cli 0.155.0',
+              status: 'connected',
+              quotaWindows: [
+                {
+                  label: 'Weekly',
+                  usedPercent: 20,
+                  remainingPercent: 80,
+                  resetLabel: 'Sep 26 4:49pm',
+                },
+              ],
+            },
+            {
+              id: 'agy_gemini',
+              label: 'AGY / Gemini',
+              version: '1.2.7',
+              status: 'connected',
+              quotaWindows: [],
+            },
+            {
+              id: 'zai',
+              label: 'Z.ai',
+              version: 'glm-5.3-flash (Z.ai)',
+              status: 'connected',
+              quotaWindows: [
+                {
+                  label: '5h',
+                  usedPercent: 0,
+                  remainingPercent: 100,
+                  resetLabel: null,
+                },
+                {
+                  label: 'Weekly',
+                  usedPercent: 13,
+                  remainingPercent: 87,
+                  resetLabel: 'Sep 23 at 4:07 PM',
+                },
+              ],
+            },
+            {
+              id: 'grok',
+              label: 'Grok',
+              version: 'grok 1.0.34',
+              status: 'connected',
+              quotaWindows: [],
+            },
+          ],
+          updatedAt: renderedAt.toISOString(),
+        },
+        renderedAt,
+      },
+      {
         type: 'weather',
         frameName: '天气',
         config: { location_label: '北京' },
@@ -96,9 +155,23 @@ describe('DynamicFrameRendererService', () => {
           summary: '多云',
           code: 101,
           fc: [
-            { label: '今日', text: '多云', tempMin: 18, tempMax: 27, code: 101 },
-            { label: '明日', text: '小雨', tempMin: 17, tempMax: 24, code: 305 },
-            { label: '后天', text: '晴', tempMin: 19, tempMax: 29, code: 100 },
+            {
+              label: '今日',
+              date: '2026-05-17',
+              text: '多云',
+              tempMin: 18,
+              tempMax: 27,
+              code: 101,
+            },
+            {
+              label: '明日',
+              date: '2026-05-18',
+              text: '小雨',
+              tempMin: 17,
+              tempMax: 24,
+              code: 305,
+            },
+            { label: '后天', date: '2026-05-19', text: '晴', tempMin: 19, tempMax: 29, code: 100 },
           ],
         },
         renderedAt,

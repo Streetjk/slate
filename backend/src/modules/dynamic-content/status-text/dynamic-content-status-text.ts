@@ -48,6 +48,10 @@ export function deviceStatusBarText(row: ContentStatusBarSource): string {
       return fontTestStatusBarText(row.dynamicConfig);
     case 'hot_list':
       return hotListStatusBarText(row.dynamicConfig);
+    case 'google_news':
+      return 'Google News';
+    case 'ai_usage':
+      return 'AI Usage';
     default:
       return row.frameName ?? '';
   }
@@ -78,6 +82,10 @@ export function defaultDynamicFrameName(
       return fontTestStatusBarText(config);
     case 'hot_list':
       return hotListStatusBarText(config);
+    case 'google_news':
+      return 'Google News';
+    case 'ai_usage':
+      return 'AI Usage';
     default:
       return null;
   }

@@ -1,0 +1,10 @@
+{
+  "type": "ai_usage",
+  "default_ttl_sec": 300,
+  "layout": {
+    "size": [400, 300],
+    "padding": 16,
+    "top_offset": 24,
+    "body": []
+  }
+}

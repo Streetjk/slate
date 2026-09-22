@@ -15,6 +15,7 @@
 #include <font_awesome.h>
 
 LV_FONT_DECLARE(Zfull_16);
+LV_FONT_DECLARE(Voice_Font_16);
 LV_FONT_DECLARE(Zfull_12);
 LV_FONT_DECLARE(font_awesome_14_1);
 LV_FONT_DECLARE(font_awesome_30_1);

@@ -12,24 +12,27 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
     case 'daily_calendar':
       return {
         type: 'daily_calendar',
-        tz: LOCAL_TIME_ZONE,
+        tz: 'Australia/Perth',
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };
     case 'month_calendar':
       return {
         type: 'month_calendar',
-        tz: LOCAL_TIME_ZONE,
+        tz: 'Australia/Perth',
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };
     case 'weather':
       return {
         type: 'weather',
-        tz: LOCAL_TIME_ZONE,
-        provider: 'qweather',
-        location_id: 'unconfigured',
-        location_label: 'Select a city',
+        tz: 'Australia/Perth',
+        provider: 'open_meteo',
+        location_id: '2063523',
+        location_label: 'Perth',
+        latitude: -31.95224,
+        longitude: 115.8614,
+        location_timezone: 'Australia/Perth',
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
         refresh_interval_sec: 600,
@@ -71,6 +74,11 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
         max_events: 8,
         refresh_interval_sec: 600,
       };
+    case 'ai_usage':
+      return {
+        type: 'ai_usage',
+        refresh_interval_sec: 300,
+      };
     case 'dashboard':
       return {
         type: 'dashboard',
@@ -88,6 +96,12 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
         type: 'hot_list',
         source: 'weibo',
         refresh_interval_sec: 600,
+      };
+    case 'google_news':
+      return {
+        type: 'google_news',
+        edition: 'both',
+        refresh_interval_sec: 900,
       };
   }
 }

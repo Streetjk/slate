@@ -44,6 +44,31 @@ export function formatDatePart(
   return `${month}/${day}`;
 }
 
+export function formatForecastDate(value: unknown): string {
+  const text = pickText(value, '').trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(month) || month < 1 || month > 12) return '';
+  if (!Number.isInteger(day) || day < 1 || day > 31) return '';
+  const monthLabels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return day + ' ' + monthLabels[month - 1];
+}
+
 export function formatShortTime(value: unknown, fallback: Date, timeZone: string): string {
   let date = fallback;
   if (typeof value === 'string') {
