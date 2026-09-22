@@ -31,6 +31,7 @@ struct ContentMeta {
     int         image_size = 0;
     int         audio_size = 0;
     std::string kind;
+    std::string dynamic_type;
     bool        has_next_wake_sec = false;
     int         next_wake_sec     = 0;
 };
@@ -65,6 +66,12 @@ struct RegisterResult {
 struct VoiceConfig {
     std::string websocket_path;
     int32_t     version = 0;
+};
+
+struct ContentNavigationResult {
+    bool        handled = false;
+    bool        stale   = false;
+    std::string manifest_etag;
 };
 
 struct Manifest {
@@ -104,6 +111,8 @@ class ApiClient {
     bool Register(RegisterResult& out);
     bool GetVoiceConfig(VoiceConfig& out);
     bool Poll(const Telemetry& tel, DeviceState& out);
+    bool NavigateCurrentContent(int seq, const std::string& manifest_etag, const std::string& direction,
+                                ContentNavigationResult& out);
     bool CycleGroup(const std::string& direction, DeviceState& out);
     bool SelectGroup(const std::string& gid, DeviceState& out);
 
@@ -155,6 +164,8 @@ void ResetConnection();
 bool Register(RegisterResult& out);
 bool GetVoiceConfig(VoiceConfig& out);
 bool Poll(const Telemetry& tel, DeviceState& out);
+bool NavigateCurrentContent(int seq, const std::string& manifest_etag, const std::string& direction,
+                            ContentNavigationResult& out);
 bool CycleGroup(const std::string& direction, DeviceState& out);
 bool SelectGroup(const std::string& gid, DeviceState& out);
 

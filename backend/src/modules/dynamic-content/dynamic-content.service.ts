@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import {
   DashboardDataPayload,
   DynamicConfig,
+  PricePeriod,
   isAudioDynamicConfig,
   type ContentMutationResponseT,
   type CreateDynamicContentRequestT,
@@ -26,6 +27,7 @@ import { DynamicContentRendererService } from './dynamic-content-renderer.servic
 import { defaultDynamicFrameName } from './status-text/dynamic-content-status-text';
 import { createBtcTrioRequests } from './providers/btc-price-trio';
 import { toContentMutationResponse } from '../contents/content-mutation-response';
+
 
 const DYNAMIC_MUTATION_TAIL_TTL_MS = 5 * 60_000;
 
@@ -316,6 +318,59 @@ export class DynamicContentService {
       ),
       updatedAt: rendered.renderedAt,
     };
+  }
+
+  async navigateDeviceView(
+    contentId: string,
+    direction: 'next' | 'prev'
+  ): Promise<{ handled: boolean; manifestEtag: string | null }> {
+    const delta = direction === 'next' ? 1 : -1;
+
+    return this.runMutation(contentId, async () => {
+      const content = await this.prisma.content.findUnique({
+        where: { id: contentId },
+        select: {
+          id: true,
+          groupId: true,
+          kind: true,
+          dynamicType: true,
+          dynamicConfig: true,
+        },
+      });
+      if (!content) throw new NotFoundError('Content not found');
+      if (content.kind !== 'dynamic' || !content.dynamicType) {
+        return { handled: false, manifestEtag: null };
+      }
+
+      const config = DynamicConfig.parse(content.dynamicConfig);
+      let nextConfig: typeof config;
+
+      if (config.type === 'daily_calendar' || config.type === 'outlook_calendar') {
+        const dayOffset = Math.max(-31, Math.min(31, config.day_offset + delta));
+        nextConfig = { ...config, day_offset: dayOffset } as typeof config;
+      } else if (config.type === 'month_calendar') {
+        const monthOffset = Math.max(-24, Math.min(24, config.month_offset + delta));
+        nextConfig = { ...config, month_offset: monthOffset } as typeof config;
+      } else if (config.type === 'btc_price') {
+        const periods = ['daily', 'three_day', 'weekly', 'monthly'] as const;
+        const current = periods.indexOf(PricePeriod.parse(config.period));
+        const nextIndex = (current + delta + periods.length) % periods.length;
+        nextConfig = { ...config, period: periods[nextIndex]! } as typeof config;
+      } else {
+        return { handled: false, manifestEtag: null };
+      }
+
+      await this.prisma.content.update({
+        where: { id: contentId },
+        data: {
+          dynamicConfig: toPrismaInputJson(nextConfig),
+          dynamicRefreshDueAt: new Date(),
+          dynamicRefreshLeaseUntil: null,
+        },
+      });
+      const rendered = await this.renderDynamicAndReadEtag(contentId, { force: true });
+      return { handled: true, manifestEtag: rendered.groupEtag };
+    });
   }
 
   async refresh(

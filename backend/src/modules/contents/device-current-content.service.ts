@@ -4,6 +4,7 @@ import type { ContentSummaryT } from 'shared';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { formatError } from '../../common/utils/error-format';
 import { DynamicContentRendererService } from '../dynamic-content/dynamic-content-renderer.service';
+import { DynamicContentService } from '../dynamic-content/dynamic-content.service';
 import type { DevicePollSnapshot } from '../devices/device-types';
 import { contentToSummary } from './content-presenter';
 import { CONTENT_SELECT, type ContentSelectRow } from './content-select';
@@ -23,7 +24,8 @@ export class DeviceCurrentContentService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly dynamicRenderer: DynamicContentRendererService
+    private readonly dynamicRenderer: DynamicContentRendererService,
+    private readonly dynamicContent: DynamicContentService
   ) {}
 
   async resolveCurrentContentRequest(
@@ -95,6 +97,24 @@ export class DeviceCurrentContentService {
       return null;
     }
     return contentToSummary(content);
+  }
+
+  async navigateCurrentContent(
+    deviceId: string,
+    input: { seq: number; manifest_etag: string; direction: 'next' | 'prev' }
+  ): Promise<{ handled: boolean; stale: boolean; manifest_etag: string | null }> {
+    const request = await this.resolveCurrentContentRequest(deviceId, {
+      current_content_seq: input.seq,
+      manifest_etag: input.manifest_etag,
+    });
+    if (!request) return { handled: false, stale: true, manifest_etag: null };
+
+    const result = await this.dynamicContent.navigateDeviceView(request.contentId, input.direction);
+    return {
+      handled: result.handled,
+      stale: false,
+      manifest_etag: result.manifestEtag,
+    };
   }
 
   async refreshCurrentContentForDeviceIfDue(

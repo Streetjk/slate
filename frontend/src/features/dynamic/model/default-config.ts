@@ -13,6 +13,7 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
       return {
         type: 'daily_calendar',
         tz: 'Australia/Perth',
+        day_offset: 0,
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };
@@ -20,6 +21,7 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
       return {
         type: 'month_calendar',
         tz: 'Australia/Perth',
+        month_offset: 0,
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
       };
@@ -70,6 +72,7 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
       return {
         type: 'outlook_calendar',
         tz: 'Australia/Perth',
+        day_offset: 0,
         days_ahead: 7,
         max_events: 8,
         refresh_interval_sec: 600,

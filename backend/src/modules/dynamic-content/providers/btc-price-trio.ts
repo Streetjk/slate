@@ -4,6 +4,7 @@ export const BTC_TRIO_PERIODS: readonly PricePeriodT[] = ['daily', 'weekly', 'mo
 
 const LABEL_BY_PERIOD: Record<PricePeriodT, string> = {
   daily: 'Daily',
+  three_day: '3 days',
   weekly: 'Weekly',
   monthly: 'Monthly',
 };

@@ -7,6 +7,7 @@ import { OutlookCalendarProvider, parseOutlookCalendarData } from './outlook-cal
 const config: OutlookCalendarConfigT = {
   type: 'outlook_calendar',
   tz: 'Australia/Perth',
+  day_offset: 0,
   days_ahead: 7,
   max_events: 8,
   refresh_interval_sec: 600,
@@ -75,6 +76,32 @@ describe('OutlookCalendarProvider', () => {
         ],
       })?.events
     ).toHaveLength(1);
+  });
+
+  it('filters cancelled Outlook events from normalized cached data', () => {
+    const parsed = parseOutlookCalendarData({
+      connected: true,
+      fetchedAt: '2026-09-22T00:00:00.000Z',
+      events: [
+        { id: 'ok', title: 'Standup', start: '2026-09-22', end: '2026-09-23', allDay: true },
+        {
+          id: 'cancelled-au',
+          title: 'Cancelled: Supplier meeting',
+          start: '2026-09-22',
+          end: '2026-09-23',
+          allDay: true,
+        },
+        {
+          id: 'canceled-us',
+          title: 'Canceled - Review',
+          start: '2026-09-22',
+          end: '2026-09-23',
+          allDay: true,
+        },
+      ],
+    });
+
+    expect(parsed?.events.map((event) => event.id)).toEqual(['ok']);
   });
 
   it('prefers the encrypted ICS feed over Graph when an ICS connection exists', async () => {

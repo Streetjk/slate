@@ -12,6 +12,7 @@
 #include "scenes/settings/settings_scene.h"
 #include "scenes/splash/splash_scene.h"
 #include "storage/cache/cache.h"
+#include "sync/sync_service.h"
 #include "ui/frame_view.h"
 #include "ui/status_bar.h"
 #include "ui/theme.h"
@@ -33,6 +34,11 @@ std::string ShortGroupName(const char* raw) {
 
 std::string MarkedGroupName(const char* raw) {
     return "《" + ShortGroupName(raw) + "》";
+}
+
+bool SupportsContextNavigation(const std::string& dynamic_type) {
+    return dynamic_type == "daily_calendar" || dynamic_type == "month_calendar" ||
+           dynamic_type == "outlook_calendar" || dynamic_type == "btc_price";
 }
 
 std::string FormatGroupSyncCaption(const UiEvent& e) {
@@ -159,12 +165,27 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
         case UiEventKind::kButtonShort: {
             switch (e.u.button.btn) {
                 case ButtonId::kUp:
-                    ESP_LOGD(kTag, "button short btn=up action=prev_frame");
-                    PrevFrame(ctx);
+                    if (SupportsContextNavigation(current_dynamic_type_)) {
+                        ESP_LOGD(kTag, "button short btn=up action=context_next type=%s",
+                                 current_dynamic_type_.c_str());
+                        SyncService::Get().NavigateContentNext();
+                    } else {
+                        ESP_LOGD(kTag, "button short btn=up action=next_frame");
+                        NextFrame(ctx);
+                    }
                     break;
                 case ButtonId::kDown:
+                    if (SupportsContextNavigation(current_dynamic_type_)) {
+                        ESP_LOGD(kTag, "button short btn=down action=context_prev type=%s",
+                                 current_dynamic_type_.c_str());
+                        SyncService::Get().NavigateContentPrev();
+                    } else {
+                        ESP_LOGD(kTag, "button short btn=down action=prev_frame");
+                        PrevFrame(ctx);
+                    }
+                    break;
                 case ButtonId::kEnter:
-                    ESP_LOGD(kTag, "button short btn=%s action=next_frame", evt::log::ButtonName(e.u.button.btn));
+                    ESP_LOGD(kTag, "button short btn=enter action=next_frame");
                     NextFrame(ctx);
                     break;
             }
@@ -369,6 +390,7 @@ void FrameScene::LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBeh
     }
     cache::FrameMeta meta;
     cache::ReadFrameMeta(gid_, idx, meta);
+    current_dynamic_type_ = meta.dynamic_type;
 
     if (!ctx.epd->Lock(2000)) {
         ESP_LOGW(kTag, "load frame failed idx=%d reason=epd_lock_timeout", idx);

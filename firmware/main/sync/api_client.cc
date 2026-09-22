@@ -48,6 +48,10 @@ inline constexpr char kId[]                  = "id";
 inline constexpr char kImageEtag[]           = "image_etag";
 inline constexpr char kImageSize[]           = "image_size";
 inline constexpr char kKind[]                = "kind";
+inline constexpr char kDynamicType[]         = "dynamic_type";
+inline constexpr char kDirection[]           = "direction";
+inline constexpr char kHandled[]             = "handled";
+inline constexpr char kStale[]               = "stale";
 inline constexpr char kManifestEtag[]        = "manifest_etag";
 inline constexpr char kMac[]                 = "mac";
 inline constexpr char kName[]                = "name";
@@ -185,6 +189,7 @@ void ParseContentMeta(cJSON* item, ContentMeta& out) {
     out.image_size             = JsonInt(item, proto::kImageSize, 0);
     out.audio_size             = JsonInt(item, proto::kAudioSize, 0);
     out.kind                   = JsonString(item, proto::kKind);
+    out.dynamic_type           = JsonString(item, proto::kDynamicType);
     cJSON* next_wake           = cJSON_GetObjectItemCaseSensitive(item, proto::kNextWakeSec);
     out.has_next_wake_sec      = cJSON_IsNumber(next_wake);
     out.next_wake_sec          = out.has_next_wake_sec ? next_wake->valueint : 0;
@@ -642,6 +647,41 @@ bool ApiClient::Poll(const Telemetry& tel, DeviceState& out) {
     return ParseDeviceState(resp, out);
 }
 
+bool ApiClient::NavigateCurrentContent(int seq, const std::string& manifest_etag,
+                                       const std::string& direction, ContentNavigationResult& out) {
+    out = ContentNavigationResult{};
+    if (seq < 0 || manifest_etag.empty() || (direction != "next" && direction != "prev"))
+        return false;
+
+    cJSON* root = cJSON_CreateObject();
+    if (!root)
+        return false;
+    cJSON_AddNumberToObject(root, proto::kSeq, seq);
+    cJSON_AddStringToObject(root, proto::kManifestEtag, manifest_etag.c_str());
+    cJSON_AddStringToObject(root, proto::kDirection, direction.c_str());
+
+    char* body = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (!body)
+        return false;
+
+    std::string resp;
+    const std::string path = std::string(kApiPrefix) + "/devices/current/content/navigate";
+    const bool ok = DoRequestJson(path, HTTP_METHOD_POST, body, resp, /*need_auth=*/true);
+    cJSON_free(body);
+    if (!ok)
+        return false;
+
+    cJSON* result = cJSON_Parse(resp.c_str());
+    if (!result)
+        return false;
+    out.handled       = JsonBool(result, proto::kHandled, false);
+    out.stale         = JsonBool(result, proto::kStale, false);
+    out.manifest_etag = JsonString(result, proto::kManifestEtag);
+    cJSON_Delete(result);
+    return true;
+}
+
 // direction: "next" | "prev" → POST /api/v1/devices/current/group/{direction}
 bool ApiClient::CycleGroup(const std::string& direction, DeviceState& out) {
     if (direction != "next" && direction != "prev")
@@ -788,6 +828,11 @@ bool GetVoiceConfig(VoiceConfig& out) {
 
 bool Poll(const Telemetry& tel, DeviceState& out) {
     return DefaultClient().Poll(tel, out);
+}
+
+bool NavigateCurrentContent(int seq, const std::string& manifest_etag, const std::string& direction,
+                            ContentNavigationResult& out) {
+    return DefaultClient().NavigateCurrentContent(seq, manifest_etag, direction, out);
 }
 
 bool CycleGroup(const std::string& direction, DeviceState& out) {

@@ -21,6 +21,7 @@ bool WriteFrameMetaFile(const std::string& path, const cache::FrameMeta& meta) {
         return false;
     cJSON_AddStringToObject(root, "status_bar_text", meta.status_bar_text.c_str());
     cJSON_AddStringToObject(root, "content_etag", meta.content_etag.c_str());
+    cJSON_AddStringToObject(root, "dynamic_type", meta.dynamic_type.c_str());
     cJSON_AddStringToObject(root, "image_etag", meta.image_etag.c_str());
     cJSON_AddStringToObject(root, "audio_etag", meta.audio_etag.c_str());
     if (meta.has_ttl) {
@@ -46,15 +47,18 @@ bool ReadFrameMetaFile(const std::string& path, cache::FrameMeta& out) {
     cJSON* root = cJSON_ParseWithLength(reinterpret_cast<const char*>(buf.data()), buf.size());
     if (!root)
         return false;
-    cJSON* cap        = cJSON_GetObjectItemCaseSensitive(root, "status_bar_text");
-    cJSON* etag       = cJSON_GetObjectItemCaseSensitive(root, "content_etag");
-    cJSON* image_etag = cJSON_GetObjectItemCaseSensitive(root, "image_etag");
+    cJSON* cap          = cJSON_GetObjectItemCaseSensitive(root, "status_bar_text");
+    cJSON* etag         = cJSON_GetObjectItemCaseSensitive(root, "content_etag");
+    cJSON* dynamic_type = cJSON_GetObjectItemCaseSensitive(root, "dynamic_type");
+    cJSON* image_etag   = cJSON_GetObjectItemCaseSensitive(root, "image_etag");
     cJSON* audio_etag = cJSON_GetObjectItemCaseSensitive(root, "audio_etag");
     cJSON* ttl        = cJSON_GetObjectItemCaseSensitive(root, "ttl_sec");
     if (cJSON_IsString(cap) && cap->valuestring)
         out.status_bar_text = cap->valuestring;
     if (cJSON_IsString(etag) && etag->valuestring)
         out.content_etag = etag->valuestring;
+    if (cJSON_IsString(dynamic_type) && dynamic_type->valuestring)
+        out.dynamic_type = dynamic_type->valuestring;
     if (cJSON_IsString(image_etag) && image_etag->valuestring)
         out.image_etag = image_etag->valuestring;
     if (cJSON_IsString(audio_etag) && audio_etag->valuestring)

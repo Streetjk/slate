@@ -14,6 +14,7 @@ import { DynamicContentRegistry } from './dynamic-content-registry';
 import { DynamicAudioService } from './audio/dynamic-audio.service';
 import { canReuseDynamicData } from './dynamic-data-reuse-policy';
 import { computeDynamicRefreshSchedule, computeErrorBackoffAt } from './dynamic-refresh-policy';
+import { dynamicViewDate } from './timezone';
 
 const DYNAMIC_RENDER_CONTENT_SELECT = {
   id: true,
@@ -119,7 +120,7 @@ export class DynamicContentRendererService {
       frameName,
       config: (config ?? {}) as Record<string, unknown>,
       data: normalizeRenderData(data),
-      renderedAt: now,
+      renderedAt: dynamicViewDate(config, now),
     });
   }
 
@@ -127,7 +128,8 @@ export class DynamicContentRendererService {
     contentId: string,
     ownerUserId: string,
     configOverride: unknown,
-    frameNameOverride?: string | null
+    frameNameOverride?: string | null,
+    nowOverride?: Date
   ): Promise<Buffer> {
     const content = await this.prisma.content.findUnique({
       where: { id: contentId },
@@ -152,7 +154,7 @@ export class DynamicContentRendererService {
     const entry = this.registry.get(content.dynamicType);
     if (!entry) throw new ValidationError(`Unknown dynamic type: ${content.dynamicType}`);
     const config = entry.provider.validateConfig(configOverride);
-    const now = new Date();
+    const now = nowOverride ?? new Date();
     let data: unknown;
     try {
       data = await entry.provider.fetchData(config, {
@@ -181,7 +183,7 @@ export class DynamicContentRendererService {
       frameName,
       config: (config ?? {}) as Record<string, unknown>,
       data: normalizeRenderData(data),
-      renderedAt: now,
+      renderedAt: dynamicViewDate(config, now),
     });
   }
 
@@ -249,7 +251,7 @@ export class DynamicContentRendererService {
       frameName: content.frameName,
       config: (config ?? {}) as Record<string, unknown>,
       data: normalizeRenderData(data),
-      renderedAt: now,
+      renderedAt: dynamicViewDate(config, now),
     });
     const imageEtag = computeETag(rendered);
     const schedule = computeDynamicRefreshSchedule({

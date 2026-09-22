@@ -14,6 +14,7 @@ import {
 } from './provider-cache';
 import { MicrosoftGraphCalendarClient } from '../outlook/microsoft-graph-calendar.client';
 import { OutlookIcsService } from '../outlook/outlook-ics.service';
+import { dynamicViewDate, localDayStart } from '../timezone';
 
 export interface OutlookCalendarData {
   events: CalendarEventT[];
@@ -60,16 +61,20 @@ export class OutlookCalendarProvider implements DataProvider<
       ':' +
       config.tz +
       ':' +
+      String(config.day_offset) +
+      ':' +
       String(config.days_ahead) +
       ':' +
       String(config.max_events);
     const ttlSec = Math.max(config.refresh_interval_sec, DEFAULT_PROVIDER_CACHE_TTL_SEC);
     return this.fetcher.getOrFetch(key, ctx.now.getTime(), ttlSec * 1000, async () => {
       try {
+        const targetDate = dynamicViewDate(config, ctx.now);
+        const windowStart = localDayStart(targetDate, config.tz);
         const events =
           source === 'ics'
-            ? await this.ics.listCalendarView(userId, config, ctx.now)
-            : await this.graph.listCalendarView(userId, config, ctx.now);
+            ? await this.ics.listCalendarView(userId, config, windowStart)
+            : await this.graph.listCalendarView(userId, config, windowStart);
         return { events, fetchedAt: ctx.now.toISOString(), connected: true };
       } catch (error) {
         if (source === 'graph' && isNotConnectedError(error)) return emptyCalendar(ctx.now, false);
@@ -88,7 +93,8 @@ export function parseOutlookCalendarData(value: unknown): OutlookCalendarData | 
   if (!Array.isArray(data.events)) return null;
   const events = data.events.flatMap((event) => {
     const parsed = CalendarEvent.safeParse(event);
-    return parsed.success ? [parsed.data] : [];
+    if (!parsed.success || isCancelledCalendarTitle(parsed.data.title)) return [];
+    return [parsed.data];
   });
   return { fetchedAt: data.fetchedAt, connected: data.connected, events };
 }
@@ -102,6 +108,10 @@ function fallbackCalendar(value: unknown, timezone: string, now: Date): OutlookC
 
 function emptyCalendar(now: Date, connected: boolean): OutlookCalendarData {
   return { events: [], fetchedAt: now.toISOString(), connected };
+}
+
+export function isCancelledCalendarTitle(title: string): boolean {
+  return /^\s*(?:cancelled|canceled)\s*[:\-–—]/i.test(title);
 }
 
 function isNotConnectedError(error: unknown): boolean {

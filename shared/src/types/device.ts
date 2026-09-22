@@ -72,6 +72,20 @@ export type SelectGroupByDeviceRequestT = z.infer<typeof SelectGroupByDeviceRequ
 export const CycleDirection = z.enum(['next', 'prev']);
 export type CycleDirectionT = z.infer<typeof CycleDirection>;
 
+export const NavigateCurrentContentRequest = z.object({
+  seq: z.number().int().nonnegative(),
+  manifest_etag: z.string().min(1).max(64),
+  direction: CycleDirection,
+});
+export type NavigateCurrentContentRequestT = z.infer<typeof NavigateCurrentContentRequest>;
+
+export const NavigateCurrentContentResponse = z.object({
+  handled: z.boolean(),
+  stale: z.boolean(),
+  manifest_etag: z.string().nullable(),
+});
+export type NavigateCurrentContentResponseT = z.infer<typeof NavigateCurrentContentResponse>;
+
 // 注册端点：仅在固件 NVS 没有 device_secret 时调用（首次或物理重置后）。
 // 同 mac 二次调用一律走 reset 路径（清 owner、轮换 secret + pair_code）。
 // name 由 Web 端 claim 完成后通过 PUT /devices/:id 设置，注册阶段不带。

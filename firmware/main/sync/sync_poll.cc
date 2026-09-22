@@ -180,3 +180,49 @@ void SyncService::DoCycle(const std::string& direction) {
     ESP_LOGI(kTag, "cycle done direction=%s ok=%d group_changed=%d elapsed_ms=%lld", direction.c_str(), sync_ok ? 1 : 0,
              group_changed ? 1 : 0, (long long)(time_utils::NowMs() - started_ms));
 }
+
+void SyncService::DoContentNavigate(const std::string& direction) {
+    const int64_t started_ms = time_utils::NowMs();
+    std::string   gid;
+    std::string   manifest_etag;
+    int           seq = -1;
+
+    if (!cache::ReadStateMeta(gid, manifest_etag) || gid.empty() || manifest_etag.empty() ||
+        !cache::ReadCurrentFrameSeq(seq) || seq < 0) {
+        ESP_LOGW(kTag, "content navigate skipped direction=%s reason=current_frame_state_missing", direction.c_str());
+        return;
+    }
+
+    api::ContentNavigationResult nav;
+    if (!api::NavigateCurrentContent(seq, manifest_etag, direction, nav)) {
+        ESP_LOGW(kTag, "content navigate failed direction=%s seq=%d reason=offline_or_server", direction.c_str(), seq);
+        evt::PostSyncFinished(false, false, evt::kNoWait);
+        return;
+    }
+    if (nav.stale) {
+        ESP_LOGW(kTag, "content navigate stale direction=%s seq=%d action=resync", direction.c_str(), seq);
+        RequestUserActiveSync();
+        return;
+    }
+    if (!nav.handled) {
+        ESP_LOGW(kTag, "content navigate unhandled direction=%s seq=%d", direction.c_str(), seq);
+        return;
+    }
+
+    cache::ManifestMeta cached;
+    if (!cache::ReadManifestMeta(gid, cached)) {
+        ESP_LOGW(kTag, "content navigate failed direction=%s seq=%d reason=manifest_cache_missing", direction.c_str(), seq);
+        RequestUserActiveSync();
+        return;
+    }
+
+    const std::string expected_etag = nav.manifest_etag.empty() ? cached.manifest_etag : nav.manifest_etag;
+    evt::PostSyncStarted(evt::kNoWait);
+    bool group_changed = false;
+    const bool ok = SyncManifestAndFrames(gid, expected_etag, cached.name, cached.content_count,
+                                          SyncReason::kUserActive, group_changed);
+    evt::PostSyncFinished(ok, group_changed, evt::kNoWait);
+    ESP_LOGI(kTag, "content navigate done direction=%s seq=%d ok=%d changed=%d elapsed_ms=%lld",
+             direction.c_str(), seq, ok ? 1 : 0, group_changed ? 1 : 0,
+             (long long)(time_utils::NowMs() - started_ms));
+}

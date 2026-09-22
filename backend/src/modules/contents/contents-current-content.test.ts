@@ -46,6 +46,60 @@ describe('ContentsService current content refresh', () => {
     expect(events).toEqual(['first:start', 'first:end', 'second:start']);
   });
 
+  it('navigates supported dynamic views with bounded calendar offsets and BTC period cycling', async () => {
+    async function navigate(config: Record<string, unknown>, direction: 'next' | 'prev') {
+      let updatedConfig: unknown;
+      const service = new DynamicContentService(
+        {
+          content: {
+            findUnique: async () => ({
+              id: 'content-1',
+              groupId: 'group-1',
+              kind: 'dynamic',
+              dynamicType: config.type,
+              dynamicConfig: config,
+            }),
+            update: async ({ data }: { data: { dynamicConfig?: unknown } }) => {
+              updatedConfig = data.dynamicConfig;
+              return {};
+            },
+          },
+        } as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {
+          renderDynamicContent: async () => ({ groupEtag: 'manifest-next' }),
+        } as never
+      );
+
+      const result = await service.navigateDeviceView('content-1', direction);
+      return { result, updatedConfig: updatedConfig as Record<string, unknown> };
+    }
+
+    expect(
+      (await navigate({ type: 'daily_calendar', tz: 'Australia/Perth', day_offset: 0 }, 'next'))
+        .updatedConfig.day_offset
+    ).toBe(1);
+    expect(
+      (await navigate({ type: 'month_calendar', tz: 'Australia/Perth', month_offset: 24 }, 'next'))
+        .updatedConfig.month_offset
+    ).toBe(24);
+    expect(
+      (await navigate({ type: 'outlook_calendar', tz: 'Australia/Perth', day_offset: 0 }, 'prev'))
+        .updatedConfig.day_offset
+    ).toBe(-1);
+    expect(
+      (await navigate({ type: 'btc_price', period: 'daily' }, 'next')).updatedConfig.period
+    ).toBe('three_day');
+    expect(
+      (await navigate({ type: 'btc_price', period: 'monthly' }, 'next')).updatedConfig.period
+    ).toBe('daily');
+    expect(
+      (await navigate({ type: 'btc_price', period: 'daily' }, 'prev')).updatedConfig.period
+    ).toBe('monthly');
+  });
+
   it('skips timer current-frame refresh after the device manifest changes', async () => {
     let renderCalls = 0;
     const service = new DeviceCurrentContentService(

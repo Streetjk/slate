@@ -110,7 +110,10 @@ function formatChange(value: number): string {
 }
 
 function periodLabel(period: PriceSeriesT['period']): string {
-  return period === 'daily' ? '1D' : period === 'weekly' ? '7D' : '30D';
+  if (period === 'daily') return '1D';
+  if (period === 'three_day') return '3D';
+  if (period === 'weekly') return '7D';
+  return '1M';
 }
 
 function periodDateLabel(series: PriceSeriesT): string {

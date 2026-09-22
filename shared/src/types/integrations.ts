@@ -68,7 +68,7 @@ const validateCalendarEventBounds = (
   }
 };
 
-export const PricePeriod = z.enum(['daily', 'weekly', 'monthly']);
+export const PricePeriod = z.enum(['daily', 'three_day', 'weekly', 'monthly']);
 export type PricePeriodT = z.infer<typeof PricePeriod>;
 
 export const PricePoint = z.object({

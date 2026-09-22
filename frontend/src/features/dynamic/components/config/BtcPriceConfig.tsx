@@ -33,6 +33,9 @@ export function BtcPriceConfigPanel({
           <SelectItem value="daily" hint="Intraday movement">
             Daily (1D)
           </SelectItem>
+          <SelectItem value="three_day" hint="Three-day movement">
+            3 days (3D)
+          </SelectItem>
           <SelectItem value="weekly" hint="Seven-day movement">
             Weekly (7D)
           </SelectItem>

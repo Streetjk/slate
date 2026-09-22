@@ -39,7 +39,7 @@ const contexts: DynamicRenderContext[] = [
     config: { tz, audio_enabled: false, audio_voice: DEFAULT_TTS_VOICE },
     data: asRecord(
       await daily.fetchData(
-        { type: 'daily_calendar', tz, audio_enabled: false, audio_voice: DEFAULT_TTS_VOICE },
+        { type: 'daily_calendar', tz, day_offset: 0, audio_enabled: false, audio_voice: DEFAULT_TTS_VOICE },
         { now: renderedAt }
       )
     ),

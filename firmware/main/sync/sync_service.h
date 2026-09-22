@@ -39,6 +39,8 @@ class SyncService {
     // 内部置 BIT_CYCLE_NEXT/PREV,Loop 在唤醒时调 api::CycleGroup 然后立即 SyncOnce。
     void CycleNext();
     void CyclePrev();
+    void NavigateContentNext();
+    void NavigateContentPrev();
 
     // 当前已就绪的 group_id(Scene::OnEnter 时读)
     std::string CurrentGroupId() const;
@@ -60,6 +62,7 @@ class SyncService {
     void               SyncOnce(SyncMode mode);
     void               Trigger(SyncMode mode);
     void               DoCycle(const std::string& direction);
+    void               DoContentNavigate(const std::string& direction);
     static const char* SyncModeName(SyncMode mode);
     bool SyncBackground(const api::DeviceState& state, const api::Telemetry& telemetry, bool& group_changed);
     bool SyncUserActive(const api::DeviceState& state, bool& group_changed);

@@ -122,6 +122,51 @@ export function nextLocalMidnight(now: Date, timeZone: string): Date {
   return midnight;
 }
 
+export function dynamicViewDate(config: unknown, now: Date): Date {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return now;
+  const record = config as Record<string, unknown>;
+  const type = typeof record.type === 'string' ? record.type : '';
+  const timeZone =
+    typeof record.tz === 'string' && record.tz.trim() ? record.tz : 'Australia/Perth';
+  const parts = datePartsInTz(now, timeZone);
+
+  if (type === 'daily_calendar' || type === 'outlook_calendar') {
+    const offset = Number.isInteger(record.day_offset) ? Number(record.day_offset) : 0;
+    return (
+      utcFromWallTimeInTz(
+        { year: parts.year, month: parts.month, day: parts.day + offset, hour: 12 },
+        timeZone
+      ) ?? now
+    );
+  }
+
+  if (type === 'month_calendar') {
+    const offset = Number.isInteger(record.month_offset) ? Number(record.month_offset) : 0;
+    const normalized = new Date(Date.UTC(parts.year, parts.month - 1 + offset, 15));
+    return (
+      utcFromWallTimeInTz(
+        {
+          year: normalized.getUTCFullYear(),
+          month: normalized.getUTCMonth() + 1,
+          day: 15,
+          hour: 12,
+        },
+        timeZone
+      ) ?? now
+    );
+  }
+
+  return now;
+}
+
+export function localDayStart(date: Date, timeZone: string): Date {
+  const parts = datePartsInTz(date, timeZone);
+  return (
+    utcFromWallTimeInTz({ year: parts.year, month: parts.month, day: parts.day }, timeZone) ??
+    date
+  );
+}
+
 export function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }

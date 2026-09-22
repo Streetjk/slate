@@ -314,22 +314,13 @@ void XiaozhiScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
                     }
                     break;
                 case ButtonId::kUp:
-                    ESP_LOGD(kTag, "button short btn=up action=volume_up");
-                    if (auto* service = Service(ctx)) {
-                        if (service->Snapshot().calendar_proposal.active)
-                            service->CancelCalendarProposal();
-                        else
-                            service->AdjustVolume(+1);
-                    }
-                    break;
                 case ButtonId::kDown:
-                    ESP_LOGD(kTag, "button short btn=down action=volume_down");
-                    if (auto* service = Service(ctx)) {
-                        if (service->Snapshot().calendar_proposal.active)
-                            service->CancelCalendarProposal();
-                        else
-                            service->AdjustVolume(-1);
-                    }
+                    // UP/DOWN are reserved for page navigation in FrameScene.
+                    // In voice mode they only keep the existing proposal-cancel shortcut.
+                    ESP_LOGD(kTag, "button short btn=%s action=page_navigation_reserved",
+                             e.u.button.btn == ButtonId::kUp ? "up" : "down");
+                    if (auto* service = Service(ctx); service && service->Snapshot().calendar_proposal.active)
+                        service->CancelCalendarProposal();
                     break;
             }
             break;
@@ -434,7 +425,7 @@ void XiaozhiScene::RenderContent() {
         lv_obj_add_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(hint_label_, "UP/DOWN volume   Hold ENTER settings   Double-tap ENTER back");
+        lv_label_set_text(hint_label_, "Hold ENTER settings   Double-tap ENTER back");
     }
 }
 

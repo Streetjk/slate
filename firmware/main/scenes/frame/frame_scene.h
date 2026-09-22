@@ -49,6 +49,7 @@ class FrameScene : public Scene {
     bool        first_loaded_            = false;
     bool        first_load_full_refresh_ = true;
     std::string cached_status_bar_text_;
+    std::string current_dynamic_type_;
 
     lv_obj_t*                  root_        = nullptr;
     lv_obj_t*                  empty_label_ = nullptr;

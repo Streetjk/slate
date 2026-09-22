@@ -4,7 +4,7 @@ import { DailyCalendarConfig, type DailyCalendarConfigT } from 'shared';
 import { pickTraditionalFestival } from '../traditional-festivals';
 import type { DataProvider, DynamicContentFetchCtx } from '../dynamic-content.types';
 import { findNextSolarTerm } from '../calendar-data.service';
-import { datePartsInTz } from '../timezone';
+import { datePartsInTz, dynamicViewDate } from '../timezone';
 import { waPublicHolidayOn } from '../wa-public-holidays';
 
 export interface DailyCalendarProviderData {
@@ -66,7 +66,8 @@ export class DailyCalendarProvider implements DataProvider<
     config: DailyCalendarConfigT,
     ctx: DynamicContentFetchCtx
   ): DailyCalendarProviderData {
-    const { year, month, day, weekday } = datePartsInTz(ctx.now, config.tz);
+    const targetDate = dynamicViewDate(config, ctx.now);
+    const { year, month, day, weekday } = datePartsInTz(targetDate, config.tz);
     const solar = Solar.fromYmd(year, month, day);
     const lunar = solar.getLunar();
 

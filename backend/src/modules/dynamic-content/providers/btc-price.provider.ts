@@ -20,18 +20,21 @@ const MAX_CACHE_ENTRIES = 8;
 
 const GRANULARITY_BY_PERIOD: Record<PricePeriodT, number> = {
   daily: 300,
+  three_day: 900,
   weekly: 3600,
   monthly: 86400,
 };
 
 const MAX_POINTS_BY_PERIOD: Record<PricePeriodT, number> = {
   daily: 288,
+  three_day: 288,
   weekly: 168,
   monthly: 30,
 };
 
 const WINDOW_MS_BY_PERIOD: Record<PricePeriodT, number> = {
   daily: 24 * 60 * 60 * 1000,
+  three_day: 3 * 24 * 60 * 60 * 1000,
   weekly: 7 * 24 * 60 * 60 * 1000,
   monthly: 30 * 24 * 60 * 60 * 1000,
 };

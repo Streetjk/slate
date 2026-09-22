@@ -59,6 +59,7 @@ void DeleteFrameFiles(const std::string& gid, int idx);
 struct FrameMeta {
     std::string status_bar_text;
     std::string content_etag;
+    std::string dynamic_type;
     std::string image_etag;
     std::string audio_etag;
     bool        has_ttl = false;

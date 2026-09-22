@@ -12,6 +12,7 @@ interface GraphEvent {
   id?: unknown;
   subject?: unknown;
   isAllDay?: unknown;
+  isCancelled?: unknown;
   start?: { dateTime?: unknown; timeZone?: unknown };
   end?: { dateTime?: unknown; timeZone?: unknown };
   location?: { displayName?: unknown };
@@ -36,7 +37,7 @@ export class MicrosoftGraphCalendarClient {
       'endDateTime',
       new Date(now.getTime() + config.days_ahead * 24 * 60 * 60 * 1000).toISOString()
     );
-    url.searchParams.set('$select', 'id,subject,start,end,isAllDay,location');
+    url.searchParams.set('$select', 'id,subject,start,end,isAllDay,isCancelled,location');
     url.searchParams.set('$orderby', 'start/dateTime asc');
     url.searchParams.set('$top', String(config.max_events));
     const response = await fetchJson<GraphCalendarViewResponse>(url.toString(), {
@@ -63,12 +64,14 @@ export function normalizeGraphEvent(
   if (!value || typeof value !== 'object') return null;
   const event = value as GraphEvent;
   if (typeof event.id !== 'string' || !event.id.trim()) return null;
+  if (event.isCancelled === true) return null;
   const allDay = event.isAllDay === true;
   const start = normalizeGraphTemporal(event.start?.dateTime, allDay, timezone);
   const end = normalizeGraphTemporal(event.end?.dateTime, allDay, timezone);
   if (!start || !end) return null;
   const title =
     typeof event.subject === 'string' && event.subject.trim() ? event.subject : 'Untitled event';
+  if (/^\s*(?:cancelled|canceled)\s*[:\-–—]/i.test(title)) return null;
   const location =
     typeof event.location?.displayName === 'string' && event.location.displayName.trim()
       ? event.location.displayName.trim()

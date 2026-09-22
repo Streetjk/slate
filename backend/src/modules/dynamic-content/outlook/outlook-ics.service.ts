@@ -60,6 +60,7 @@ export class OutlookIcsService {
         {
           type: 'outlook_calendar',
           tz: 'Australia/Perth',
+          day_offset: 0,
           days_ahead: 7,
           max_events: 20,
           refresh_interval_sec: 600,
@@ -297,7 +298,7 @@ export function parseOutlookIcs(
   for (const component of components) {
     if (!component || component.type !== 'VEVENT') continue;
     const event = component as VEvent;
-    if (event.status === 'CANCELLED') continue;
+    if (isCancelledIcsEvent(event)) continue;
 
     if (event.rrule) {
       let instances;
@@ -313,7 +314,7 @@ export function parseOutlookIcs(
         continue;
       }
       for (const instance of instances) {
-        if (instance.event.status === 'CANCELLED') continue;
+        if (isCancelledIcsEvent(instance.event)) continue;
         const normalized = normalizeIcsEvent(
           instance.event,
           instance.start,
@@ -362,6 +363,13 @@ function normalizeIcsEvent(
     timezone,
   });
   return parsed.success ? parsed.data : null;
+}
+
+function isCancelledIcsEvent(event: VEvent): boolean {
+  const status = typeof event.status === 'string' ? event.status.trim().toUpperCase() : '';
+  if (status === 'CANCELLED' || status === 'CANCELED') return true;
+  const title = parameterText(event.summary) ?? '';
+  return /^\s*(?:cancelled|canceled)\s*[:\-–—]/i.test(title);
 }
 
 function parameterText(value: ParameterValue | undefined): string | null {

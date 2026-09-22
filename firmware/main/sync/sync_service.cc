@@ -12,11 +12,13 @@
 #include "utils/time_utils.h"
 
 namespace {
-constexpr int BIT_TRIGGER      = BIT0;
-constexpr int BIT_STOP         = BIT1;
-constexpr int BIT_CYCLE_NEXT   = BIT2;
-constexpr int BIT_CYCLE_PREV   = BIT3;
-constexpr int BIT_WAKE_REFRESH = BIT4;
+constexpr int BIT_TRIGGER       = BIT0;
+constexpr int BIT_STOP          = BIT1;
+constexpr int BIT_CYCLE_NEXT    = BIT2;
+constexpr int BIT_CYCLE_PREV    = BIT3;
+constexpr int BIT_WAKE_REFRESH  = BIT4;
+constexpr int BIT_NAV_NEXT      = BIT5;
+constexpr int BIT_NAV_PREV      = BIT6;
 }  // namespace
 
 SyncService& SyncService::Get() {
@@ -139,6 +141,16 @@ void SyncService::CyclePrev() {
         xEventGroupSetBits(event_group_, BIT_CYCLE_PREV);
 }
 
+void SyncService::NavigateContentNext() {
+    if (event_group_)
+        xEventGroupSetBits(event_group_, BIT_NAV_NEXT);
+}
+
+void SyncService::NavigateContentPrev() {
+    if (event_group_)
+        xEventGroupSetBits(event_group_, BIT_NAV_PREV);
+}
+
 std::string SyncService::CurrentGroupId() const {
     return CurrentGroupSnapshot();
 }
@@ -183,8 +195,10 @@ void SyncService::Loop() {
     while (running_.load(std::memory_order_acquire)) {
         const int         interval_s = NextIntervalSec();
         const EventBits_t bits       = xEventGroupWaitBits(
-            event_group_, BIT_TRIGGER | BIT_STOP | BIT_CYCLE_NEXT | BIT_CYCLE_PREV | BIT_WAKE_REFRESH, pdTRUE, pdFALSE,
-            pdMS_TO_TICKS(interval_s * 1000));
+            event_group_,
+            BIT_TRIGGER | BIT_STOP | BIT_CYCLE_NEXT | BIT_CYCLE_PREV | BIT_WAKE_REFRESH | BIT_NAV_NEXT |
+                BIT_NAV_PREV,
+            pdTRUE, pdFALSE, pdMS_TO_TICKS(interval_s * 1000));
         if (bits & BIT_STOP)
             break;
         if (!running_.load(std::memory_order_acquire))
@@ -196,6 +210,10 @@ void SyncService::Loop() {
             DoCycle("next");
         } else if (bits & BIT_CYCLE_PREV) {
             DoCycle("prev");
+        } else if (bits & BIT_NAV_NEXT) {
+            DoContentNavigate("next");
+        } else if (bits & BIT_NAV_PREV) {
+            DoContentNavigate("prev");
         } else if (bits & BIT_WAKE_REFRESH) {
             SyncOnce(SyncMode::kBackgroundRefresh);
         } else {

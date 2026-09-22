@@ -9,6 +9,7 @@ import {
   formatOutlookTime,
   parseOutlookCalendarData,
 } from '../providers/outlook-calendar.provider';
+import { datePartsInTz, utcFromWallTimeInTz } from '../timezone';
 
 export function renderOutlookCalendarFrame(
   c: BitmapCanvas,
@@ -39,7 +40,7 @@ export function renderOutlookCalendarFrame(
 
   const events =
     data?.events
-      .filter((event) => event.allDay || Date.parse(event.end) > ctx.renderedAt.getTime())
+      .filter((event) => overlapsRenderedDay(event.start, event.end, event.allDay, ctx.renderedAt, timezone))
       .sort((a, b) => a.start.localeCompare(b.start)) ?? [];
   if (events.length === 0) {
     draw.drawText(
@@ -47,7 +48,7 @@ export function renderOutlookCalendarFrame(
       fonts.sans16,
       data?.connected === false ? 'Connect Outlook to sync' : 'No events',
       FRAME_WIDTH / 2,
-      126,
+      132,
       {
         align: 'center',
         maxWidth: 340,
@@ -57,40 +58,57 @@ export function renderOutlookCalendarFrame(
     return;
   }
 
-  const rows = events.slice(0, 5);
-  const rowY = STATUS_BAR_H + 60;
+  const rows = events.slice(0, 6);
+  const rowY = STATUS_BAR_H + 54;
   for (const [index, event] of rows.entries()) {
-    const y = rowY + index * 34;
+    const y = rowY + index * 35;
     draw.drawText(
       c,
       fonts.metric12,
       formatOutlookTime(event.start, timezone, event.allDay),
       CONTENT_LEFT,
-      y + 3,
-      {
-        maxWidth: 62,
-      }
+      y + 2,
+      { maxWidth: 58 }
     );
-    draw.drawText(c, fonts.sans16, event.title, CONTENT_LEFT + 76, y, {
-      maxWidth: CONTENT_RIGHT - CONTENT_LEFT - 76,
+    draw.drawText(c, fonts.sans16, event.title, CONTENT_LEFT + 70, y, {
+      maxWidth: CONTENT_RIGHT - CONTENT_LEFT - 70,
       ellipsis: true,
     });
-  }
-
-  const next = rows[0];
-  if (next) {
-    draw.drawRule(c, CONTENT_LEFT, 251, FRAME_WIDTH - 2 * CONTENT_LEFT, 'dashed');
-    draw.drawText(c, fonts.sans12, 'NEXT', CONTENT_LEFT, 262, { maxWidth: 52 });
-    draw.drawText(
-      c,
-      fonts.sans12,
-      `${next.title} — ${formatOutlookTime(next.start, timezone, next.allDay)}`,
-      CONTENT_LEFT + 48,
-      262,
-      {
-        maxWidth: CONTENT_RIGHT - CONTENT_LEFT - 48,
+    if (event.location) {
+      draw.drawText(c, fonts.sans12, event.location, CONTENT_LEFT + 70, y + 17, {
+        maxWidth: CONTENT_RIGHT - CONTENT_LEFT - 70,
         ellipsis: true,
-      }
-    );
+      });
+    }
+    if (index < rows.length - 1)
+      draw.drawRule(c, CONTENT_LEFT + 70, y + 31, CONTENT_RIGHT - CONTENT_LEFT - 70, 'dashed');
   }
+}
+
+function overlapsRenderedDay(
+  start: string,
+  end: string,
+  allDay: boolean,
+  renderedAt: Date,
+  timezone: string
+): boolean {
+  const parts = datePartsInTz(renderedAt, timezone);
+  const targetKey =
+    `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+
+  if (allDay) return start <= targetKey && targetKey < end;
+
+  const dayStart = utcFromWallTimeInTz(
+    { year: parts.year, month: parts.month, day: parts.day },
+    timezone
+  );
+  const nextDay = utcFromWallTimeInTz(
+    { year: parts.year, month: parts.month, day: parts.day + 1 },
+    timezone
+  );
+  if (!dayStart || !nextDay) return false;
+
+  const startMs = Date.parse(start);
+  const endMs = Date.parse(end);
+  return Number.isFinite(startMs) && Number.isFinite(endMs) && startMs < nextDay.getTime() && endMs > dayStart.getTime();
 }

@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Logger, Post, Put, UseGuards } from '@nestjs/common';
-import { MacAddress, type DeviceStateT, type RegisterDeviceResponseT } from 'shared';
+import {
+  MacAddress,
+  type DeviceStateT,
+  type NavigateCurrentContentResponseT,
+  type RegisterDeviceResponseT,
+} from 'shared';
 import { CurrentDevice, Public } from '../../common/nest/decorators/auth-context.decorators';
 import { DeviceAuthGuard } from '../../common/nest/guards/device-auth.guard';
 import type { DeviceContext } from '../../common/nest/auth-context';
@@ -9,6 +14,8 @@ import { GroupsService } from '../groups/groups.service';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 import { PollDto } from './dto/poll.dto';
 import { SelectGroupByDeviceDto } from './dto/select-group.dto';
+import { NavigateCurrentContentDto } from './dto/navigate-current-content.dto';
+import { DeviceCurrentContentService } from '../contents/device-current-content.service';
 import { deviceRegisterRateLimit } from './device-rate-limits';
 
 @Controller()
@@ -17,7 +24,8 @@ export class DeviceFirmwareController {
 
   constructor(
     private readonly devices: DeviceFirmwareService,
-    private readonly groups: GroupsService
+    private readonly groups: GroupsService,
+    private readonly currentContent: DeviceCurrentContentService
   ) {}
 
   // ── register / reset（无鉴权）────────────────────────────
@@ -73,6 +81,16 @@ export class DeviceFirmwareController {
   ): Promise<DeviceStateT> {
     await this.groups.setDeviceGroup(dev.deviceId, body.id);
     return this.devices.buildState(dev.deviceId);
+  }
+
+  @Public()
+  @UseGuards(DeviceAuthGuard)
+  @Post('devices/current/content/navigate')
+  navigateCurrentContent(
+    @CurrentDevice() dev: DeviceContext,
+    @Body() body: NavigateCurrentContentDto
+  ): Promise<NavigateCurrentContentResponseT> {
+    return this.currentContent.navigateCurrentContent(dev.deviceId, body);
   }
 
   @Public()

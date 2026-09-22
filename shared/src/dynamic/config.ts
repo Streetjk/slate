@@ -63,6 +63,7 @@ export const DailyCalendarConfig = z
   .object({
     type: z.literal('daily_calendar'),
     tz: Tz.default('Australia/Perth'),
+    day_offset: z.coerce.number().int().min(-31).max(31).default(0),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);
@@ -72,6 +73,7 @@ export const MonthCalendarConfig = z
   .object({
     type: z.literal('month_calendar'),
     tz: Tz.default('Australia/Perth'),
+    month_offset: z.coerce.number().int().min(-24).max(24).default(0),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);
@@ -190,6 +192,7 @@ export type BtcPriceConfigT = z.infer<typeof BtcPriceConfig>;
 export const OutlookCalendarConfig = z.object({
   type: z.literal('outlook_calendar'),
   tz: z.literal('Australia/Perth').default('Australia/Perth'),
+  day_offset: z.coerce.number().int().min(-31).max(31).default(0),
   days_ahead: z.coerce.number().int().min(1).max(31).default(7),
   max_events: z.coerce.number().int().min(1).max(20).default(8),
   refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(600),

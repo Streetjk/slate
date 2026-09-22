@@ -145,6 +145,7 @@ bool SyncService::DownloadFramesToStage(cache::CacheWriter& writer, const std::s
             cache::FrameMeta fm;
             fm.status_bar_text = f.device_status_bar_text;
             fm.content_etag    = f.content_etag;
+            fm.dynamic_type    = f.dynamic_type;
             fm.image_etag      = f.image_etag;
             fm.audio_etag      = f.audio_etag;
             // next_wake_sec<=0 视为非动态帧(不配 RTC timer)：0 曾被当成动态并被 60s
@@ -294,6 +295,7 @@ bool SyncService::SyncCurrentContent(const std::string& gid, const api::ContentM
     cache::FrameMeta next_meta;
     next_meta.status_bar_text = f.device_status_bar_text;
     next_meta.content_etag    = f.content_etag;
+    next_meta.dynamic_type    = f.dynamic_type;
     next_meta.image_etag      = f.image_etag;
     next_meta.audio_etag      = f.audio_etag;
     // 同上：next_wake_sec<=0 当非动态帧，避免 0 被 60s 地板顶起来反复空醒。
@@ -303,7 +305,8 @@ bool SyncService::SyncCurrentContent(const std::string& gid, const api::ContentM
     if (old_meta_ok && !f.content_etag.empty() && old_meta.content_etag == f.content_etag &&
         cache::FrameImageExists(gid, f.seq, f.image_etag) &&
         (f.audio_etag.empty() || cache::FrameAudioExists(gid, f.seq, f.audio_etag))) {
-        if (old_meta.status_bar_text != next_meta.status_bar_text || old_meta.has_ttl != next_meta.has_ttl ||
+        if (old_meta.status_bar_text != next_meta.status_bar_text ||
+            old_meta.dynamic_type != next_meta.dynamic_type || old_meta.has_ttl != next_meta.has_ttl ||
             old_meta.ttl_sec != next_meta.ttl_sec || old_meta.image_etag != next_meta.image_etag ||
             old_meta.audio_etag != next_meta.audio_etag) {
             if (!cache::WriteFrameMeta(gid, f.seq, next_meta)) {
