@@ -1,12 +1,17 @@
-import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { CurrentUser, Public } from '../../../common/nest/decorators/auth-context.decorators';
 import type { WebUserContext } from '../../../common/nest/auth-context';
 import { ServiceUnavailableError } from '../../../common/errors';
 import { MicrosoftOAuthService } from './microsoft-oauth.service';
+import { OutlookIcsService } from './outlook-ics.service';
+import { OutlookIcsConnectDto } from './dto/outlook-ics.dto';
 
 @Controller('integrations/microsoft/calendar')
 export class OutlookController {
-  constructor(private readonly oauth: MicrosoftOAuthService) {}
+  constructor(
+    private readonly oauth: MicrosoftOAuthService,
+    private readonly ics: OutlookIcsService
+  ) {}
 
   @Post('device')
   async startDeviceAuthorization(@CurrentUser() user: WebUserContext) {
@@ -58,5 +63,21 @@ export class OutlookController {
   @Get('status')
   status(@CurrentUser() user: WebUserContext) {
     return this.oauth.getConnectionStatus(user.userId);
+  }
+
+  @Get('ics/status')
+  icsStatus(@CurrentUser() user: WebUserContext) {
+    return this.ics.status(user.userId);
+  }
+
+  @Put('ics')
+  connectIcs(@CurrentUser() user: WebUserContext, @Body() body: OutlookIcsConnectDto) {
+    return this.ics.connect(user.userId, body.url);
+  }
+
+  @Delete('ics')
+  async disconnectIcs(@CurrentUser() user: WebUserContext): Promise<{ connected: false }> {
+    await this.ics.disconnect(user.userId);
+    return { connected: false };
   }
 }

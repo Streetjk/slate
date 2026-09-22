@@ -17,6 +17,11 @@ export interface OutlookDeviceFlow {
   error: string | null;
 }
 
+export interface OutlookIcsStatus {
+  connected: boolean;
+  updatedAt?: string;
+}
+
 export interface OutlookConnectionStatus {
   connected: boolean;
   configured: boolean;
@@ -49,4 +54,23 @@ export async function cancelOutlookDeviceFlow(flowId: string): Promise<void> {
   await api.delete(
     API_PREFIX + '/integrations/microsoft/calendar/device/' + encodeURIComponent(flowId)
   );
+}
+
+export async function getOutlookIcsStatus(): Promise<OutlookIcsStatus> {
+  const { data } = await api.get<OutlookIcsStatus>(
+    API_PREFIX + '/integrations/microsoft/calendar/ics/status'
+  );
+  return data;
+}
+
+export async function connectOutlookIcs(url: string): Promise<OutlookIcsStatus> {
+  const { data } = await api.put<OutlookIcsStatus>(
+    API_PREFIX + '/integrations/microsoft/calendar/ics',
+    { url }
+  );
+  return data;
+}
+
+export async function disconnectOutlookIcs(): Promise<void> {
+  await api.delete(API_PREFIX + '/integrations/microsoft/calendar/ics');
 }

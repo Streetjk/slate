@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { OutlookCalendarConfigT } from 'shared';
 import type { MicrosoftGraphCalendarClient } from '../outlook/microsoft-graph-calendar.client';
+import type { OutlookIcsService } from '../outlook/outlook-ics.service';
 import { OutlookCalendarProvider, parseOutlookCalendarData } from './outlook-calendar.provider';
 
 const config: OutlookCalendarConfigT = {
@@ -20,7 +21,7 @@ describe('OutlookCalendarProvider', () => {
         return [];
       },
     } as unknown as MicrosoftGraphCalendarClient;
-    const provider = new OutlookCalendarProvider(graph);
+    const provider = new OutlookCalendarProvider(graph, disconnectedIcs());
 
     await expect(
       provider.fetchData(config, { now: new Date('2026-09-01T00:00:00Z') })
@@ -40,7 +41,7 @@ describe('OutlookCalendarProvider', () => {
         throw new Error('network timeout');
       },
     } as unknown as MicrosoftGraphCalendarClient;
-    const provider = new OutlookCalendarProvider(graph);
+    const provider = new OutlookCalendarProvider(graph, disconnectedIcs());
     const now = new Date('2026-09-01T00:00:00Z');
     const lastData = {
       connected: true,
@@ -76,6 +77,43 @@ describe('OutlookCalendarProvider', () => {
     ).toHaveLength(1);
   });
 
+  it('prefers the encrypted ICS feed over Graph when an ICS connection exists', async () => {
+    let graphCalls = 0;
+    let icsCalls = 0;
+    const graph = {
+      listCalendarView: async () => {
+        graphCalls += 1;
+        return [];
+      },
+    } as unknown as MicrosoftGraphCalendarClient;
+    const ics = {
+      status: async () => ({ connected: true, updatedAt: '2026-09-22T00:00:00.000Z' }),
+      listCalendarView: async () => {
+        icsCalls += 1;
+        return [
+          {
+            id: 'ics-event',
+            title: 'ICS event',
+            start: '2026-09-22T09:00:00+08:00',
+            end: '2026-09-22T10:00:00+08:00',
+            allDay: false,
+            timezone: 'Australia/Perth',
+          },
+        ];
+      },
+    } as unknown as OutlookIcsService;
+    const provider = new OutlookCalendarProvider(graph, ics);
+
+    const result = await provider.fetchData(config, {
+      now: new Date('2026-09-22T00:00:00.000Z'),
+      ownerUserId: 'user-a',
+    });
+
+    expect(result.events[0]?.id).toBe('ics-event');
+    expect(graphCalls).toBe(0);
+    expect(icsCalls).toBe(1);
+  });
+
   it('keeps cache entries isolated by owner', async () => {
     const owners: string[] = [];
     const graph = {
@@ -93,7 +131,7 @@ describe('OutlookCalendarProvider', () => {
         ];
       },
     } as unknown as MicrosoftGraphCalendarClient;
-    const provider = new OutlookCalendarProvider(graph);
+    const provider = new OutlookCalendarProvider(graph, disconnectedIcs());
     const now = new Date('2026-09-01T00:00:00Z');
     const first = await provider.fetchData(config, { now, ownerUserId: 'user-a' });
     const second = await provider.fetchData(config, { now, ownerUserId: 'user-b' });
@@ -103,3 +141,10 @@ describe('OutlookCalendarProvider', () => {
     expect(owners).toEqual(['user-a', 'user-b']);
   });
 });
+
+function disconnectedIcs(): OutlookIcsService {
+  return {
+    status: async () => ({ connected: false }),
+    listCalendarView: async () => [],
+  } as unknown as OutlookIcsService;
+}

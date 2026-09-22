@@ -13,6 +13,7 @@ import {
   isRecentTimestamp,
 } from './provider-cache';
 import { MicrosoftGraphCalendarClient } from '../outlook/microsoft-graph-calendar.client';
+import { OutlookIcsService } from '../outlook/outlook-ics.service';
 
 export interface OutlookCalendarData {
   events: CalendarEventT[];
@@ -32,7 +33,10 @@ export class OutlookCalendarProvider implements DataProvider<
     MAX_CACHE_ENTRIES
   );
 
-  constructor(private readonly graph: MicrosoftGraphCalendarClient) {}
+  constructor(
+    private readonly graph: MicrosoftGraphCalendarClient,
+    private readonly ics: OutlookIcsService
+  ) {}
 
   validateConfig(raw: unknown): OutlookCalendarConfigT {
     return OutlookCalendarConfig.parse(raw);
@@ -44,14 +48,31 @@ export class OutlookCalendarProvider implements DataProvider<
   ): Promise<OutlookCalendarData> {
     if (!ctx.ownerUserId) return emptyCalendar(ctx.now, false);
     const userId = ctx.ownerUserId;
-    const key = `${userId}:${config.tz}:${config.days_ahead}:${config.max_events}`;
+    const icsStatus = await this.ics.status(userId);
+    const source = icsStatus.connected ? 'ics' : 'graph';
+    const revision = icsStatus.updatedAt ?? 'none';
+    const key =
+      source +
+      ':' +
+      userId +
+      ':' +
+      revision +
+      ':' +
+      config.tz +
+      ':' +
+      String(config.days_ahead) +
+      ':' +
+      String(config.max_events);
     const ttlSec = Math.max(config.refresh_interval_sec, DEFAULT_PROVIDER_CACHE_TTL_SEC);
     return this.fetcher.getOrFetch(key, ctx.now.getTime(), ttlSec * 1000, async () => {
       try {
-        const events = await this.graph.listCalendarView(userId, config, ctx.now);
+        const events =
+          source === 'ics'
+            ? await this.ics.listCalendarView(userId, config, ctx.now)
+            : await this.graph.listCalendarView(userId, config, ctx.now);
         return { events, fetchedAt: ctx.now.toISOString(), connected: true };
       } catch (error) {
-        if (isNotConnectedError(error)) return emptyCalendar(ctx.now, false);
+        if (source === 'graph' && isNotConnectedError(error)) return emptyCalendar(ctx.now, false);
         const fallback = fallbackCalendar(ctx.lastData, config.tz, ctx.now);
         if (fallback) return fallback;
         throw error;
