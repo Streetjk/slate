@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import ical, { type ParameterValue, type VEvent } from 'node-ical';
 import { CalendarEvent, type CalendarEventT, type OutlookCalendarConfigT } from 'shared';
 import { ValidationError } from '../../../common/errors';
@@ -31,6 +31,7 @@ interface IcsConnection {
 
 @Injectable()
 export class OutlookIcsService {
+  private readonly logger = new Logger(OutlookIcsService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly encryption: TokenEncryptionService
@@ -63,7 +64,9 @@ export class OutlookIcsService {
       );
     } catch (error) {
       if (error instanceof ValidationError) throw error;
-      throw new ValidationError(outlookIcsFailureMessage(error));
+      const reason = outlookIcsFailureMessage(error);
+      this.logger.warn('Outlook ICS connection validation failed: ' + reason);
+      throw new ValidationError(reason);
     }
 
     await this.prisma.userIntegration.upsert({
