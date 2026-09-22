@@ -1,6 +1,7 @@
 #pragma once
 
 #include <driver/i2c_master.h>
+#include <atomic>
 #include <memory>
 
 class BatteryAdc;
@@ -39,8 +40,11 @@ class Board {
         return i2c_bus_;
     }
 
-    // 单节锂电池电压 + 百分比。失败原因:ADC 未 ready / 没装电池(charge 状态机说)。
+    // Single-cell battery voltage + percentage. While charging, terminal voltage
+    // is biased high by the charger, so percent returns the last reliable
+    // non-charging value when available. false means no trustworthy percentage.
     bool ReadBattery(uint16_t* voltage_mv, uint8_t* percent);
+    bool BatteryPercentEstimated() const { return battery_percent_estimated_.load(); }
 
    private:
     Board() = default;
@@ -59,4 +63,6 @@ class Board {
     std::unique_ptr<Button>        boot_btn_;
     std::unique_ptr<EpdSsd1683>    epd_;
     i2c_master_bus_handle_t        i2c_bus_ = nullptr;
+    std::atomic<int>                last_reliable_battery_pct_{-1};
+    std::atomic<bool>               battery_percent_estimated_{false};
 };

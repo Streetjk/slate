@@ -20,7 +20,8 @@ api::Telemetry BuildTelemetry(const std::string& current_group, const std::strin
     uint16_t       mv  = 0;
     uint8_t        pct = 0;
     if (Board::Get().ReadBattery(&mv, &pct)) {
-        tel.battery_pct = pct;
+        if (!Board::Get().BatteryPercentEstimated())
+            tel.battery_pct = pct;
         evt::PostBatteryUpdated(mv, pct, evt::kNoWait);
     }
     tel.rssi_dbm            = Wifi::Get().GetRssi();

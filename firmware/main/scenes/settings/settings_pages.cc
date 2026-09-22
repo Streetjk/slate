@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include "bsp/board.h"
 #include "drivers/audio/audio_player.h"
 #include "drivers/display/epd_ssd1683.h"
 #include "events/event_bus.h"
@@ -392,9 +393,10 @@ bool DeviceInfoPage::Refresh(SceneContext& ctx) {
     const std::string ip             = Wifi::Get().GetIp();
     int               battery_mv_raw = 0;
     int               battery_pct    = -1;
+    bool              battery_valid  = false;
     if (ctx.read_battery)
-        ctx.read_battery(&battery_mv_raw, &battery_pct);
-    const int battery_mv = (battery_mv_raw / 50) * 50;
+        battery_valid = ctx.read_battery(&battery_mv_raw, &battery_pct);
+    const int battery_mv = battery_valid ? (battery_mv_raw / 50) * 50 : 0;
 
     ChargeStatus::Snapshot charge{};
     if (ctx.read_charge)
@@ -423,13 +425,27 @@ bool DeviceInfoPage::Refresh(SceneContext& ctx) {
     const size_t fs_free_kb  = round_kb_100(fs_total >= fs_used ? fs_total - fs_used : 0);
     const size_t fs_free_pct = available_pct(fs_free_kb, fs_total_kb);
 
+    const bool battery_estimated = battery_valid && Board::Get().BatteryPercentEstimated();
+    char battery_text[24];
+    char battery_voltage_text[24];
+    if (!battery_valid) {
+        std::snprintf(battery_text, sizeof(battery_text), "--");
+        std::snprintf(battery_voltage_text, sizeof(battery_voltage_text), "--");
+    } else if (battery_estimated) {
+        std::snprintf(battery_text, sizeof(battery_text), "~%d%%", battery_pct);
+        std::snprintf(battery_voltage_text, sizeof(battery_voltage_text), "~%d mV", battery_mv);
+    } else {
+        std::snprintf(battery_text, sizeof(battery_text), "%d%%", battery_pct);
+        std::snprintf(battery_voltage_text, sizeof(battery_voltage_text), "%d mV", battery_mv);
+    }
+
     char buf[1024];
     std::snprintf(buf, sizeof(buf),
                   "WiFi    %s   %d dBm\n"
                   "SSID    %s\n"
                   "IP      %s\n"
                   "\n"
-                  "Battery %d%%   %d mV\n"
+                  "Battery %s   %s\n"
                   "Status  %s\n"
                   "\n"
                   "DRAM    total %u KB, free %u KB (%u%%)\n"
@@ -440,7 +456,7 @@ bool DeviceInfoPage::Refresh(SceneContext& ctx) {
                   "MAC      %s\n"
                   "Server   %s",
                   wifi_on ? "Connected" : "Not connected", rssi, wifi_ssid_.empty() ? "-" : wifi_ssid_.c_str(),
-                  ip.empty() ? "-" : ip.c_str(), battery_pct < 0 ? 0 : battery_pct, battery_mv, ChargeText(charge),
+                  ip.empty() ? "-" : ip.c_str(), battery_text, battery_voltage_text, ChargeText(charge),
                   static_cast<unsigned>(dram_total_kb), static_cast<unsigned>(dram_free_kb),
                   static_cast<unsigned>(dram_free_pct), static_cast<unsigned>(psram_total_kb),
                   static_cast<unsigned>(psram_free_kb), static_cast<unsigned>(psram_free_pct),

@@ -143,10 +143,40 @@ bool Board::ReadBattery(uint16_t* voltage_mv, uint8_t* percent) {
     if (!battery_adc_)
         return false;
 
-    // 先看充电状态机:无电池时电压采样不可信,直接返失败。
-    if (charge_ && charge_->Get().no_battery) {
+    const auto charge = charge_ ? charge_->Get() : ChargeStatus::Snapshot{};
+    if (charge.no_battery) {
+        battery_percent_estimated_.store(false, std::memory_order_release);
         return false;
     }
 
-    return battery_adc_->Read(voltage_mv, percent);
+    uint16_t measured_mv  = 0;
+    uint8_t  measured_pct = 0;
+    if (!battery_adc_->Read(&measured_mv, &measured_pct))
+        return false;
+    if (voltage_mv)
+        *voltage_mv = measured_mv;
+
+    if (charge.full) {
+        last_reliable_battery_pct_.store(100, std::memory_order_release);
+        battery_percent_estimated_.store(false, std::memory_order_release);
+        if (percent)
+            *percent = 100;
+        return true;
+    }
+
+    if (charge.charging) {
+        const int cached = last_reliable_battery_pct_.load(std::memory_order_acquire);
+        battery_percent_estimated_.store(cached >= 0, std::memory_order_release);
+        if (cached < 0)
+            return false;
+        if (percent)
+            *percent = static_cast<uint8_t>(cached);
+        return true;
+    }
+
+    last_reliable_battery_pct_.store(measured_pct, std::memory_order_release);
+    battery_percent_estimated_.store(false, std::memory_order_release);
+    if (percent)
+        *percent = measured_pct;
+    return true;
 }

@@ -157,14 +157,16 @@ void App::InitSceneStack() {
 }
 
 bool App::ReadBattery(int* mv, int* pct) {
-    uint16_t   mv16 = 0;
-    uint8_t    p8   = 0;
-    const bool ok   = Board::Get().ReadBattery(&mv16, &p8);
+    uint16_t mv16 = 0;
+    uint8_t p8 = 0;
+    const bool ok = Board::Get().ReadBattery(&mv16, &p8);
+    if (!ok)
+        return false;
     if (mv)
         *mv = mv16;
     if (pct)
         *pct = p8;
-    return ok;
+    return true;
 }
 
 void App::StartUiLoop() {
