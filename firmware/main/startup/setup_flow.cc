@@ -44,8 +44,10 @@ bool TryProfile(cred::Credentials& c, std::size_t index, int timeout_ms) {
     ESP_LOGI(kTag, "wifi profile attempt index=%u ssid=%s timeout_ms=%d",
              static_cast<unsigned>(index), profile.ssid.c_str(), timeout_ms);
 
-    if (!Wifi::Get().Connect(profile.ssid, profile.password, timeout_ms))
+    if (!Wifi::Get().Connect(profile.ssid, profile.password, timeout_ms)) {
+        Wifi::Get().Disconnect();
         return false;
+    }
 
     c.wifi_ssid = profile.ssid;
     c.wifi_pwd  = profile.password;
