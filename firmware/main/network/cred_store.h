@@ -1,20 +1,27 @@
 #pragma once
 
-// NVS 凭据存储:
+// NVS credential storage.
 //
-// 1. 配网凭据 slate.net { ssid / pwd / url }: captive portal 提交后由 Save() 写入。
-//
-// 2. 内容服务端设备身份 slate.net { dev_id / dev_sec }:
-//    register 响应里下发,SaveSecret() 单独写一次
-//    并 commit,保证跨重启可见。后续所有受保护 API 用 Authorization: Bearer <device_secret>。
-//    poll 收到 401 (secret 失效) 时调 ClearSecret() 让设备重启走 register 流,
-//    不擦 wifi/server,体验上是"内部修复"而非"重新配网"。
+// Wi-Fi is stored as up to four profiles. Slot 0 is the preferred / last
+// successful network. The legacy ssid/pwd keys remain mirrored to slot 0 so
+// existing devices upgrade without losing their configured network.
 
+#include <array>
+#include <cstddef>
 #include <string>
 
 namespace cred {
 
+inline constexpr std::size_t kMaxWifiProfiles = 4;
+
+struct WifiProfile {
+    std::string ssid;
+    std::string password;
+};
+
 struct Credentials {
+    std::array<WifiProfile, kMaxWifiProfiles> wifi_profiles{};
+    std::size_t wifi_profile_count = 0;
     std::string wifi_ssid;
     std::string wifi_pwd;
     std::string server_url;
@@ -22,30 +29,28 @@ struct Credentials {
     std::string device_secret;
 };
 
-// Load 把 NVS 里所有字段读出来。返回 true 表示至少有 wifi_ssid + server_url (= 配网完整)。
-// device_id/device_secret 可能为空 —— 表示首次启动或 self-reset 后,需要走 register。
+// Load all persisted fields. Existing single-network ssid/pwd data is exposed
+// as profile 0 when no multi-network slots have been written yet.
 bool Load(Credentials& out);
 
-// 写配网凭据 (wifi + server_url)。captive portal submit 后调用。
-// 不动 device_id/device_secret,保持身份与配网解耦。
+// Add/update c.wifi_ssid and move it to profile 0 while preserving the other
+// saved networks. Also updates server_url. Device identity is untouched.
 bool Save(const Credentials& c);
 
-// 独立 commit 设备身份。register 响应解析成功后立即调用一次。
-// 半写保护:nvs_open RW → set 两个 key → commit → close,失败返回 false 由调用方决定 panic。
+// Promote a successfully connected profile to slot 0 and persist the order.
+// Returns false when ssid is not one of the saved profiles or persistence fails.
+bool PromoteWifiProfile(Credentials& c, const std::string& ssid);
+
+// Persist the backend-issued device identity independently from Wi-Fi profiles.
 bool SaveSecret(const std::string& device_id, const std::string& device_secret);
 
-// 清掉 device_id + device_secret,保留 wifi。下次启动会走 register 重新拿。
-// 触发场景:poll 收到 401 (后端 reset 了我们 / DB 异常)。
+// Clear device identity while preserving Wi-Fi profiles and server URL.
 void ClearSecret();
 
-// 便利:从 NVS 读 server_url
 std::string GetServerUrl();
-
-// 读取当前 Slate device secret，用于已认证的 voice WebSocket 握手。
-// 不向日志、屏幕或服务端配置响应暴露。
 std::string GetDeviceSecret();
 
-// 工厂重置:清整个 namespace。下次启动进入配网模式。
+// Factory reset: clear the complete network/device namespace.
 void Clear();
 
 }  // namespace cred

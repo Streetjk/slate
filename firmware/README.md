@@ -211,18 +211,24 @@ nvs_flash_init + LittleFS mount
 - DNS hijack 所有查询到 `192.168.4.1`。
 - HTTP portal 提供两步表单：Wi-Fi SSID/password 与 backend `server_url`。
 - 提交后先 `Wifi::TryConnect()` 验证，再保存 NVS 并重启。
+- 最多保存 4 个 Wi-Fi profile；新提交的网络会新增/更新并成为首选，不会清掉其他已保存网络。
+- 启动时先快速尝试上次成功的网络；失败后扫描附近 AP，并按信号强度尝试其他已保存 profile。
+- 运行中若当前 SSID 消失，慢速重连也会在扫描结果中切换到其他已保存 profile。
+- 旧版单一 `ssid/pwd` NVS 数据会自动作为 profile 0 读取，无需恢复出厂或重新配当前 Wi-Fi。
 
 凭据结构：
 
 ```cpp
-std::string wifi_ssid;
-std::string wifi_pwd;
+std::array<WifiProfile, 4> wifi_profiles;
+std::size_t wifi_profile_count;
+std::string wifi_ssid;  // profile 0 compatibility mirror
+std::string wifi_pwd;   // profile 0 compatibility mirror
 std::string server_url;
 std::string device_id;
 std::string device_secret;
 ```
 
-首次配网后 `device_secret` 为空，重启进入注册流程。工厂重置会清空凭据，下次开机重新进入 portal。
+首次配网后 `device_secret` 为空，重启进入注册流程。工厂重置会清空全部 Wi-Fi profiles 与凭据，下次开机重新进入 portal。
 
 ## 设备注册与绑定
 

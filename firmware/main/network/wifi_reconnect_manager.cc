@@ -8,6 +8,7 @@
 #include <array>
 #include <cstring>
 
+#include "network/cred_store.h"
 #include "network/wifi.h"
 
 namespace {
@@ -27,6 +28,25 @@ bool SsidEquals(const uint8_t lhs[32], const uint8_t rhs[32]) {
     const size_t lhs_len = BoundedSsidLen(lhs);
     const size_t rhs_len = BoundedSsidLen(rhs);
     return lhs_len == rhs_len && std::memcmp(lhs, rhs, lhs_len) == 0;
+}
+
+bool SsidEquals(const uint8_t lhs[32], const std::string& rhs) {
+    const size_t lhs_len = BoundedSsidLen(lhs);
+    return lhs_len == rhs.size() && std::memcmp(lhs, rhs.data(), lhs_len) == 0;
+}
+
+bool ApplySavedProfile(wifi_config_t& wc, const cred::WifiProfile& profile) {
+    if (profile.ssid.empty() || profile.ssid.size() > sizeof(wc.sta.ssid) ||
+        profile.password.size() >= sizeof(wc.sta.password)) {
+        return false;
+    }
+    wc = {};
+    std::memcpy(wc.sta.ssid, profile.ssid.data(), profile.ssid.size());
+    std::memcpy(wc.sta.password, profile.password.data(), profile.password.size());
+    wc.sta.threshold.authmode = WIFI_AUTH_OPEN;
+    wc.sta.pmf_cfg.capable    = true;
+    wc.sta.pmf_cfg.required   = false;
+    return true;
 }
 }  // namespace
 
@@ -134,15 +154,32 @@ void WifiReconnectManager::HandleSlowScanResult() {
         Schedule();
         return;
     }
-    if (wc.sta.ssid[0] == '\0') {
-        ESP_LOGW(kTag, "slow scan aborted reason=target_ssid_missing");
-        return;
-    }
     const wifi_ap_record_t* match = nullptr;
-    for (uint16_t i = 0; i < ap_num; ++i) {
-        if (SsidEquals(records[i].ssid, wc.sta.ssid)) {
-            match = &records[i];
-            break;
+    if (wc.sta.ssid[0] != '\0') {
+        for (uint16_t i = 0; i < ap_num; ++i) {
+            if (SsidEquals(records[i].ssid, wc.sta.ssid)) {
+                match = &records[i];
+                break;
+            }
+        }
+    }
+
+    // If the current SSID disappeared, roam to the strongest visible saved
+    // profile instead of scanning forever for the old network.
+    if (!match) {
+        cred::Credentials saved;
+        cred::Load(saved);
+        for (uint16_t i = 0; i < ap_num && !match; ++i) {
+            for (std::size_t p = 0; p < saved.wifi_profile_count; ++p) {
+                if (!SsidEquals(records[i].ssid, saved.wifi_profiles[p].ssid))
+                    continue;
+                if (!ApplySavedProfile(wc, saved.wifi_profiles[p]))
+                    continue;
+                match = &records[i];
+                ESP_LOGI(kTag, "slow reconnect roaming profile_index=%u rssi=%d",
+                         static_cast<unsigned>(p), static_cast<int>(records[i].rssi));
+                break;
+            }
         }
     }
 
@@ -154,7 +191,12 @@ void WifiReconnectManager::HandleSlowScanResult() {
     wc.sta.bssid_set = 1;
     std::memcpy(wc.sta.bssid, match->bssid, 6);
     wc.sta.channel = match->primary;
-    esp_wifi_set_config(WIFI_IF_STA, &wc);
+    esp_err_t config_err = esp_wifi_set_config(WIFI_IF_STA, &wc);
+    if (config_err != ESP_OK) {
+        ESP_LOGW(kTag, "slow reconnect config failed err=%s", esp_err_to_name(config_err));
+        Schedule();
+        return;
+    }
 
     esp_err_t err = esp_wifi_connect();
     if (err != ESP_OK) {
