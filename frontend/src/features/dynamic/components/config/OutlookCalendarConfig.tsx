@@ -3,6 +3,7 @@ import type { DynamicConfigT } from 'shared';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Spinner } from '@/components/ui/Spinner';
+import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   beginOutlookConnection,
   cancelOutlookDeviceFlow,
@@ -149,9 +150,12 @@ export function OutlookCalendarConfigPanel({
       setIcsStatus(next);
       setIcsUrl('');
       setMode('ics');
-    } catch {
+    } catch (error) {
       setIcsError(
-        'Slate could not validate that ICS feed. Check that it is the published Outlook .ics link.'
+        getApiErrorMessage(
+          error,
+          'Slate could not validate that ICS feed. Check that it is the published Outlook .ics link.'
+        )
       );
     } finally {
       setIcsSaving(false);
