@@ -161,22 +161,22 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
             switch (e.u.button.btn) {
                 case ButtonId::kUp:
                     if (!current_dynamic_type_.empty()) {
-                        ESP_LOGD(kTag, "button short btn=up action=tile_next type=%s",
+                        ESP_LOGD(kTag, "button short btn=up action=tile_prev type=%s",
                                  current_dynamic_type_.c_str());
-                        SyncService::Get().NavigateContentNext();
+                        SyncService::Get().NavigateContentPrev();
                     } else {
-                        ESP_LOGD(kTag, "button short btn=up action=next_image");
-                        NextFrame(ctx);
+                        ESP_LOGD(kTag, "button short btn=up action=prev_image");
+                        PrevFrame(ctx);
                     }
                     break;
                 case ButtonId::kDown:
                     if (!current_dynamic_type_.empty()) {
-                        ESP_LOGD(kTag, "button short btn=down action=tile_prev type=%s",
+                        ESP_LOGD(kTag, "button short btn=down action=tile_next type=%s",
                                  current_dynamic_type_.c_str());
-                        SyncService::Get().NavigateContentPrev();
+                        SyncService::Get().NavigateContentNext();
                     } else {
-                        ESP_LOGD(kTag, "button short btn=down action=prev_image");
-                        PrevFrame(ctx);
+                        ESP_LOGD(kTag, "button short btn=down action=next_image");
+                        NextFrame(ctx);
                     }
                     break;
                 case ButtonId::kEnter:

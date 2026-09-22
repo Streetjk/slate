@@ -8,7 +8,7 @@ import {
   normalizeWeatherAlertProvince,
 } from 'shared';
 import { recordValue, valueText } from '../../../common/utils/value-utils';
-import { cnMonthDay, datePartsInTz, timezoneFromConfig } from '../timezone';
+import { cnMonthDay, datePartsInTz, dynamicViewDate, timezoneFromConfig } from '../timezone';
 
 export interface ContentStatusBarSource {
   kind: ContentKind;
@@ -106,7 +106,8 @@ function monthCalendarStatusBarText(
   config: Prisma.JsonValue | null | undefined,
   renderedAt: Date
 ): string {
-  const parts = datePartsInTz(renderedAt, timezoneFromConfig(config));
+  const viewDate = dynamicViewDate(config, renderedAt);
+  const parts = datePartsInTz(viewDate, timezoneFromConfig(config));
   return `${parts.year}/${parts.month}`;
 }
 

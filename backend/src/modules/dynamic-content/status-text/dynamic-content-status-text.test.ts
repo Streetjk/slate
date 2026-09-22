@@ -26,6 +26,18 @@ describe('dynamic content English status text', () => {
     ).toBe('8/31');
   });
 
+  test('uses the shifted month in monthly-calendar status text', () => {
+    expect(
+      deviceStatusBarText({
+        kind: 'dynamic',
+        frameName: 'Monthly calendar',
+        dynamicType: 'month_calendar',
+        dynamicConfig: { type: 'month_calendar', tz: 'Australia/Perth', month_offset: 1 },
+        renderedAt: new Date('2026-09-22T12:00:00.000Z'),
+      })
+    ).toBe('2026/10');
+  });
+
   test('uses English weather alert fallback text', () => {
     expect(weatherAlertStatusBarText({ type: 'weather_alert', province: '' })).toBe(
       'National weather alerts'
