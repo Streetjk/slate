@@ -63,9 +63,7 @@ export class OutlookIcsService {
       );
     } catch (error) {
       if (error instanceof ValidationError) throw error;
-      throw new ValidationError(
-        'Could not read the published Outlook ICS feed. Check that the link is current and public.'
-      );
+      throw new ValidationError(outlookIcsFailureMessage(error));
     }
 
     await this.prisma.userIntegration.upsert({
@@ -147,6 +145,41 @@ export class OutlookIcsService {
   }
 }
 
+function outlookIcsFailureMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const http = message.match(/HTTP\s+(\d{3})/i);
+  if (http?.[1]) {
+    return (
+      'Outlook ICS feed returned HTTP ' +
+      http[1] +
+      '. Check that you copied the published ICS link, not the HTML sharing link.'
+    );
+  }
+  if (/redirected too many times/i.test(message)) {
+    return 'Outlook ICS feed redirected too many times. The published link may have expired or changed.';
+  }
+  if (
+    /must be a Microsoft Outlook published calendar URL|must use HTTPS|must not contain URL credentials|must end in \.ics/i.test(
+      message
+    )
+  ) {
+    return message;
+  }
+  if (/too large|too many items/i.test(message)) {
+    return 'Outlook ICS feed is too large for Slate to validate safely.';
+  }
+  if (/not a calendar/i.test(message)) {
+    return 'The Outlook link did not return an ICS calendar. Check that you copied the .ics link rather than the HTML link.';
+  }
+  if (/abort|timeout|timed out/i.test(message)) {
+    return 'Slate timed out while fetching the Outlook ICS feed. Please try again.';
+  }
+  if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|network|fetch failed/i.test(message)) {
+    return 'Slate could not reach the Outlook ICS feed from the Orange Pi.';
+  }
+  return 'Slate fetched the Outlook ICS feed, but could not parse it. The feed format may need a compatibility fix.';
+}
+
 export function validateOutlookIcsUrl(rawUrl: string): URL {
   let url: URL;
   try {
@@ -164,9 +197,6 @@ export function validateOutlookIcsUrl(rawUrl: string): URL {
   );
   if (!allowed) {
     throw new ValidationError('ICS feed must be a Microsoft Outlook published calendar URL');
-  }
-  if (!url.pathname.toLowerCase().endsWith('.ics')) {
-    throw new ValidationError('Outlook published calendar URL must end in .ics');
   }
   url.hash = '';
   return url;

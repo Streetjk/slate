@@ -21,9 +21,6 @@ describe('OutlookIcsService security and parsing', () => {
     );
     expect(() => validateOutlookIcsUrl('https://127.0.0.1/calendar.ics')).toThrow('Microsoft');
     expect(() => validateOutlookIcsUrl('https://example.com/calendar.ics')).toThrow('Microsoft');
-    expect(() => validateOutlookIcsUrl('https://outlook.office365.com/not-a-calendar')).toThrow(
-      '.ics'
-    );
   });
 
   it('normalizes timed, all-day, and recurring events without exposing feed metadata', () => {
