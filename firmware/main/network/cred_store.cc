@@ -10,6 +10,8 @@
 
 namespace {
 constexpr char kTag[] = "cred";
+constexpr char kLegacyServerUrl[] = "https://orange5.tail6aabef.ts.net";
+constexpr char kCurrentServerUrl[] = "https://orangepi5.tail6aabef.ts.net";
 
 constexpr std::array<const char*, cred::kMaxWifiProfiles> kSsidKeys = {
     nvs_schema::net::kSsid0,
@@ -105,6 +107,15 @@ bool Load(Credentials& out) {
                               {nvs_schema::net::kDevId, &out.device_id},
                               {nvs_schema::net::kDevSec, &out.device_secret},
                           });
+
+    if (out.server_url == kLegacyServerUrl) {
+        out.server_url = kCurrentServerUrl;
+        if (nvs_store::SetString(nvs_schema::kNet, nvs_schema::net::kUrl, out.server_url)) {
+            ESP_LOGI(kTag, "server url migrated legacy_host=orange5 current_host=orangepi5");
+        } else {
+            ESP_LOGW(kTag, "server url migration persistence failed");
+        }
+    }
 
     for (std::size_t i = 0; i < kMaxWifiProfiles; ++i) {
         const std::string ssid = nvs_store::GetString(nvs_schema::kNet, kSsidKeys[i]);
