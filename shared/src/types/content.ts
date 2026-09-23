@@ -21,6 +21,27 @@ export const ReorderContentsRequest = z.object({
 });
 export type ReorderContentsRequestT = z.infer<typeof ReorderContentsRequest>;
 
+export const NavigationVariant = z.object({
+  key: z
+    .string()
+    .min(1)
+    .max(48)
+    .regex(/^[A-Za-z0-9_-]+$/),
+  label: z.string().max(64),
+  image_etag: z.string().min(1),
+  image_size: z.number().int().positive(),
+  status_bar_text: z.string().max(96),
+});
+export type NavigationVariantT = z.infer<typeof NavigationVariant>;
+
+export const NavigationBundle = z.object({
+  revision: z.string().min(1),
+  selected_key: z.string().min(1).max(48),
+  wrap: z.boolean(),
+  variants: z.array(NavigationVariant).min(2).max(64),
+});
+export type NavigationBundleT = z.infer<typeof NavigationBundle>;
+
 export const ContentSummary = z.object({
   id: z.string(),
   seq: z.number().int().nonnegative(),
@@ -37,6 +58,7 @@ export const ContentSummary = z.object({
   kind: ContentKind,
   dynamic_type: DynamicType.nullable(),
   next_wake_sec: z.number().int().nonnegative().nullable(),
+  navigation_bundle: NavigationBundle.nullable().optional(),
 });
 export type ContentSummaryT = z.infer<typeof ContentSummary>;
 

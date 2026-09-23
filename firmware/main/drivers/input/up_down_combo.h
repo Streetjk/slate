@@ -27,6 +27,8 @@ class UpDownComboController {
     static constexpr uint8_t kComboDownHeld     = 1u << 1;
     static constexpr uint8_t kComboUpConsumed   = 1u << 2;
     static constexpr uint8_t kComboDownConsumed = 1u << 3;
+    static constexpr uint8_t kComboUpLong        = 1u << 4;
+    static constexpr uint8_t kComboDownLong      = 1u << 5;
 
    private:
     void Update(uint8_t set_bits, uint8_t clear_bits);

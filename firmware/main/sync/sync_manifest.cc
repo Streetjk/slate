@@ -4,6 +4,7 @@
 
 #include "events/event_bus.h"
 #include "power/power_state.h"
+#include "ui/frame_view.h"
 #include "sync/sync_internal.h"
 #include "utils/time_utils.h"
 
@@ -203,10 +204,74 @@ bool SyncService::CommitStagedFrames(cache::CacheWriter& writer, const std::stri
         cache::DeleteFrameFiles(gid, idx);
     }
     writer.Commit();
+
+    // Navigation bundles are optional acceleration assets. Base content remains valid
+    // if one fails, but local Up/Down is only enabled after the complete bundle is
+    // cached and its descriptor committed.
+    for (const auto& content : manifest.contents) {
+        if (!SyncNavigationBundle(gid, content)) {
+            ESP_LOGW(kTag, "navigation bundle unavailable seq=%d type=%s", content.seq, content.dynamic_type.c_str());
+        }
+    }
+
     SetCurrentGroup(gid);
     if (reason == SyncReason::kCycle && total_updates == 0)
         evt::PostGroupSyncStatus(GroupSyncStatusMode::kCycleCacheHit, gid, synced_name);
     PostSyncedGroupReady(gid, synced_name, static_cast<int>(manifest.contents.size()), /*content_changed=*/true);
+    return true;
+}
+
+bool SyncService::SyncNavigationBundle(const std::string& gid, const api::ContentMeta& content) {
+    if (!content.navigation.present) {
+        cache::DeleteNavigationBundle(gid, content.seq);
+        return true;
+    }
+
+    cache::NavigationBundleMeta existing;
+    if (cache::ReadNavigationBundleMeta(gid, content.seq, existing) &&
+        existing.revision == content.navigation.revision) {
+        return true;
+    }
+
+    cache::DeleteNavigationBundle(gid, content.seq);
+
+    cache::NavigationBundleMeta next;
+    next.revision     = content.navigation.revision;
+    next.selected_key = content.navigation.selected_key;
+    next.wrap         = content.navigation.wrap;
+
+    for (const auto& variant : content.navigation.variants) {
+        if (ShouldStop()) {
+            cache::DeleteNavigationBundle(gid, content.seq);
+            return false;
+        }
+
+        download_buf_.clear();
+        bool nm = false;
+        if (!api::DownloadNavigationImage(content.id, variant.key, "", download_buf_, nm) || nm ||
+            download_buf_.size() != static_cast<size_t>(FrameView::kRawBytes) ||
+            !cache::WriteNavigationImage(gid, content.seq, variant.key, download_buf_)) {
+            ESP_LOGW(kTag, "navigation image download failed seq=%d key=%s bytes=%u", content.seq,
+                     variant.key.c_str(), static_cast<unsigned>(download_buf_.size()));
+            cache::DeleteNavigationBundle(gid, content.seq);
+            return false;
+        }
+
+        cache::NavigationVariantMeta cached_variant;
+        cached_variant.key             = variant.key;
+        cached_variant.label           = variant.label;
+        cached_variant.image_etag      = variant.image_etag;
+        cached_variant.status_bar_text = variant.status_bar_text;
+        next.variants.push_back(std::move(cached_variant));
+    }
+
+    if (!cache::WriteNavigationBundleMeta(gid, content.seq, next)) {
+        cache::DeleteNavigationBundle(gid, content.seq);
+        return false;
+    }
+
+    ESP_LOGI(kTag, "navigation bundle ready seq=%d variants=%u revision=%s", content.seq,
+             static_cast<unsigned>(next.variants.size()), next.revision.c_str());
     return true;
 }
 

@@ -81,6 +81,7 @@ set(SOURCES
     "storage/cache/cache_state.cc"
     "storage/cache/cache_manifest.cc"
     "storage/cache/cache_frames.cc"
+    "storage/cache/cache_navigation.cc"
     "storage/cache/cache_staging.cc"
     "storage/nvs/nvs_store.cc"
     "storage/nvs/volume_store.cc"

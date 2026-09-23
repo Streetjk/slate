@@ -4,6 +4,9 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "storage/cache/cache.h"
 
 #include "scenes/core/scene.h"
 
@@ -32,6 +35,10 @@ class FrameScene : public Scene {
     };
 
     void LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBehavior audio_behavior);
+    bool LoadNavigationBundleIntoMemory(int idx);
+    bool NavigateLocalVariant(SceneContext& ctx, int direction);
+    void ShowNavigationVariant(SceneContext& ctx, int variant_index);
+    void ClearNavigationBundle();
     void NextFrame(SceneContext& ctx);
     void PrevFrame(SceneContext& ctx);
     void NextPicture(SceneContext& ctx);
@@ -53,6 +60,10 @@ class FrameScene : public Scene {
     bool        first_load_full_refresh_ = true;
     std::string cached_status_bar_text_;
     std::string current_dynamic_type_;
+
+    cache::NavigationBundleMeta          navigation_bundle_;
+    std::vector<std::vector<uint8_t>>    navigation_images_;
+    int                                  navigation_index_ = -1;
 
     lv_obj_t*                  root_        = nullptr;
     lv_obj_t*                  empty_label_ = nullptr;

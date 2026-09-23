@@ -5,6 +5,7 @@ import { BlobService } from '../../infra/blob/blob.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { NotFoundError } from '../../common/errors';
 import { GroupsService } from '../groups/groups.service';
+import { DynamicNavigationBundleService } from '../dynamic-content/dynamic-navigation-bundle.service';
 import { ContentAudioBlobService } from './content-audio-blob.service';
 import { contentToDetail, contentToSummary } from './content-presenter';
 import { CONTENT_SELECT, contentSelect } from './content-select';
@@ -15,7 +16,8 @@ export class ContentsReadService {
     private readonly prisma: PrismaService,
     private readonly blob: BlobService,
     private readonly groups: GroupsService,
-    private readonly audioBlobs: ContentAudioBlobService
+    private readonly audioBlobs: ContentAudioBlobService,
+    private readonly navigationBundles: DynamicNavigationBundleService
   ) {}
 
   async assertReadable(gid: string, scope: { userId?: string; deviceId?: string }): Promise<void> {
@@ -79,7 +81,12 @@ export class ContentsReadService {
         sort_order: group.sortOrder,
         position,
       },
-      contents: group.contents.map((content) => contentToSummary(content)),
+      contents: await Promise.all(
+        group.contents.map(async (content) => ({
+          ...contentToSummary(content),
+          navigation_bundle: await this.navigationBundles.bundleForContent(content.id),
+        }))
+      ),
       manifestEtag: group.manifestEtag,
     };
   }
@@ -121,6 +128,20 @@ export class ContentsReadService {
     const data = await this.blob.read(content.groupId, content.id, 'image');
     if (!data) throw new NotFoundError('图片文件丢失');
     return { data, etag: content.imageEtag };
+  }
+
+  async readNavigationImage(
+    contentId: string,
+    key: string,
+    scope: { userId?: string; deviceId?: string }
+  ): Promise<{ data: Buffer; etag: string }> {
+    const content = await this.requireReadableContent(contentId, scope, {
+      id: true,
+      groupId: true,
+    });
+    const result = await this.navigationBundles.readVariantImage(content.id, key);
+    if (!result) throw new NotFoundError('Navigation image not found');
+    return result;
   }
 
   async readAudio(

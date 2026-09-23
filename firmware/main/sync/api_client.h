@@ -21,6 +21,22 @@
 
 namespace api {
 
+struct NavigationVariantMeta {
+    std::string key;
+    std::string label;
+    std::string image_etag;
+    std::string status_bar_text;
+    int         image_size = 0;
+};
+
+struct NavigationBundleMeta {
+    bool                               present = false;
+    std::string                        revision;
+    std::string                        selected_key;
+    bool                               wrap = false;
+    std::vector<NavigationVariantMeta> variants;
+};
+
 struct ContentMeta {
     int         seq = 0;
     std::string id;
@@ -32,8 +48,9 @@ struct ContentMeta {
     int         audio_size = 0;
     std::string kind;
     std::string dynamic_type;
-    bool        has_next_wake_sec = false;
-    int         next_wake_sec     = 0;
+    bool                 has_next_wake_sec = false;
+    int                  next_wake_sec     = 0;
+    NavigationBundleMeta navigation;
 };
 
 struct DeviceState {
@@ -124,6 +141,8 @@ class ApiClient {
                               bool& not_modified);
     bool DownloadContentAudio(const std::string& id, const std::string& if_none_match, std::vector<uint8_t>& out,
                               bool& not_modified);
+    bool DownloadNavigationImage(const std::string& id, const std::string& key, const std::string& if_none_match,
+                                 std::vector<uint8_t>& out, bool& not_modified);
 
    private:
     bool DoRequest(const std::string& path, esp_http_client_method_t method, const std::string& body_in,
@@ -177,5 +196,7 @@ bool DownloadContentImage(const std::string& id, const std::string& if_none_matc
                           bool& not_modified);
 bool DownloadContentAudio(const std::string& id, const std::string& if_none_match, std::vector<uint8_t>& out,
                           bool& not_modified);
+bool DownloadNavigationImage(const std::string& id, const std::string& key, const std::string& if_none_match,
+                             std::vector<uint8_t>& out, bool& not_modified);
 
 }  // namespace api

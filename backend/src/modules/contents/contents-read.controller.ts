@@ -72,6 +72,21 @@ export class ContentsReadController {
 
   @Public()
   @UseGuards(JwtOrDeviceAuthGuard)
+  @Get('contents/:contentId/navigation/:key/image')
+  async navigationImage(
+    @Param('contentId') contentId: string,
+    @Param('key') key: string,
+    @CurrentUser() user: WebUserContext | undefined,
+    @CurrentDevice() device: DeviceContext | undefined,
+    @Req() req: FastifyRequest,
+    @Res() reply: FastifyReply
+  ): Promise<void> {
+    const r = await this.reads.readNavigationImage(contentId, key, contentAuthScope(user, device));
+    respondWithEtag(req, reply, r.etag, r.data, 'application/octet-stream');
+  }
+
+  @Public()
+  @UseGuards(JwtOrDeviceAuthGuard)
   @Get('contents/:contentId/audio')
   async audio(
     @Param('contentId') contentId: string,

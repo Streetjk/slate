@@ -28,6 +28,7 @@ import { BtcPriceProvider } from './providers/btc-price.provider';
 import { OutlookModule } from './outlook/outlook.module';
 import { GoogleNewsProvider } from './providers/google-news.provider';
 import { AiUsageProvider } from './providers/ai-usage.provider';
+import { DynamicNavigationBundleService } from './dynamic-navigation-bundle.service';
 
 /**
  * 动态内容模板与渲染业务模块。
@@ -66,6 +67,7 @@ import { AiUsageProvider } from './providers/ai-usage.provider';
     FontTestProvider,
     BtcPriceProvider,
     DynamicContentSchedulerService,
+    DynamicNavigationBundleService,
     IngestPayloadSizeGuard,
     IngestPayloadSizePipe,
   ],
@@ -73,6 +75,7 @@ import { AiUsageProvider } from './providers/ai-usage.provider';
     DynamicContentRegistry,
     DynamicContentRendererService,
     DynamicContentService,
+    DynamicNavigationBundleService,
     CalendarDataService,
   ],
 })

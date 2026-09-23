@@ -1,6 +1,7 @@
 #include "scenes/frame/frame_scene.h"
 
 #include <esp_log.h>
+#include <algorithm>
 #include <cstdio>
 #include <vector>
 
@@ -160,8 +161,11 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
         case UiEventKind::kButtonShort: {
             switch (e.u.button.btn) {
                 case ButtonId::kUp:
-                    if (!current_dynamic_type_.empty()) {
-                        ESP_LOGD(kTag, "button short btn=up action=tile_prev type=%s",
+                    if (NavigateLocalVariant(ctx, -1)) {
+                        ESP_LOGD(kTag, "button short btn=up action=local_variant_prev type=%s",
+                                 current_dynamic_type_.c_str());
+                    } else if (!current_dynamic_type_.empty()) {
+                        ESP_LOGD(kTag, "button short btn=up action=tile_prev_fallback type=%s",
                                  current_dynamic_type_.c_str());
                         SyncService::Get().NavigateContentPrev();
                     } else {
@@ -170,8 +174,11 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
                     }
                     break;
                 case ButtonId::kDown:
-                    if (!current_dynamic_type_.empty()) {
-                        ESP_LOGD(kTag, "button short btn=down action=tile_next type=%s",
+                    if (NavigateLocalVariant(ctx, 1)) {
+                        ESP_LOGD(kTag, "button short btn=down action=local_variant_next type=%s",
+                                 current_dynamic_type_.c_str());
+                    } else if (!current_dynamic_type_.empty()) {
+                        ESP_LOGD(kTag, "button short btn=down action=tile_next_fallback type=%s",
                                  current_dynamic_type_.c_str());
                         SyncService::Get().NavigateContentNext();
                     } else {
@@ -267,6 +274,95 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
         default:
             break;
     }
+}
+
+void FrameScene::ClearNavigationBundle() {
+    navigation_bundle_ = {};
+    navigation_images_.clear();
+    navigation_index_ = -1;
+}
+
+bool FrameScene::LoadNavigationBundleIntoMemory(int idx) {
+    ClearNavigationBundle();
+
+    cache::NavigationBundleMeta bundle;
+    if (!cache::ReadNavigationBundleMeta(gid_, idx, bundle))
+        return false;
+
+    std::vector<std::vector<uint8_t>> images;
+    images.reserve(bundle.variants.size());
+    int selected = -1;
+    for (size_t i = 0; i < bundle.variants.size(); ++i) {
+        std::vector<uint8_t> raw;
+        if (!cache::ReadNavigationImage(gid_, idx, bundle.variants[i].key, raw) ||
+            raw.size() != static_cast<size_t>(FrameView::kRawBytes)) {
+            ESP_LOGW(kTag, "navigation preload failed idx=%d key=%s bytes=%u", idx,
+                     bundle.variants[i].key.c_str(), static_cast<unsigned>(raw.size()));
+            ClearNavigationBundle();
+            return false;
+        }
+        if (bundle.variants[i].key == bundle.selected_key)
+            selected = static_cast<int>(i);
+        images.push_back(std::move(raw));
+    }
+
+    if (selected < 0 || images.size() < 2)
+        return false;
+
+    navigation_bundle_ = std::move(bundle);
+    navigation_images_ = std::move(images);
+    navigation_index_ = selected;
+    ESP_LOGI(kTag, "navigation preload ready idx=%d variants=%u selected=%d revision=%s", idx,
+             static_cast<unsigned>(navigation_images_.size()), navigation_index_, navigation_bundle_.revision.c_str());
+    return true;
+}
+
+void FrameScene::ShowNavigationVariant(SceneContext& ctx, int variant_index) {
+    if (variant_index < 0 || variant_index >= static_cast<int>(navigation_images_.size()) ||
+        variant_index >= static_cast<int>(navigation_bundle_.variants.size()))
+        return;
+
+    const auto& variant = navigation_bundle_.variants[variant_index];
+
+    if (!ctx.epd->Lock(100)) {
+        ESP_LOGW(kTag, "navigation display skipped reason=epd_lock idx=%d variant=%d", idx_, variant_index);
+        return;
+    }
+    if (status_bar_ && !variant.status_bar_text.empty())
+        status_bar_->SetCaption(variant.status_bar_text);
+    cached_status_bar_text_ = variant.status_bar_text.empty() ? cached_status_bar_text_ : variant.status_bar_text;
+    lv_refr_now(NULL);
+    ctx.epd->Unlock();
+
+    if (frame_view_)
+        frame_view_->SetFrame(ctx.epd, navigation_images_[variant_index]);
+    ctx.epd->RequestUrgentPartialRefresh();
+
+    navigation_index_ = variant_index;
+    ESP_LOGI(kTag, "navigation local display idx=%d variant=%s position=%d/%u", idx_, variant.key.c_str(),
+             navigation_index_ + 1, static_cast<unsigned>(navigation_images_.size()));
+}
+
+bool FrameScene::NavigateLocalVariant(SceneContext& ctx, int direction) {
+    if (direction != -1 && direction != 1)
+        return false;
+    if (navigation_images_.size() < 2 || navigation_bundle_.variants.size() != navigation_images_.size() ||
+        navigation_index_ < 0)
+        return false;
+
+    const int count = static_cast<int>(navigation_images_.size());
+    int target = navigation_index_ + direction;
+    if (navigation_bundle_.wrap) {
+        target = (target + count) % count;
+    } else {
+        target = std::max(0, std::min(count - 1, target));
+    }
+
+    if (target == navigation_index_)
+        return true;
+
+    ShowNavigationVariant(ctx, target);
+    return true;
 }
 
 void FrameScene::NextFrame(SceneContext& ctx) {
@@ -403,6 +499,8 @@ void FrameScene::RebindGroup(SceneContext& ctx, const char* gid, int content_cou
     if (ctx.clear_current_frame)
         ctx.clear_current_frame();
     first_loaded_ = false;
+    current_dynamic_type_.clear();
+    ClearNavigationBundle();
 }
 
 void FrameScene::LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBehavior audio_behavior) {
@@ -425,6 +523,7 @@ void FrameScene::LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBeh
     cache::FrameMeta meta;
     cache::ReadFrameMeta(gid_, idx, meta);
     current_dynamic_type_ = meta.dynamic_type;
+    LoadNavigationBundleIntoMemory(idx);
 
     if (!ctx.epd->Lock(2000)) {
         ESP_LOGW(kTag, "load frame failed idx=%d reason=epd_lock_timeout", idx);

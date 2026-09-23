@@ -48,6 +48,18 @@ std::string EtagPath(const std::string& gid, int idx, const char* ext) {
     return FramesDir(gid) + "/" + std::to_string(idx) + "." + ext + ".etag";
 }
 
+std::string NavigationDir(const std::string& gid, int idx) {
+    return FramesDir(gid) + "/" + std::to_string(idx) + ".nav";
+}
+
+std::string NavigationMetaPath(const std::string& gid, int idx) {
+    return FramesDir(gid) + "/" + std::to_string(idx) + ".nav.json";
+}
+
+std::string NavigationImagePath(const std::string& gid, int idx, const std::string& key) {
+    return NavigationDir(gid, idx) + "/" + SafePathComponent(key) + ".img";
+}
+
 std::string StageImagePath(const std::string& gid, int idx) {
     return StageDir(gid) + "/" + std::to_string(idx) + ".img";
 }

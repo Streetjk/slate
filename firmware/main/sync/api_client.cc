@@ -57,6 +57,14 @@ inline constexpr char kManifestEtag[]        = "manifest_etag";
 inline constexpr char kMac[]                 = "mac";
 inline constexpr char kName[]                = "name";
 inline constexpr char kNextWakeSec[]         = "next_wake_sec";
+inline constexpr char kNavigationBundle[]     = "navigation_bundle";
+inline constexpr char kRevision[]             = "revision";
+inline constexpr char kSelectedKey[]          = "selected_key";
+inline constexpr char kWrap[]                 = "wrap";
+inline constexpr char kVariants[]             = "variants";
+inline constexpr char kKey[]                  = "key";
+inline constexpr char kLabel[]                = "label";
+inline constexpr char kStatusBarText[]        = "status_bar_text";
 inline constexpr char kPairCode[]            = "pair_code";
 inline constexpr char kPosition[]            = "position";
 inline constexpr char kRssiDbm[]             = "rssi_dbm";
@@ -194,6 +202,34 @@ void ParseContentMeta(cJSON* item, ContentMeta& out) {
     cJSON* next_wake           = cJSON_GetObjectItemCaseSensitive(item, proto::kNextWakeSec);
     out.has_next_wake_sec      = cJSON_IsNumber(next_wake);
     out.next_wake_sec          = out.has_next_wake_sec ? next_wake->valueint : 0;
+
+    out.navigation = {};
+    cJSON* nav = cJSON_GetObjectItemCaseSensitive(item, proto::kNavigationBundle);
+    if (cJSON_IsObject(nav)) {
+        out.navigation.revision     = JsonString(nav, proto::kRevision);
+        out.navigation.selected_key = JsonString(nav, proto::kSelectedKey);
+        out.navigation.wrap         = JsonBool(nav, proto::kWrap, false);
+        cJSON* variants             = cJSON_GetObjectItemCaseSensitive(nav, proto::kVariants);
+        if (!out.navigation.revision.empty() && cJSON_IsArray(variants)) {
+            constexpr int kMaxNavigationVariants = 64;
+            cJSON*        variant                = nullptr;
+            cJSON_ArrayForEach(variant, variants) {
+                if (static_cast<int>(out.navigation.variants.size()) >= kMaxNavigationVariants)
+                    break;
+                if (!cJSON_IsObject(variant))
+                    continue;
+                NavigationVariantMeta parsed;
+                parsed.key             = JsonString(variant, proto::kKey);
+                parsed.label           = JsonString(variant, proto::kLabel);
+                parsed.image_etag      = JsonString(variant, proto::kImageEtag);
+                parsed.image_size      = JsonInt(variant, proto::kImageSize, 0);
+                parsed.status_bar_text = JsonString(variant, proto::kStatusBarText);
+                if (!parsed.key.empty() && !parsed.image_etag.empty() && parsed.image_size > 0)
+                    out.navigation.variants.push_back(std::move(parsed));
+            }
+            out.navigation.present = out.navigation.variants.size() >= 2;
+        }
+    }
     if (out.kind.empty())
         out.kind = "image";
 }
@@ -799,6 +835,14 @@ bool ApiClient::DownloadContentAudio(const std::string& id, const std::string& i
     return DownloadBinary(path, if_none_match, out, not_modified);
 }
 
+bool ApiClient::DownloadNavigationImage(const std::string& id, const std::string& key,
+                                        const std::string& if_none_match, std::vector<uint8_t>& out,
+                                        bool& not_modified) {
+    std::string path = std::string(kApiPrefix) + "/contents/" + UrlEncodePathSegment(id) + "/navigation/" +
+                       UrlEncodePathSegment(key) + "/image";
+    return DownloadBinary(path, if_none_match, out, not_modified);
+}
+
 ApiClient& DefaultClient() {
     static ApiClient client;
     return client;
@@ -861,6 +905,11 @@ bool DownloadContentImage(const std::string& id, const std::string& if_none_matc
 bool DownloadContentAudio(const std::string& id, const std::string& if_none_match, std::vector<uint8_t>& out,
                           bool& not_modified) {
     return DefaultClient().DownloadContentAudio(id, if_none_match, out, not_modified);
+}
+
+bool DownloadNavigationImage(const std::string& id, const std::string& key, const std::string& if_none_match,
+                             std::vector<uint8_t>& out, bool& not_modified) {
+    return DefaultClient().DownloadNavigationImage(id, key, if_none_match, out, not_modified);
 }
 
 }  // namespace api

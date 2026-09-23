@@ -153,6 +153,7 @@ void DeleteFrameFiles(const std::string& gid, int idx) {
     unlink(internal::ImagePath(gid, idx).c_str());
     unlink(internal::EtagPath(gid, idx, "img").c_str());
     DeleteFrameAudio(gid, idx);
+    DeleteNavigationBundle(gid, idx);
     unlink(internal::MetaPath(gid, idx).c_str());
 }
 

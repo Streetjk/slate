@@ -26,56 +26,54 @@ void UpDownComboController::Install(const ButtonInput& up, const ButtonInput& do
 
     up.on_press_down([this] {
         ESP_LOGD(kTag, "press down btn=up tick=%lu", static_cast<unsigned long>(xTaskGetTickCount()));
-        Update(kComboUpHeld, kComboUpConsumed);
+        Update(kComboUpHeld, kComboUpConsumed | kComboUpLong);
         TryFire();
     });
-    up.on_press_up([this] {
+    up.on_press_up([this, cb = std::move(on_up_short)] {
         ESP_LOGD(kTag, "press up btn=up tick=%lu", static_cast<unsigned long>(xTaskGetTickCount()));
-        Update(0, kComboUpHeld);
-    });
-    up.on_click([this, cb = std::move(on_up_short)] {
-        if (Bit(kComboUpConsumed)) {
-            ESP_LOGD(kTag, "click consumed btn=up type=short");
-            return;
+        const bool consumed = Bit(kComboUpConsumed);
+        const bool long_fired = Bit(kComboUpLong);
+        Update(0, kComboUpHeld | kComboUpConsumed | kComboUpLong);
+        if (!consumed && !long_fired) {
+            ESP_LOGD(kTag, "release dispatch btn=up type=short");
+            if (cb)
+                cb();
         }
-        ESP_LOGD(kTag, "click dispatch btn=up type=short");
-        if (cb)
-            cb();
     });
     up.on_long_press([this, cb = std::move(on_up_long)] {
         if (Bit(kComboUpConsumed)) {
-            ESP_LOGD(kTag, "click consumed btn=up type=long");
+            ESP_LOGD(kTag, "long consumed btn=up");
             return;
         }
-        ESP_LOGD(kTag, "click dispatch btn=up type=long");
+        Update(kComboUpLong, 0);
+        ESP_LOGD(kTag, "long dispatch btn=up");
         if (cb)
             cb();
     });
 
     down.on_press_down([this] {
         ESP_LOGD(kTag, "press down btn=down tick=%lu", static_cast<unsigned long>(xTaskGetTickCount()));
-        Update(kComboDownHeld, kComboDownConsumed);
+        Update(kComboDownHeld, kComboDownConsumed | kComboDownLong);
         TryFire();
     });
-    down.on_press_up([this] {
+    down.on_press_up([this, cb = std::move(on_down_short)] {
         ESP_LOGD(kTag, "press up btn=down tick=%lu", static_cast<unsigned long>(xTaskGetTickCount()));
-        Update(0, kComboDownHeld);
-    });
-    down.on_click([this, cb = std::move(on_down_short)] {
-        if (Bit(kComboDownConsumed)) {
-            ESP_LOGD(kTag, "click consumed btn=down type=short");
-            return;
+        const bool consumed = Bit(kComboDownConsumed);
+        const bool long_fired = Bit(kComboDownLong);
+        Update(0, kComboDownHeld | kComboDownConsumed | kComboDownLong);
+        if (!consumed && !long_fired) {
+            ESP_LOGD(kTag, "release dispatch btn=down type=short");
+            if (cb)
+                cb();
         }
-        ESP_LOGD(kTag, "click dispatch btn=down type=short");
-        if (cb)
-            cb();
     });
     down.on_long_press([this, cb = std::move(on_down_long)] {
         if (Bit(kComboDownConsumed)) {
-            ESP_LOGD(kTag, "click consumed btn=down type=long");
+            ESP_LOGD(kTag, "long consumed btn=down");
             return;
         }
-        ESP_LOGD(kTag, "click dispatch btn=down type=long");
+        Update(kComboDownLong, 0);
+        ESP_LOGD(kTag, "long dispatch btn=down");
         if (cb)
             cb();
     });

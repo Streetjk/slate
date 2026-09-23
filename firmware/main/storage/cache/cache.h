@@ -54,6 +54,28 @@ bool FrameAudioExists(const std::string& gid, int idx, const std::string& expect
 bool WriteFrameAudio(const std::string& gid, int idx, const std::vector<uint8_t>& bytes, const std::string& etag);
 bool ReadFrameAudio(const std::string& gid, int idx, std::vector<uint8_t>& out);
 void DeleteFrameAudio(const std::string& gid, int idx);
+
+struct NavigationVariantMeta {
+    std::string key;
+    std::string label;
+    std::string image_etag;
+    std::string status_bar_text;
+};
+
+struct NavigationBundleMeta {
+    std::string                        revision;
+    std::string                        selected_key;
+    bool                               wrap = false;
+    std::vector<NavigationVariantMeta> variants;
+};
+
+bool NavigationImageExists(const std::string& gid, int idx, const std::string& key);
+bool WriteNavigationImage(const std::string& gid, int idx, const std::string& key, const std::vector<uint8_t>& bytes);
+bool ReadNavigationImage(const std::string& gid, int idx, const std::string& key, std::vector<uint8_t>& out);
+bool WriteNavigationBundleMeta(const std::string& gid, int idx, const NavigationBundleMeta& meta);
+bool ReadNavigationBundleMeta(const std::string& gid, int idx, NavigationBundleMeta& out);
+void DeleteNavigationBundle(const std::string& gid, int idx);
+
 void DeleteFrameFiles(const std::string& gid, int idx);
 
 struct FrameMeta {
