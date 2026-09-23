@@ -34,6 +34,9 @@ class FrameScene : public Scene {
     void LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBehavior audio_behavior);
     void NextFrame(SceneContext& ctx);
     void PrevFrame(SceneContext& ctx);
+    void NextPicture(SceneContext& ctx);
+    void PrevPicture(SceneContext& ctx);
+    int  FindPictureFrame(int direction) const;
     void CycleGroup(SceneContext& ctx, bool next);
     void RebindGroup(SceneContext& ctx, const char* gid, int content_count);
     void ApplyEmptyState();

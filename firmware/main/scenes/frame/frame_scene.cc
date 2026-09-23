@@ -165,8 +165,8 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
                                  current_dynamic_type_.c_str());
                         SyncService::Get().NavigateContentPrev();
                     } else {
-                        ESP_LOGD(kTag, "button short btn=up action=prev_image");
-                        PrevFrame(ctx);
+                        ESP_LOGD(kTag, "button short btn=up action=prev_picture");
+                        PrevPicture(ctx);
                     }
                     break;
                 case ButtonId::kDown:
@@ -175,8 +175,8 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
                                  current_dynamic_type_.c_str());
                         SyncService::Get().NavigateContentNext();
                     } else {
-                        ESP_LOGD(kTag, "button short btn=down action=next_image");
-                        NextFrame(ctx);
+                        ESP_LOGD(kTag, "button short btn=down action=next_picture");
+                        NextPicture(ctx);
                     }
                     break;
                 case ButtonId::kEnter:
@@ -288,6 +288,45 @@ void FrameScene::PrevFrame(SceneContext& ctx) {
     const int old = idx_;
     idx_          = (idx_ - 1 + content_count_) % content_count_;
     ESP_LOGD(kTag, "prev frame from=%d to=%d count=%d", old, idx_, content_count_);
+    LoadFrame(ctx, idx_, /*force_full*/ false, AudioBehavior::RestartIfAvailable);
+}
+
+int FrameScene::FindPictureFrame(int direction) const {
+    if (content_count_ <= 1 || gid_.empty() || (direction != 1 && direction != -1))
+        return -1;
+
+    for (int step = 1; step < content_count_; ++step) {
+        const int candidate = (idx_ + direction * step + content_count_ * 2) % content_count_;
+        cache::FrameMeta meta;
+        if (!cache::ReadFrameMeta(gid_, candidate, meta))
+            continue;
+        if (meta.dynamic_type.empty())
+            return candidate;
+    }
+    return -1;
+}
+
+void FrameScene::NextPicture(SceneContext& ctx) {
+    const int target = FindPictureFrame(1);
+    if (target < 0) {
+        ESP_LOGD(kTag, "next picture ignored reason=no_other_picture idx=%d count=%d", idx_, content_count_);
+        return;
+    }
+    const int old = idx_;
+    idx_          = target;
+    ESP_LOGD(kTag, "next picture from=%d to=%d count=%d", old, idx_, content_count_);
+    LoadFrame(ctx, idx_, /*force_full*/ false, AudioBehavior::RestartIfAvailable);
+}
+
+void FrameScene::PrevPicture(SceneContext& ctx) {
+    const int target = FindPictureFrame(-1);
+    if (target < 0) {
+        ESP_LOGD(kTag, "prev picture ignored reason=no_other_picture idx=%d count=%d", idx_, content_count_);
+        return;
+    }
+    const int old = idx_;
+    idx_          = target;
+    ESP_LOGD(kTag, "prev picture from=%d to=%d count=%d", old, idx_, content_count_);
     LoadFrame(ctx, idx_, /*force_full*/ false, AudioBehavior::RestartIfAvailable);
 }
 
