@@ -47,6 +47,18 @@ uint32_t NormalizeDynamicWakeSec(uint32_t sec) {
     return sec < kMinWakeIntervalSec ? kMinWakeIntervalSec : sec;
 }
 
+uint32_t FallbackWakeSecForDynamicType(const std::string& dynamic_type) {
+    if (dynamic_type == "ai_usage")
+        return 300;
+    if (dynamic_type == "outlook_calendar" || dynamic_type == "btc_price" || dynamic_type == "weather")
+        return 600;
+    if (dynamic_type == "google_news")
+        return 900;
+    // Calendar/history and any future dynamic type still get a bounded wake
+    // instead of sleeping forever if cached TTL metadata is ever missing.
+    return 3600;
+}
+
 uint32_t HashBytes(const uint8_t* data, size_t len) {
     uint32_t h = 2166136261u;
     for (size_t i = 0; i < len; ++i) {
@@ -140,6 +152,13 @@ bool RestoreCurrentFrameScheduleFromCache() {
         SetCurrentFrameSchedule({});
         SetCurrentFrameSeq(seq);
         return false;
+    }
+
+    if ((!meta.has_ttl || meta.ttl_sec == 0) && !meta.dynamic_type.empty()) {
+        meta.has_ttl = true;
+        meta.ttl_sec = FallbackWakeSecForDynamicType(meta.dynamic_type);
+        ESP_LOGW(kTag, "dynamic frame missing ttl seq=%d type=%s fallback_sec=%u", seq, meta.dynamic_type.c_str(),
+                 static_cast<unsigned>(meta.ttl_sec));
     }
 
     SetCurrentFrameFromMeta(seq, meta);
