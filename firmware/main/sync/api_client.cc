@@ -405,9 +405,9 @@ bool ApiClient::DoRequest(const std::string& path, esp_http_client_method_t meth
             DropConnectionLocked();
             return false;
         }
-        // 成功:close 但不 cleanup,keep-alive 保留 socket 供后续请求复用。
-        esp_http_client_close(client);
-
+        // Success: keep the transport open so the next request in this sync burst
+        // can reuse the same TCP/TLS session. esp_http_client_close() explicitly
+        // closes the transport; the burst-level ResetConnection() performs cleanup.
         if (status == 304) {
             consecutive_401_.store(0, std::memory_order_relaxed);
             return true;

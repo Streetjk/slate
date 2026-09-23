@@ -16,8 +16,9 @@
 #include "utils/time_utils.h"
 
 namespace {
-constexpr char     kTag[]          = "board";
-constexpr uint16_t kNavLongPressMs = 1000;
+constexpr char     kTag[]           = "board";
+constexpr uint16_t kNavLongPressMs  = 1000;
+constexpr uint16_t kNavShortPressMs = 60;
 
 // deep sleep 唤醒(非 cold boot)后，睡前用 rtc_gpio_hold_en 锁住的 EXT1 唤醒源
 // (GPIO0/18/2)仍处于 RTC IO + hold 态。显式释放并交还数字 IO 矩阵，iot_button /
@@ -128,8 +129,13 @@ void Board::InitButtons() {
     // 不启用 iot_button 的 enable_power_save：它会注册一个 GPIO wake ISR，
     // flash cache 关闭期间（例如 LittleFS rename）触发会因 ISR 不在 IRAM 崩溃。
     // Deep sleep 唤醒由 SleepManager 进入睡眠前单独配置 EXT1。
-    up_btn_   = std::make_unique<Button>(static_cast<gpio_num_t>(UP_BUTTON_GPIO), false, kNavLongPressMs, 0);
-    down_btn_ = std::make_unique<Button>(static_cast<gpio_num_t>(DOWN_BUTTON_GPIO), false, kNavLongPressMs, 0);
+    // UP/DOWN have no double-click action, so use a much shorter click-classification
+    // window for responsive navigation. ENTER keeps the library default (180 ms)
+    // because its double-click gesture opens voice mode.
+    up_btn_ =
+        std::make_unique<Button>(static_cast<gpio_num_t>(UP_BUTTON_GPIO), false, kNavLongPressMs, kNavShortPressMs);
+    down_btn_ =
+        std::make_unique<Button>(static_cast<gpio_num_t>(DOWN_BUTTON_GPIO), false, kNavLongPressMs, kNavShortPressMs);
     boot_btn_ = std::make_unique<Button>(static_cast<gpio_num_t>(BOOT_BUTTON_GPIO), false, kNavLongPressMs, 0);
 }
 
