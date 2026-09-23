@@ -15,6 +15,32 @@ using sync_internal::kCacheMinFreeBytes;
 using sync_internal::kMaxCachedGroups;
 using sync_internal::kTag;
 
+namespace {
+
+bool SupportsLocalNavigation(const std::string& dynamic_type) {
+    return dynamic_type == "btc_price" || dynamic_type == "daily_calendar" ||
+           dynamic_type == "month_calendar" || dynamic_type == "outlook_calendar";
+}
+
+bool NeedsNavigationBundleBootstrap(const std::string& gid) {
+    int content_count = 0;
+    if (!cache::ReadManifestContentCount(gid, content_count) || content_count <= 0)
+        return false;
+
+    for (int seq = 0; seq < content_count; ++seq) {
+        cache::FrameMeta frame;
+        if (!cache::ReadFrameMeta(gid, seq, frame) || !SupportsLocalNavigation(frame.dynamic_type))
+            continue;
+
+        cache::NavigationBundleMeta bundle;
+        if (!cache::ReadNavigationBundleMeta(gid, seq, bundle))
+            return true;
+    }
+    return false;
+}
+
+}  // namespace
+
 bool SyncService::HandleCachedManifestHit(const std::string& gid, const std::string& expected_etag,
                                           const std::string& status_name, int content_count,
                                           const std::string& previous_current, const std::string& selected_group_id,
@@ -297,17 +323,22 @@ bool SyncService::SyncManifestAndFrames(const std::string& gid, const std::strin
         cached_meta_ok = cache::ReadManifestMeta(gid, cached_meta);
     }
     const std::string status_name = !group_name.empty() ? group_name : cached_meta.name;
+    const bool bootstrap_navigation =
+        cached_meta_ok && cached_meta.manifest_etag == expected_etag && NeedsNavigationBundleBootstrap(gid);
 
-    if (cached_meta_ok && cached_meta.manifest_etag == expected_etag) {
+    if (cached_meta_ok && cached_meta.manifest_etag == expected_etag && !bootstrap_navigation) {
         const int content_count = expected_content_count >= 0 ? expected_content_count : cached_meta.content_count;
         return HandleCachedManifestHit(gid, expected_etag, status_name, content_count, previous_current,
                                        selected_group_id, reason);
+    }
+    if (bootstrap_navigation) {
+        ESP_LOGI(kTag, "navigation bootstrap action=force_manifest gid=%s", gid.c_str());
     }
 
     api::Manifest mf;
     bool          not_modified = false;
     std::string   if_none_match;
-    if (cached_meta_ok && !cached_meta.manifest_etag.empty())
+    if (!bootstrap_navigation && cached_meta_ok && !cached_meta.manifest_etag.empty())
         if_none_match = cached_meta.manifest_etag;
     if (!api::GetManifest(gid, if_none_match, mf, not_modified)) {
         ESP_LOGW(kTag, "manifest fetch failed");
