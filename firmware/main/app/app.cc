@@ -518,8 +518,9 @@ void App::Init() {
              decision_.first_register ? 1 : 0);
 
     SleepManager::Policy policy;
-    policy.idle_timeout_min = CONFIG_SLATE_IDLE_DEEP_SLEEP_MIN;
-    policy.disabled         = (decision_.mode == boot_mode::Mode::kPortal);
+    policy.idle_timeout_min        = CONFIG_SLATE_IDLE_DEEP_SLEEP_MIN;
+    policy.disabled                = (decision_.mode == boot_mode::Mode::kPortal);
+    policy.idle_deep_sleep_enabled = (decision_.mode != boot_mode::Mode::kFullActive);
     sleep_mgr_.Init(policy);
     // 阻止深睡的两个来源：语音会话活动中、以及一次 sync 突发(大文件下载)进行中。
     // 任一持续阻塞超过 SleepManager 看门狗上限时会被强制打断回睡，避免卡死耗光电池。

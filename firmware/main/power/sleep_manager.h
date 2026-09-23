@@ -1,12 +1,11 @@
 #pragma once
 
-// 闲置自动深睡。Tick() 检测闲置时长 ≥ 阈值 + 不在充电 + 启用状态时,
-// 直接 esp_deep_sleep_start。醒来由 ext1 wakeup(GPIO 0/18 任一拉低)或重启触发,
-// app_main 重新跑。
+// 电源管理中的 deep sleep 协调器。正常交互模式可以关闭「闲置自动深睡」,
+// 交给 ESP-IDF 自动 light sleep 保持按键/网络任务可唤醒；后台 timer refresh
+// 仍可显式调用 TryEnterDeepSleep() 省电。
 //
-// 硬件限制:ESP32-S3 RTC GPIO 范围 0-21,GPIO 39(UP 键)不是 RTC IO,不能 ext1 唤醒。
-// 只能 BOOT(GPIO0) / DOWN(GPIO18) 醒来。用户想看上一帧需要先按 DOWN/BOOT 醒,
-// 再按 UP 翻。
+// 硬件限制:ESP32-S3 RTC GPIO 范围 0-21,GPIO 39(UP 键)不是 RTC IO,不能从
+// deep sleep 直接唤醒。因此正常交互模式不再因短时闲置进入 deep sleep。
 //
 // Unbound grace 窗口:设备未绑定时禁 deep sleep,让 SyncService 快轮询,
 // 用户在 Web 端输码后屏切「等待内容组」。轮询间隔阶梯退避(10s→30s→60s),
@@ -43,10 +42,11 @@ class SleepManager {
     };
 
     struct Policy {
-        int     idle_timeout_min = 5;
-        int64_t unbound_grace_ms = kUnboundGraceMs;
-        int     low_battery_pct  = kLowBatteryPct;
-        bool    disabled         = false;
+        int     idle_timeout_min        = 5;
+        int64_t unbound_grace_ms        = kUnboundGraceMs;
+        int     low_battery_pct         = kLowBatteryPct;
+        bool    disabled                = false;
+        bool    idle_deep_sleep_enabled = true;
     };
 
     void Init(Policy p);
@@ -63,6 +63,7 @@ class SleepManager {
    private:
     // 当前是否处于 unbound 加速窗口(unbound + 未超 2h + 电量充足)。
     bool     InUnboundGrace(int64_t now_ms) const;
+    bool     IsLowBattery() const;
     bool     MarkUnboundIfNeeded(int64_t now_ms);
     uint32_t ComputeConfiguredNextWakeSec() const;
     bool     BlocksSleep() const;
@@ -72,9 +73,10 @@ class SleepManager {
     // blocker(语音/同步)开始连续阻止深睡的时刻；0 表示当前未被阻止。看门狗据此计时。
     std::atomic<int64_t> blocked_since_ms_{0};
     std::atomic<bool>    paused_{false};
-    int                  idle_timeout_min_ = 5;
-    int64_t              unbound_grace_ms_ = kUnboundGraceMs;
-    int                  low_battery_pct_  = kLowBatteryPct;
+    int                  idle_timeout_min_        = 5;
+    int64_t              unbound_grace_ms_        = kUnboundGraceMs;
+    int                  low_battery_pct_         = kLowBatteryPct;
+    bool                 idle_deep_sleep_enabled_ = true;
 
     struct UnboundState {
         bool    unbound     = false;

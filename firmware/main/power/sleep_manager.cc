@@ -79,18 +79,20 @@ void SaveStatusBarSnapshot(EpdSsd1683* epd) {
 }  // namespace
 
 void SleepManager::Init(Policy p) {
-    idle_timeout_min_ = p.idle_timeout_min;
-    unbound_grace_ms_ = p.unbound_grace_ms;
-    low_battery_pct_  = p.low_battery_pct;
+    idle_timeout_min_        = p.idle_timeout_min;
+    unbound_grace_ms_        = p.unbound_grace_ms;
+    low_battery_pct_         = p.low_battery_pct;
+    idle_deep_sleep_enabled_ = p.idle_deep_sleep_enabled;
     last_active_ms_.store(time_utils::NowMs());
     {
         std::lock_guard<std::mutex> lock(unbound_mutex_);
         unbound_state_ = {};
     }
     enabled_.store(!p.disabled);
-    ESP_LOGD(kTag, "init idle_min=%u disabled=%d unbound_grace_ms=%lld low_battery_pct=%d",
-             static_cast<unsigned>(idle_timeout_min_), p.disabled ? 1 : 0, static_cast<long long>(unbound_grace_ms_),
-             low_battery_pct_);
+    ESP_LOGD(kTag,
+             "init idle_min=%u disabled=%d idle_deep_sleep=%d unbound_grace_ms=%lld low_battery_pct=%d",
+             static_cast<unsigned>(idle_timeout_min_), p.disabled ? 1 : 0, idle_deep_sleep_enabled_ ? 1 : 0,
+             static_cast<long long>(unbound_grace_ms_), low_battery_pct_);
 }
 
 void SleepManager::SetSleepBlocker(std::function<bool()> blocks_sleep) {
@@ -147,6 +149,11 @@ bool SleepManager::InUnboundGrace(int64_t now_ms) const {
     return now_ms - unbound_state_.since_ms < unbound_grace_ms_;
 }
 
+bool SleepManager::IsLowBattery() const {
+    std::lock_guard<std::mutex> lock(unbound_mutex_);
+    return unbound_state_.battery_pct < low_battery_pct_;
+}
+
 bool SleepManager::MarkUnboundIfNeeded(int64_t now_ms) {
     std::lock_guard<std::mutex> lock(unbound_mutex_);
     if (unbound_state_.unbound)
@@ -194,12 +201,19 @@ void SleepManager::Tick(int64_t now_ms) {
         forced = true;
     } else {
         blocked_since_ms_.store(0);
+        // In normal interactive mode, leave the device in automatic light sleep
+        // so both side buttons remain responsive. Deep sleep is still used by the
+        // explicit background-refresh path, and low battery may still force the
+        // normal idle deep-sleep protection.
+        if (!idle_deep_sleep_enabled_ && !IsLowBattery())
+            return;
+
         const int64_t idle_ms      = now_ms - last_active_ms_.load();
         const int64_t threshold_ms = static_cast<int64_t>(idle_timeout_min_) * 60 * 1000;
         if (idle_ms < threshold_ms)
             return;
-        ESP_LOGI(kTag, "idle timeout idle_ms=%lld threshold_ms=%lld action=deep_sleep", (long long)idle_ms,
-                 (long long)threshold_ms);
+        ESP_LOGI(kTag, "idle timeout idle_ms=%lld threshold_ms=%lld action=deep_sleep low_battery=%d", (long long)idle_ms,
+                 (long long)threshold_ms, IsLowBattery() ? 1 : 0);
     }
 
     const auto decision = TryEnterDeepSleep();
