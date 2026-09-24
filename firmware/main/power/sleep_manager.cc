@@ -17,6 +17,7 @@
 #include "events/event_bus.h"
 #include "power/power_state.h"
 #include "power/shutdown.h"
+#include "sync/sync_service.h"
 #include "utils/gpio_util.h"
 #include "utils/time_utils.h"
 
@@ -249,16 +250,21 @@ SleepManager::SleepDecision SleepManager::TryEnterDeepSleep() {
 
     // 1) 停后台 task,避免在 rail 关闭后还有 I²C / 网络写操作，并等待已有 EPD 刷新完成。
     const bool epd_ready = power_shutdown::WaitForEpdAndShutdown(kEpdFlushTimeoutMs);
+    if (!epd_ready) {
+        ESP_LOGE(kTag, "deep sleep aborted reason=epd_drain_timeout elapsed_ms=%d", kEpdFlushTimeoutMs);
+        // WaitForEpdAndShutdown() stopped sync/charge polling before attempting
+        // the drain. Restore those services here so every caller of
+        // TryEnterDeepSleep() returns to a healthy active runtime.
+        if (auto* charge = Board::Get().charge())
+            charge->StartTick();
+        SyncService::Get().Start("other", SyncService::InitialSync::kUserActive);
+        return {SleepOutcome::kEpdDrainFailed, next_sec};
+    }
 
     // 2) 不主动制造一轮全刷。墨水屏内容本来可保留；
     //    静态帧 idle 进睡眠时如果这里再全刷一次，会白白耗电。
     if (auto* epd = Board::Get().epd()) {
-        if (!epd_ready) {
-            ESP_LOGW(kTag, "status snapshot skipped reason=epd_pending elapsed_ms=%d", kEpdFlushTimeoutMs);
-            power_state::ClearStatusBarSnapshot();
-        } else {
-            SaveStatusBarSnapshot(epd);
-        }
+        SaveStatusBarSnapshot(epd);
     }
 
     // 3) 关 EPD rail (GPIO6)。墨水屏像素双稳态保留,controller 寄存器/电荷泵失效,

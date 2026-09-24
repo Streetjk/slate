@@ -88,6 +88,8 @@ const char* SleepOutcomeName(SleepManager::SleepOutcome outcome) {
             return "disabled";
         case SleepManager::SleepOutcome::kUnboundGrace:
             return "unbound_grace";
+        case SleepManager::SleepOutcome::kEpdDrainFailed:
+            return "epd_drain_failed";
     }
     return "unknown";
 }
@@ -239,6 +241,11 @@ bool App::HandleBackgroundRefreshDone(const UiEvent& e) {
             scene_stack_.Pop();
             PromoteToFrameSceneFromCache();
             break;
+        case SleepManager::SleepOutcome::kEpdDrainFailed:
+            ESP_LOGE(kTag, "sleep aborted reason=epd_drain_failed action=promote_active");
+            scene_stack_.Pop();
+            PromoteToFrameSceneFromCache();
+            break;
     }
     return true;
 }
@@ -362,6 +369,10 @@ void App::AttachInputs() {
             ESP_LOGI(kTag, "button combo action=full_refresh combo=up_down");
             if (auto* epd = Board::Get().epd())
                 epd->RequestUrgentFullRefresh();
+        },
+        [] {
+            if (auto* epd = Board::Get().epd())
+                epd->RequestInteractivePrewarm();
         },
         post_button(UiEventKind::kButtonShort, ButtonId::kUp), post_button(UiEventKind::kButtonLong, ButtonId::kUp),
         post_button(UiEventKind::kButtonShort, ButtonId::kDown),

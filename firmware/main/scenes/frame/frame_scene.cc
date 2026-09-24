@@ -137,6 +137,8 @@ void FrameScene::OnEnter(SceneContext& ctx) {
 
 void FrameScene::OnExit(SceneContext& ctx) {
     ESP_LOGD(kTag, "exit gid=%s idx=%d", gid_.c_str(), idx_);
+    if (ctx.epd)
+        ctx.epd->SetInteractivePrewarmEnabled(false);
     if (ctx.audio)
         ctx.audio->Stop();
     DestroyRoot(ctx, root_, [this]() {
@@ -257,6 +259,10 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
                 LoadFrame(ctx, idx_, /*force_full*/ !same_group,
                           same_group ? AudioBehavior::StopIfUnavailable : AudioBehavior::RestartIfAvailable);
             } else {
+                if (ctx.epd)
+                    ctx.epd->SetInteractivePrewarmEnabled(false);
+                ClearNavigationBundle();
+                current_dynamic_type_.clear();
                 if (ctx.audio)
                     ctx.audio->Stop();
                 SyncRender(ctx, [this]() { ApplyEmptyState(); }, /*force_full*/ true);
@@ -336,7 +342,7 @@ void FrameScene::ShowNavigationVariant(SceneContext& ctx, int variant_index) {
 
     if (frame_view_)
         frame_view_->SetFrame(ctx.epd, navigation_images_[variant_index]);
-    ctx.epd->RequestUrgentPartialRefresh();
+    ctx.epd->RequestInteractivePartialRefresh();
 
     navigation_index_ = variant_index;
     ESP_LOGI(kTag, "navigation local display idx=%d variant=%s position=%d/%u", idx_, variant.key.c_str(),
@@ -490,7 +496,8 @@ void FrameScene::RestoreStatusBarCaption(SceneContext& ctx) {
 }
 
 void FrameScene::RebindGroup(SceneContext& ctx, const char* gid, int content_count) {
-    (void)ctx;
+    if (ctx.epd)
+        ctx.epd->SetInteractivePrewarmEnabled(false);
     ESP_LOGI(kTag, "rebind group old_gid=%s new_gid=%s old_count=%d new_count=%d", gid_.c_str(), gid ? gid : "",
              content_count_, content_count);
     gid_           = gid ? gid : "";
@@ -523,7 +530,8 @@ void FrameScene::LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBeh
     cache::FrameMeta meta;
     cache::ReadFrameMeta(gid_, idx, meta);
     current_dynamic_type_ = meta.dynamic_type;
-    LoadNavigationBundleIntoMemory(idx);
+    const bool navigation_ready = LoadNavigationBundleIntoMemory(idx);
+    ctx.epd->SetInteractivePrewarmEnabled(navigation_ready);
 
     if (!ctx.epd->Lock(2000)) {
         ESP_LOGW(kTag, "load frame failed idx=%d reason=epd_lock_timeout", idx);

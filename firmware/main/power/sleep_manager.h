@@ -25,6 +25,7 @@ class SleepManager {
         kPausedByCharge,
         kDisabled,
         kUnboundGrace,
+        kEpdDrainFailed,
     };
 
     // unbound 状态保持禁睡的最长窗口。超过则即便仍 unbound 也允许 deep sleep。

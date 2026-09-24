@@ -13,6 +13,7 @@
 #include "drivers/display/framebuffer_ops.h"
 #include "utils/timing_trace.h"
 #include "utils/gpio_util.h"
+#include "utils/time_utils.h"
 
 namespace {
 constexpr char kTag[] = "epd";
@@ -219,7 +220,8 @@ bool EpdSsd1683::IsRefreshPending() {
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
     // force_full_refresh_ 直到全刷完成才清，覆盖整个「main 调 RequestUrgentFullRefresh
     // → LVGL 渲染 → flush_cb notify → refresh_task 全刷」的等待窗口。
-    bool b = pending_ || urgent_refresh_ || force_full_refresh_ || refresh_in_progress_;
+    bool b = pending_ || urgent_refresh_ || force_full_refresh_ || refresh_in_progress_ ||
+             interactive_prewarm_ || interactive_powerdown_;
     xSemaphoreGive(dirty_mutex_);
     return b;
 }
@@ -245,6 +247,7 @@ void EpdSsd1683::RequestUrgentPartialRefresh() {
     // invalidate 继续使用较长 sliding debounce 来合并碎片 flush。
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
     urgent_refresh_      = true;
+    interactive_refresh_ = false;
     refresh_in_progress_ = true;
     const bool pending   = pending_;
     const bool force     = force_full_refresh_;
@@ -255,10 +258,57 @@ void EpdSsd1683::RequestUrgentPartialRefresh() {
         xTaskNotifyGive(refresh_task_);
 }
 
+void EpdSsd1683::RequestInteractivePartialRefresh() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    urgent_refresh_      = true;
+    interactive_refresh_ = true;
+    refresh_in_progress_ = true;
+    xSemaphoreGive(dirty_mutex_);
+    ESP_LOGD(kTag, "refresh request type=interactive_partial task=%p", refresh_task_);
+    if (refresh_task_)
+        xTaskNotifyGive(refresh_task_);
+}
+
+void EpdSsd1683::SetInteractivePrewarmEnabled(bool enabled) {
+    interactive_prewarm_enabled_.store(enabled, std::memory_order_release);
+    if (!enabled) {
+        xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+        interactive_prewarm_ = false;
+        xSemaphoreGive(dirty_mutex_);
+    }
+}
+
+void EpdSsd1683::RequestInteractivePrewarm() {
+    if (!interactive_prewarm_enabled_.load(std::memory_order_acquire))
+        return;
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    // Re-check while serialized with SetInteractivePrewarmEnabled(false) so a
+    // callback that observed the old atomic value cannot resurrect prewarm.
+    if (!interactive_prewarm_enabled_.load(std::memory_order_acquire)) {
+        xSemaphoreGive(dirty_mutex_);
+        return;
+    }
+    interactive_prewarm_ = true;
+    xSemaphoreGive(dirty_mutex_);
+    ESP_LOGD(kTag, "refresh request type=interactive_prewarm task=%p", refresh_task_);
+    if (refresh_task_)
+        xTaskNotifyGive(refresh_task_);
+}
+
+void EpdSsd1683::RequestInteractivePowerDown() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    interactive_powerdown_ = true;
+    refresh_in_progress_   = true;
+    xSemaphoreGive(dirty_mutex_);
+    if (refresh_task_)
+        xTaskNotifyGive(refresh_task_);
+}
+
 void EpdSsd1683::RequestUrgentFullRefresh() {
     // 同上:设 force_full + notify,立即返回。debounce 吸收 LVGL flush。
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
     force_full_refresh_  = true;
+    interactive_refresh_ = false;
     refresh_in_progress_ = true;
     const bool pending   = pending_;
     const bool urgent    = urgent_refresh_;
@@ -388,9 +438,11 @@ void EpdSsd1683::DebounceRefreshNotify() {
              static_cast<unsigned long>(xTaskGetTickCount() - first_tick));
 }
 
-bool EpdSsd1683::TakeRefreshRequest(bool& urgent, bool& force_full, epd::Rect& dirty) {
-    // read-and-clear at start:防止 refresh_task 跑刷新期间又有
-    // RequestUrgentXxxRefresh 设 flag 时,本轮完成时把它误清。
+bool EpdSsd1683::TakeRefreshRequest(bool& urgent, bool& interactive, bool& force_full, epd::Rect& dirty,
+                                    bool& prev_synced) {
+    // Freeze request flags, dirty window and framebuffer snapshot atomically.
+    // Producers that arrive after this point remain latched for the next pass and
+    // cannot be accidentally folded into prev_snapshot_ without being displayed.
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
     if (refresh_task_stop_) {
         refresh_in_progress_ = false;
@@ -398,18 +450,70 @@ bool EpdSsd1683::TakeRefreshRequest(bool& urgent, bool& force_full, epd::Rect& d
         ESP_LOGD(kTag, "refresh request stop");
         return false;
     }
-    urgent              = urgent_refresh_;
-    urgent_refresh_     = false;
-    force_full          = force_full_refresh_;
-    force_full_refresh_ = false;
-    dirty               = dirty_;
-    if (pending_) {
-        pending_ = false;
-        dirty_   = {0, 0, 0, 0};
-    }
+    urgent               = urgent_refresh_;
+    urgent_refresh_      = false;
+    interactive          = interactive_refresh_;
+    interactive_refresh_ = false;
+    force_full           = force_full_refresh_;
+    force_full_refresh_  = false;
+    dirty                = dirty_;
+    prev_synced          = prev_snapshot_synced_;
+    memcpy(snapshot_, buffer_, kBufferLen);
+    pending_             = false;
+    dirty_               = {0, 0, 0, 0};
+    refresh_in_progress_ = true;
     xSemaphoreGive(dirty_mutex_);
-    ESP_LOGD(kTag, "refresh request take urgent=%d force_full=%d", urgent ? 1 : 0, force_full ? 1 : 0);
+    ESP_LOGD(kTag, "refresh request take urgent=%d interactive=%d force_full=%d", urgent ? 1 : 0,
+             interactive ? 1 : 0, force_full ? 1 : 0);
     return true;
+}
+
+bool EpdSsd1683::TakeInteractivePrewarmRequest() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    const bool requested = interactive_prewarm_;
+    interactive_prewarm_ = false;
+    if (requested)
+        refresh_in_progress_ = true;
+    xSemaphoreGive(dirty_mutex_);
+    return requested;
+}
+
+bool EpdSsd1683::InteractivePowerDownRequested() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    const bool requested = interactive_powerdown_;
+    if (requested)
+        refresh_in_progress_ = true;
+    xSemaphoreGive(dirty_mutex_);
+    return requested;
+}
+
+void EpdSsd1683::CompleteInteractivePowerDownRequest() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    interactive_powerdown_ = false;
+    refresh_in_progress_ = pending_ || urgent_refresh_ || force_full_refresh_ || interactive_prewarm_;
+    xSemaphoreGive(dirty_mutex_);
+}
+
+bool EpdSsd1683::HasDisplayWork() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    const bool work = pending_ || urgent_refresh_ || force_full_refresh_;
+    xSemaphoreGive(dirty_mutex_);
+    return work;
+}
+
+bool EpdSsd1683::HasLatchedWork() {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    const bool work = pending_ || urgent_refresh_ || force_full_refresh_ || interactive_prewarm_ ||
+                      interactive_powerdown_;
+    xSemaphoreGive(dirty_mutex_);
+    return work;
+}
+
+void EpdSsd1683::PeekRefreshPriority(bool& urgent, bool& force_full) {
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    urgent = urgent_refresh_;
+    force_full = force_full_refresh_;
+    xSemaphoreGive(dirty_mutex_);
 }
 
 bool EpdSsd1683::ThrottleRefreshSampling(bool urgent, bool force_full) {
@@ -425,16 +529,15 @@ bool EpdSsd1683::ThrottleRefreshSampling(bool urgent, bool force_full) {
         ESP_LOGD(kTag, "refresh throttle urgent=%d force_full=%d wait_ticks=%lu", urgent ? 1 : 0, force_full ? 1 : 0,
                  static_cast<unsigned long>(mn - el));
         vTaskDelay(mn - el);
-        return false;
+        // The dirty/request state has not been consumed yet. After the bounded
+        // wait, process the same work rather than dropping it and relying on a
+        // second notification that may already have been coalesced.
     }
     return true;
 }
 
 bool EpdSsd1683::CaptureRefreshSnapshot(bool force_full, epd::DiffResult& diff, bool& prev_synced) {
-    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
-    memcpy(snapshot_, buffer_, kBufferLen);
-    prev_synced = prev_snapshot_synced_;
-    xSemaphoreGive(dirty_mutex_);
+    // snapshot_ and prev_synced were frozen together with the accepted request.
     last_sample_tick_ = xTaskGetTickCount();
 
     diff = epd::Diff(prev_snapshot_, snapshot_, kBufferLen);
@@ -461,15 +564,64 @@ bool EpdSsd1683::ShouldUseFullRefresh(const epd::DiffResult& diff, bool force_fu
     return full;
 }
 
-void EpdSsd1683::RunRefresh(bool full_refresh, const epd::Rect& partial_window) {
+void EpdSsd1683::EnsureInteractiveControllerWarm() {
+    AssertRefreshTaskContext();
+    if (interactive_controller_warm_) {
+        interactive_warm_until_ms_ = time_utils::NowMs() + kInteractiveWarmIdleMs;
+        return;
+    }
+
     const int64_t start_us = esp_timer_get_time();
-    SLATE_TIMING_LOG(kTag, "refresh_start path=%s", full_refresh ? "full" : "partial");
-    ESP_LOGD(kTag, "refresh begin full=%d partial_since_full=%d", full_refresh ? 1 : 0, partial_since_full_);
-    // 两条路径都先调 EpdInit() 做硬 reset + 寄存器初始化:
-    // 1) full 路径里 EpdDisplayFull 自己会发 0xA5 切到 full 模式;
-    // 2) partial 路径靠 EpdInit 把 EPD 拉回默认/partial 模式,否则上一轮
-    //    full 留下的 0xA5 LUT 会让本轮 partial 视觉上变成全刷闪一下。
     EpdInit();
+    EpdSendCommand(0x04);
+    ReadBusy("interactive-power-on");
+    interactive_controller_warm_ = true;
+    interactive_warm_until_ms_ = time_utils::NowMs() + kInteractiveWarmIdleMs;
+    ESP_LOGI(kTag, "interactive controller warm elapsed_ms=%lld",
+             static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
+    SLATE_TIMING_LOG(kTag, "interactive_prewarm_done elapsed_us=%lld",
+                     static_cast<long long>(esp_timer_get_time() - start_us));
+}
+
+void EpdSsd1683::PowerDownInteractiveController() {
+    AssertRefreshTaskContext();
+    if (!interactive_controller_warm_)
+        return;
+
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    refresh_in_progress_ = true;
+    xSemaphoreGive(dirty_mutex_);
+
+    EpdSendCommand(0x02);
+    EpdSendData(0x00);
+    ReadBusy("interactive-power-off");
+    EpdPowerOff();
+    interactive_controller_warm_ = false;
+    interactive_warm_until_ms_ = 0;
+
+    xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+    refresh_in_progress_ = pending_ || urgent_refresh_ || force_full_refresh_ ||
+                           interactive_prewarm_ || interactive_powerdown_;
+    xSemaphoreGive(dirty_mutex_);
+    ESP_LOGD(kTag, "interactive controller powered down");
+}
+
+void EpdSsd1683::RunRefresh(bool full_refresh, bool interactive, const epd::Rect& partial_window) {
+    const int64_t start_us = esp_timer_get_time();
+    SLATE_TIMING_LOG(kTag, "refresh_start path=%s interactive=%d", full_refresh ? "full" : "partial",
+                     interactive ? 1 : 0);
+    ESP_LOGD(kTag, "refresh begin full=%d interactive=%d partial_since_full=%d", full_refresh ? 1 : 0,
+             interactive ? 1 : 0, partial_since_full_);
+
+    if (full_refresh || !interactive) {
+        // Normal/background paths preserve the proven reset + OTP + power cycle.
+        PowerDownInteractiveController();
+        EpdInit();
+    } else {
+        // Local cached page turns keep one bounded powered OTP session alive.
+        EnsureInteractiveControllerWarm();
+    }
+
     if (full_refresh) {
         EpdDisplayFull();
         partial_since_full_ = 0;
@@ -482,10 +634,12 @@ void EpdSsd1683::RunRefresh(bool full_refresh, const epd::Rect& partial_window) 
     }
 
     partial_since_full_++;
-    EpdDisplayPartial(partial_window);
-    ESP_LOGI(kTag, "refresh done full=0 partial_count=%d elapsed_ms=%lld", partial_since_full_,
-             static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
-    SLATE_TIMING_LOG(kTag, "refresh_done path=partial elapsed_us=%lld",
+    EpdDisplayPartial(partial_window, interactive);
+    if (interactive && interactive_controller_warm_)
+        interactive_warm_until_ms_ = time_utils::NowMs() + kInteractiveWarmIdleMs;
+    ESP_LOGI(kTag, "refresh done full=0 interactive=%d partial_count=%d elapsed_ms=%lld", interactive ? 1 : 0,
+             partial_since_full_, static_cast<long long>((esp_timer_get_time() - start_us) / 1000));
+    SLATE_TIMING_LOG(kTag, "refresh_done path=partial interactive=%d elapsed_us=%lld", interactive ? 1 : 0,
                      static_cast<long long>(esp_timer_get_time() - start_us));
     SLATE_TIMING_LOG(kTag, "T_EPD_REFRESH_COMPLETE_IF_AVAILABLE");
 }
@@ -494,14 +648,16 @@ void EpdSsd1683::FinishRefreshSnapshot() {
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
     memcpy(prev_snapshot_, snapshot_, kBufferLen);
     prev_snapshot_synced_ = true;
-    refresh_in_progress_  = false;
+    refresh_in_progress_ = pending_ || urgent_refresh_ || force_full_refresh_ ||
+                           interactive_prewarm_ || interactive_powerdown_;
     xSemaphoreGive(dirty_mutex_);
     ESP_LOGD(kTag, "snapshot synced");
 }
 
 void EpdSsd1683::MarkRefreshIdle() {
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
-    refresh_in_progress_ = false;
+    refresh_in_progress_ = pending_ || urgent_refresh_ || force_full_refresh_ ||
+                           interactive_prewarm_ || interactive_powerdown_;
     xSemaphoreGive(dirty_mutex_);
     ESP_LOGD(kTag, "refresh idle");
 }
@@ -509,28 +665,94 @@ void EpdSsd1683::MarkRefreshIdle() {
 void EpdSsd1683::RefreshTaskLoop() {
     ESP_LOGD(kTag, "task start name=epd_refresh");
     while (true) {
-        // 第一次阻塞等 notify。来源:flush_cb / RequestUrgentXxxRefresh / 周期采样(已废)。
-        if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY) == 0)
-            continue;
-        ESP_LOGD(kTag, "task notified name=epd_refresh");
+        // Notifications are wake hints only. Authoritative latched flags decide
+        // whether work exists, so coalescing/draining notifications cannot lose
+        // a framebuffer update or a shutdown power-down request.
+        const bool latched = HasLatchedWork();
+        if (!latched) {
+            TickType_t wait = portMAX_DELAY;
+            if (interactive_controller_warm_) {
+                const int64_t remaining_ms = interactive_warm_until_ms_ - time_utils::NowMs();
+                wait = remaining_ms > 0 ? pdMS_TO_TICKS(static_cast<uint32_t>(remaining_ms)) : 0;
+            }
+            if (ulTaskNotifyTake(pdTRUE, wait) == 0) {
+                if (interactive_controller_warm_ && time_utils::NowMs() >= interactive_warm_until_ms_ &&
+                    !HasDisplayWork()) {
+                    ESP_LOGD(kTag, "interactive warm timeout action=power_down");
+                    PowerDownInteractiveController();
+                }
+                continue;
+            }
+            ESP_LOGD(kTag, "task notified name=epd_refresh");
+        } else {
+            // Drain stale counts without making correctness depend on them.
+            ulTaskNotifyTake(pdTRUE, 0);
+        }
 
         if (RefreshTaskShouldStop())
             break;
 
-        DebounceRefreshNotify();
-        SLATE_TIMING_LOG(kTag, "refresh_task_start");
+        // Shutdown power-down is deferred until any accepted framebuffer work
+        // has completed. Keep its flag latched through the physical 0x02/BUSY
+        // sequence so WaitForRefreshIdle cannot report a false idle.
+        if (InteractivePowerDownRequested() && !HasDisplayWork()) {
+            PowerDownInteractiveController();
+            CompleteInteractivePowerDownRequest();
+            continue;
+        }
 
-        bool      urgent     = false;
-        bool      force_full = false;
-        epd::Rect dirty      = {};
-        if (!TakeRefreshRequest(urgent, force_full, dirty))
-            break;
+        const bool prewarm_requested = TakeInteractivePrewarmRequest();
+        if (prewarm_requested) {
+            // Give the second side button a short chance to form the cleanup
+            // chord before paying the speculative controller warm-up cost.
+            vTaskDelay(pdMS_TO_TICKS(kInteractiveChordGraceMs));
 
-        if (!ThrottleRefreshSampling(urgent, force_full))
+            bool allow_prewarm = interactive_prewarm_enabled_.load(std::memory_order_acquire);
+            xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
+            const bool display_work = pending_ || urgent_refresh_ || force_full_refresh_;
+            const bool superseded = force_full_refresh_ || (display_work && !interactive_refresh_);
+            const bool shutdown_pending = interactive_powerdown_;
+            xSemaphoreGive(dirty_mutex_);
+            allow_prewarm = allow_prewarm && !superseded && !shutdown_pending;
+            if (allow_prewarm)
+                EnsureInteractiveControllerWarm();
+
+            // Prewarm by itself must not sample/clear framebuffer state.
+            if (!HasDisplayWork()) {
+                MarkRefreshIdle();
+                continue;
+            }
+        }
+
+        if (!HasDisplayWork())
             continue;
 
-        epd::DiffResult diff        = {};
-        bool            prev_synced = false;
+        DebounceRefreshNotify();
+
+        // Control requests may have arrived while debounce absorbed their wake
+        // notification. Their flags remain latched and will be serviced after
+        // the accepted display work below.
+        if (RefreshTaskShouldStop())
+            break;
+        if (!HasDisplayWork())
+            continue;
+
+        bool priority_urgent = false;
+        bool priority_force  = false;
+        PeekRefreshPriority(priority_urgent, priority_force);
+        ThrottleRefreshSampling(priority_urgent, priority_force);
+
+        SLATE_TIMING_LOG(kTag, "refresh_task_start");
+
+        bool      urgent      = false;
+        bool      interactive = false;
+        bool      force_full  = false;
+        bool      prev_synced = false;
+        epd::Rect dirty       = {};
+        if (!TakeRefreshRequest(urgent, interactive, force_full, dirty, prev_synced))
+            break;
+
+        epd::DiffResult diff = {};
         if (!CaptureRefreshSnapshot(force_full, diff, prev_synced))
             continue;
 
@@ -541,12 +763,13 @@ void EpdSsd1683::RefreshTaskLoop() {
             ESP_LOGW(kTag, "partial fallback reason=invalid_window dirty=(%d,%d,%d,%d)", dirty.x, dirty.y, dirty.w,
                      dirty.h);
         }
-        RunRefresh(full_refresh, partial_window);
+        RunRefresh(full_refresh, interactive, partial_window);
 
-        // force_full_refresh_ 已在 start 处清(read-and-clear)。这里不要重设,
-        // 否则会覆盖全刷期间又有新 RequestUrgentFullRefresh 设的 true。
+        // New requests raised during the physical refresh remain latched for the
+        // next loop iteration.
         FinishRefreshSnapshot();
     }
+    PowerDownInteractiveController();
     ESP_LOGD(kTag, "task exit name=epd_refresh");
     if (refresh_exit_)
         xSemaphoreGive(refresh_exit_);

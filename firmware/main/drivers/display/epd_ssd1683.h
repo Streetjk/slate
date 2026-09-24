@@ -31,8 +31,12 @@ class EpdSsd1683 {
     // 阻塞轮询直到刷新结束或超时。返回 true=已空闲，false=超时仍 pending。
     // 进深睡 / 关 rail / 后台刷新结束前用它确保不在刷新中途切断 EPD 电源。
     bool WaitForRefreshIdle(int timeout_ms);
-    void RequestUrgentPartialRefresh();  // partial(~1s 残影)
-    void RequestUrgentFullRefresh();     // full(~5s 干净)
+    void RequestUrgentPartialRefresh();       // normal partial path
+    void RequestInteractivePartialRefresh();  // local page-turn path, may reuse a warm controller
+    void SetInteractivePrewarmEnabled(bool enabled);
+    void RequestInteractivePrewarm();         // no-op unless current tile enabled local navigation
+    void RequestInteractivePowerDown();       // shutdown/sleep handoff through refresh task
+    void RequestUrgentFullRefresh();          // full/cleanup path
 
     // 直接把 1bpp 原始数据写入 framebuffer，绕过 LVGL 管线。
     // bit=1=白，bit=0=黑（与服务端下发格式一致，无需反转）。
@@ -77,6 +81,10 @@ class EpdSsd1683 {
     epd::Rect            dirty_;
     bool                 pending_                  = false;
     bool                 urgent_refresh_           = false;
+    bool                 interactive_refresh_      = false;
+    bool                 interactive_prewarm_      = false;
+    bool                 interactive_powerdown_    = false;
+    std::atomic<bool>     interactive_prewarm_enabled_{false};
     bool                 force_full_refresh_       = false;
     bool                 refresh_task_stop_        = false;
     bool                 prev_snapshot_synced_     = false;
@@ -85,20 +93,33 @@ class EpdSsd1683 {
     TickType_t           last_flush_tick_          = 0;  // LVGL 最后一次 flush_cb 的时刻,用于等待静默
     int                  sample_interval_ms_       = 300;
     int                  partial_since_full_       = 0;  // 累积多少次 partial 后强制 full 清残影
-    static constexpr int kPartialBeforeFullCleanup = 8;
+    bool                 interactive_controller_warm_ = false;
+    int64_t              interactive_warm_until_ms_   = 0;
+    static constexpr int kPartialBeforeFullCleanup    = 8;
+    static constexpr int kInteractiveWarmIdleMs       = 5000;
+    static constexpr int kInteractiveChordGraceMs     = 35;
 
     void        StartRefreshTask();
     static void RefreshTaskEntry(void* arg);
     void        RefreshTaskLoop();
     bool        RefreshTaskShouldStop();
     void        DebounceRefreshNotify();
-    bool        TakeRefreshRequest(bool& urgent, bool& force_full, epd::Rect& dirty);
+    bool        TakeRefreshRequest(bool& urgent, bool& interactive, bool& force_full, epd::Rect& dirty,
+                                   bool& prev_synced);
+    bool        TakeInteractivePrewarmRequest();
+    bool        InteractivePowerDownRequested();
+    void        CompleteInteractivePowerDownRequest();
+    bool        HasDisplayWork();
+    bool        HasLatchedWork();
+    void        PeekRefreshPriority(bool& urgent, bool& force_full);
     bool        ThrottleRefreshSampling(bool urgent, bool force_full);
     bool        CaptureRefreshSnapshot(bool force_full, epd::DiffResult& diff, bool& prev_synced);
     bool        ShouldUseFullRefresh(const epd::DiffResult& diff, bool force_full, bool prev_synced) const;
-    void        RunRefresh(bool full_refresh, const epd::Rect& partial_window);
+    void        RunRefresh(bool full_refresh, bool interactive, const epd::Rect& partial_window);
     void        FinishRefreshSnapshot();
     void        MarkRefreshIdle();
+    void        EnsureInteractiveControllerWarm();
+    void        PowerDownInteractiveController(bool keep_refresh_busy = false);
 
     void AssertRefreshTaskContext() const;
     void SpiPortInit();    // 发送模式（DI 当 MOSI，40 MHz）
@@ -106,8 +127,9 @@ class EpdSsd1683 {
     void SpiGpioInit();
     void EpdInit();
     void EpdDisplayFull();
-    void EpdDisplayPartial(const epd::Rect& window);
+    void EpdDisplayPartial(const epd::Rect& window, bool powered_session = false);
     void EpdTurnOnDisplay();
+    void EpdRefreshWhilePowered();
     // 读屏内温度寄存器(0x40)→映射 5 档 booster 写 0xE0/0xE6,Full/Partial 共用。
     // 60 s 内重复刷新会复用上次温度避免每次 5~10 ms 切换 SPI 模式开销。
     void    ApplyTemperatureBoost();

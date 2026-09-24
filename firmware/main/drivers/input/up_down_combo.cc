@@ -17,15 +17,18 @@ void LogState(const char* action, uint8_t state) {
 }  // namespace
 
 void UpDownComboController::Install(const ButtonInput& up, const ButtonInput& down, std::function<void()> on_combo,
-                                    std::function<void()> on_up_short, std::function<void()> on_up_long,
-                                    std::function<void()> on_down_short, std::function<void()> on_down_long) {
+                                    std::function<void()> on_any_press_down, std::function<void()> on_up_short,
+                                    std::function<void()> on_up_long, std::function<void()> on_down_short,
+                                    std::function<void()> on_down_long) {
     on_combo_ = std::move(on_combo);
     ESP_LOGD(kTag, "install up_valid=%d down_valid=%d", up.IsValid() ? 1 : 0, down.IsValid() ? 1 : 0);
     if (!up.IsValid() || !down.IsValid())
         return;
 
-    up.on_press_down([this] {
+    up.on_press_down([this, prewarm = on_any_press_down] {
         ESP_LOGD(kTag, "press down btn=up tick=%lu", static_cast<unsigned long>(xTaskGetTickCount()));
+        if (prewarm)
+            prewarm();
         Update(kComboUpHeld, kComboUpConsumed | kComboUpLong);
         TryFire();
     });
@@ -51,8 +54,10 @@ void UpDownComboController::Install(const ButtonInput& up, const ButtonInput& do
             cb();
     });
 
-    down.on_press_down([this] {
+    down.on_press_down([this, prewarm = std::move(on_any_press_down)] {
         ESP_LOGD(kTag, "press down btn=down tick=%lu", static_cast<unsigned long>(xTaskGetTickCount()));
+        if (prewarm)
+            prewarm();
         Update(kComboDownHeld, kComboDownConsumed | kComboDownLong);
         TryFire();
     });

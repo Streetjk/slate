@@ -20,8 +20,9 @@ struct ButtonInput {
 class UpDownComboController {
    public:
     void Install(const ButtonInput& up, const ButtonInput& down, std::function<void()> on_combo,
-                 std::function<void()> on_up_short, std::function<void()> on_up_long,
-                 std::function<void()> on_down_short, std::function<void()> on_down_long);
+                 std::function<void()> on_any_press_down, std::function<void()> on_up_short,
+                 std::function<void()> on_up_long, std::function<void()> on_down_short,
+                 std::function<void()> on_down_long);
 
     static constexpr uint8_t kComboUpHeld       = 1u << 0;
     static constexpr uint8_t kComboDownHeld     = 1u << 1;

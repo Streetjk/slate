@@ -65,6 +65,10 @@ void SyncService::Start(std::string wake_reason, InitialSync initial_sync) {
             return;
         }
     }
+    // Stop() may leave BIT_STOP latched if the previous worker exits through
+    // running_ before returning to xEventGroupWaitBits(). Never let a fresh
+    // worker inherit that stale shutdown request.
+    xEventGroupClearBits(event_group_, BIT_STOP);
     xSemaphoreTake(exit_sem_, 0);
     running_.store(true, std::memory_order_release);
     {

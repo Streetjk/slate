@@ -97,7 +97,7 @@ void EpdSsd1683::EpdDisplayFull() {
     EpdTurnOnDisplay();
 }
 
-void EpdSsd1683::EpdDisplayPartial(const epd::Rect& window) {
+void EpdSsd1683::EpdDisplayPartial(const epd::Rect& window, bool powered_session) {
     const int x0      = window.x;
     const int y0      = window.y;
     const int x1      = window.x + window.w - 1;
@@ -140,7 +140,10 @@ void EpdSsd1683::EpdDisplayPartial(const epd::Rect& window) {
     }
     SLATE_TIMING_LOG(kTag, "spi_frame_end path=partial bytes=%d elapsed_us=%lld", bpr_out * window.h,
                      static_cast<long long>(esp_timer_get_time() - transfer_start_us));
-    EpdTurnOnDisplay();
+    if (powered_session)
+        EpdRefreshWhilePowered();
+    else
+        EpdTurnOnDisplay();
 }
 
 void EpdSsd1683::EpdTurnOnDisplay() {
@@ -155,4 +158,13 @@ void EpdSsd1683::EpdTurnOnDisplay() {
     // 跟参考实现对齐:每次刷完屏都断 GPIO6,跟刷新前的 EpdInit() 内 EpdPowerOn 配对。
     // 见 esp32-eink/main/boards/zectrix-s3-epaper-4.2/custom_lcd_display.cc:826。
     EpdPowerOff();
+}
+
+void EpdSsd1683::EpdRefreshWhilePowered() {
+    // Interactive warm mode has already completed 0x04/internal power-on.
+    // Submit only the display refresh and keep the controller powered so the
+    // next local page turn can avoid reset/OTP selection and power-on latency.
+    EpdSendCommand(0x12);
+    EpdSendData(0x00);
+    ReadBusy("interactive-display-refresh");
 }

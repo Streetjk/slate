@@ -1,5 +1,6 @@
 #include "power/shutdown.h"
 
+#include <esp_log.h>
 #include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -13,6 +14,7 @@
 namespace power_shutdown {
 
 namespace {
+constexpr char kTag[] = "shutdown";
 PreShutdownHook s_pre_shutdown_hook = nullptr;
 }
 
@@ -32,6 +34,11 @@ bool WaitForEpdAndShutdown(int epd_timeout_ms) {
     if (!epd)
         return true;
 
+    // A local-navigation burst may leave the SSD2683 internally powered for a
+    // few seconds. Route power-down through the refresh task before cutting the
+    // external rail so shutdown/deep sleep preserves the proven 0x02 sequence.
+    epd->SetInteractivePrewarmEnabled(false);
+    epd->RequestInteractivePowerDown();
     return epd->WaitForRefreshIdle(epd_timeout_ms);
 }
 
@@ -39,7 +46,10 @@ bool WaitForEpdAndShutdown(int epd_timeout_ms) {
     if (pre_delay_ms > 0)
         vTaskDelay(pdMS_TO_TICKS(pre_delay_ms));
 
-    WaitForEpdAndShutdown(epd_timeout_ms);
+    while (!WaitForEpdAndShutdown(epd_timeout_ms)) {
+        ESP_LOGE(kTag, "restart deferred reason=epd_drain_timeout retry_ms=1000");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 
     esp_restart();
     __builtin_unreachable();
