@@ -5,7 +5,6 @@ import { fetchJson as fetchJsonWithTimeout } from '../../../common/http/fetch';
 import { getDateTimeFormat } from '../../../common/utils/intl';
 import { setBoundedCache } from '../../../common/utils/cache-utils';
 import type { DataProvider, DynamicContentFetchCtx } from '../dynamic-content.types';
-import { datePartsInTz } from '../timezone';
 import {
   CachedInflightFetcher,
   DEFAULT_PROVIDER_CACHE_TTL_SEC,
@@ -95,7 +94,6 @@ export interface WeatherCitySearchResult {
 
 const LOOKUP_CACHE_TTL_MS = 86_400_000;
 const CITY_SEARCH_CACHE_TTL_MS = 3_600_000;
-const FC_LABELS = ['Today', 'Tomorrow', 'Day after'];
 const OPEN_METEO_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const OPEN_METEO_GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const MAX_CACHE_ENTRIES = 128;
@@ -213,7 +211,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
       const code = safeNumber(daily.weather_code?.[index], 999);
       const text = openMeteoWeatherText(code);
       return {
-        label: forecastLabel(date, config.tz, ctx.now) ?? FC_LABELS[index] ?? '--',
+        label: forecastLabel(date, config.tz, ctx.now) ?? '--',
         date: typeof date === 'string' ? date : '',
         val: `${text}  ${min}~${max}°`,
         text,
@@ -323,13 +321,13 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
     const nowData = nowJson.now ?? {};
     const windSpeed = toDisplayNumber(nowData.windSpeed);
     const fc =
-      forecastJson.daily?.slice(0, 3).map((day, index) => {
+      forecastJson.daily?.slice(0, 3).map((day) => {
         const dayText = day.textDay || day.textNight || '--';
         const night = day.textNight && day.textNight !== dayText ? `/${day.textNight}` : '';
         const tempMin = toDisplayNumber(day.tempMin);
         const tempMax = toDisplayNumber(day.tempMax);
         return {
-          label: forecastLabel(day.fxDate, config.tz, ctx.now) ?? FC_LABELS[index] ?? '--',
+          label: forecastLabel(day.fxDate, config.tz, ctx.now) ?? '--',
           date: day.fxDate ?? '',
           val: `${dayText}${night}  ${tempMin}~${tempMax}°`,
           text: `${dayText}${night}`,
@@ -341,7 +339,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
 
     while (fc.length < 3) {
       fc.push({
-        label: FC_LABELS[fc.length]!,
+        label: '--',
         date: '',
         val: '--',
         text: '--',
@@ -502,30 +500,29 @@ function toDisplayNumber(value: unknown): number | string {
   return '--';
 }
 
-export function forecastLabel(value: unknown, timeZone: string, now: Date): string | null {
+export function forecastLabel(value: unknown, _timeZone: string, _now: Date): string | null {
   if (typeof value !== 'string' || !value) return '--';
   const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
   if (!year || !month || !day) return value.slice(5);
-  const today = datePartsInTz(now, timeZone);
-  if (today) {
-    const delta = ordinalDay(year, month, day) - ordinalDay(today.year, today.month, today.day);
-    if (delta >= 0 && delta < FC_LABELS.length) return FC_LABELS[delta]!;
-  }
+
   const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-  if (Number.isNaN(date.getTime())) return value.slice(5);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    return value.slice(5);
+  }
+
   try {
     return getDateTimeFormat('en-AU', {
-      timeZone,
-      month: 'numeric',
-      day: 'numeric',
+      timeZone: 'UTC',
+      weekday: 'long',
     }).format(date);
   } catch {
     return value.slice(5);
   }
-}
-
-function ordinalDay(year: number, month: number, day: number): number {
-  return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
 }
 
 export function openMeteoWeatherText(code: number): string {

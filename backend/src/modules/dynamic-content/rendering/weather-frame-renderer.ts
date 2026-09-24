@@ -13,7 +13,11 @@ import {
 } from './frame-renderer-layout';
 import { textWidth } from './fonts/bitmap-font';
 import type { FontSet } from './fonts/dynamic-frame-font.service';
-import { formatForecastDate, formatShortTime } from './helpers/frame-date-utils';
+import {
+  formatForecastDate,
+  formatForecastWeekday,
+  formatShortTime,
+} from './helpers/frame-date-utils';
 import { isRecord, pickText } from './helpers/frame-value-utils';
 import { loadWeatherIconMask } from './helpers/weather-icons';
 import {
@@ -108,7 +112,7 @@ export async function renderWeatherFrame(
     const record = forecastRecords[index]!;
     const x = CONTENT_LEFT + index * colW;
     if (index > 0) draw.drawVRule(c, x, forecastTop + 8, 124, 'dashed');
-    const label = pickText(record.label, ['Today', 'Tomorrow', 'Day after'][index] ?? '');
+    const label = formatForecastWeekday(record.date) || pickText(record.label, '');
     const dateLabel = formatForecastDate(record.date);
     const text = pickText(record.text, forecastTextFromVal(record.val));
     const min = pickText(record.tempMin, '');

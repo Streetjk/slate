@@ -10,11 +10,14 @@ import {
   type PricePeriodT,
 } from 'shared';
 import { computeETag } from '../../common/utils/etag';
+import { getDateTimeFormat } from '../../common/utils/intl';
 import { BlobService } from '../../infra/blob/blob.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DynamicContentRegistry } from './dynamic-content-registry';
 import { DynamicContentRendererService } from './dynamic-content-renderer.service';
+import { dynamicViewDate } from './timezone';
 
+const NAVIGATION_BUNDLE_RENDER_VERSION = 2;
 const BTC_PERIODS: readonly PricePeriodT[] = ['daily', 'three_day', 'weekly', 'monthly'];
 const BTC_KEY: Record<PricePeriodT, string> = {
   daily: '1d',
@@ -89,7 +92,7 @@ export class DynamicNavigationBundleService {
     if (!entry) return null;
 
     const now = content.dynamicLastRunAt ?? new Date();
-    const specs = variantSpecs(base);
+    const specs = variantSpecs(base, now);
     const variants: NavigationBundleT['variants'] = [];
 
     for (const spec of specs) {
@@ -123,9 +126,15 @@ export class DynamicNavigationBundleService {
     const selected = selectedKey(base);
     const revision = computeETag(
       JSON.stringify({
+        renderVersion: NAVIGATION_BUNDLE_RENDER_VERSION,
         sourceToken,
         selected,
-        variants: variants.map((variant) => [variant.key, variant.image_etag]),
+        variants: variants.map((variant) => [
+          variant.key,
+          variant.image_etag,
+          variant.label,
+          variant.status_bar_text,
+        ]),
       })
     );
     const bundle: NavigationBundleT = {
@@ -162,7 +171,7 @@ function isSupportedConfig(config: DynamicConfigT): config is SupportedConfig {
   );
 }
 
-function variantSpecs(base: SupportedConfig): VariantSpec[] {
+function variantSpecs(base: SupportedConfig, now: Date): VariantSpec[] {
   if (base.type === 'btc_price') {
     return BTC_PERIODS.map((period) => ({
       key: BTC_KEY[period],
@@ -172,27 +181,36 @@ function variantSpecs(base: SupportedConfig): VariantSpec[] {
   }
 
   if (base.type === 'month_calendar') {
-    return centeredOffsets(base.month_offset, 6, -24, 24).map((offset) => ({
-      key: monthKey(offset),
-      label: monthLabel(offset),
-      config: MonthCalendarConfig.parse({ ...base, month_offset: offset }),
-    }));
+    return centeredOffsets(base.month_offset, 6, -24, 24).map((offset) => {
+      const config = MonthCalendarConfig.parse({ ...base, month_offset: offset });
+      return {
+        key: monthKey(offset),
+        label: navigationDateLabel(config, now),
+        config,
+      };
+    });
   }
 
   const offsets = centeredOffsets(base.day_offset, 7, -31, 31);
   if (base.type === 'daily_calendar') {
-    return offsets.map((offset) => ({
-      key: dayKey(offset),
-      label: dayLabel(offset),
-      config: DailyCalendarConfig.parse({ ...base, day_offset: offset }),
-    }));
+    return offsets.map((offset) => {
+      const config = DailyCalendarConfig.parse({ ...base, day_offset: offset });
+      return {
+        key: dayKey(offset),
+        label: navigationDateLabel(config, now),
+        config,
+      };
+    });
   }
 
-  return offsets.map((offset) => ({
-    key: dayKey(offset),
-    label: dayLabel(offset),
-    config: OutlookCalendarConfig.parse({ ...base, day_offset: offset }),
-  }));
+  return offsets.map((offset) => {
+    const config = OutlookCalendarConfig.parse({ ...base, day_offset: offset });
+    return {
+      key: dayKey(offset),
+      label: navigationDateLabel(config, now),
+      config,
+    };
+  });
 }
 
 function selectedKey(base: SupportedConfig): string {
@@ -215,14 +233,24 @@ function monthKey(offset: number): string {
   return offset < 0 ? `m_m${Math.abs(offset)}` : `m_p${offset}`;
 }
 
-function dayLabel(offset: number): string {
-  if (offset === 0) return 'Today';
-  return offset < 0 ? `${Math.abs(offset)}d ago` : `+${offset}d`;
-}
+function navigationDateLabel(config: SupportedConfig, now: Date): string {
+  if (config.type === 'btc_price') return BTC_LABEL[config.period];
 
-function monthLabel(offset: number): string {
-  if (offset === 0) return 'This month';
-  return offset < 0 ? `${Math.abs(offset)}mo ago` : `+${offset}mo`;
+  const target = dynamicViewDate(config, now);
+  if (config.type === 'month_calendar') {
+    return getDateTimeFormat('en-AU', {
+      timeZone: config.tz,
+      month: 'long',
+      year: 'numeric',
+    }).format(target);
+  }
+
+  return getDateTimeFormat('en-AU', {
+    timeZone: config.tz,
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(target);
 }
 
 export function navAssetId(contentId: string, key: string): string {

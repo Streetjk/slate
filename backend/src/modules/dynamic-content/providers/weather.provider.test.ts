@@ -9,11 +9,11 @@ afterEach(() => {
 });
 
 describe('forecastLabel', () => {
-  it('labels forecast dates across year boundaries', () => {
+  it('labels forecast dates with their actual weekdays across year boundaries', () => {
     const now = new Date('2026-12-31T04:00:00.000Z');
 
-    expect(forecastLabel('2027-01-01', 'Australia/Perth', now)).toBe('Tomorrow');
-    expect(forecastLabel('2027-01-02', 'Australia/Perth', now)).toBe('Day after');
+    expect(forecastLabel('2027-01-01', 'Australia/Perth', now)).toBe('Friday');
+    expect(forecastLabel('2027-01-02', 'Australia/Perth', now)).toBe('Saturday');
   });
 
   it('searches QWeather cities and maps safe response fields', async () => {
@@ -151,7 +151,7 @@ describe('forecastLabel', () => {
       summary: 'Mainly clear',
     });
     expect(data.windDisplay).toBe('5 km/h');
-    expect(data.fc.map((day) => day.label)).toEqual(['Today', 'Tomorrow', 'Day after']);
+    expect(data.fc.map((day) => day.label)).toEqual(['Tuesday', 'Wednesday', 'Thursday']);
     expect(data.fc.map((day) => day.date)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03']);
     expect(data.fc[1]?.text).toBe('Drizzle');
   });

@@ -44,14 +44,21 @@ export function formatDatePart(
   return `${month}/${day}`;
 }
 
+export function formatForecastWeekday(value: unknown): string {
+  const date = parseForecastCivilDate(value);
+  if (!date) return '';
+  return getDateTimeFormat('en-AU', {
+    timeZone: 'UTC',
+    weekday: 'long',
+  }).format(date);
+}
+
 export function formatForecastDate(value: unknown): string {
   const text = pickText(value, '').trim();
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return '';
+  if (!match || !parseForecastCivilDate(text)) return '';
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (!Number.isInteger(month) || month < 1 || month > 12) return '';
-  if (!Number.isInteger(day) || day < 1 || day > 31) return '';
   const monthLabels = [
     'Jan',
     'Feb',
@@ -67,6 +74,26 @@ export function formatForecastDate(value: unknown): string {
     'Dec',
   ];
   return day + ' ' + monthLabels[month - 1];
+}
+
+function parseForecastCivilDate(value: unknown): Date | null {
+  const text = pickText(value, '').trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date;
 }
 
 export function formatShortTime(value: unknown, fallback: Date, timeZone: string): string {
