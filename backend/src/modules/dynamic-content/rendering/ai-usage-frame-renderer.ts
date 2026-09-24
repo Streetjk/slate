@@ -60,6 +60,7 @@ export function renderAiUsageFrame(
           y + 21,
           primaryLabel,
           usedPercent,
+          pickText(primary.resetLabel, ''),
           CONTENT_LEFT,
           CONTENT_RIGHT
         );
@@ -70,6 +71,7 @@ export function renderAiUsageFrame(
           y + 40,
           pickText(secondary.label, 'wk'),
           secondaryPercent,
+          pickText(secondary.resetLabel, ''),
           CONTENT_LEFT,
           CONTENT_RIGHT
         );
@@ -147,14 +149,19 @@ function drawCompactQuotaWindow(
   y: number,
   label: string,
   usedPercent: number,
+  resetLabel: string,
   left: number,
   right: number
 ): void {
-  const barX = left + 36;
+  const compactReset = shortResetLabel(resetLabel);
+  const leftLabel = compactReset
+    ? shortQuotaLabel(label) + ' · ' + compactReset
+    : shortQuotaLabel(label);
+  const barX = left + 104;
   const barW = Math.max(80, right - barX - 48);
   const barH = 8;
-  draw.drawText(c, fonts.metric12, shortQuotaLabel(label), left, y, {
-    maxWidth: 44,
+  draw.drawText(c, fonts.metric12, leftLabel, left, y, {
+    maxWidth: 100,
     ellipsis: true,
   });
   c.strokeRect(barX, y + 2, barW, barH);
@@ -173,4 +180,33 @@ function shortQuotaLabel(value: string): string {
   if (normalized.includes('5h')) return '5h';
   if (normalized.includes('week')) return 'wk';
   return value.slice(0, 8);
+}
+
+function shortResetLabel(value: string): string {
+  const text = value.trim();
+  if (!text) return '';
+
+  const match = text.match(
+    /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+  );
+  if (!match) return text.replace(/\s+at\s+/i, ' ').slice(0, 13);
+
+  const months: Record<string, number> = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12,
+  };
+  const month = months[match[1]!.toLowerCase()];
+  if (!month) return text.slice(0, 13);
+
+  return `${Number(match[2])}/${month} ${Number(match[3])}:${match[4]}${match[5]![0]!.toLowerCase()}`;
 }
