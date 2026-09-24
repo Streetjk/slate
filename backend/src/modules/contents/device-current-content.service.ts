@@ -116,6 +116,17 @@ export class DeviceCurrentContentService {
       return { handled: false, stale: true, manifest_etag: null, content: null };
     }
 
+    // Local-navigation tiles must never persist a temporary Up/Down cursor into
+    // their saved dynamic config. If an older/current firmware reaches this
+    // server fallback because its local bundle is missing, mark the request
+    // stale so the device resyncs the bundle instead of changing the default.
+    if (
+      request.content.kind === 'dynamic' &&
+      supportsLocalNavigation(request.content.dynamicType)
+    ) {
+      return { handled: false, stale: true, manifest_etag: null, content: null };
+    }
+
     const result = await this.dynamicContent.navigateDeviceView(request.contentId, input.direction);
     if (!result.handled) {
       return { handled: false, stale: false, manifest_etag: null, content: null };
@@ -182,6 +193,15 @@ export class DeviceCurrentContentService {
     }
     return request;
   }
+}
+
+function supportsLocalNavigation(dynamicType: string | null): boolean {
+  return (
+    dynamicType === 'btc_price' ||
+    dynamicType === 'daily_calendar' ||
+    dynamicType === 'month_calendar' ||
+    dynamicType === 'outlook_calendar'
+  );
 }
 
 function isCurrentDynamicDue(content: {
