@@ -154,23 +154,25 @@ function drawCompactQuotaWindow(
   right: number
 ): void {
   const compactReset = shortResetLabel(resetLabel);
-  const leftLabel = compactReset
-    ? shortQuotaLabel(label) + ' · ' + compactReset
-    : shortQuotaLabel(label);
-  const barX = left + 104;
-  const barW = Math.max(80, right - barX - 48);
+  const barX = left + 30;
+  const rightTextW = 128;
+  const barW = Math.max(80, right - barX - rightTextW - 6);
   const barH = 8;
-  draw.drawText(c, fonts.metric12, leftLabel, left, y, {
-    maxWidth: 100,
+  draw.drawText(c, fonts.metric12, shortQuotaLabel(label), left, y, {
+    maxWidth: 26,
     ellipsis: true,
   });
   c.strokeRect(barX, y + 2, barW, barH);
   const innerW = Math.max(0, barW - 4);
   const fillW = Math.round((innerW * usedPercent) / 100);
   if (fillW > 0) c.fillRect(barX + 2, y + 4, fillW, barH - 4);
-  draw.drawStrongText(c, fonts.metric12, String(usedPercent) + '%', right, y, {
+
+  const rightText = compactReset
+    ? String(usedPercent) + '% · ' + compactReset
+    : String(usedPercent) + '%';
+  draw.drawStrongText(c, fonts.metric12, rightText, right, y, {
     align: 'right',
-    maxWidth: 44,
+    maxWidth: rightTextW,
     ellipsis: true,
   });
 }
