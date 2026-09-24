@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ContentKind, Prisma } from '@prisma/client';
+import { navigationBundleManifestToken } from '../dynamic-content/dynamic-navigation-version';
 import { deviceStatusBarText } from '../dynamic-content/status-text/dynamic-content-status-text';
 
 export interface GroupEtagContentRow {
@@ -46,6 +47,7 @@ export function computeGroupEtags(group: GroupEtagInput): ComputedGroupEtags {
     sortOrder: content.sortOrder,
     kind: content.kind,
     dynamicType: content.dynamicType ?? '',
+    navigationBundleToken: navigationBundleManifestToken(content.dynamicType),
     imageEtag: content.imageEtag,
     imageSize: content.imageSize,
     audioEtag: content.audioEtag ?? '',
@@ -68,6 +70,7 @@ export function computeGroupEtags(group: GroupEtagInput): ComputedGroupEtags {
       content.sortOrder,
       content.kind,
       content.dynamicType,
+      content.navigationBundleToken,
       content.imageEtag,
       content.imageSize,
       content.audioEtag,

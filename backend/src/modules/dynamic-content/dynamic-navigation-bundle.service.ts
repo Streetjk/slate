@@ -15,9 +15,8 @@ import { BlobService } from '../../infra/blob/blob.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { DynamicContentRegistry } from './dynamic-content-registry';
 import { DynamicContentRendererService } from './dynamic-content-renderer.service';
+import { NAVIGATION_BUNDLE_RENDER_VERSION } from './dynamic-navigation-version';
 import { dynamicViewDate } from './timezone';
-
-const NAVIGATION_BUNDLE_RENDER_VERSION = 2;
 const BTC_PERIODS: readonly PricePeriodT[] = ['daily', 'three_day', 'weekly', 'monthly'];
 const BTC_KEY: Record<PricePeriodT, string> = {
   daily: '1d',
