@@ -871,11 +871,20 @@ function authMetadataDetected(provider: HelperProvider): boolean {
 }
 
 function safeCliEnv(): Record<string, string> {
+  const home = homedir();
+  const required = [
+    join(home, '.local', 'bin'),
+    join(home, '.bun', 'bin'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+  ];
+  const inherited = (process.env.PATH ?? '').split(':').filter(Boolean);
+  const path = [...new Set([...required, ...inherited])].join(':');
   return {
-    PATH:
-      process.env.PATH ??
-      `${join(homedir(), '.local', 'bin')}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`,
-    HOME: homedir(),
+    PATH: path,
+    HOME: home,
     USER: process.env.USER ?? 'ollama',
     NO_COLOR: '1',
     TERM: 'dumb',
