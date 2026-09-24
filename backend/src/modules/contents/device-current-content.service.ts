@@ -201,6 +201,7 @@ function supportsLocalNavigation(dynamicType: string | null): boolean {
     dynamicType === 'daily_calendar' ||
     dynamicType === 'month_calendar' ||
     dynamicType === 'outlook_calendar' ||
+    dynamicType === 'google_news' ||
     dynamicType === 'weather'
   );
 }

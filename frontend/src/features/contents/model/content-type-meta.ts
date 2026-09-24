@@ -16,10 +16,10 @@ const DYNAMIC_CONTENT_TYPE_META = Object.fromEntries(
 
 export const TYPE_META: Record<AllContentType, TypeMeta> = {
   image: {
-    label: 'Image',
-    hint: 'Upload an image, converted to 1bpp',
+    label: 'Photo gallery',
+    hint: 'Upload one or multiple photos',
     description:
-      'Upload an image and configure dithering or thresholding; audio or TTS can be attached.',
+      'Upload one photo with crop/audio controls, or select multiple photos to create a Slate gallery batch.',
     hasConfigurableParams: true,
     supportsAudio: true,
     Icon: ImageIcon,

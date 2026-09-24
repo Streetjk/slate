@@ -20,7 +20,7 @@ namespace {
 bool SupportsLocalNavigation(const std::string& dynamic_type) {
     return dynamic_type == "btc_price" || dynamic_type == "daily_calendar" ||
            dynamic_type == "month_calendar" || dynamic_type == "outlook_calendar" ||
-           dynamic_type == "weather";
+           dynamic_type == "google_news" || dynamic_type == "weather";
 }
 
 bool NeedsNavigationBundleBootstrap(const std::string& gid) {

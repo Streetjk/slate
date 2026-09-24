@@ -105,6 +105,7 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
       return {
         type: 'google_news',
         edition: 'both',
+        page_index: 0,
         refresh_interval_sec: 900,
       };
   }

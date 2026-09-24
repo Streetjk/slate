@@ -11,6 +11,7 @@ describe('navigationBundleManifestToken', () => {
     expect(navigationBundleManifestToken('daily_calendar')).toBe(expected);
     expect(navigationBundleManifestToken('month_calendar')).toBe(expected);
     expect(navigationBundleManifestToken('outlook_calendar')).toBe(expected);
+    expect(navigationBundleManifestToken('google_news')).toBe(expected);
     expect(navigationBundleManifestToken('weather')).toBe(expected);
   });
 

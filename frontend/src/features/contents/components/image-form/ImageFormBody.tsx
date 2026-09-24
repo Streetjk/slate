@@ -42,6 +42,8 @@ export function ImageFormBody({
   beforeFields,
   actions,
 }: ImageFormBodyProps) {
+  const galleryMode = !isEdit && form.image.files.length > 1;
+
   return (
     <div
       className={cn('grid grid-cols-1 gap-6 lg:gap-8', gridClassName ?? 'lg:grid-cols-[1.3fr_1fr]')}
@@ -83,14 +85,21 @@ export function ImageFormBody({
           hint={isEdit ? 'Leave the image empty to keep the current image.' : undefined}
         >
           <div className="space-y-4">
-            <ImageDropzone isEdit={isEdit} imageFile={form.image.file} onPick={form.image.onPick} />
+            <ImageDropzone
+              isEdit={isEdit}
+              imageFile={form.image.file}
+              imageFiles={form.image.files}
+              onPick={form.image.onPick}
+              onPickMany={form.image.onPickMany}
+              allowMultiple={!isEdit}
+            />
             <DitherControls
               mode={form.dither.mode}
               onModeChange={form.dither.setMode}
               threshold={form.dither.threshold}
               onThresholdChange={form.dither.setThreshold}
               disabled={isEdit && !form.image.file}
-              hasImage={!!form.image.file}
+              hasImage={!!form.image.file && !galleryMode}
               scale={form.crop.scale}
               onScaleChange={form.crop.setScale}
               onResetCrop={form.crop.reset}
@@ -98,8 +107,9 @@ export function ImageFormBody({
           </div>
         </FormSection>
 
-        <FormSection label="Audio">
-          <ImageAudioBlock
+        {!galleryMode && (
+          <FormSection label="Audio">
+            <ImageAudioBlock
             gid={gid}
             mode={form.audio.mode}
             onModeChange={form.audio.setMode}
@@ -113,8 +123,16 @@ export function ImageFormBody({
             editingContentId={editingContentId}
             audioStatus={audioStatus}
             audioError={audioError}
-          />
-        </FormSection>
+            />
+          </FormSection>
+        )}
+
+        {galleryMode && (
+          <p className="font-serif italic text-[11px] text-stone-light">
+            Gallery mode applies the selected dithering to every photo. Per-photo crop and audio are
+            disabled for batch creation.
+          </p>
+        )}
 
         {actions}
       </div>

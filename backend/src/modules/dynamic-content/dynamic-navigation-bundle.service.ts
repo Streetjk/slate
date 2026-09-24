@@ -3,6 +3,7 @@ import {
   BtcPriceConfig,
   DailyCalendarConfig,
   DynamicConfig,
+  GoogleNewsConfig,
   MonthCalendarConfig,
   OutlookCalendarConfig,
   WeatherConfig,
@@ -35,7 +36,13 @@ const BTC_LABEL: Record<PricePeriodT, string> = {
 type SupportedConfig = Extract<
   DynamicConfigT,
   {
-    type: 'btc_price' | 'daily_calendar' | 'month_calendar' | 'outlook_calendar' | 'weather';
+    type:
+      | 'btc_price'
+      | 'daily_calendar'
+      | 'google_news'
+      | 'month_calendar'
+      | 'outlook_calendar'
+      | 'weather';
   }
 >;
 
@@ -141,7 +148,7 @@ export class DynamicNavigationBundleService {
     const bundle: NavigationBundleT = {
       revision,
       selected_key: selected,
-      wrap: base.type === 'btc_price',
+      wrap: base.type === 'btc_price' || base.type === 'google_news',
       variants,
     };
     this.cache.set(content.id, { sourceToken, groupId: content.groupId, bundle });
@@ -169,6 +176,7 @@ function isSupportedConfig(config: DynamicConfigT): config is SupportedConfig {
     config.type === 'daily_calendar' ||
     config.type === 'month_calendar' ||
     config.type === 'outlook_calendar' ||
+    config.type === 'google_news' ||
     (config.type === 'weather' && config.provider === 'open_meteo')
   );
 }
@@ -179,6 +187,15 @@ function variantSpecs(base: SupportedConfig, now: Date): VariantSpec[] {
       key: BTC_KEY[period],
       label: BTC_LABEL[period],
       config: BtcPriceConfig.parse({ ...base, period }),
+    }));
+  }
+
+  if (base.type === 'google_news') {
+    return Array.from({ length: 6 }, (_, pageIndex) => ({
+      key: newsKey(pageIndex),
+      label: `News ${pageIndex + 1}/6`,
+      statusBarText: 'Google News',
+      config: GoogleNewsConfig.parse({ ...base, edition: 'both', page_index: pageIndex }),
     }));
   }
 
@@ -227,6 +244,7 @@ function variantSpecs(base: SupportedConfig, now: Date): VariantSpec[] {
 
 function selectedKey(base: SupportedConfig): string {
   if (base.type === 'btc_price') return BTC_KEY[base.period];
+  if (base.type === 'google_news') return newsKey(base.page_index);
   if (base.type === 'weather') return weatherKey(base.page_offset);
   if (base.type === 'month_calendar') return monthKey(base.month_offset);
   return dayKey(base.day_offset);
@@ -250,8 +268,13 @@ function weatherKey(offset: number): string {
   return offset < 0 ? `w_m${Math.abs(offset)}` : `w_p${offset}`;
 }
 
+function newsKey(pageIndex: number): string {
+  return `n_p${Math.max(0, Math.min(5, pageIndex))}`;
+}
+
 function navigationDateLabel(config: SupportedConfig, now: Date): string {
   if (config.type === 'btc_price') return BTC_LABEL[config.period];
+  if (config.type === 'google_news') return `News ${config.page_index + 1}/6`;
 
   const target = dynamicViewDate(config, now);
   if (config.type === 'month_calendar') {

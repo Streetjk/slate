@@ -205,6 +205,7 @@ export type OutlookCalendarConfigT = z.infer<typeof OutlookCalendarConfig>;
 export const GoogleNewsConfig = z.object({
   type: z.literal('google_news'),
   edition: z.enum(['au', 'tw', 'both']).default('both'),
+  page_index: z.coerce.number().int().min(0).max(5).default(0),
   refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(900),
 });
 export type GoogleNewsConfigT = z.infer<typeof GoogleNewsConfig>;

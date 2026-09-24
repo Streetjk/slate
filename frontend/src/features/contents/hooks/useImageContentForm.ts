@@ -12,7 +12,8 @@ import { useImageFormSubmit } from './useImageFormSubmit';
 export function useImageContentForm(content?: ContentDetailT) {
   const isEdit = !!content;
   const previewRef = useRef<HTMLCanvasElement>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const imageFile = imageFiles[0] ?? null;
   const audio = useAudioFormState(content);
   const [threshold, setThreshold] = useState(BW_THRESHOLD_DEFAULT);
   const [mode, setMode] = useState<DitherMode>(DEFAULT_DITHER_MODE);
@@ -37,14 +38,22 @@ export function useImageContentForm(content?: ContentDetailT) {
 
   const onImagePick = useCallback(
     (file: File | null) => {
-      setImageFile(file);
+      setImageFiles(file ? [file] : []);
+      resetCrop();
+    },
+    [resetCrop]
+  );
+
+  const onImagePickMany = useCallback(
+    (files: File[]) => {
+      setImageFiles(files.slice(0, 24));
       resetCrop();
     },
     [resetCrop]
   );
 
   const reset = useCallback(() => {
-    setImageFile(null);
+    setImageFiles([]);
     audio.resetAudio();
     setThreshold(BW_THRESHOLD_DEFAULT);
     setMode(DEFAULT_DITHER_MODE);
@@ -65,8 +74,10 @@ export function useImageContentForm(content?: ContentDetailT) {
     image: {
       previewRef,
       file: imageFile,
-      setFile: setImageFile,
+      files: imageFiles,
+      setFile: (file: File | null) => setImageFiles(file ? [file] : []),
       onPick: onImagePick,
+      onPickMany: onImagePickMany,
     },
     audio: {
       file: audio.audioFile,

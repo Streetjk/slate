@@ -39,4 +39,45 @@ describe('Google News frame renderer', () => {
       createHash('sha256').update(tw).digest('hex')
     );
   });
+
+  it('changes the paired AU/TW stories when the local page index changes', async () => {
+    const renderer = new DynamicFrameRendererService(new DynamicFrameFontService());
+    const data = {
+      sections: [
+        {
+          edition: 'au',
+          label: 'AU',
+          items: [
+            { title: 'English story one', source: 'ABC News' },
+            { title: 'English story two', source: 'SBS News' },
+          ],
+        },
+        {
+          edition: 'tw',
+          label: 'TW',
+          items: [
+            { title: '台灣新聞一', source: '中央社' },
+            { title: '台灣新聞二', source: '公視' },
+          ],
+        },
+      ],
+    };
+    const first = await renderer.render({
+      type: 'google_news',
+      frameName: 'Google News',
+      config: { type: 'google_news', edition: 'both', page_index: 0 },
+      data,
+      renderedAt: new Date('2026-09-01T13:00:00Z'),
+    });
+    const second = await renderer.render({
+      type: 'google_news',
+      frameName: 'Google News',
+      config: { type: 'google_news', edition: 'both', page_index: 1 },
+      data,
+      renderedAt: new Date('2026-09-01T13:00:00Z'),
+    });
+    expect(createHash('sha256').update(first).digest('hex')).not.toBe(
+      createHash('sha256').update(second).digest('hex')
+    );
+  });
 });
