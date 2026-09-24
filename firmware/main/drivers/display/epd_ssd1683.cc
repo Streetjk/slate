@@ -583,7 +583,7 @@ void EpdSsd1683::EnsureInteractiveControllerWarm() {
                      static_cast<long long>(esp_timer_get_time() - start_us));
 }
 
-void EpdSsd1683::PowerDownInteractiveController() {
+void EpdSsd1683::PowerDownInteractiveController(bool keep_refresh_busy) {
     AssertRefreshTaskContext();
     if (!interactive_controller_warm_)
         return;
@@ -600,10 +600,10 @@ void EpdSsd1683::PowerDownInteractiveController() {
     interactive_warm_until_ms_ = 0;
 
     xSemaphoreTake(dirty_mutex_, portMAX_DELAY);
-    refresh_in_progress_ = pending_ || urgent_refresh_ || force_full_refresh_ ||
+    refresh_in_progress_ = keep_refresh_busy || pending_ || urgent_refresh_ || force_full_refresh_ ||
                            interactive_prewarm_ || interactive_powerdown_;
     xSemaphoreGive(dirty_mutex_);
-    ESP_LOGD(kTag, "interactive controller powered down");
+    ESP_LOGD(kTag, "interactive controller powered down keep_busy=%d", keep_refresh_busy ? 1 : 0);
 }
 
 void EpdSsd1683::RunRefresh(bool full_refresh, bool interactive, const epd::Rect& partial_window) {
@@ -615,7 +615,7 @@ void EpdSsd1683::RunRefresh(bool full_refresh, bool interactive, const epd::Rect
 
     if (full_refresh || !interactive) {
         // Normal/background paths preserve the proven reset + OTP + power cycle.
-        PowerDownInteractiveController();
+        PowerDownInteractiveController(/*keep_refresh_busy=*/true);
         EpdInit();
     } else {
         // Local cached page turns keep one bounded powered OTP session alive.
