@@ -2,11 +2,15 @@
 //
 // dnd-kit reorder 通过 useDndOrder 复用；本地顺序会在保存失败时回滚。
 
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Layers } from 'lucide-react';
 import { useGroup, useUpdateGroup } from '@/features/groups/query/group-queries';
 import { useGroupContents } from '@/features/contents/query/content-read-queries';
-import { useReorderContents } from '@/features/contents/query/content-mutation-queries';
+import {
+  useCreateImageContent,
+  useReorderContents,
+} from '@/features/contents/query/content-mutation-queries';
 import type { ContentDetailT, GroupSummaryT } from 'shared';
 import { Spinner } from '@/components/ui/Spinner';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +20,7 @@ import { ContentCard } from '@/features/contents/components/cards/ContentCard';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { RequireRouteParams } from '@/components/layout/RequireRouteParams';
 import { InlineRename } from '@/components/ui/InlineRename';
+import { Input } from '@/components/ui/Input';
 import { useInlineRename } from '@/hooks/useInlineRename';
 import { useToast } from '@/components/feedback/toast-context';
 import { getApiErrorMessage } from '@/lib/api-errors';
@@ -161,7 +166,16 @@ function GroupHeader({
   onAdd: () => void;
 }) {
   const update = useUpdateGroup(group.id);
+  const createImage = useCreateImageContent(group.id);
   const toast = useToast();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [rotationMinutes, setRotationMinutes] = useState(
+    Math.round(group.picture_rotation_sec / 60)
+  );
+
+  useEffect(() => {
+    setRotationMinutes(Math.round(group.picture_rotation_sec / 60));
+  }, [group.picture_rotation_sec]);
 
   const { editing, draft, setDraft, startEditing, commit, handleKeyDown } = useInlineRename(
     group.name,
@@ -176,33 +190,104 @@ function GroupHeader({
     }
   );
 
+  async function saveRotationInterval() {
+    const minutes = Math.max(0, Math.min(1440, Math.round(rotationMinutes || 0)));
+    setRotationMinutes(minutes);
+    const seconds = minutes * 60;
+    if (seconds === group.picture_rotation_sec) return;
+    try {
+      await update.mutateAsync({ picture_rotation_sec: seconds });
+      toast.success(minutes === 0 ? 'Photo auto-rotate disabled' : `Photo auto-rotate: ${minutes} min`);
+    } catch (err) {
+      setRotationMinutes(Math.round(group.picture_rotation_sec / 60));
+      toast.error('Failed to save photo interval', getApiErrorMessage(err));
+    }
+  }
+
+  async function onPhotosSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length === 0) return;
+    let created = 0;
+    let failed = 0;
+    for (const file of files) {
+      const form = new FormData();
+      form.append('image', file, file.name);
+      form.append('frame_name', file.name.replace(/\.[^.]+$/, '').slice(0, 64));
+      try {
+        await createImage.mutateAsync(form);
+        created += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    if (created > 0) toast.success(`${created} photo${created === 1 ? '' : 's'} added`);
+    if (failed > 0) toast.error(`${failed} photo${failed === 1 ? '' : 's'} failed to upload`);
+  }
+
   return (
-    <PageHeader
-      backLabel="Overview"
-      onBack={onBack}
-      icon={<Layers size={24} />}
-      title={group.name}
-      titleContent={
-        <InlineRename
-          editing={editing}
-          value={group.name}
-          draft={draft}
-          onDraftChange={setDraft}
-          onStart={startEditing}
-          onCommit={commit}
-          onKeyDown={handleKeyDown}
-          pending={update.isPending}
-          titleClassName="font-serif text-[32px] sm:text-[40px] font-bold leading-[1.2] truncate tracking-tight"
-          inputClassName="!font-serif !font-bold !text-[32px] sm:!text-[40px] !leading-[1.2]"
-          buttonClassName="p-2 -m-1"
+    <>
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/bmp"
+        multiple
+        className="hidden"
+        onChange={onPhotosSelected}
+      />
+      <PageHeader
+        backLabel="Overview"
+        onBack={onBack}
+        icon={<Layers size={24} />}
+        title={group.name}
+        titleContent={
+          <InlineRename
+            editing={editing}
+            value={group.name}
+            draft={draft}
+            onDraftChange={setDraft}
+            onStart={startEditing}
+            onCommit={commit}
+            onKeyDown={handleKeyDown}
+            pending={update.isPending}
+            titleClassName="font-serif text-[32px] sm:text-[40px] font-bold leading-[1.2] truncate tracking-tight"
+            inputClassName="!font-serif !font-bold !text-[32px] sm:!text-[40px] !leading-[1.2]"
+            buttonClassName="p-2 -m-1"
+          />
+        }
+        subtitle={`${group.content_count} items · ${formatBytes(group.total_bytes)}`}
+        action={
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={createImage.isPending}
+            >
+              Add photos
+            </Button>
+            <Button iconLeft={<Plus size={16} />} size="sm" onClick={onAdd}>
+              New frame
+            </Button>
+          </div>
+        }
+      />
+      <div className="mt-3 flex items-center gap-2 text-[12px] text-stone">
+        <span>Photo auto-rotate</span>
+        <Input
+          type="number"
+          min={0}
+          max={1440}
+          step={1}
+          value={rotationMinutes}
+          onChange={(event) => setRotationMinutes(Number(event.target.value))}
+          onBlur={() => void saveRotationInterval()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
+          className="!h-8 !w-20"
         />
-      }
-      subtitle={`${group.content_count} items · ${formatBytes(group.total_bytes)}`}
-      action={
-        <Button iconLeft={<Plus size={16} />} size="sm" onClick={onAdd}>
-          New frame
-        </Button>
-      }
-    />
+        <span>min · 0 = off</span>
+      </div>
+    </>
   );
 }

@@ -128,6 +128,7 @@ export const ManifestResponse = z.object({
     manifest_etag: z.string(),
     name: z.string(),
     sort_order: z.number().int(),
+    picture_rotation_sec: z.number().int().min(0).max(86400),
     position: z.object({
       current: z.number().int().positive(),
       total: z.number().int().positive(),

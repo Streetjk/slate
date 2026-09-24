@@ -117,7 +117,7 @@ export const GroupsSection = memo(function GroupsSection({
         onOpenChange={setCreateOpen}
         onCreate={async (name) => {
           try {
-            await create.mutateAsync({ name });
+            await create.mutateAsync({ name, picture_rotation_sec: 600 });
             toast.success('Created');
             setCreateOpen(false);
           } catch (err) {

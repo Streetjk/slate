@@ -47,7 +47,10 @@ export async function renderWeatherFrame(
   const feelsLike = pickText(data.feelsLikeC, pickText(data.feelsLike, ''));
   const humidity = pickText(data.humidity, '--');
   const wind = pickText(data.windDisplay, pickText(data.wind, '--'));
-  const fc = Array.isArray(data.fc) ? data.fc.slice(0, 3) : [];
+  const rawForecast = Array.isArray(data.fc) ? data.fc : [];
+  const pageOffset = Math.max(-1, Math.min(1, Number(ctx.config.page_offset ?? 0) || 0));
+  const forecastStart = rawForecast.length >= 9 ? (pageOffset + 1) * 3 : pageOffset === 0 ? 0 : -1;
+  const fc = forecastStart >= 0 ? rawForecast.slice(forecastStart, forecastStart + 3) : [];
 
   const forecastTop = CONTENT_SAFE_TOP + 132;
   const heroTop = CONTENT_SAFE_TOP;

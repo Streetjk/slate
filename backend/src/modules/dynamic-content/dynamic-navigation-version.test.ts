@@ -11,10 +11,11 @@ describe('navigationBundleManifestToken', () => {
     expect(navigationBundleManifestToken('daily_calendar')).toBe(expected);
     expect(navigationBundleManifestToken('month_calendar')).toBe(expected);
     expect(navigationBundleManifestToken('outlook_calendar')).toBe(expected);
+    expect(navigationBundleManifestToken('weather')).toBe(expected);
   });
 
   it('does not perturb unrelated content etags', () => {
-    expect(navigationBundleManifestToken('weather')).toBe('');
+    expect(navigationBundleManifestToken('weather_alert')).toBe('');
     expect(navigationBundleManifestToken(null)).toBe('');
   });
 });

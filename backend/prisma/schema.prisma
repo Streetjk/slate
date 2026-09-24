@@ -42,9 +42,9 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  devices      Device[]          @relation("DeviceOwner")
-  groups       Group[]           @relation("GroupOwner")
-  integrations UserIntegration[]
+  devices                     Device[]                           @relation("DeviceOwner")
+  groups                      Group[]                            @relation("GroupOwner")
+  integrations                UserIntegration[]
   calendarConfirmationTickets GoogleCalendarConfirmationTicket[]
 
   @@map("users")
@@ -116,14 +116,15 @@ model Device {
 }
 
 model Group {
-  id            String   @id @default(cuid())
-  name          String   @db.VarChar(64)
-  structureEtag String   @default("empty") @map("structure_etag") @db.VarChar(64)
-  manifestEtag  String   @default("empty") @map("manifest_etag") @db.VarChar(64)
-  ownerUserId   String?  @map("owner_user_id")
-  sortOrder     Int      @default(0) @map("sort_order")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(cuid())
+  name               String   @db.VarChar(64)
+  structureEtag      String   @default("empty") @map("structure_etag") @db.VarChar(64)
+  manifestEtag       String   @default("empty") @map("manifest_etag") @db.VarChar(64)
+  pictureRotationSec Int      @default(600) @map("picture_rotation_sec")
+  ownerUserId        String?  @map("owner_user_id")
+  sortOrder          Int      @default(0) @map("sort_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   owner            User?     @relation("GroupOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   contents         Content[]

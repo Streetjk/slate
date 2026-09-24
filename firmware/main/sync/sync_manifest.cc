@@ -19,7 +19,8 @@ namespace {
 
 bool SupportsLocalNavigation(const std::string& dynamic_type) {
     return dynamic_type == "btc_price" || dynamic_type == "daily_calendar" ||
-           dynamic_type == "month_calendar" || dynamic_type == "outlook_calendar";
+           dynamic_type == "month_calendar" || dynamic_type == "outlook_calendar" ||
+           dynamic_type == "weather";
 }
 
 bool NeedsNavigationBundleBootstrap(const std::string& gid) {
@@ -210,7 +211,8 @@ bool SyncService::CommitStagedFrames(cache::CacheWriter& writer, const std::stri
         ++saved;
         evt::PostGroupSyncStatus(saving_mode, gid, synced_name, ClampProgressCount(saved), ClampProgressCount(total));
     }
-    if (!cache::WriteManifest(gid, manifest.manifest_etag, manifest.contents.size(), synced_name)) {
+    if (!cache::WriteManifest(gid, manifest.manifest_etag, manifest.contents.size(), synced_name,
+                              manifest.picture_rotation_sec)) {
         ESP_LOGW(kTag, "manifest write failed action=rollback");
         writer.Rollback();
         return false;

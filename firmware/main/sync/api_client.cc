@@ -66,6 +66,7 @@ inline constexpr char kKey[]                  = "key";
 inline constexpr char kLabel[]                = "label";
 inline constexpr char kStatusBarText[]        = "status_bar_text";
 inline constexpr char kPairCode[]            = "pair_code";
+inline constexpr char kPictureRotationSec[]  = "picture_rotation_sec";
 inline constexpr char kPosition[]            = "position";
 inline constexpr char kRssiDbm[]             = "rssi_dbm";
 inline constexpr char kSeq[]                 = "seq";
@@ -787,9 +788,10 @@ bool ApiClient::GetManifest(const std::string& group_id, const std::string& if_n
         cJSON_Delete(root);
         return false;
     }
-    out.group_id      = JsonString(group, proto::kId);
-    out.group_name    = JsonString(group, proto::kName);
-    out.manifest_etag = JsonString(group, proto::kManifestEtag);
+    out.group_id             = JsonString(group, proto::kId);
+    out.group_name           = JsonString(group, proto::kName);
+    out.manifest_etag        = JsonString(group, proto::kManifestEtag);
+    out.picture_rotation_sec = JsonInt(group, proto::kPictureRotationSec, 600);
     if (out.manifest_etag.empty()) {
         ESP_LOGW(kTag, "manifest response invalid reason=manifest_etag_missing");
         cJSON_Delete(root);

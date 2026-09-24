@@ -35,6 +35,7 @@ export function defaultConfig(type: DynamicTypeT): DynamicConfigT {
         latitude: -31.95224,
         longitude: 115.8614,
         location_timezone: 'Australia/Perth',
+        page_offset: 0,
         audio_enabled: false,
         audio_voice: DEFAULT_TTS_VOICE,
         refresh_interval_sec: 600,

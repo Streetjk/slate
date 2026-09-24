@@ -193,7 +193,10 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
         'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min',
       timezone,
-      forecast_days: '3',
+      // Keep all three local pages in one payload: past 3, today + 2,
+      // and the following 3 days. Button paging then needs no network.
+      past_days: '3',
+      forecast_days: '6',
       wind_speed_unit: 'kmh',
       temperature_unit: 'celsius',
       precipitation_unit: 'mm',
@@ -204,8 +207,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
     );
     const current = data.current ?? {};
     const daily = data.daily ?? {};
-    const fc = Array.from({ length: 3 }, (_, index) => {
-      const date = daily.time?.[index];
+    const fc = (daily.time ?? []).slice(0, 9).map((date, index) => {
       const min = toDisplayNumber(daily.temperature_2m_min?.[index]);
       const max = toDisplayNumber(daily.temperature_2m_max?.[index]);
       const code = safeNumber(daily.weather_code?.[index], 999);
@@ -449,7 +451,7 @@ export class WeatherProvider implements DataProvider<WeatherConfigT, WeatherProv
       obsTime: data.obsTime ?? now.toISOString(),
       updatedAt: data.updatedAt ?? now.toISOString(),
       fc: Array.isArray(data.fc)
-        ? data.fc.slice(0, 3).map((day) => ({ ...day, date: day.date ?? '' }))
+        ? data.fc.slice(0, 9).map((day) => ({ ...day, date: day.date ?? '' }))
         : [],
     };
   }

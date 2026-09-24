@@ -79,6 +79,7 @@ export class ContentsReadService {
         manifest_etag: group.manifestEtag,
         name: group.name,
         sort_order: group.sortOrder,
+        picture_rotation_sec: group.pictureRotationSec,
         position,
       },
       contents: await Promise.all(

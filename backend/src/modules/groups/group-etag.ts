@@ -25,12 +25,14 @@ export interface GroupEtagContentRow {
 export interface GroupEtagInput {
   name: string;
   sortOrder: number;
+  pictureRotationSec: number;
   contents: GroupEtagContentRow[];
 }
 
 export interface GroupManifestEtagInput {
   name: string;
   sortOrder: number;
+  pictureRotationSec: number;
   structureEtag: string;
   contents: Array<{ id: string; contentEtag: string }>;
 }
@@ -93,6 +95,7 @@ export function computeGroupEtags(group: GroupEtagInput): ComputedGroupEtags {
   const manifestEtag = computeGroupManifestEtag({
     name: group.name,
     sortOrder: group.sortOrder,
+    pictureRotationSec: group.pictureRotationSec,
     structureEtag,
     contents: contentEtags.map((content) => ({ id: content.id, contentEtag: content.etag })),
   });
@@ -105,6 +108,7 @@ export function computeGroupManifestEtag(group: GroupManifestEtagInput): string 
     'manifest',
     group.name,
     group.sortOrder,
+    group.pictureRotationSec,
     group.structureEtag,
     ...group.contents.map((content) => `${content.id}:${content.contentEtag}`),
   ]);

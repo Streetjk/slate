@@ -27,6 +27,16 @@ describe('computeGroupEtags', () => {
     expect(after.manifestEtag).not.toBe(before.manifestEtag);
   });
 
+  it('changes only the manifest etag when photo rotation changes', () => {
+    const group = groupInput('previous-etag');
+    const before = computeGroupEtags(group);
+    const after = computeGroupEtags({ ...group, pictureRotationSec: 300 });
+
+    expect(after.contentEtags[0]!.etag).toBe(before.contentEtags[0]!.etag);
+    expect(after.structureEtag).toBe(before.structureEtag);
+    expect(after.manifestEtag).not.toBe(before.manifestEtag);
+  });
+
   it('changes dynamic content etags when config or pushed data changes', () => {
     const group = {
       ...groupInput('previous-etag'),
@@ -79,6 +89,7 @@ function groupInput(contentEtag: string): GroupEtagInput {
   return {
     name: 'Group',
     sortOrder: 0,
+    pictureRotationSec: 600,
     contents: [
       {
         id: 'content-1',

@@ -17,6 +17,7 @@ interface GroupListEntry {
   name: string;
   structureEtag: string;
   manifestEtag: string;
+  pictureRotationSec: number;
   sortOrder: number;
   _count: { contents: number };
 }
@@ -204,6 +205,7 @@ export class GroupsService {
         name: true,
         structureEtag: true,
         manifestEtag: true,
+        pictureRotationSec: true,
         sortOrder: true,
         _count: { select: { contents: true } },
       },
@@ -255,6 +257,7 @@ export class GroupsService {
         ownerUserId: true,
         structureEtag: true,
         manifestEtag: true,
+        pictureRotationSec: true,
         sortOrder: true,
         _count: { select: { contents: true } },
       },
@@ -266,7 +269,10 @@ export class GroupsService {
     return toSummary(g, sizeMap.get(gid) ?? 0);
   }
 
-  async create(ownerUserId: string, body: { name: string }): Promise<GroupSummaryT> {
+  async create(
+    ownerUserId: string,
+    body: { name: string; picture_rotation_sec: number }
+  ): Promise<GroupSummaryT> {
     const created = await this.prisma.$transaction(async (tx) => {
       await lockUserRow(tx, ownerUserId);
       const sortOrder = await nextGroupSortOrder(tx, ownerUserId);
@@ -276,6 +282,7 @@ export class GroupsService {
           structureEtag: 'empty',
           manifestEtag: 'empty',
           ownerUserId,
+          pictureRotationSec: body.picture_rotation_sec,
           sortOrder,
         },
         include: { _count: { select: { contents: true } } },
@@ -301,7 +308,11 @@ export class GroupsService {
     return toSummary(created, 0);
   }
 
-  async update(gid: string, ownerUserId: string, body: { name?: string }): Promise<GroupSummaryT> {
+  async update(
+    gid: string,
+    ownerUserId: string,
+    body: { name?: string; picture_rotation_sec?: number }
+  ): Promise<GroupSummaryT> {
     // 校验 + 更新 + recomputeManifestEtag 收进同一事务；name 没变直接跳过 update。
     const group = await this.prisma.$transaction(async (tx) => {
       await lockUserRow(tx, ownerUserId);
@@ -312,10 +323,20 @@ export class GroupsService {
       if (!g || g.ownerUserId !== ownerUserId) {
         throw new NotFoundError('相册不存在');
       }
-      if (body.name === undefined || body.name === g.name) return g;
-      await tx.group.update({ where: { id: gid }, data: { name: body.name } });
+      const nextName = body.name ?? g.name;
+      const nextPictureRotationSec = body.picture_rotation_sec ?? g.pictureRotationSec;
+      if (nextName === g.name && nextPictureRotationSec === g.pictureRotationSec) return g;
+      await tx.group.update({
+        where: { id: gid },
+        data: { name: nextName, pictureRotationSec: nextPictureRotationSec },
+      });
       const etags = await this.recomputeGroupEtags(gid, tx);
-      return { ...g, name: body.name, ...etags };
+      return {
+        ...g,
+        name: nextName,
+        pictureRotationSec: nextPictureRotationSec,
+        ...etags,
+      };
     });
     const sizeMap = await this.aggregateBytes([gid]);
     return toSummary(group, sizeMap.get(gid) ?? 0);
@@ -416,6 +437,7 @@ export class GroupsService {
         name: true,
         structureEtag: true,
         manifestEtag: true,
+        pictureRotationSec: true,
         sortOrder: true,
         _count: { select: { contents: true } },
       },
@@ -434,6 +456,7 @@ export class GroupsService {
         name: true,
         sortOrder: true,
         structureEtag: true,
+        pictureRotationSec: true,
         contents: {
           orderBy: { sortOrder: 'asc' },
           select: { id: true, contentEtag: true },
@@ -466,6 +489,7 @@ function toSummary(
     name: string;
     structureEtag: string;
     manifestEtag: string;
+    pictureRotationSec: number;
     sortOrder: number;
     _count: { contents: number };
   },
@@ -478,6 +502,7 @@ function toSummary(
     manifest_etag: g.manifestEtag,
     sort_order: g.sortOrder,
     content_count: g._count.contents,
+    picture_rotation_sec: g.pictureRotationSec,
     total_bytes: totalBytes,
   };
 }

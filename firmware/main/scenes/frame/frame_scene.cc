@@ -17,6 +17,7 @@
 #include "ui/frame_view.h"
 #include "ui/status_bar.h"
 #include "ui/theme.h"
+#include "utils/time_utils.h"
 #include "utils/utf8_utils.h"
 
 namespace {
@@ -271,6 +272,7 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
         }
         case UiEventKind::kMinuteTick:
             RefreshStatusBarAndRender(ctx, status_bar_.get());
+            MaybeAutoRotatePicture(ctx);
             break;
         case UiEventKind::kUnbound: {
             ESP_LOGW(kTag, "device unbound action=splash");
@@ -432,6 +434,34 @@ void FrameScene::PrevPicture(SceneContext& ctx) {
     LoadFrame(ctx, idx_, /*force_full*/ false, AudioBehavior::RestartIfAvailable);
 }
 
+void FrameScene::MaybeAutoRotatePicture(SceneContext& ctx) {
+    if (gid_.empty() || content_count_ <= 1 || !current_dynamic_type_.empty())
+        return;
+
+    cache::ManifestMeta manifest;
+    if (!cache::ReadManifestMeta(gid_, manifest) || manifest.picture_rotation_sec <= 0)
+        return;
+
+    const int64_t now_ms = time_utils::NowMs();
+    if (last_picture_change_ms_ <= 0) {
+        last_picture_change_ms_ = now_ms;
+        return;
+    }
+    const int64_t interval_ms = static_cast<int64_t>(manifest.picture_rotation_sec) * 1000;
+    if (now_ms - last_picture_change_ms_ < interval_ms)
+        return;
+
+    // Advance only among static picture frames; dynamic tiles are deliberately skipped.
+    // Reset the timer even when there is only one picture to avoid retrying every minute.
+    last_picture_change_ms_ = now_ms;
+    const int target = FindPictureFrame(1);
+    if (target < 0)
+        return;
+    idx_ = target;
+    ESP_LOGI(kTag, "picture auto rotate to=%d interval_sec=%d", idx_, manifest.picture_rotation_sec);
+    LoadFrame(ctx, idx_, /*force_full*/ false, AudioBehavior::RestartIfAvailable);
+}
+
 void FrameScene::CycleGroup(SceneContext& ctx, bool next) {
     ESP_LOGI(kTag, "cycle group direction=%s gid=%s idx=%d", next ? "next" : "prev", gid_.c_str(), idx_);
     SyncRenderIfChanged(
@@ -530,6 +560,7 @@ void FrameScene::LoadFrame(SceneContext& ctx, int idx, bool force_full, AudioBeh
     cache::FrameMeta meta;
     cache::ReadFrameMeta(gid_, idx, meta);
     current_dynamic_type_ = meta.dynamic_type;
+    last_picture_change_ms_ = current_dynamic_type_.empty() ? time_utils::NowMs() : 0;
     const bool navigation_ready = LoadNavigationBundleIntoMemory(idx);
     ctx.epd->SetInteractivePrewarmEnabled(navigation_ready);
 

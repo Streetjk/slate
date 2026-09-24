@@ -32,6 +32,7 @@ describe('GroupsService.reorderGroups', () => {
               id: 'group-2',
               name: 'Second',
               sortOrder: 0,
+              pictureRotationSec: 600,
               structureEtag: 'structure-2',
               contents: [
                 { id: 'content-2a', contentEtag: 'content-etag-2a' },
@@ -42,6 +43,7 @@ describe('GroupsService.reorderGroups', () => {
               id: 'group-1',
               name: 'First',
               sortOrder: 1,
+              pictureRotationSec: 600,
               structureEtag: 'structure-1',
               contents: [{ id: 'content-1a', contentEtag: 'content-etag-1a' }],
             },
@@ -61,10 +63,14 @@ describe('GroupsService.reorderGroups', () => {
       'group-2',
       'group-1',
     ]);
-    expect((findManyCalls[1] as { select: { contents: unknown } }).select.contents).toEqual({
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, contentEtag: true },
-    });
+    expect((findManyCalls[1] as { select: { pictureRotationSec: boolean; contents: unknown } }).select)
+      .toMatchObject({
+        pictureRotationSec: true,
+        contents: {
+          orderBy: { sortOrder: 'asc' },
+          select: { id: true, contentEtag: true },
+        },
+      });
     expect(executeRawCalls).toHaveLength(3);
   });
 });

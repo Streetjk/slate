@@ -43,6 +43,7 @@ class FrameScene : public Scene {
     void PrevFrame(SceneContext& ctx);
     void NextPicture(SceneContext& ctx);
     void PrevPicture(SceneContext& ctx);
+    void MaybeAutoRotatePicture(SceneContext& ctx);
     int  FindPictureFrame(int direction) const;
     void CycleGroup(SceneContext& ctx, bool next);
     void RebindGroup(SceneContext& ctx, const char* gid, int content_count);
@@ -60,6 +61,7 @@ class FrameScene : public Scene {
     bool        first_load_full_refresh_ = true;
     std::string cached_status_bar_text_;
     std::string current_dynamic_type_;
+    int64_t     last_picture_change_ms_ = 0;
 
     cache::NavigationBundleMeta          navigation_bundle_;
     std::vector<std::vector<uint8_t>>    navigation_images_;

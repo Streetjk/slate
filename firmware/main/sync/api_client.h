@@ -97,6 +97,7 @@ struct Manifest {
     std::string              group_id;
     std::string              group_name;
     std::string              manifest_etag;
+    int                      picture_rotation_sec = 600;
     std::vector<ContentMeta> contents;
 };
 

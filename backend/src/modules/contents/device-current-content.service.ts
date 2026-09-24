@@ -200,7 +200,8 @@ function supportsLocalNavigation(dynamicType: string | null): boolean {
     dynamicType === 'btc_price' ||
     dynamicType === 'daily_calendar' ||
     dynamicType === 'month_calendar' ||
-    dynamicType === 'outlook_calendar'
+    dynamicType === 'outlook_calendar' ||
+    dynamicType === 'weather'
   );
 }
 

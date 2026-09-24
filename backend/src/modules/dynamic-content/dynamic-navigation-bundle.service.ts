@@ -5,6 +5,7 @@ import {
   DynamicConfig,
   MonthCalendarConfig,
   OutlookCalendarConfig,
+  WeatherConfig,
   type DynamicConfigT,
   type NavigationBundleT,
   type PricePeriodT,
@@ -34,13 +35,14 @@ const BTC_LABEL: Record<PricePeriodT, string> = {
 type SupportedConfig = Extract<
   DynamicConfigT,
   {
-    type: 'btc_price' | 'daily_calendar' | 'month_calendar' | 'outlook_calendar';
+    type: 'btc_price' | 'daily_calendar' | 'month_calendar' | 'outlook_calendar' | 'weather';
   }
 >;
 
 interface VariantSpec {
   key: string;
   label: string;
+  statusBarText?: string;
   config: SupportedConfig;
 }
 
@@ -118,7 +120,7 @@ export class DynamicNavigationBundleService {
         label: spec.label,
         image_etag: imageEtag,
         image_size: image.byteLength,
-        status_bar_text: spec.label,
+        status_bar_text: spec.statusBarText ?? spec.label,
       });
     }
 
@@ -166,7 +168,8 @@ function isSupportedConfig(config: DynamicConfigT): config is SupportedConfig {
     config.type === 'btc_price' ||
     config.type === 'daily_calendar' ||
     config.type === 'month_calendar' ||
-    config.type === 'outlook_calendar'
+    config.type === 'outlook_calendar' ||
+    (config.type === 'weather' && config.provider === 'open_meteo')
   );
 }
 
@@ -176,6 +179,16 @@ function variantSpecs(base: SupportedConfig, now: Date): VariantSpec[] {
       key: BTC_KEY[period],
       label: BTC_LABEL[period],
       config: BtcPriceConfig.parse({ ...base, period }),
+    }));
+  }
+
+  if (base.type === 'weather') {
+    const labels = ['Previous 3 days', 'Current 3 days', 'Next 3 days'] as const;
+    return [-1, 0, 1].map((offset, index) => ({
+      key: weatherKey(offset),
+      label: labels[index]!,
+      statusBarText: `${base.location_label} weather`,
+      config: WeatherConfig.parse({ ...base, page_offset: offset }),
     }));
   }
 
@@ -214,6 +227,7 @@ function variantSpecs(base: SupportedConfig, now: Date): VariantSpec[] {
 
 function selectedKey(base: SupportedConfig): string {
   if (base.type === 'btc_price') return BTC_KEY[base.period];
+  if (base.type === 'weather') return weatherKey(base.page_offset);
   if (base.type === 'month_calendar') return monthKey(base.month_offset);
   return dayKey(base.day_offset);
 }
@@ -230,6 +244,10 @@ function dayKey(offset: number): string {
 
 function monthKey(offset: number): string {
   return offset < 0 ? `m_m${Math.abs(offset)}` : `m_p${offset}`;
+}
+
+function weatherKey(offset: number): string {
+  return offset < 0 ? `w_m${Math.abs(offset)}` : `w_p${offset}`;
 }
 
 function navigationDateLabel(config: SupportedConfig, now: Date): string {

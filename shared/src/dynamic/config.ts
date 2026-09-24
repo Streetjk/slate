@@ -92,6 +92,9 @@ export const WeatherConfig = z
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
     location_timezone: Tz.optional(),
+    // Local cached forecast pager: -1 = previous 3 days, 0 = current block,
+    // +1 = next 3 days. Navigation changes this only in pre-rendered variants.
+    page_offset: z.coerce.number().int().min(-1).max(1).default(0),
   })
   .merge(DynamicAudioOptions)
   .merge(DynamicRefreshOptions);

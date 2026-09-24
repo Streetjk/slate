@@ -83,7 +83,9 @@ describe('normalizeGraphEvent', () => {
       )
     ).resolves.toEqual([]);
     expect(request?.url).toContain('graph.microsoft.com/v1.0/me/calendarView');
-    expect(request?.url).toContain('%24select=id%2Csubject%2Cstart%2Cend%2CisAllDay%2Clocation');
+    expect(request?.url).toContain(
+      '%24select=id%2Csubject%2Cstart%2Cend%2CisAllDay%2CisCancelled%2Clocation'
+    );
     expect(request?.init?.method).toBe('GET');
     const headers = new Headers(request?.init?.headers);
     expect(headers.get('prefer')).toContain('W. Australia Standard Time');

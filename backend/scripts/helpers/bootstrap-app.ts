@@ -116,7 +116,7 @@ export async function ensureGroup(
     select: { id: true, name: true },
   });
   if (existing) return existing;
-  const created = await groups.create(userId, { name: groupName });
+  const created = await groups.create(userId, { name: groupName, picture_rotation_sec: 600 });
   return { id: created.id, name: created.name };
 }
 

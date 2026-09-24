@@ -84,27 +84,19 @@ export function renderMonthCalendarFrame(
   const total = daysInMonth(parts.year, parts.month);
   const today = getPath(ctx.data, 'calendar.today');
 
-  const monthYear = new Intl.DateTimeFormat('en-AU', {
-    timeZone: tz,
-    month: 'long',
-    year: 'numeric',
-  })
-    .format(ctx.renderedAt)
-    .toUpperCase();
-  draw.drawText(c, fonts.sans16, monthYear, FRAME_WIDTH / 2, 30, {
-    align: 'center',
-    maxWidth: FRAME_WIDTH - 28,
-    ellipsis: true,
-  });
-
+  // The status-bar caption already carries the active month/year. Avoid
+  // repeating it inside the bitmap and spend that vertical space on the grid.
   const x0 = 14;
-  const y0 = 56;
+  const y0 = CONTENT_SAFE_TOP + 8;
   const w = FRAME_WIDTH - 28;
   const colW = Math.floor(w / 7);
-  const headerH = 22;
+  const headerH = 24;
   const weekRows = Math.ceil((first + total) / 7);
+  const rowBottomReserve = 30;
   const rowH =
-    weekRows > 1 ? Math.floor((FRAME_HEIGHT - (y0 + headerH) - 38) / (weekRows - 1)) : 42;
+    weekRows > 1
+      ? Math.floor((FRAME_HEIGHT - (y0 + headerH) - rowBottomReserve) / (weekRows - 1))
+      : 42;
 
   const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

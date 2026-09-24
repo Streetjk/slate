@@ -7,6 +7,7 @@ export const GroupSummary = z.object({
   manifest_etag: z.string(),
   sort_order: z.number().int(),
   content_count: z.number().int().nonnegative(),
+  picture_rotation_sec: z.number().int().min(0).max(86400),
   /** image + audio 总和(字节)。约等于设备拉到本地后的资源占用。 */
   total_bytes: z.number().int().nonnegative(),
 });
@@ -14,11 +15,13 @@ export type GroupSummaryT = z.infer<typeof GroupSummary>;
 
 export const CreateGroupRequest = z.object({
   name: z.string().min(1).max(64),
+  picture_rotation_sec: z.number().int().min(0).max(86400).default(600),
 });
 export type CreateGroupRequestT = z.infer<typeof CreateGroupRequest>;
 
 export const UpdateGroupRequest = z.object({
   name: z.string().min(1).max(64).optional(),
+  picture_rotation_sec: z.number().int().min(0).max(86400).optional(),
 });
 export type UpdateGroupRequestT = z.infer<typeof UpdateGroupRequest>;
 
