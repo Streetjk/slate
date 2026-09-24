@@ -13,7 +13,7 @@
 
 namespace {
 constexpr char     kTag[]              = "wifi";
-constexpr uint32_t kBackoffSec[]       = {10, 20, 40, 80, 120, 120};
+constexpr uint32_t kBackoffSec[]       = {2, 5, 10, 20, 40, 80, 120};
 constexpr size_t   kBackoffSize        = sizeof(kBackoffSec) / sizeof(kBackoffSec[0]);
 constexpr uint16_t kMaxSlowScanRecords = 20;
 
@@ -22,12 +22,6 @@ size_t BoundedSsidLen(const uint8_t ssid[32]) {
     while (len < 32 && ssid[len] != 0)
         ++len;
     return len;
-}
-
-bool SsidEquals(const uint8_t lhs[32], const uint8_t rhs[32]) {
-    const size_t lhs_len = BoundedSsidLen(lhs);
-    const size_t rhs_len = BoundedSsidLen(rhs);
-    return lhs_len == rhs_len && std::memcmp(lhs, rhs, lhs_len) == 0;
 }
 
 bool SsidEquals(const uint8_t lhs[32], const std::string& rhs) {
@@ -154,21 +148,46 @@ void WifiReconnectManager::HandleSlowScanResult() {
         Schedule();
         return;
     }
+    const std::string current_ssid(
+        reinterpret_cast<const char*>(wc.sta.ssid), BoundedSsidLen(wc.sta.ssid));
     const wifi_ap_record_t* match = nullptr;
-    if (wc.sta.ssid[0] != '\0') {
+    cred::Credentials saved;
+    cred::Load(saved);
+
+    // We only enter this slow-scan path after repeated reconnect failures.
+    // Prefer a different visible saved network first, even if the old AP is
+    // still advertising. A visible AP can still be unusable because of
+    // association/DHCP/upstream problems; repeatedly choosing it defeats
+    // multi-profile failover.
+    for (uint16_t i = 0; i < ap_num && !match; ++i) {
+        for (std::size_t p = 0; p < saved.wifi_profile_count; ++p) {
+            const auto& profile = saved.wifi_profiles[p];
+            if (profile.ssid == current_ssid || !SsidEquals(records[i].ssid, profile.ssid))
+                continue;
+            if (!ApplySavedProfile(wc, profile))
+                continue;
+            match = &records[i];
+            ESP_LOGI(kTag, "slow reconnect alternate profile_index=%u ssid=%s rssi=%d",
+                     static_cast<unsigned>(p), profile.ssid.c_str(), static_cast<int>(records[i].rssi));
+            break;
+        }
+    }
+
+    // If no alternative saved network is visible, retry the current one.
+    if (!match && !current_ssid.empty()) {
         for (uint16_t i = 0; i < ap_num; ++i) {
-            if (SsidEquals(records[i].ssid, wc.sta.ssid)) {
+            if (SsidEquals(records[i].ssid, current_ssid)) {
                 match = &records[i];
+                ESP_LOGI(kTag, "slow reconnect retry current ssid=%s rssi=%d",
+                         current_ssid.c_str(), static_cast<int>(records[i].rssi));
                 break;
             }
         }
     }
 
-    // If the current SSID disappeared, roam to the strongest visible saved
-    // profile instead of scanning forever for the old network.
+    // The configured current SSID may no longer be present at all. If so,
+    // choose the strongest visible saved profile (including slot 0).
     if (!match) {
-        cred::Credentials saved;
-        cred::Load(saved);
         for (uint16_t i = 0; i < ap_num && !match; ++i) {
             for (std::size_t p = 0; p < saved.wifi_profile_count; ++p) {
                 if (!SsidEquals(records[i].ssid, saved.wifi_profiles[p].ssid))
@@ -176,8 +195,9 @@ void WifiReconnectManager::HandleSlowScanResult() {
                 if (!ApplySavedProfile(wc, saved.wifi_profiles[p]))
                     continue;
                 match = &records[i];
-                ESP_LOGI(kTag, "slow reconnect roaming profile_index=%u rssi=%d",
-                         static_cast<unsigned>(p), static_cast<int>(records[i].rssi));
+                ESP_LOGI(kTag, "slow reconnect fallback profile_index=%u ssid=%s rssi=%d",
+                         static_cast<unsigned>(p), saved.wifi_profiles[p].ssid.c_str(),
+                         static_cast<int>(records[i].rssi));
                 break;
             }
         }

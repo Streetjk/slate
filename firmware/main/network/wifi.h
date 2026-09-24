@@ -8,9 +8,10 @@
 //   - Stop = 注销 event handler instance + esp_wifi_stop + destroy netif
 //
 // 重连策略:
-//   1. 快速:STA_DISCONNECTED 立即 esp_wifi_connect,最多 5 次。
-//   2. 慢速:5 次用完转 esp_timer + 主动 esp_wifi_scan_start 全信道扫描,
-//      指数退避 10s → 20 → 40 → 80 → 120 → 120s。scan 找到 SSID 即拿
+//   1. 快速:STA_DISCONNECTED 立即 esp_wifi_connect,最多 2 次。
+//   2. 慢速:2 次用完转 esp_timer + 主动 esp_wifi_scan_start 全信道扫描,
+//      指数退避 2s → 5 → 10 → 20 → 40 → 80 → 120s。反复失败后优先
+//      切到其它可见的已保存 SSID；没有替代网络时才重试当前 SSID。
 //      bssid+channel 设回 wc.sta 再 connect。
 //   3. IP_GOT_IP 后清 fail_count_ + 重置 backoff_idx_,timer 停。
 //   4. want_reconnect_=false (Disconnect / TryConnect 主动断 / StopAp) 时
@@ -127,7 +128,7 @@ class Wifi {
     // STA 状态
     std::atomic<State>   state_{State::Idle};
     std::atomic<int>     fail_count_{0};
-    int                  max_fast_fail_ = 5;
+    int                  max_fast_fail_ = 2;
     std::atomic<bool>    want_reconnect_{false};
     mutable std::mutex   callback_mutex_;
     DisconnectCb         on_disconnect_;
