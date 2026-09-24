@@ -214,6 +214,7 @@ function GroupHeader({
       const form = new FormData();
       form.append('image', file, file.name);
       form.append('frame_name', file.name.replace(/\.[^.]+$/, '').slice(0, 64));
+      form.append('mode', 'floyd');
       try {
         await createImage.mutateAsync(form);
         created += 1;
