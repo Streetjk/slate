@@ -37,7 +37,7 @@ export interface RenderResult {
  *
  * pipeline:
  *   1. sharp:flatten 白底 → letterbox resize → grayscale.raw()
- *   2. shared.autoInvert：四角自适应反相
+ *   2. optional shared.autoInvert：仅显式请求时反相；普通照片默认保持原始明暗关系
  *   3. shared.autoContrast：cutoff=1% 拉对比
  *   4. shared.ditherTo1bpp：按 mode 抖动并打包
  *
@@ -53,7 +53,7 @@ export class ImageRendererService {
     const H = options.height ?? FRAME_HEIGHT;
     const threshold = options.threshold ?? BW_THRESHOLD_DEFAULT;
     const mode = options.mode ?? API_DEFAULT_DITHER_MODE;
-    const doAutoInvert = options.autoInvert ?? true;
+    const doAutoInvert = options.autoInvert ?? false;
     const letterbox = options.letterbox ?? true;
 
     if (W % 8 !== 0) {

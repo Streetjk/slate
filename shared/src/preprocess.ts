@@ -1,11 +1,13 @@
 // dither 前的灰度预处理 — 前后端共用,确保上传前预览和服务端结果一致。
 //
-// 预处理顺序(前后端调用方应保持一致):
+// 普通照片预处理顺序(前后端调用方应保持一致):
 //   1. 解码到 RGBA(浏览器 ImageData / sharp .raw())
 //   2. rgbaToGray  — Rec.709 系数,和 sharp .grayscale() 同步
-//   3. autoInvert  — 四角自适应反相,黑底图整体翻成白底
-//   4. autoContrast — PIL.ImageOps.autocontrast 等价,拉满对比度
-//   5. ditherTo* — 见 dither.ts
+//   3. autoContrast — PIL.ImageOps.autocontrast 等价,拉满对比度
+//   4. ditherTo* — 见 dither.ts
+//
+// autoInvert 保留为显式工具，不能对普通照片自动启用：仅凭四角偏暗会把正常照片误判为
+// 黑底素材并生成整张负片。
 
 /**
  * RGBA → 8-bit 灰度。

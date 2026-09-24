@@ -1,4 +1,4 @@
-import { autoContrast, autoInvert, ditherToBinary, rgbaToGray, type DitherMode } from 'shared';
+import { autoContrast, ditherToBinary, rgbaToGray, type DitherMode } from 'shared';
 import { clearCanvas } from './bpp';
 import { INK_RGB, PAPER_RGB } from './colors';
 
@@ -36,7 +36,6 @@ export function drawImagePreview(
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   let gray = rgbaToGray(imageData.data, canvas.width, canvas.height, 4);
-  gray = autoInvert(gray, canvas.width, canvas.height);
   gray = autoContrast(gray, 1);
   const bin = ditherToBinary(gray, canvas.width, canvas.height, { mode, threshold });
 

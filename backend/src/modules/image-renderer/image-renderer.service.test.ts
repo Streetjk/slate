@@ -43,16 +43,16 @@ describe('ImageRendererService', () => {
     expect(data.every((b) => b === 0xff)).toBe(true);
   });
 
-  it('黑图(autoInvert 触发) 仍是白', async () => {
+  it('全黑图默认保持全黑(不自动反相)', async () => {
     const input = await makePng(800, 600, { r: 0, g: 0, b: 0 });
     const { data } = await renderer.renderTo1bpp(input);
-    expect(data.every((b) => b === 0xff)).toBe(true);
+    expect(data.every((b) => b === 0x00)).toBe(true);
   });
 
-  it('autoInvert=false 时全黑图保持全黑(全 0x00)', async () => {
+  it('autoInvert=true 时可显式把黑底图反相为白', async () => {
     const input = await makePng(800, 600, { r: 0, g: 0, b: 0 });
-    const { data } = await renderer.renderTo1bpp(input, { autoInvert: false });
-    expect(data.every((b) => b === 0x00)).toBe(true);
+    const { data } = await renderer.renderTo1bpp(input, { autoInvert: true });
+    expect(data.every((b) => b === 0xff)).toBe(true);
   });
 
   it('size 验证', async () => {
