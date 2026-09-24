@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'bun:test';
-import { computeErrorBackoffAt } from './dynamic-refresh-policy';
+import {
+  computeDynamicRefreshSchedule,
+  computeErrorBackoffAt,
+  dynamicSchedulePolicy,
+} from './dynamic-refresh-policy';
+
+describe('AI usage refresh scheduling', () => {
+  it('honors the configured five-minute refresh interval', () => {
+    const now = new Date('2026-09-25T00:00:00.000Z');
+    expect(dynamicSchedulePolicy('ai_usage')).toBe('refresh_interval');
+    const schedule = computeDynamicRefreshSchedule({
+      dynamicType: 'ai_usage',
+      config: { type: 'ai_usage', refresh_interval_sec: 300 },
+      now,
+      defaultTtlSec: 3600,
+    });
+    expect(schedule.nextRunAt?.toISOString()).toBe('2026-09-25T00:05:00.000Z');
+    expect(schedule.refreshDueAt?.toISOString()).toBe('2026-09-25T00:05:00.000Z');
+  });
+});
 
 describe('computeErrorBackoffAt', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');

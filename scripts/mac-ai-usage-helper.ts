@@ -63,13 +63,17 @@ export interface HelperQuotaSnapshot {
   ageSeconds: number;
 }
 
-const CODEX_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+// Quota values older than 15 minutes are more misleading than useful on an
+// "AI Usage" dashboard. Live collectors run every 5 minutes; this window only
+// covers transient collector/provider failures.
+const QUOTA_FALLBACK_MAX_AGE_SEC = 15 * 60;
+const CODEX_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const CODEX_REFRESH_INTERVAL_MS = 5 * 60_000;
-const AGY_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const AGY_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
-const GROK_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
-const GROK_REFRESH_INTERVAL_MS = 10 * 60_000;
-const ZAI_QUOTA_MAX_AGE_SEC = 2 * 60 * 60;
+const GROK_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
+const GROK_REFRESH_INTERVAL_MS = 5 * 60_000;
+const ZAI_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const ZAI_REFRESH_INTERVAL_MS = 5 * 60_000;
 const AGY_USAGE_BIN =
   process.env.SLATE_AGY_USAGE_BIN ?? join(homedir(), '.local', 'bin', 'agy-usage');
@@ -393,7 +397,117 @@ export function parseCodexRateLimitEvent(
   return { windows, observedAt, ageSeconds };
 }
 
+export function parseCodexAppServerRateLimits(
+  value: unknown,
+  nowMs = Date.now()
+): HelperQuotaSnapshot | null {
+  if (!isRecord(value)) return null;
+  const result = isRecord(value.result) ? value.result : value;
+  const byLimitId = isRecord(result.rateLimitsByLimitId) ? result.rateLimitsByLimitId : {};
+  const snapshot = isRecord(byLimitId.codex)
+    ? byLimitId.codex
+    : isRecord(result.rateLimits)
+      ? result.rateLimits
+      : isRecord(value.rateLimits)
+        ? value.rateLimits
+        : null;
+  if (!snapshot) return null;
+  if (typeof snapshot.limitId === 'string' && snapshot.limitId !== 'codex') return null;
+
+  const windows: HelperQuotaWindow[] = [];
+  for (const key of ['primary', 'secondary']) {
+    const row = isRecord(snapshot[key]) ? snapshot[key] : null;
+    if (!row) continue;
+    const usedPercent = percentNumber(row.usedPercent);
+    if (usedPercent === null) continue;
+    const windowMinutes = finiteNumber(row.windowDurationMins);
+    const label =
+      windowMinutes === 300
+        ? '5h'
+        : windowMinutes === 10080
+          ? 'Weekly'
+          : windowMinutes
+            ? Math.round(windowMinutes) + 'm'
+            : key === 'primary'
+              ? 'Primary'
+              : 'Secondary';
+    windows.push({
+      label,
+      usedPercent,
+      remainingPercent: 100 - usedPercent,
+      resetAt: safeResetIso(row.resetsAt),
+      resetLabel: compactResetLabel(row.resetsAt),
+    });
+  }
+  if (windows.length === 0) return null;
+  windows.sort((a, b) => (a.label === '5h' ? -1 : b.label === '5h' ? 1 : 0));
+  return { windows, observedAt: new Date(nowMs).toISOString(), ageSeconds: 0 };
+}
+
+async function refreshCodexQuotaLive(nowMs: number): Promise<HelperQuotaSnapshot | null> {
+  const codex = PROVIDERS.codex.command;
+  if (!existsSync(codex)) return null;
+  const script = [
+    'import subprocess, json, select, sys, time',
+    'codex=sys.argv[1]',
+    "p=subprocess.Popen([codex,'app-server','--stdio'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)",
+    'def send(obj):',
+    "  p.stdin.write(json.dumps(obj)+'\\n'); p.stdin.flush()",
+    'def wait_id(target, timeout):',
+    '  end=time.time()+timeout',
+    '  while time.time()<end:',
+    '    ready,_,_=select.select([p.stdout],[],[],0.25)',
+    '    if not ready: continue',
+    '    line=p.stdout.readline()',
+    '    if not line: break',
+    '    try: obj=json.loads(line)',
+    '    except Exception: continue',
+    "    if obj.get('id')==target: return obj",
+    '  return None',
+    'try:',
+    "  send({'id':1,'method':'initialize','params':{'clientInfo':{'name':'slate-ai-usage-helper','version':'1.0'}}})",
+    '  init=wait_id(1,4.0)',
+    "  if not isinstance(init,dict) or 'result' not in init: sys.exit(2)",
+    "  send({'id':2,'method':'account/rateLimits/read','params':{'excludeResetCreditDetails':True,'supportsLunaReserve':False}})",
+    '  reply=wait_id(2,5.0)',
+    "  if not isinstance(reply,dict) or not isinstance(reply.get('result'),dict): sys.exit(3)",
+    "  result=reply['result']; by_id=result.get('rateLimitsByLimitId') or {}; snap=by_id.get('codex') if isinstance(by_id,dict) else None",
+    "  if not isinstance(snap,dict): snap=result.get('rateLimits')",
+    '  if not isinstance(snap,dict): sys.exit(4)',
+    "  print(json.dumps({'rateLimits':snap}))",
+    'finally:',
+    '  try: p.stdin.close()',
+    '  except Exception: pass',
+    '  try: p.wait(timeout=1)',
+    '  except Exception:',
+    '    try: p.kill()',
+    '    except Exception: pass',
+  ].join(String.fromCharCode(10));
+
+  const proc = Bun.spawn(['python3', '-c', script, codex], {
+    stdout: 'pipe',
+    stderr: 'ignore',
+    env: safeCliEnv(),
+    cwd: homedir(),
+  });
+  const timer = setTimeout(() => proc.kill(), 11_000);
+  try {
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+    if (proc.exitCode !== 0 || !output.trim()) return null;
+    return parseCodexAppServerRateLimits(JSON.parse(output), nowMs);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function refreshCodexQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
+  return (await refreshCodexQuotaLive(nowMs)) ?? refreshCodexQuotaFromSessions(nowMs);
+}
+
+async function refreshCodexQuotaFromSessions(nowMs: number): Promise<HelperQuotaSnapshot | null> {
   const script = [
     'import datetime as dt, glob, json, os, pathlib, sys',
     'home=pathlib.Path.home()',

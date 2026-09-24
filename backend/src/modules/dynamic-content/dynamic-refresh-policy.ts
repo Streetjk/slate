@@ -90,6 +90,7 @@ const DYNAMIC_SCHEDULE_POLICIES: Record<string, DynamicSchedulePolicy> = {
   weather: 'refresh_interval',
   hot_list: 'refresh_interval',
   google_news: 'refresh_interval',
+  ai_usage: 'refresh_interval',
   weather_alert: 'refresh_interval',
   earthquake_report: 'refresh_interval',
   btc_price: 'refresh_interval',

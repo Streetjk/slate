@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
   extractDeviceAuthFields,
+  parseCodexAppServerRateLimits,
   parseCodexRateLimitEvent,
   parseZaiQuotaPayload,
   readProviderQuota,
@@ -57,6 +58,40 @@ describe('Mac AI usage helper quota normalization', () => {
       usedPercent: 23,
       remainingPercent: 77,
       resetAt: '2026-09-26T08:49:34.000Z',
+    });
+  });
+
+  it('parses live Codex app-server rate limits', () => {
+    const now = Date.parse('2026-09-25T00:00:00.000Z');
+    const quota = parseCodexAppServerRateLimits(
+      {
+        result: {
+          rateLimitsByLimitId: {
+            codex: {
+              limitId: 'codex',
+              primary: {
+                usedPercent: 6,
+                windowDurationMins: 10080,
+                resetsAt: 1790841156,
+              },
+              secondary: null,
+            },
+          },
+        },
+      },
+      now
+    );
+    expect(quota).toMatchObject({
+      observedAt: '2026-09-25T00:00:00.000Z',
+      ageSeconds: 0,
+      windows: [
+        {
+          label: 'Weekly',
+          usedPercent: 6,
+          remainingPercent: 94,
+          resetAt: '2026-10-01T07:52:36.000Z',
+        },
+      ],
     });
   });
 
