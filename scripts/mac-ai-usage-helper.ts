@@ -93,6 +93,8 @@ export function readProviderQuota(
   return null;
 }
 
+const BACKGROUND_QUOTA_REFRESH_INTERVAL_MS = 4 * 60_000;
+
 let codexQuotaCache: HelperQuotaSnapshot | null = null;
 let codexQuotaRefreshedAtMs = 0;
 let codexQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
@@ -101,87 +103,135 @@ let agyQuotaRefreshedAtMs = 0;
 let agyQuotaRefreshPromise: Promise<
   Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>>
 > | null = null;
+let grokQuotaCache: HelperQuotaSnapshot | null = null;
 let grokQuotaRefreshedAtMs = 0;
 let grokQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
 let zaiQuotaCache: HelperQuotaSnapshot | null = null;
 let zaiQuotaRefreshedAtMs = 0;
 let zaiQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
 
+function quotaIfFresh(
+  value: HelperQuotaSnapshot | null,
+  maxAgeSec: number,
+  nowMs = Date.now()
+): HelperQuotaSnapshot | null {
+  if (!value) return null;
+  const observedMs = Date.parse(value.observedAt);
+  return Number.isFinite(observedMs) && nowMs - observedMs <= maxAgeSec * 1000 ? value : null;
+}
+
+function scheduleCodexQuotaRefresh(nowMs = Date.now()): void {
+  if (codexQuotaRefreshPromise) return;
+  codexQuotaRefreshPromise = refreshCodexQuota(nowMs)
+    .then((refreshed) => {
+      if (refreshed) {
+        codexQuotaCache = refreshed;
+        codexQuotaRefreshedAtMs = Date.now();
+      }
+      return refreshed;
+    })
+    .catch(() => null)
+    .finally(() => {
+      codexQuotaRefreshPromise = null;
+    });
+}
+
+function scheduleAgyQuotaRefresh(nowMs = Date.now()): void {
+  if (agyQuotaRefreshPromise) return;
+  agyQuotaRefreshPromise = refreshAgyQuota(nowMs)
+    .then((refreshed) => {
+      if (refreshed.agy_gemini) {
+        agyQuotaCache = refreshed;
+        agyQuotaRefreshedAtMs = Date.now();
+      }
+      return refreshed;
+    })
+    .catch(() => ({}))
+    .finally(() => {
+      agyQuotaRefreshPromise = null;
+    });
+}
+
+function scheduleZaiQuotaRefresh(nowMs = Date.now()): void {
+  if (zaiQuotaRefreshPromise) return;
+  zaiQuotaRefreshPromise = refreshZaiQuota(nowMs)
+    .then((refreshed) => {
+      if (refreshed) {
+        zaiQuotaCache = refreshed;
+        zaiQuotaRefreshedAtMs = Date.now();
+      }
+      return refreshed;
+    })
+    .catch(() => null)
+    .finally(() => {
+      zaiQuotaRefreshPromise = null;
+    });
+}
+
+function scheduleGrokQuotaRefresh(nowMs = Date.now()): void {
+  if (grokQuotaRefreshPromise) return;
+  grokQuotaRefreshPromise = refreshGrokQuota(nowMs)
+    .then((refreshed) => {
+      if (refreshed) {
+        grokQuotaCache = refreshed;
+        grokQuotaRefreshedAtMs = Date.now();
+      }
+      return refreshed;
+    })
+    .catch(() => null)
+    .finally(() => {
+      grokQuotaRefreshPromise = null;
+    });
+}
+
+function scheduleAllQuotaRefreshes(nowMs = Date.now()): void {
+  scheduleCodexQuotaRefresh(nowMs);
+  scheduleAgyQuotaRefresh(nowMs);
+  scheduleZaiQuotaRefresh(nowMs);
+  scheduleGrokQuotaRefresh(nowMs);
+}
+
 async function getProviderQuota(
   provider: HelperProvider,
   nowMs = Date.now()
 ): Promise<HelperQuotaSnapshot | null> {
   if (provider === 'codex') {
-    let current = readCodexQuota(nowMs) ?? codexQuotaCache;
+    const current = quotaIfFresh(
+      codexQuotaCache ?? readCodexQuota(nowMs),
+      CODEX_QUOTA_MAX_AGE_SEC,
+      nowMs
+    );
     if (!current || nowMs - codexQuotaRefreshedAtMs >= CODEX_REFRESH_INTERVAL_MS) {
-      codexQuotaRefreshPromise ??= refreshCodexQuota(nowMs).finally(() => {
-        codexQuotaRefreshPromise = null;
-      });
-      try {
-        const refreshed = await codexQuotaRefreshPromise;
-        if (refreshed) {
-          codexQuotaCache = refreshed;
-          codexQuotaRefreshedAtMs = Date.now();
-          current = refreshed;
-        }
-      } catch {
-        // Keep any still-fresh cache value if local event parsing fails.
-      }
+      scheduleCodexQuotaRefresh(nowMs);
     }
     return current;
   }
   if (provider === 'agy_gemini') {
-    if (!agyQuotaCache || nowMs - agyQuotaRefreshedAtMs >= AGY_REFRESH_INTERVAL_MS) {
-      agyQuotaRefreshPromise ??= refreshAgyQuota(nowMs).finally(() => {
-        agyQuotaRefreshPromise = null;
-      });
-      try {
-        agyQuotaCache = await agyQuotaRefreshPromise;
-        agyQuotaRefreshedAtMs = Date.now();
-      } catch {
-        // Fail closed to any still-fresh in-memory cache; otherwise no quota.
-      }
+    const current = quotaIfFresh(
+      agyQuotaCache?.[provider] ?? readAgyQuota(provider, nowMs),
+      AGY_QUOTA_MAX_AGE_SEC,
+      nowMs
+    );
+    if (!current || nowMs - agyQuotaRefreshedAtMs >= AGY_REFRESH_INTERVAL_MS) {
+      scheduleAgyQuotaRefresh(nowMs);
     }
-    const cached = agyQuotaCache?.[provider] ?? null;
-    if (!cached) return null;
-    const observedMs = Date.parse(cached.observedAt);
-    return Number.isFinite(observedMs) && nowMs - observedMs <= AGY_QUOTA_MAX_AGE_SEC * 1000
-      ? cached
-      : null;
+    return current;
   }
   if (provider === 'zai') {
-    if (!zaiQuotaCache || nowMs - zaiQuotaRefreshedAtMs >= ZAI_REFRESH_INTERVAL_MS) {
-      zaiQuotaRefreshPromise ??= refreshZaiQuota(nowMs).finally(() => {
-        zaiQuotaRefreshPromise = null;
-      });
-      try {
-        const refreshed = await zaiQuotaRefreshPromise;
-        if (refreshed) {
-          zaiQuotaCache = refreshed;
-          zaiQuotaRefreshedAtMs = Date.now();
-        }
-      } catch {
-        // Keep a still-fresh in-memory value if refresh fails.
-      }
+    const current = quotaIfFresh(zaiQuotaCache, ZAI_QUOTA_MAX_AGE_SEC, nowMs);
+    if (!current || nowMs - zaiQuotaRefreshedAtMs >= ZAI_REFRESH_INTERVAL_MS) {
+      scheduleZaiQuotaRefresh(nowMs);
     }
-    if (!zaiQuotaCache) return null;
-    const observedMs = Date.parse(zaiQuotaCache.observedAt);
-    return Number.isFinite(observedMs) && nowMs - observedMs <= ZAI_QUOTA_MAX_AGE_SEC * 1000
-      ? zaiQuotaCache
-      : null;
+    return current;
   }
   if (provider === 'grok') {
-    let current = readGrokQuota(nowMs);
+    const current = quotaIfFresh(
+      grokQuotaCache ?? readGrokQuota(nowMs),
+      GROK_QUOTA_MAX_AGE_SEC,
+      nowMs
+    );
     if (!current || nowMs - grokQuotaRefreshedAtMs >= GROK_REFRESH_INTERVAL_MS) {
-      grokQuotaRefreshPromise ??= refreshGrokQuota(nowMs).finally(() => {
-        grokQuotaRefreshPromise = null;
-      });
-      try {
-        current = await grokQuotaRefreshPromise;
-        grokQuotaRefreshedAtMs = Date.now();
-      } catch {
-        current = readGrokQuota(nowMs);
-      }
+      scheduleGrokQuotaRefresh(nowMs);
     }
     return current;
   }
@@ -1003,6 +1053,18 @@ if (import.meta.main) {
   const hostname = process.env.SLATE_AI_HELPER_HOST ?? '127.0.0.1';
   const port = Number(process.env.SLATE_AI_HELPER_PORT ?? DEFAULT_HELPER_PORT);
   const allowedIp = process.env.SLATE_AI_HELPER_ALLOWED_IP ?? '127.0.0.1';
+  const initialNow = Date.now();
+  codexQuotaCache = readCodexQuota(initialNow);
+  const initialAgy = readAgyQuota('agy_gemini', initialNow);
+  if (initialAgy) agyQuotaCache = { agy_gemini: initialAgy };
+  grokQuotaCache = readGrokQuota(initialNow);
+  scheduleAllQuotaRefreshes(initialNow);
+  const backgroundRefreshTimer = setInterval(
+    () => scheduleAllQuotaRefreshes(Date.now()),
+    BACKGROUND_QUOTA_REFRESH_INTERVAL_MS
+  );
+  backgroundRefreshTimer.unref?.();
+
   const server = Bun.serve({
     hostname,
     port,
