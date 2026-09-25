@@ -909,7 +909,7 @@ function authMetadataDetected(provider: HelperProvider): boolean {
     case 'codex':
       return existsSync(join(home, '.codex', 'auth.json'));
     case 'zai':
-      return existsSync(process.env.ZAI_KEYFILE ?? join(home, 'Cre', 'Zai.txt'));
+      return readZaiApiKey() !== null;
     case 'agy_gemini':
       return (
         existsSync(join(home, '.gemini', 'google_accounts.json')) ||
