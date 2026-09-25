@@ -22,8 +22,8 @@ constexpr char kTag[]                  = "setup_flow";
 constexpr int  kSaveSecretRetryCount   = 3;
 constexpr int  kSaveSecretRetryDelayMs = 200;
 constexpr int  kPreferredWifiTimeoutMs = 8000;
-constexpr int  kFallbackWifiTimeoutMs  = 6500;
-constexpr int  kHiddenWifiTimeoutMs    = 4500;
+constexpr int  kFallbackWifiTimeoutMs  = 10000;
+constexpr int  kHiddenWifiTimeoutMs    = 8000;
 constexpr uint16_t kMaxScanRecords     = 24;
 
 std::string RecordSsid(const wifi_ap_record_t& record) {

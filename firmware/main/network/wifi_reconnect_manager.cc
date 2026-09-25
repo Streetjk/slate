@@ -130,35 +130,34 @@ void WifiReconnectManager::DoSlowScanReconnect() {
 }
 
 void WifiReconnectManager::HandleSlowScanResult() {
-    uint16_t ap_num = 0;
-    esp_wifi_scan_get_ap_num(&ap_num);
-    if (ap_num == 0) {
-        Schedule();
-        return;
-    }
-    ap_num = std::min<uint16_t>(ap_num, kMaxSlowScanRecords);
-    std::array<wifi_ap_record_t, kMaxSlowScanRecords> records{};
-    esp_wifi_scan_get_ap_records(&ap_num, records.data());
-    std::sort(records.begin(), records.begin() + ap_num,
-              [](const wifi_ap_record_t& a, const wifi_ap_record_t& b) { return a.rssi > b.rssi; });
-
     wifi_config_t wc = {};
     if (esp_wifi_get_config(WIFI_IF_STA, &wc) != ESP_OK) {
         ESP_LOGW(kTag, "slow scan config read failed");
         Schedule();
         return;
     }
+
     const std::string current_ssid(
         reinterpret_cast<const char*>(wc.sta.ssid), BoundedSsidLen(wc.sta.ssid));
-    const wifi_ap_record_t* match = nullptr;
     cred::Credentials saved;
     cred::Load(saved);
 
-    // We only enter this slow-scan path after repeated reconnect failures.
-    // Prefer a different visible saved network first, even if the old AP is
-    // still advertising. A visible AP can still be unusable because of
-    // association/DHCP/upstream problems; repeatedly choosing it defeats
-    // multi-profile failover.
+    uint16_t ap_num = 0;
+    esp_wifi_scan_get_ap_num(&ap_num);
+    ap_num = std::min<uint16_t>(ap_num, kMaxSlowScanRecords);
+    std::array<wifi_ap_record_t, kMaxSlowScanRecords> records{};
+    if (ap_num > 0 && esp_wifi_scan_get_ap_records(&ap_num, records.data()) == ESP_OK) {
+        std::sort(records.begin(), records.begin() + ap_num,
+                  [](const wifi_ap_record_t& a, const wifi_ap_record_t& b) { return a.rssi > b.rssi; });
+    } else {
+        ap_num = 0;
+    }
+
+    const wifi_ap_record_t* match = nullptr;
+    bool direct_profile_attempt = false;
+
+    // First choice: a different saved network that the scan can see. This is
+    // normally the fastest work<->home handoff and lets us pin the BSSID/channel.
     for (uint16_t i = 0; i < ap_num && !match; ++i) {
         for (std::size_t p = 0; p < saved.wifi_profile_count; ++p) {
             const auto& profile = saved.wifi_profiles[p];
@@ -167,50 +166,63 @@ void WifiReconnectManager::HandleSlowScanResult() {
             if (!ApplySavedProfile(wc, profile))
                 continue;
             match = &records[i];
-            ESP_LOGI(kTag, "slow reconnect alternate profile_index=%u ssid=%s rssi=%d",
-                     static_cast<unsigned>(p), profile.ssid.c_str(), static_cast<int>(records[i].rssi));
+            ESP_LOGI(kTag, "slow reconnect visible alternate profile_index=%u rssi=%d",
+                     static_cast<unsigned>(p), static_cast<int>(records[i].rssi));
             break;
         }
     }
 
-    // If no alternative saved network is visible, retry the current one.
-    if (!match && !current_ssid.empty()) {
+    // A scan can miss an AP in a dense environment, and hidden SSIDs cannot be
+    // matched reliably at all. After repeated failures of the current profile,
+    // directly try another saved profile unpinned before falling back to the
+    // same network. This guarantees multi-profile failover does not depend on a
+    // successful scan result.
+    if (!match) {
+        for (std::size_t p = 0; p < saved.wifi_profile_count; ++p) {
+            const auto& profile = saved.wifi_profiles[p];
+            if (profile.ssid.empty() || profile.ssid == current_ssid)
+                continue;
+            if (!ApplySavedProfile(wc, profile))
+                continue;
+            direct_profile_attempt = true;
+            ESP_LOGI(kTag, "slow reconnect direct alternate profile_index=%u",
+                     static_cast<unsigned>(p));
+            break;
+        }
+    }
+
+    // Only one usable saved profile remains: retry the current profile without
+    // a stale BSSID/channel pin. If the scan saw it, pin to the strongest AP.
+    if (!match && !direct_profile_attempt && !current_ssid.empty()) {
         for (uint16_t i = 0; i < ap_num; ++i) {
             if (SsidEquals(records[i].ssid, current_ssid)) {
                 match = &records[i];
-                ESP_LOGI(kTag, "slow reconnect retry current ssid=%s rssi=%d",
-                         current_ssid.c_str(), static_cast<int>(records[i].rssi));
+                ESP_LOGI(kTag, "slow reconnect retry current rssi=%d", static_cast<int>(records[i].rssi));
                 break;
             }
         }
-    }
-
-    // The configured current SSID may no longer be present at all. If so,
-    // choose the strongest visible saved profile (including slot 0).
-    if (!match) {
-        for (uint16_t i = 0; i < ap_num && !match; ++i) {
-            for (std::size_t p = 0; p < saved.wifi_profile_count; ++p) {
-                if (!SsidEquals(records[i].ssid, saved.wifi_profiles[p].ssid))
-                    continue;
-                if (!ApplySavedProfile(wc, saved.wifi_profiles[p]))
-                    continue;
-                match = &records[i];
-                ESP_LOGI(kTag, "slow reconnect fallback profile_index=%u ssid=%s rssi=%d",
-                         static_cast<unsigned>(p), saved.wifi_profiles[p].ssid.c_str(),
-                         static_cast<int>(records[i].rssi));
-                break;
-            }
+        if (!match) {
+            wc.sta.bssid_set = 0;
+            wc.sta.channel = 0;
+            direct_profile_attempt = true;
+            ESP_LOGI(kTag, "slow reconnect retry current unpinned");
         }
     }
 
-    if (!match) {
+    if (!match && !direct_profile_attempt) {
         Schedule();
         return;
     }
 
-    wc.sta.bssid_set = 1;
-    std::memcpy(wc.sta.bssid, match->bssid, 6);
-    wc.sta.channel = match->primary;
+    if (match) {
+        wc.sta.bssid_set = 1;
+        std::memcpy(wc.sta.bssid, match->bssid, 6);
+        wc.sta.channel = match->primary;
+    } else {
+        wc.sta.bssid_set = 0;
+        wc.sta.channel = 0;
+    }
+
     esp_err_t config_err = esp_wifi_set_config(WIFI_IF_STA, &wc);
     if (config_err != ESP_OK) {
         ESP_LOGW(kTag, "slow reconnect config failed err=%s", esp_err_to_name(config_err));
