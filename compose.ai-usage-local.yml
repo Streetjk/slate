@@ -1,0 +1,15 @@
+services:
+  ai-usage-helper:
+    build:
+      context: .
+      dockerfile: deploy/ai-usage-helper/Dockerfile
+    image: slate-ai-usage-helper:local
+    restart: unless-stopped
+    expose:
+      - "19091"
+    volumes:
+      - ${AI_USAGE_ZAI_KEY_FILE:-./secrets/zai.env}:/run/secrets/zai.env:ro
+
+  slate:
+    environment:
+      AI_USAGE_LOCAL_HELPER_URL: http://ai-usage-helper:19091
