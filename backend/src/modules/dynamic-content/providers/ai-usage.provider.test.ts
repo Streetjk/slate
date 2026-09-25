@@ -72,7 +72,79 @@ describe('AiUsageProvider', () => {
     expect(JSON.stringify(data)).not.toContain('secret@example.com');
   });
 
-  it('fails closed when the Mac helper is not configured', async () => {
+  it('prefers Orange Pi quota per provider and falls back to the Mac for unmigrated providers', async () => {
+    globalThis.fetch = (async (input) => {
+      const url = String(input);
+      if (url.includes('ai-usage-helper:19091')) {
+        return Response.json({
+          zai: {
+            version: 'glm-5.3-flash (Z.ai)',
+            authMetadataDetected: true,
+            checkedAt: '2026-09-25T02:00:05.000Z',
+            quota: {
+              observedAt: '2026-09-25T02:00:04.000Z',
+              windows: [
+                {
+                  label: 'Weekly',
+                  usedPercent: 31,
+                  remainingPercent: 69,
+                  resetLabel: 'Sep 30 at 4:07 PM',
+                },
+              ],
+            },
+          },
+        });
+      }
+      return Response.json({
+        codex: {
+          version: 'codex-cli 0.155.0',
+          authMetadataDetected: true,
+          checkedAt: '2026-09-25T02:00:03.000Z',
+          quota: {
+            observedAt: '2026-09-25T02:00:02.000Z',
+            windows: [
+              {
+                label: 'Weekly',
+                usedPercent: 7,
+                remainingPercent: 93,
+                resetLabel: 'Oct 1 at 3:52 PM',
+              },
+            ],
+          },
+        },
+        zai: {
+          version: 'old mac zai',
+          authMetadataDetected: true,
+          checkedAt: '2026-09-25T01:50:00.000Z',
+          quota: {
+            observedAt: '2026-09-25T01:50:00.000Z',
+            windows: [
+              { label: 'Weekly', usedPercent: 99, remainingPercent: 1, resetLabel: null },
+            ],
+          },
+        },
+      });
+    }) as typeof fetch;
+
+    const provider = new AiUsageProvider({
+      aiUsageLocalHelperUrl: 'http://ai-usage-helper:19091',
+      aiUsageMacHelperUrl: 'http://100.73.201.113:19091',
+    } as AppConfig);
+
+    const data = await provider.fetchData(
+      { type: 'ai_usage', refresh_interval_sec: 300 },
+      { now: new Date('2026-09-25T02:00:10.000Z') }
+    );
+
+    const codex = data.providers.find((entry) => entry.id === 'codex');
+    const zai = data.providers.find((entry) => entry.id === 'zai');
+    expect(codex?.quotaWindows[0]?.usedPercent).toBe(7);
+    expect(zai?.quotaWindows[0]?.usedPercent).toBe(31);
+    expect(zai?.version).toBe('glm-5.3-flash (Z.ai)');
+    expect(data.updatedAt).toBe('2026-09-25T02:00:05.000Z');
+  });
+
+  it('fails closed when no AI usage helper is configured', async () => {
     const provider = new AiUsageProvider({ aiUsageMacHelperUrl: undefined } as AppConfig);
     await expect(
       provider.fetchData(

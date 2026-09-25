@@ -31,6 +31,8 @@ const PROVIDERS: Array<{ id: AiUsagePanelProvider['id']; label: string }> = [
   { id: 'zai', label: 'Z.ai' },
 ];
 
+const HELPER_TIMEOUT_MS = 2_500;
+
 @Injectable()
 export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePanelData> {
   readonly type = 'ai_usage';
@@ -42,46 +44,117 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
   }
 
   async fetchData(_config: AiUsageConfigT, ctx: DynamicContentFetchCtx): Promise<AiUsagePanelData> {
-    const base = this.config.aiUsageMacHelperUrl;
-    if (!base) throw new Error('AI usage Mac helper is not configured');
+    const localBase = this.config.aiUsageLocalHelperUrl;
+    const macBase = this.config.aiUsageMacHelperUrl;
+    if (!localBase && !macBase) throw new Error('AI usage helper is not configured');
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3_000);
-    try {
-      const response = await fetch(new URL('/v1/providers', ensureTrailingSlash(base)), {
-        headers: { accept: 'application/json' },
-        redirect: 'error',
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error('AI usage helper returned HTTP ' + response.status);
-      const raw = await response.json();
-      const record = isRecord(raw) ? raw : {};
-      const providers = PROVIDERS.map(({ id, label }) => {
-        const state = isRecord(record[id]) ? record[id] : {};
-        const quota = isRecord(state.quota) ? state.quota : {};
-        return {
-          id,
-          label,
-          version: safeVersion(state.version),
-          status:
-            state.authMetadataDetected === true
-              ? ('connected' as const)
-              : state.authMetadataDetected === false
-                ? ('sign_in' as const)
-                : ('unknown' as const),
-          quotaWindows: normalizeQuotaWindows(quota.windows),
-          quotaObservedAt: safeIso(quota.observedAt),
-        };
-      });
-      const checkedAt = PROVIDERS.map(({ id }) => {
-        const state = isRecord(record[id]) ? record[id] : {};
-        return safeIso(state.checkedAt);
-      }).find((value) => value !== null);
-      return { providers, updatedAt: checkedAt ?? ctx.now.toISOString() };
-    } finally {
-      clearTimeout(timer);
-    }
+    const [localRecord, macRecord] = await Promise.all([
+      fetchHelper(localBase),
+      fetchHelper(macBase),
+    ]);
+    if (!localRecord && !macRecord) throw new Error('AI usage helpers are unavailable');
+
+    const selectedCheckedAt: string[] = [];
+    const providers = PROVIDERS.map(({ id, label }) => {
+      const localState = providerState(localRecord, id);
+      const macState = providerState(macRecord, id);
+      const selected = selectProviderState(localState, macState);
+      if (selected.checkedAt) selectedCheckedAt.push(selected.checkedAt);
+      return {
+        id,
+        label,
+        version: safeVersion(selected.state.version),
+        status:
+          selected.state.authMetadataDetected === true
+            ? ('connected' as const)
+            : selected.state.authMetadataDetected === false
+              ? ('sign_in' as const)
+              : ('unknown' as const),
+        quotaWindows: selected.windows,
+        quotaObservedAt: safeIso(selected.quota.observedAt),
+      };
+    });
+
+    return {
+      providers,
+      updatedAt: newestIso(selectedCheckedAt) ?? ctx.now.toISOString(),
+    };
   }
+}
+
+interface SelectedProviderState {
+  state: Record<string, unknown>;
+  quota: Record<string, unknown>;
+  windows: AiUsagePanelQuotaWindow[];
+  checkedAt: string | null;
+}
+
+async function fetchHelper(base: string | undefined): Promise<Record<string, unknown> | null> {
+  if (!base) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HELPER_TIMEOUT_MS);
+  try {
+    const response = await fetch(new URL('/v1/providers', ensureTrailingSlash(base)), {
+      headers: { accept: 'application/json' },
+      redirect: 'error',
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const raw = await response.json();
+    return isRecord(raw) ? raw : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function providerState(
+  record: Record<string, unknown> | null,
+  id: AiUsagePanelProvider['id']
+): Record<string, unknown> {
+  if (!record) return {};
+  return isRecord(record[id]) ? record[id] : {};
+}
+
+function selectProviderState(
+  localState: Record<string, unknown>,
+  fallbackState: Record<string, unknown>
+): SelectedProviderState {
+  const localQuota = isRecord(localState.quota) ? localState.quota : {};
+  const fallbackQuota = isRecord(fallbackState.quota) ? fallbackState.quota : {};
+  const localWindows = normalizeQuotaWindows(localQuota.windows);
+  const fallbackWindows = normalizeQuotaWindows(fallbackQuota.windows);
+
+  if (localWindows.length > 0) {
+    return {
+      state: localState,
+      quota: localQuota,
+      windows: localWindows,
+      checkedAt: safeIso(localState.checkedAt),
+    };
+  }
+  if (fallbackWindows.length > 0) {
+    return {
+      state: fallbackState,
+      quota: fallbackQuota,
+      windows: fallbackWindows,
+      checkedAt: safeIso(fallbackState.checkedAt),
+    };
+  }
+
+  const localHasCapability =
+    localState.cliPresent === true ||
+    localState.authMetadataDetected === true ||
+    typeof localState.version === 'string';
+  const state = localHasCapability ? localState : fallbackState;
+  const quota = state === localState ? localQuota : fallbackQuota;
+  return {
+    state,
+    quota,
+    windows: [],
+    checkedAt: safeIso(state.checkedAt),
+  };
 }
 
 function ensureTrailingSlash(value: string): string {
@@ -102,6 +175,21 @@ function safeIso(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const time = Date.parse(value);
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
+function newestIso(values: string[]): string | null {
+  let newest: string | null = null;
+  let newestMs = Number.NEGATIVE_INFINITY;
+  for (const value of values) {
+    const iso = safeIso(value);
+    if (!iso) continue;
+    const ms = Date.parse(iso);
+    if (ms > newestMs) {
+      newestMs = ms;
+      newest = iso;
+    }
+  }
+  return newest;
 }
 
 function normalizeQuotaWindows(value: unknown): AiUsagePanelQuotaWindow[] {

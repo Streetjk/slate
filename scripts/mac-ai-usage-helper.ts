@@ -1070,7 +1070,8 @@ if (import.meta.main) {
     port,
     async fetch(req, server) {
       const remote = server.requestIP(req)?.address ?? '';
-      if (remote !== allowedIp) return json({ error: 'forbidden' }, 403);
+      // '*' is safe only for helpers bound exclusively to a private container network.
+      if (allowedIp !== '*' && remote !== allowedIp) return json({ error: 'forbidden' }, 403);
       const url = new URL(req.url);
       if (req.method === 'GET' && url.pathname === '/healthz') {
         return json({ ok: true, service: 'slate-ai-usage-helper' });
