@@ -212,7 +212,9 @@ export type GoogleNewsConfigT = z.infer<typeof GoogleNewsConfig>;
 
 export const AiUsageConfig = z.object({
   type: z.literal('ai_usage'),
-  refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(300),
+  // Device-facing frame cadence. Orange Pi quota collection may run more often,
+  // but a 10-minute frame interval avoids unnecessary e-paper/network churn.
+  refresh_interval_sec: z.coerce.number().int().min(300).max(86400).default(600),
 });
 export type AiUsageConfigT = z.infer<typeof AiUsageConfig>;
 
