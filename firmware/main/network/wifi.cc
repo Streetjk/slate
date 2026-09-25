@@ -11,7 +11,6 @@
 #include <cstring>
 #include <utility>
 
-#include "network/cred_store.h"
 #include "utils/time_utils.h"
 
 namespace {
@@ -29,13 +28,6 @@ void EnsureWifiEventGroup() {
     if (!event_group)
         event_group = xEventGroupCreate();
     configASSERT(event_group != nullptr);
-}
-
-std::string StaSsidString(const wifi_config_t& wc) {
-    std::size_t len = 0;
-    while (len < sizeof(wc.sta.ssid) && wc.sta.ssid[len] != 0)
-        ++len;
-    return std::string(reinterpret_cast<const char*>(wc.sta.ssid), len);
 }
 
 bool FillStaConfig(wifi_config_t& wc, const std::string& ssid, const std::string& password, std::string* reason) {
@@ -187,25 +179,6 @@ void Wifi::EventHandler(void* arg, esp_event_base_t base, int32_t id, void* data
         self->reconnect_.ResetBackoff();
         self->reconnect_.Stop();
         self->state_.store(State::Connected);
-
-        // Runtime failover can switch the STA config without going through
-        // setup_flow::TryProfile(). Persist the network that actually worked so
-        // the next boot starts with it instead of repeatedly preferring the old
-        // workplace/home profile. Avoid NVS writes when it is already preferred.
-        if (self->want_reconnect_.load(std::memory_order_acquire)) {
-            wifi_config_t wc = {};
-            if (esp_wifi_get_config(WIFI_IF_STA, &wc) == ESP_OK) {
-                const std::string connected_ssid = StaSsidString(wc);
-                cred::Credentials saved;
-                cred::Load(saved);
-                if (!connected_ssid.empty() && saved.wifi_profile_count > 1 &&
-                    saved.wifi_profiles[0].ssid != connected_ssid) {
-                    if (cred::PromoteWifiProfile(saved, connected_ssid)) {
-                        ESP_LOGI(kTag, "connected saved profile promoted");
-                    }
-                }
-            }
-        }
 
         xEventGroupSetBits(WifiEventGroup(), kWifiBitConnected);
         return;
