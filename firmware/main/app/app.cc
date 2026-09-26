@@ -10,6 +10,7 @@
 #include <nvs_flash.h>
 #include <sdkconfig.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstdio>
@@ -47,6 +48,9 @@
 
 namespace {
 constexpr char kTag[] = "app";
+constexpr uint32_t kSavedWifiRecoveryDelaysSec[] = {15, 30, 60, 120};
+constexpr std::size_t kSavedWifiRecoveryDelayCount =
+    sizeof(kSavedWifiRecoveryDelaysSec) / sizeof(kSavedWifiRecoveryDelaysSec[0]);
 
 ButtonInput MakeButtonInput(Button* button) {
     if (!button)
@@ -421,7 +425,8 @@ bool App::InitWifiAndSync(cred::Credentials& creds, bool background_refresh) {
 void App::StartPortal() {
     portal_ = std::make_unique<CaptivePortal>();
 
-    portal_->OnSubmit([](const CaptivePortal::Submission& s, std::string& out_error) -> bool {
+    portal_->OnSubmit([this](const CaptivePortal::Submission& s, std::string& out_error) -> bool {
+        std::lock_guard<std::mutex> lock(wifi_portal_mutex_);
         std::string reason;
         if (!Wifi::Get().TryConnect(s.ssid, s.password, 10000, reason)) {
             out_error = reason;
@@ -445,11 +450,103 @@ void App::StartPortal() {
     portal_->OnFinished([this](bool success) {
         if (!success)
             return;
+        wifi_recovery_running_.store(false, std::memory_order_release);
+        std::lock_guard<std::mutex> lock(wifi_portal_mutex_);
         portal_->Stop();
         power_shutdown::GracefulRestart(500);
     });
 
     portal_->Start();
+}
+
+void App::StartSavedWifiRecovery(const cred::Credentials& creds) {
+    if (creds.wifi_profile_count == 0 || wifi_recovery_running_.exchange(true, std::memory_order_acq_rel))
+        return;
+
+    wifi_recovery_creds_ = creds;
+    BaseType_t ok = xTaskCreate(&App::SavedWifiRecoveryEntry, "wifi_recover", 10 * 1024, this, 3, nullptr);
+    if (ok != pdPASS) {
+        wifi_recovery_running_.store(false, std::memory_order_release);
+        ESP_LOGE(kTag, "saved wifi recovery task create failed");
+        return;
+    }
+    ESP_LOGI(kTag, "saved wifi recovery started profiles=%u",
+             static_cast<unsigned>(creds.wifi_profile_count));
+}
+
+void App::SavedWifiRecoveryEntry(void* arg) {
+    static_cast<App*>(arg)->SavedWifiRecoveryTask();
+}
+
+void App::SavedWifiRecoveryTask() {
+    std::size_t delay_index = 0;
+
+    while (wifi_recovery_running_.load(std::memory_order_acquire)) {
+        const uint32_t delay_sec =
+            kSavedWifiRecoveryDelaysSec[std::min(delay_index, kSavedWifiRecoveryDelayCount - 1)];
+        if (delay_index + 1 < kSavedWifiRecoveryDelayCount)
+            ++delay_index;
+
+        ESP_LOGI(kTag, "saved wifi recovery wait sec=%u", static_cast<unsigned>(delay_sec));
+        vTaskDelay(pdMS_TO_TICKS(delay_sec * 1000));
+
+        if (!wifi_recovery_running_.load(std::memory_order_acquire))
+            break;
+
+        bool recovered = false;
+        {
+            std::lock_guard<std::mutex> lock(wifi_portal_mutex_);
+            if (!portal_ || !portal_->Running())
+                break;
+
+            // Reload on every round so manual changes made through the portal are
+            // immediately respected and stale in-memory credentials are never retried.
+            cred::Credentials current;
+            if (!cred::Load(current) || current.wifi_profile_count == 0) {
+                ESP_LOGW(kTag, "saved wifi recovery stopped reason=no_profiles");
+                break;
+            }
+            wifi_recovery_creds_ = current;
+
+            for (std::size_t i = 0; i < current.wifi_profile_count; ++i) {
+                const auto profile = current.wifi_profiles[i];
+                if (profile.ssid.empty())
+                    continue;
+
+                std::string reason;
+                ESP_LOGI(kTag, "saved wifi recovery attempt profile_index=%u",
+                         static_cast<unsigned>(i));
+                if (!Wifi::Get().TryConnect(profile.ssid, profile.password, 12000, reason)) {
+                    ESP_LOGW(kTag, "saved wifi recovery failed profile_index=%u reason=%s",
+                             static_cast<unsigned>(i), reason.c_str());
+                    continue;
+                }
+
+                if (i != 0 && !cred::PromoteWifiProfile(current, profile.ssid)) {
+                    ESP_LOGW(kTag, "saved wifi recovery connected but promote failed profile_index=%u",
+                             static_cast<unsigned>(i));
+                }
+                recovered = true;
+                break;
+            }
+
+            if (recovered) {
+                wifi_recovery_running_.store(false, std::memory_order_release);
+                ESP_LOGI(kTag, "saved wifi recovery success action=restart");
+                portal_->Stop();
+            }
+        }
+
+        if (recovered) {
+            power_shutdown::GracefulRestart(500);
+            while (true)
+                vTaskDelay(portMAX_DELAY);
+        }
+    }
+
+    wifi_recovery_running_.store(false, std::memory_order_release);
+    ESP_LOGI(kTag, "saved wifi recovery stopped");
+    vTaskDelete(nullptr);
 }
 
 void App::StartSleep() {
@@ -571,8 +668,9 @@ void App::Init() {
                 }
             }
             if (!net_ok) {
-                ESP_LOGW(kTag, "fallback action=captive_portal");
+                ESP_LOGW(kTag, "fallback action=captive_portal_with_saved_wifi_recovery");
                 StartPortal();
+                StartSavedWifiRecovery(creds);
                 sleep_mgr_.Disable();
             }
             break;

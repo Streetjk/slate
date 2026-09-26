@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "drivers/input/up_down_combo.h"
@@ -45,6 +46,9 @@ class App {
     bool ShouldEnableLightSleep(bool power_present) const;
 
     void StartPortal();
+    void StartSavedWifiRecovery(const cred::Credentials& creds);
+    static void SavedWifiRecoveryEntry(void* arg);
+    void SavedWifiRecoveryTask();
     void PostWakeupKeyEvent(uint64_t ext1_mask);
     void PromoteToFrameSceneFromCache();
     bool HandleSecretInvalid(const UiEvent& e);
@@ -61,6 +65,9 @@ class App {
     MinuteBoundaryTicker           minute_ticker_;
     UpDownComboController          up_down_combo_;
     std::unique_ptr<CaptivePortal> portal_;
+    std::mutex                     wifi_portal_mutex_;
+    cred::Credentials              wifi_recovery_creds_;
+    std::atomic<bool>              wifi_recovery_running_{false};
     std::atomic<bool>              ui_loop_running_{false};
     boot_mode::Decision            decision_;
 };
