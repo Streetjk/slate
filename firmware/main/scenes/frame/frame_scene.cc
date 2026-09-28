@@ -435,6 +435,8 @@ void FrameScene::PrevPicture(SceneContext& ctx) {
 }
 
 void FrameScene::MaybeAutoRotatePicture(SceneContext& ctx) {
+    if (time_utils::QuietHoursActive())
+        return;
     if (gid_.empty() || content_count_ <= 1 || !current_dynamic_type_.empty())
         return;
 

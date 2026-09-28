@@ -21,6 +21,26 @@ config SLATE_DEFAULT_TIMEZONE
     help
         Used by setenv("TZ", ...) after SNTP sync. CST-8 = China Standard Time.
 
+config SLATE_QUIET_START_HOUR
+    int "Automatic update quiet-hours start (local hour)"
+    default 23
+    range 0 23
+
+config SLATE_QUIET_START_MINUTE
+    int "Automatic update quiet-hours start minute"
+    default 0
+    range 0 59
+
+config SLATE_QUIET_END_HOUR
+    int "Automatic update quiet-hours end (local hour)"
+    default 5
+    range 0 23
+
+config SLATE_QUIET_END_MINUTE
+    int "Automatic update quiet-hours end minute"
+    default 30
+    range 0 59
+
 config SLATE_IDLE_DEEP_SLEEP_MIN
     int "Idle minutes before entering deep sleep"
     default 3

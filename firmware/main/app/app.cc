@@ -649,6 +649,17 @@ void App::Init() {
             break;
         case boot_mode::Mode::kBackgroundRefresh: {
             ESP_LOGD(kTag, "mode background_refresh");
+            if (time_utils::QuietHoursActive()) {
+                const uint32_t until_end = time_utils::SecondsUntilQuietEnd();
+                ESP_LOGI(kTag, "background refresh deferred reason=quiet_hours wake_in_sec=%u",
+                         static_cast<unsigned>(until_end));
+                // This is an intentional deferral, not a network failure; do not
+                // increase the timer-wake backoff. BgRefreshDone will enter deep
+                // sleep and SleepManager will schedule the RTC timer for 05:30.
+                power_state::RecordTimerWakeResult(true);
+                evt::PostSimple(UiEventKind::kBgRefreshDone, portMAX_DELAY);
+                break;
+            }
             const bool net_ok = InitWifiAndSync(creds, true);
             if (!net_ok) {
                 ESP_LOGW(kTag, "background refresh network failed action=deep_sleep");

@@ -7,7 +7,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
 # 应用版本（编译期注入）
 CONFIG_APP_PROJECT_VER_FROM_CONFIG=y
-CONFIG_APP_PROJECT_VER="0.1.22"
+CONFIG_APP_PROJECT_VER="0.1.23"
 
 # 关掉一些不用的服务，省 flash + 启动时间
 CONFIG_ESP_COREDUMP_ENABLE_TO_NONE=y
@@ -84,6 +84,12 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 # 默认服务端 URL 留空。固件烧出去是一份,谁烧谁填:用户在 captive portal 表单里
 # 自己填实际地址(placeholder 已给示例)。本地开发可用 menuconfig 临时覆盖。
 CONFIG_SLATE_DEFAULT_SERVER_URL=""
+
+# Automatic update quiet window (local time, CONFIG_SLATE_DEFAULT_TIMEZONE).
+CONFIG_SLATE_QUIET_START_HOUR=23
+CONFIG_SLATE_QUIET_START_MINUTE=0
+CONFIG_SLATE_QUIET_END_HOUR=5
+CONFIG_SLATE_QUIET_END_MINUTE=30
 
 # WiFi 软 AP + STA 共存（配网时设备自己挂着 AP,
 # 用户手机也连着设备 AP——配置完成切 STA）

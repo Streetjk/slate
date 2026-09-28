@@ -165,7 +165,8 @@ bool SleepManager::MarkUnboundIfNeeded(int64_t now_ms) {
 }
 
 uint32_t SleepManager::ComputeConfiguredNextWakeSec() const {
-    return power_state::ComputeNextWakeSec();
+    const uint32_t requested = power_state::ComputeNextWakeSec();
+    return time_utils::AdjustWakeForQuietHours(requested);
 }
 
 bool SleepManager::BlocksSleep() const {

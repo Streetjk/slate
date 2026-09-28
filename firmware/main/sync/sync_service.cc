@@ -5,6 +5,7 @@
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
 
+#include <algorithm>
 #include <utility>
 
 #include "events/event_bus.h"
@@ -176,6 +177,12 @@ void SyncService::ClearCurrentGroup() {
 }
 
 int SyncService::NextIntervalSec() const {
+    if (time_utils::QuietHoursActive()) {
+        const uint32_t until_end = time_utils::SecondsUntilQuietEnd();
+        if (until_end > 0)
+            return static_cast<int>(std::min<uint32_t>(until_end, 24u * 60u * 60u));
+    }
+
     if (was_bound_.load() == BoundState::kBound)
         return sync_internal::kBoundPollSec;
     const int64_t elapsed = time_utils::NowMs() - unbound_since_ms_.load();
@@ -207,6 +214,22 @@ void SyncService::Loop() {
             break;
         if (!running_.load(std::memory_order_acquire))
             break;
+
+        // A timeout is the automatic poll path. During quiet hours, suppress it
+        // completely and let NextIntervalSec() sleep until the configured end.
+        // Explicit user/navigation bits are still honored.
+        if (bits == 0 && time_utils::QuietHoursActive()) {
+            ESP_LOGI(sync_internal::kTag, "automatic sync skipped reason=quiet_hours");
+            continue;
+        }
+
+        // A legacy/deferred background-refresh bit can survive into the quiet
+        // window. Finish that background cycle without contacting the network.
+        if ((bits & BIT_WAKE_REFRESH) && time_utils::QuietHoursActive()) {
+            ESP_LOGI(sync_internal::kTag, "background sync skipped reason=quiet_hours");
+            evt::PostSimple(UiEventKind::kBgRefreshDone);
+            continue;
+        }
 
         // 标记突发进行中：SleepManager 据此阻止 idle 睡眠打断正在进行的下载。
         in_flight_.store(true, std::memory_order_release);
