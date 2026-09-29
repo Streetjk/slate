@@ -143,11 +143,17 @@ function selectProviderState(
     };
   }
 
+  const localAuthenticated = localState.authMetadataDetected === true;
+  const fallbackAuthenticated = fallbackState.authMetadataDetected === true;
   const localHasCapability =
     localState.cliPresent === true ||
-    localState.authMetadataDetected === true ||
+    localAuthenticated ||
     typeof localState.version === 'string';
-  const state = localHasCapability ? localState : fallbackState;
+  const state = fallbackAuthenticated && !localAuthenticated
+    ? fallbackState
+    : localHasCapability
+      ? localState
+      : fallbackState;
   const quota = state === localState ? localQuota : fallbackQuota;
   return {
     state,

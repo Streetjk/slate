@@ -63,9 +63,9 @@ export interface HelperQuotaSnapshot {
   ageSeconds: number;
 }
 
-// Quota values older than 15 minutes are more misleading than useful on an
-// "AI Usage" dashboard. Live collectors run every 5 minutes; this window only
-// covers transient collector/provider failures.
+// Most quota values older than 15 minutes are hidden. Z.ai gets a longer
+// stale-while-revalidate window because its quota API can legitimately return
+// "Request in progress" for an extended period even while authentication is valid.
 const QUOTA_FALLBACK_MAX_AGE_SEC = 15 * 60;
 const CODEX_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const CODEX_REFRESH_INTERVAL_MS = 5 * 60_000;
@@ -73,12 +73,12 @@ const AGY_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
 const GROK_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const GROK_REFRESH_INTERVAL_MS = 5 * 60_000;
-const ZAI_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
+const ZAI_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
 const ZAI_REFRESH_INTERVAL_MS = 5 * 60_000;
+const ZAI_QUOTA_URL = 'https://api.z.ai/api/monitor/usage/quota/limit';
+const ZAI_RETRY_DELAYS_MS = [0, 1_500, 3_000, 5_000] as const;
 const AGY_USAGE_BIN =
   process.env.SLATE_AGY_USAGE_BIN ?? join(homedir(), '.local', 'bin', 'agy-usage');
-const ZAI_USAGE_BIN =
-  process.env.SLATE_ZAI_USAGE_BIN ?? join(homedir(), '.bun', 'bin', 'zai-usage');
 
 export function readProviderQuota(
   provider: HelperProvider,
@@ -302,26 +302,51 @@ async function refreshAgyQuota(
 }
 
 async function refreshZaiQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
-  if (!existsSync(ZAI_USAGE_BIN)) return null;
   const key = readZaiApiKey();
   if (!key) return null;
-  const proc = Bun.spawn([ZAI_USAGE_BIN, 'summary', '--json'], {
-    stdout: 'pipe',
-    stderr: 'ignore',
-    env: { ...safeCliEnv(), ZAI_API_KEY: key },
-    cwd: homedir(),
-  });
-  const timer = setTimeout(() => proc.kill(), 15_000);
-  try {
-    const output = await new Response(proc.stdout).text();
-    await proc.exited;
-    if (proc.exitCode !== 0) return null;
-    return parseZaiQuotaPayload(JSON.parse(output), nowMs);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+
+  for (const delayMs of ZAI_RETRY_DELAYS_MS) {
+    if (delayMs > 0) await Bun.sleep(delayMs);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch(ZAI_QUOTA_URL, {
+        headers: { Authorization: 'Bearer ' + key, accept: 'application/json' },
+        signal: controller.signal,
+      });
+      const raw = await response.json().catch(() => null);
+      if (!isRecord(raw)) {
+        if (response.status >= 500) continue;
+        return null;
+      }
+
+      if (raw.success === true) {
+        return parseZaiQuotaPayload(
+          {
+            fetchedAt: new Date().toISOString(),
+            quota: isRecord(raw.data) ? raw.data : {},
+          },
+          nowMs
+        );
+      }
+
+      const message = typeof raw.msg === 'string' ? raw.msg.toLowerCase() : '';
+      const retryable =
+        response.status >= 500 ||
+        message.includes('request in progress') ||
+        message.includes('please wait') ||
+        message.includes('processing') ||
+        message.includes('busy');
+      if (!retryable) return null;
+    } catch {
+      // Network/timeout failures are transient; try the next bounded retry.
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  return null;
 }
 
 export function parseZaiQuotaPayload(
