@@ -40,6 +40,7 @@ bool ApplySavedProfile(wifi_config_t& wc, const cred::WifiProfile& profile) {
     wc.sta.threshold.authmode = WIFI_AUTH_OPEN;
     wc.sta.pmf_cfg.capable    = true;
     wc.sta.pmf_cfg.required   = false;
+    wc.sta.listen_interval    = 10;
     return true;
 }
 }  // namespace

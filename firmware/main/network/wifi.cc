@@ -14,9 +14,16 @@
 #include "utils/time_utils.h"
 
 namespace {
-constexpr char kTag[]                 = "wifi";
-constexpr int  kWifiBitConnected      = BIT0;
-constexpr int  kWifiBitConnectionFail = BIT1;
+constexpr char     kTag[]                 = "wifi";
+constexpr int      kWifiBitConnected      = BIT0;
+constexpr int      kWifiBitConnectionFail = BIT1;
+constexpr uint16_t kWifiListenInterval    = 10;
+
+void ApplyStationPowerSave() {
+    const esp_err_t err = esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    if (err != ESP_OK)
+        ESP_LOGW(kTag, "wifi max-modem power save failed err=%s", esp_err_to_name(err));
+}
 
 EventGroupHandle_t& WifiEventGroup() {
     static EventGroupHandle_t s_event_group = nullptr;
@@ -57,6 +64,7 @@ bool FillStaConfig(wifi_config_t& wc, const std::string& ssid, const std::string
     wc.sta.threshold.authmode = WIFI_AUTH_OPEN;
     wc.sta.pmf_cfg.capable    = true;
     wc.sta.pmf_cfg.required   = false;
+    wc.sta.listen_interval    = kWifiListenInterval;
     return true;
 }
 
@@ -188,6 +196,7 @@ void Wifi::EventHandler(void* arg, esp_event_base_t base, int32_t id, void* data
         self->reconnect_.ResetBackoff();
         self->reconnect_.Stop();
         self->state_.store(State::Connected);
+        ApplyStationPowerSave();
 
         xEventGroupSetBits(WifiEventGroup(), kWifiBitConnected);
         return;
@@ -263,7 +272,7 @@ bool Wifi::Connect(const std::string& ssid, const std::string& password, int tim
     EventBits_t bits = xEventGroupWaitBits(WifiEventGroup(), kWifiBitConnected | kWifiBitConnectionFail, pdFALSE,
                                            pdFALSE, pdMS_TO_TICKS(timeout_ms));
     if (bits & kWifiBitConnected) {
-        esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+        ApplyStationPowerSave();
         return true;
     }
 

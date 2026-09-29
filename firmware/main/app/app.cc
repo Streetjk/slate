@@ -602,10 +602,12 @@ bool App::ShouldEnableLightSleep(bool power_present) const {
 }
 
 void App::ConfigurePm(bool light_sleep_enable) {
-    // DFS（80~240 MHz）始终开；light_sleep_enable 按供电/模式动态切换。
+    // DFS（40~240 MHz）始终开；light_sleep_enable 按供电/模式动态切换。
     esp_pm_config_t pm = {
         .max_freq_mhz       = 240,
-        .min_freq_mhz       = 80,
+        // ESP32-S3 can run at the 40 MHz XTAL floor while idle. Workloads that
+        // need performance still scale to 240 MHz automatically via DFS.
+        .min_freq_mhz       = 40,
         .light_sleep_enable = light_sleep_enable,
     };
     ESP_LOGD(kTag, "power management configure light_sleep=%d", light_sleep_enable ? 1 : 0);

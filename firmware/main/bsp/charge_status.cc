@@ -92,10 +92,11 @@ void ChargeStatus::TickTaskEntry(void* arg) {
 
 void ChargeStatus::TickTaskLoop() {
     // 有外部电源时 500 ms：去抖窗口(kStableHighMs=400/kAltWindowMs=1500)需要密集采样，
-    // 且此时不省电(充电中暂停睡眠)。纯电池(无外部电源)时只需察觉「USB 插入」这一个 LOW
-    // 沿，放慢到 2 s 让自动 light sleep 睡得更久；插入后下一拍即切回 500 ms 完成去抖。
+    // 且此时不省电(充电中暂停睡眠)。纯电池时这里只需察觉「USB 插入」这一件事，
+    // 10 秒检查一次可显著减少 idle CPU 唤醒；一旦检测到电源，下一拍即切回 500 ms。
+    // 代价只是插入 USB 后状态栏最多约 10 秒才更新，实际充电本身不受影响。
     constexpr TickType_t kPollPowered = pdMS_TO_TICKS(500);
-    constexpr TickType_t kPollBattery = pdMS_TO_TICKS(2000);
+    constexpr TickType_t kPollBattery = pdMS_TO_TICKS(10000);
     while (tick_running_.load(std::memory_order_acquire)) {
         Tick(time_utils::NowMs());
         const TickType_t poll = Get().power_present ? kPollPowered : kPollBattery;
