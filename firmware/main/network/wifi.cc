@@ -133,6 +133,15 @@ void Wifi::EventHandler(void* arg, esp_event_base_t base, int32_t id, void* data
                 return;
             }
 
+            self->reconnect_.BeginRetryWindowIfNeeded();
+            if (self->reconnect_.RetryWindowExpired()) {
+                ESP_LOGW(kTag, "auto reconnect stopped reason=retry_budget_exhausted limit_sec=%u",
+                         static_cast<unsigned>(Wifi::kReconnectBudgetSec));
+                self->StopReconnectAttemptsAfterTimeout();
+                xEventGroupSetBits(WifiEventGroup(), kWifiBitConnectionFail);
+                return;
+            }
+
             // If the AP has disappeared entirely, retrying the same profile only
             // delays roaming to another saved network. Go straight to the slow
             // scan/failover path; setup_flow will also move on to the next saved
@@ -387,6 +396,14 @@ void Wifi::MarkSlowReconnectConnecting() {
 
 void Wifi::ResetFastFailCount() {
     fail_count_.store(0, std::memory_order_release);
+}
+
+void Wifi::StopReconnectAttemptsAfterTimeout() {
+    want_reconnect_.store(false, std::memory_order_release);
+    reconnect_.Stop();
+    fail_count_.store(0, std::memory_order_release);
+    state_.store(State::Disconnected, std::memory_order_release);
+    ESP_LOGI(kTag, "wifi retry idle reason=retry_budget_exhausted user_action=enter_to_retry_saved");
 }
 
 bool Wifi::StartAp(const std::string& ssid_prefix) {

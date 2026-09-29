@@ -38,6 +38,10 @@ class Wifi {
     friend class WifiReconnectManager;
 
    public:
+    // Bound automatic reconnect attempts. After five continuous minutes without
+    // an IP connection, stop all background Wi-Fi retry/scan activity until the
+    // user explicitly resets the network path (ENTER while offline) or reboots.
+    static constexpr uint32_t kReconnectBudgetSec = 5 * 60;
     enum class State {
         Idle,          // 还没连过
         Connecting,    // 正在连接(快速 retry / 慢速 scan-then-connect 期间)
@@ -109,6 +113,7 @@ class Wifi {
     bool        StationModeActive() const;
     void        MarkSlowReconnectConnecting();
     void        ResetFastFailCount();
+    void        StopReconnectAttemptsAfterTimeout();
 
     // 仅 Init 调一次的底座
     std::mutex init_mutex_;

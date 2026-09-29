@@ -9,6 +9,7 @@
 #include "drivers/display/epd_ssd1683.h"
 #include "events/event_bus.h"
 #include "events/ui_event_log.h"
+#include "power/shutdown.h"
 #include "scenes/core/scene_stack.h"
 #include "scenes/settings/settings_scene.h"
 #include "scenes/splash/splash_scene.h"
@@ -190,6 +191,10 @@ void FrameScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
                     }
                     break;
                 case ButtonId::kEnter:
+                    if (ctx.wifi_connected && !ctx.wifi_connected()) {
+                        ESP_LOGI(kTag, "button short btn=enter action=restart_saved_wifi_first");
+                        power_shutdown::GracefulRestart(150);
+                    }
                     ESP_LOGD(kTag, "button short btn=enter action=next_frame");
                     NextFrame(ctx);
                     break;

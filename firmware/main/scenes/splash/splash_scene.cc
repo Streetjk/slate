@@ -11,6 +11,7 @@
 #include "events/event_bus.h"
 #include "events/ui_event_log.h"
 #include "network/cred_store.h"
+#include "power/shutdown.h"
 #include "scenes/core/scene_stack.h"
 #include "scenes/frame/frame_scene.h"
 #include "scenes/settings/settings_scene.h"
@@ -121,6 +122,16 @@ void SplashScene::OnEvent(SceneContext& ctx, const UiEvent& e) {
         ESP_LOGD(kTag, "event kind=%s detail=%s state=%d root=%p", evt::log::KindName(e.kind), detail,
                  static_cast<int>(state_), root_);
     }
+    // When Wi-Fi has given up after the bounded retry window, a normal ENTER
+    // press explicitly restarts the network path. Boot always tries every saved
+    // Wi-Fi profile before falling back to setup mode, so this never discards or
+    // bypasses known networks.
+    if (e.kind == UiEventKind::kButtonShort && e.u.button.btn == ButtonId::kEnter &&
+        state_ == State::kWifiFailed) {
+        ESP_LOGI(kTag, "button short btn=enter action=restart_saved_wifi_first");
+        power_shutdown::GracefulRestart(150);
+    }
+
     // 应急逃生:长按 ENTER push 设置页 — 即使同步未完成、网络断开,
     // 用户仍能调音量 / 看设备信息 / 重新配网 / 恢复出厂。
     if (e.kind == UiEventKind::kButtonLong && e.u.button.btn == ButtonId::kEnter) {
@@ -241,7 +252,10 @@ void SplashScene::RenderContent() {
             std::snprintf(buf, sizeof(buf), "Connecting to Wi-Fi\n%s", ssid_[0] ? ssid_ : "");
             break;
         case State::kWifiFailed:
-            std::snprintf(buf, sizeof(buf), "Wi-Fi connection failed\n\nHold ENTER to set up again");
+            std::snprintf(buf, sizeof(buf),
+                          "Wi-Fi connection failed\n\n"
+                          "ENTER: retry saved Wi-Fi\n"
+                          "Hold ENTER: settings");
             break;
         case State::kSntp:
             std::snprintf(buf, sizeof(buf), "Syncing time…");

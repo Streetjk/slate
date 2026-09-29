@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 
 class Wifi;
 
@@ -13,6 +14,8 @@ class WifiReconnectManager {
     ~WifiReconnectManager();
 
     void ResetBackoff();
+    void BeginRetryWindowIfNeeded();
+    bool RetryWindowExpired() const;
     void Schedule();
     void Stop();
     bool ConsumeSlowScanPending();
@@ -25,6 +28,7 @@ class WifiReconnectManager {
 
     Wifi*               owner_ = nullptr;
     esp_timer_handle_t  timer_ = nullptr;
-    std::atomic<size_t> backoff_idx_{0};
-    std::atomic<bool>   slow_scan_pending_{false};
+    std::atomic<size_t>  backoff_idx_{0};
+    std::atomic<int64_t> retry_started_us_{0};
+    std::atomic<bool>    slow_scan_pending_{false};
 };

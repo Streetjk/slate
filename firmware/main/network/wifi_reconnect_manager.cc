@@ -57,6 +57,22 @@ WifiReconnectManager::~WifiReconnectManager() {
 
 void WifiReconnectManager::ResetBackoff() {
     backoff_idx_.store(0, std::memory_order_release);
+    retry_started_us_.store(0, std::memory_order_release);
+}
+
+void WifiReconnectManager::BeginRetryWindowIfNeeded() {
+    const int64_t now_us = esp_timer_get_time();
+    int64_t expected = 0;
+    retry_started_us_.compare_exchange_strong(
+        expected, now_us, std::memory_order_acq_rel, std::memory_order_acquire);
+}
+
+bool WifiReconnectManager::RetryWindowExpired() const {
+    const int64_t started_us = retry_started_us_.load(std::memory_order_acquire);
+    if (started_us <= 0)
+        return false;
+    const int64_t elapsed_us = esp_timer_get_time() - started_us;
+    return elapsed_us >= static_cast<int64_t>(Wifi::kReconnectBudgetSec) * 1'000'000LL;
 }
 
 void WifiReconnectManager::EnsureTimer() {
@@ -75,11 +91,34 @@ void WifiReconnectManager::EnsureTimer() {
 void WifiReconnectManager::Schedule() {
     if (!owner_ || !owner_->ReconnectAllowed())
         return;
+
+    BeginRetryWindowIfNeeded();
+    if (RetryWindowExpired()) {
+        ESP_LOGW(kTag, "auto reconnect stopped elapsed_sec=%u limit_sec=%u",
+                 static_cast<unsigned>(Wifi::kReconnectBudgetSec),
+                 static_cast<unsigned>(Wifi::kReconnectBudgetSec));
+        owner_->StopReconnectAttemptsAfterTimeout();
+        return;
+    }
+
     EnsureTimer();
     const size_t   idx     = std::min(backoff_idx_.load(std::memory_order_acquire), kBackoffSize - 1);
     const uint32_t seconds = kBackoffSec[idx];
+
+    const int64_t started_us = retry_started_us_.load(std::memory_order_acquire);
+    const int64_t now_us = esp_timer_get_time();
+    const int64_t budget_us = static_cast<int64_t>(Wifi::kReconnectBudgetSec) * 1'000'000LL;
+    const int64_t remaining_us = budget_us - (now_us - started_us);
+    if (remaining_us <= 0) {
+        owner_->StopReconnectAttemptsAfterTimeout();
+        return;
+    }
+
+    const uint64_t requested_us = static_cast<uint64_t>(seconds) * 1'000'000ULL;
+    const uint64_t delay_us =
+        std::min<uint64_t>(requested_us, static_cast<uint64_t>(remaining_us));
     esp_timer_stop(timer_);
-    ESP_ERROR_CHECK(esp_timer_start_once(timer_, static_cast<uint64_t>(seconds) * 1000ULL * 1000ULL));
+    ESP_ERROR_CHECK(esp_timer_start_once(timer_, delay_us));
     if (idx < kBackoffSize - 1)
         backoff_idx_.store(idx + 1, std::memory_order_release);
 }
@@ -102,6 +141,12 @@ void WifiReconnectManager::OnTimer(void* arg) {
     auto* self = static_cast<WifiReconnectManager*>(arg);
     if (!self->owner_ || !self->owner_->ReconnectAllowed() || !self->owner_->StationModeActive())
         return;
+    if (self->RetryWindowExpired()) {
+        ESP_LOGW(kTag, "auto reconnect stopped reason=retry_budget_exhausted limit_sec=%u",
+                 static_cast<unsigned>(Wifi::kReconnectBudgetSec));
+        self->owner_->StopReconnectAttemptsAfterTimeout();
+        return;
+    }
     self->DoSlowScanReconnect();
 }
 
