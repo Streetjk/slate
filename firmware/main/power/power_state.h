@@ -55,6 +55,12 @@ uint32_t ComputeNextWakeSec();
 // 由后台刷新路径调用：网络建立失败 / sync 完成(ok 或失败) 时各上报一次。
 void RecordTimerWakeResult(bool success);
 
+// Quiet-hours deep sleep uses an RTC timer at 05:30. This RTC slow-memory flag
+// distinguishes that wake from an ordinary dynamic-content timer wake so boot
+// returns to the normal daytime active mode after the overnight sleep.
+void SetQuietSleepWakePending(bool pending);
+bool ConsumeQuietSleepWakePending();
+
 // 睡前最后一次刷到物理屏上的状态栏 1bpp 快照。用于 timer wake 后重建
 // prev_buffer_ 的 0~24 行，让后台 partial refresh 的 old/new 输入真实一致。
 bool SaveStatusBarSnapshot(const uint8_t* data, size_t len);

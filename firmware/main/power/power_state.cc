@@ -27,6 +27,7 @@ RTC_DATA_ATTR int      s_current_frame_seq     = 0;
 // 用于指数退避下次 RTC timer 间隔,避免网络长期不可用时每 60s 空醒耗电。
 // 成功同步清零;cold boot 清零;深睡跨越保留(退避需跨唤醒累计)。
 RTC_DATA_ATTR uint32_t s_timer_wake_fail_count = 0;
+RTC_DATA_ATTR bool     s_quiet_sleep_wake_pending = false;
 
 // 退避位移上限:60s << 6 ≈ 64min,与下方 kMaxBackoffWakeSec 共同封顶。
 constexpr uint32_t kMaxBackoffShift   = 6;
@@ -78,6 +79,7 @@ void Init(bool cold_boot) {
     s_frame_server_sync_sec = 0;
     s_current_frame_seq     = 0;
     s_timer_wake_fail_count = 0;
+    s_quiet_sleep_wake_pending = false;
     s_status_bar_magic      = 0;
     s_status_bar_hash       = 0;
     std::memset(s_status_bar_snapshot, 0, sizeof(s_status_bar_snapshot));
@@ -193,6 +195,18 @@ void RecordTimerWakeResult(bool success) {
     } else if (s_timer_wake_fail_count < kMaxBackoffShift) {
         ++s_timer_wake_fail_count;
     }
+}
+
+void SetQuietSleepWakePending(bool pending) {
+    ScopedMutexLock lock(StateMutex());
+    s_quiet_sleep_wake_pending = pending;
+}
+
+bool ConsumeQuietSleepWakePending() {
+    ScopedMutexLock lock(StateMutex());
+    const bool pending = s_quiet_sleep_wake_pending;
+    s_quiet_sleep_wake_pending = false;
+    return pending;
 }
 
 bool SaveStatusBarSnapshot(const uint8_t* data, size_t len) {

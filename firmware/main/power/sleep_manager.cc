@@ -165,6 +165,15 @@ bool SleepManager::MarkUnboundIfNeeded(int64_t now_ms) {
 }
 
 uint32_t SleepManager::ComputeConfiguredNextWakeSec() const {
+    // During quiet hours always arm an RTC wake for the configured end time,
+    // even when the current frame is static. Static frames normally have no
+    // timer wake, which would otherwise leave the device asleep past 05:30.
+    if (time_utils::QuietHoursActive()) {
+        const uint32_t until_end = time_utils::SecondsUntilQuietEnd();
+        if (until_end > 0)
+            return until_end;
+    }
+
     const uint32_t requested = power_state::ComputeNextWakeSec();
     return time_utils::AdjustWakeForQuietHours(requested);
 }
@@ -186,6 +195,8 @@ void SleepManager::Tick(int64_t now_ms) {
         return;
     }
 
+    const bool quiet_hours = time_utils::QuietHoursActive();
+
     bool forced = false;
     if (BlocksSleep()) {
         int64_t since = blocked_since_ms_.load();
@@ -203,19 +214,27 @@ void SleepManager::Tick(int64_t now_ms) {
         forced = true;
     } else {
         blocked_since_ms_.store(0);
-        // In normal interactive mode, leave the device in automatic light sleep
-        // so both side buttons remain responsive. Deep sleep is still used by the
-        // explicit background-refresh path, and low battery may still force the
-        // normal idle deep-sleep protection.
-        if (!idle_deep_sleep_enabled_ && !IsLowBattery())
-            return;
-
         const int64_t idle_ms      = now_ms - last_active_ms_.load();
         const int64_t threshold_ms = static_cast<int64_t>(idle_timeout_min_) * 60 * 1000;
-        if (idle_ms < threshold_ms)
-            return;
-        ESP_LOGI(kTag, "idle timeout idle_ms=%lld threshold_ms=%lld action=deep_sleep low_battery=%d", (long long)idle_ms,
-                 (long long)threshold_ms, IsLowBattery() ? 1 : 0);
+
+        // Full-active mode normally stays in light sleep so every button remains
+        // responsive. Quiet hours are the deliberate exception: once the user
+        // has been inactive for the normal idle grace, enter true deep sleep
+        // until 05:30. ENTER/DOWN/USB can still wake it early.
+        if (quiet_hours) {
+            if (idle_ms < threshold_ms)
+                return;
+            ESP_LOGI(kTag,
+                     "quiet hours idle timeout idle_ms=%lld threshold_ms=%lld action=deep_sleep wake=quiet_end",
+                     (long long)idle_ms, (long long)threshold_ms);
+        } else {
+            if (!idle_deep_sleep_enabled_ && !IsLowBattery())
+                return;
+            if (idle_ms < threshold_ms)
+                return;
+            ESP_LOGI(kTag, "idle timeout idle_ms=%lld threshold_ms=%lld action=deep_sleep low_battery=%d",
+                     (long long)idle_ms, (long long)threshold_ms, IsLowBattery() ? 1 : 0);
+        }
     }
 
     const auto decision = TryEnterDeepSleep();
@@ -290,8 +309,12 @@ SleepManager::SleepDecision SleepManager::TryEnterDeepSleep() {
         (1ULL << BOOT_BUTTON_GPIO) | (1ULL << DOWN_BUTTON_GPIO) | (1ULL << CHARGE_DETECT_GPIO);
     esp_sleep_enable_ext1_wakeup(kWakeupMask, ESP_EXT1_WAKEUP_ANY_LOW);
 
-    // 7) RTC timer 只服务当前动态帧。静态帧不会自己变更，靠 timer wake
-    //    周期性联网只会空耗电；远端静态内容变化等用户按键/插电唤醒后再同步。
+    // 7) RTC timer normally only serves the current dynamic frame. Quiet
+    //    hours are the exception: even a static frame gets a one-shot wake at
+    //    05:30. Persist a RTC-only marker so that wake returns to daytime active
+    //    mode instead of the ordinary background-refresh sleep loop.
+    const bool quiet_sleep = time_utils::QuietHoursActive() && next_sec > 0;
+    power_state::SetQuietSleepWakePending(quiet_sleep);
     if (next_sec > 0) {
         esp_sleep_enable_timer_wakeup(static_cast<uint64_t>(next_sec) * 1'000'000ULL);
         ESP_LOGI(kTag, "deep sleep start wake_mask=0x%llx timer_sec=%u", (unsigned long long)kWakeupMask,

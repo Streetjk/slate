@@ -4,6 +4,7 @@
 #include <esp_sleep.h>
 
 #include "bsp/config.h"
+#include "power/power_state.h"
 #include "storage/cache/cache.h"
 
 namespace boot_mode {
@@ -61,8 +62,22 @@ Decision Decide(const cred::Credentials& creds) {
     d.wake_cause     = Classify(d.ext1_mask);
     d.wake_reason    = WakeReason(d.wake_cause);
 
+    bool quiet_end_wake = false;
+    if (d.wake_cause == WakeCause::kRtcTimer) {
+        quiet_end_wake = power_state::ConsumeQuietSleepWakePending();
+    } else {
+        // Any manual/charge/cold wake supersedes the pending overnight timer.
+        // A later quiet-hours sleep will arm a fresh marker if needed.
+        power_state::SetQuietSleepWakePending(false);
+    }
+
     if (creds.wifi_ssid.empty()) {
         d.mode = Mode::kPortal;
+    } else if (quiet_end_wake) {
+        // Overnight quiet sleep deliberately wakes into the normal daytime
+        // responsive mode at 05:30 rather than immediately going back to sleep.
+        ESP_LOGI(kTag, "quiet-hours timer wake action=full_active");
+        d.mode = Mode::kFullActive;
     } else if (d.wake_cause == WakeCause::kRtcTimer && !d.first_register && HasCachedGroup()) {
         d.mode = Mode::kBackgroundRefresh;
     } else {
