@@ -33,6 +33,7 @@
 #include <string>
 
 #include "network/wifi_reconnect_manager.h"
+#include "network/wifi_retry_policy.h"
 
 class Wifi {
     friend class WifiReconnectManager;
@@ -42,7 +43,7 @@ class Wifi {
     // an IP connection, stop all background Wi-Fi retry/scan activity to avoid
     // burning battery. ENTER while offline explicitly starts a fresh saved-Wi-Fi-first
     // recovery attempt.
-    static constexpr uint32_t kReconnectBudgetSec = 30;
+    static constexpr uint32_t kReconnectBudgetSec = wifi_retry_policy::kReconnectBudgetSec;
     enum class State {
         Idle,          // 还没连过
         Connecting,    // 正在连接(快速 retry / 慢速 scan-then-connect 期间)

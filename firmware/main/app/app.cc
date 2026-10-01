@@ -484,8 +484,8 @@ void App::SavedWifiRecoveryTask() {
     const int64_t budget_ms = static_cast<int64_t>(Wifi::kReconnectBudgetSec) * 1000;
 
     while (wifi_recovery_running_.load(std::memory_order_acquire)) {
-        const int64_t elapsed_ms = time_utils::NowMs() - started_ms;
-        const int64_t remaining_ms = budget_ms - elapsed_ms;
+        const int64_t remaining_ms =
+            wifi_retry_policy::RemainingMs(started_ms, time_utils::NowMs(), budget_ms);
         if (remaining_ms <= 0) {
             ESP_LOGW(kTag, "saved wifi recovery stopped reason=retry_budget_exhausted limit_sec=%u",
                      static_cast<unsigned>(Wifi::kReconnectBudgetSec));
@@ -496,15 +496,15 @@ void App::SavedWifiRecoveryTask() {
             kSavedWifiRecoveryDelaysSec[std::min(delay_index, kSavedWifiRecoveryDelayCount - 1)];
         if (delay_index + 1 < kSavedWifiRecoveryDelayCount)
             ++delay_index;
-        const uint32_t delay_sec = std::min<uint32_t>(
-            scheduled_delay_sec, static_cast<uint32_t>((remaining_ms + 999) / 1000));
+        const uint32_t delay_sec =
+            wifi_retry_policy::ClampSavedRecoveryDelaySec(scheduled_delay_sec, remaining_ms);
 
         ESP_LOGI(kTag, "saved wifi recovery wait sec=%u", static_cast<unsigned>(delay_sec));
         vTaskDelay(pdMS_TO_TICKS(delay_sec * 1000));
 
         if (!wifi_recovery_running_.load(std::memory_order_acquire))
             break;
-        if (time_utils::NowMs() - started_ms >= budget_ms) {
+        if (wifi_retry_policy::IsRecoveryBudgetExpired(started_ms, time_utils::NowMs(), budget_ms)) {
             ESP_LOGW(kTag, "saved wifi recovery stopped reason=retry_budget_exhausted limit_sec=%u",
                      static_cast<unsigned>(Wifi::kReconnectBudgetSec));
             break;
@@ -532,13 +532,13 @@ void App::SavedWifiRecoveryTask() {
                     continue;
 
                 const int64_t profile_remaining_ms =
-                    budget_ms - (time_utils::NowMs() - started_ms);
+                    wifi_retry_policy::RemainingMs(started_ms, time_utils::NowMs(), budget_ms);
                 if (profile_remaining_ms <= 0) {
                     timed_out = true;
                     break;
                 }
                 const int timeout_ms =
-                    static_cast<int>(std::min<int64_t>(12'000, profile_remaining_ms));
+                    wifi_retry_policy::ClampProfileTimeoutMs(profile_remaining_ms);
 
                 std::string reason;
                 ESP_LOGI(kTag, "saved wifi recovery attempt profile_index=%u timeout_ms=%d",

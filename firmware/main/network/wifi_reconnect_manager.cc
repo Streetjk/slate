@@ -70,10 +70,7 @@ void WifiReconnectManager::BeginRetryWindowIfNeeded() {
 
 bool WifiReconnectManager::RetryWindowExpired() const {
     const int64_t started_us = retry_started_us_.load(std::memory_order_acquire);
-    if (started_us <= 0)
-        return false;
-    const int64_t elapsed_us = esp_timer_get_time() - started_us;
-    return elapsed_us >= static_cast<int64_t>(Wifi::kReconnectBudgetSec) * 1'000'000LL;
+    return wifi_retry_policy::IsRetryWindowExpired(started_us, esp_timer_get_time());
 }
 
 void WifiReconnectManager::EnsureTimer() {
@@ -108,8 +105,7 @@ void WifiReconnectManager::Schedule() {
 
     const int64_t started_us = retry_started_us_.load(std::memory_order_acquire);
     const int64_t now_us = esp_timer_get_time();
-    const int64_t budget_us = static_cast<int64_t>(Wifi::kReconnectBudgetSec) * 1'000'000LL;
-    const int64_t remaining_us = budget_us - (now_us - started_us);
+    const int64_t remaining_us = wifi_retry_policy::RemainingUs(started_us, now_us);
     if (remaining_us <= 0) {
         owner_->StopReconnectAttemptsAfterTimeout();
         return;
@@ -117,7 +113,7 @@ void WifiReconnectManager::Schedule() {
 
     const uint64_t requested_us = static_cast<uint64_t>(seconds) * 1'000'000ULL;
     const uint64_t delay_us =
-        std::min<uint64_t>(requested_us, static_cast<uint64_t>(remaining_us));
+        wifi_retry_policy::ClampAutoRetryDelayUs(requested_us, remaining_us);
     esp_timer_stop(timer_);
     ESP_ERROR_CHECK(esp_timer_start_once(timer_, delay_us));
     if (idx < kBackoffSize - 1)
