@@ -10,7 +10,7 @@
 // 重连策略:
 //   1. 快速:STA_DISCONNECTED 立即 esp_wifi_connect,最多 2 次。
 //   2. 慢速:2 次用完转 esp_timer + 主动 esp_wifi_scan_start 全信道扫描,
-//      指数退避 2s → 5 → 10 → 20 → 40 → 80 → 120s。反复失败后优先
+//      在 30s 总预算内按 2s → 5 → 10 → ... 退避；到预算即彻底停止。反复失败后优先
 //      切到其它可见的已保存 SSID；没有替代网络时才重试当前 SSID。
 //      bssid+channel 设回 wc.sta 再 connect。
 //   3. IP_GOT_IP 后清 fail_count_ + 重置 backoff_idx_,timer 停。
@@ -38,10 +38,11 @@ class Wifi {
     friend class WifiReconnectManager;
 
    public:
-    // Bound automatic reconnect attempts. After five continuous minutes without
-    // an IP connection, stop all background Wi-Fi retry/scan activity until the
-    // user explicitly resets the network path (ENTER while offline) or reboots.
-    static constexpr uint32_t kReconnectBudgetSec = 5 * 60;
+    // Bound automatic reconnect attempts. After 30 continuous seconds without
+    // an IP connection, stop all background Wi-Fi retry/scan activity to avoid
+    // burning battery. ENTER while offline explicitly starts a fresh saved-Wi-Fi-first
+    // recovery attempt.
+    static constexpr uint32_t kReconnectBudgetSec = 30;
     enum class State {
         Idle,          // 还没连过
         Connecting,    // 正在连接(快速 retry / 慢速 scan-then-connect 期间)
