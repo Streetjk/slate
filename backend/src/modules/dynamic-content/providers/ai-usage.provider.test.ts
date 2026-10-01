@@ -144,6 +144,92 @@ describe('AiUsageProvider', () => {
     expect(data.updatedAt).toBe('2026-09-25T02:00:05.000Z');
   });
 
+  it('retains last known quota when the Mac helper is transiently unavailable', async () => {
+    globalThis.fetch = (async (input) => {
+      if (String(input).includes('ai-usage-helper:19091')) {
+        return Response.json({
+          codex: { cliPresent: false, authMetadataDetected: false },
+          grok: { cliPresent: false, authMetadataDetected: false },
+          agy_gemini: { cliPresent: false, authMetadataDetected: false },
+        });
+      }
+      throw new Error('Mac helper unavailable');
+    }) as typeof fetch;
+
+    const provider = new AiUsageProvider({
+      aiUsageLocalHelperUrl: 'http://ai-usage-helper:19091',
+      aiUsageMacHelperUrl: 'http://100.73.201.113:19091',
+    } as AppConfig);
+    const lastData = {
+      updatedAt: '2026-10-01T21:30:00.000Z',
+      providers: [
+        {
+          id: 'codex',
+          label: 'Codex',
+          version: 'codex-cli 0.159.2',
+          status: 'connected',
+          quotaObservedAt: '2026-10-01T21:29:50.000Z',
+          quotaWindows: [
+            { label: 'Weekly', usedPercent: 75, remainingPercent: 25, resetLabel: 'Oct 7' },
+          ],
+        },
+      ],
+    };
+
+    const data = await provider.fetchData(
+      { type: 'ai_usage', refresh_interval_sec: 300 },
+      { now: new Date('2026-10-01T21:40:00.000Z'), lastData }
+    );
+
+    const codex = data.providers.find((entry) => entry.id === 'codex');
+    expect(codex?.status).toBe('connected');
+    expect(codex?.version).toBe('codex-cli 0.159.2');
+    expect(codex?.quotaWindows[0]?.remainingPercent).toBe(25);
+    expect(codex?.quotaObservedAt).toBe('2026-10-01T21:29:50.000Z');
+    expect(data.updatedAt).toBe('2026-10-01T21:30:00.000Z');
+  });
+
+  it('does not retain old quota after a reachable helper reports sign-out', async () => {
+    globalThis.fetch = (async () =>
+      Response.json({
+        codex: {
+          version: 'codex-cli 0.159.2',
+          authMetadataDetected: false,
+          checkedAt: '2026-10-01T21:40:00.000Z',
+        },
+      })) as typeof fetch;
+
+    const provider = new AiUsageProvider({
+      aiUsageMacHelperUrl: 'http://100.73.201.113:19091',
+    } as AppConfig);
+    const data = await provider.fetchData(
+      { type: 'ai_usage', refresh_interval_sec: 300 },
+      {
+        now: new Date('2026-10-01T21:40:01.000Z'),
+        lastData: {
+          updatedAt: '2026-10-01T21:30:00.000Z',
+          providers: [
+            {
+              id: 'codex',
+              label: 'Codex',
+              version: 'codex-cli 0.159.2',
+              status: 'connected',
+              quotaObservedAt: '2026-10-01T21:29:50.000Z',
+              quotaWindows: [
+                { label: 'Weekly', usedPercent: 75, remainingPercent: 25, resetLabel: 'Oct 7' },
+              ],
+            },
+          ],
+        },
+      }
+    );
+
+    const codex = data.providers.find((entry) => entry.id === 'codex');
+    expect(codex?.status).toBe('sign_in');
+    expect(codex?.quotaWindows).toEqual([]);
+    expect(codex?.quotaObservedAt).toBeNull();
+  });
+
   it('fails closed when no AI usage helper is configured', async () => {
     const provider = new AiUsageProvider({ aiUsageMacHelperUrl: undefined } as AppConfig);
     await expect(

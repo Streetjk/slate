@@ -59,25 +59,48 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
       const localState = providerState(localRecord, id);
       const macState = providerState(macRecord, id);
       const selected = selectProviderState(localState, macState);
+      const previous = previousProviderState(ctx.lastData, id);
+      const currentStatus =
+        selected.state.authMetadataDetected === true
+          ? ('connected' as const)
+          : selected.state.authMetadataDetected === false
+            ? ('sign_in' as const)
+            : ('unknown' as const);
+      const macUnavailable = Boolean(macBase && !macRecord);
+      const retainPreviousQuota =
+        selected.windows.length === 0 &&
+        previous !== null &&
+        previous.quotaWindows.length > 0 &&
+        (currentStatus !== 'sign_in' || macUnavailable);
+      const currentVersion = safeVersion(selected.state.version);
+
       if (selected.checkedAt) selectedCheckedAt.push(selected.checkedAt);
       return {
         id,
         label,
-        version: safeVersion(selected.state.version),
+        version:
+          currentVersion !== 'Unavailable'
+            ? currentVersion
+            : previous?.version ?? 'Unavailable',
         status:
-          selected.state.authMetadataDetected === true
-            ? ('connected' as const)
-            : selected.state.authMetadataDetected === false
-              ? ('sign_in' as const)
-              : ('unknown' as const),
-        quotaWindows: selected.windows,
-        quotaObservedAt: safeIso(selected.quota.observedAt),
+          currentStatus !== 'unknown'
+            ? macUnavailable && previous?.status === 'connected'
+              ? ('connected' as const)
+              : currentStatus
+            : previous?.status ?? ('unknown' as const),
+        quotaWindows: retainPreviousQuota ? previous.quotaWindows : selected.windows,
+        quotaObservedAt: retainPreviousQuota
+          ? previous.quotaObservedAt
+          : safeIso(selected.quota.observedAt),
       };
     });
 
     return {
       providers,
-      updatedAt: newestIso(selectedCheckedAt) ?? ctx.now.toISOString(),
+      updatedAt:
+        newestIso(selectedCheckedAt) ??
+        previousUpdatedAt(ctx.lastData) ??
+        ctx.now.toISOString(),
     };
   }
 }
@@ -115,6 +138,33 @@ function providerState(
 ): Record<string, unknown> {
   if (!record) return {};
   return isRecord(record[id]) ? record[id] : {};
+}
+
+function previousProviderState(
+  lastData: unknown,
+  id: AiUsagePanelProvider['id']
+): AiUsagePanelProvider | null {
+  if (!isRecord(lastData) || !Array.isArray(lastData.providers)) return null;
+  const row = lastData.providers.find(
+    (entry) => isRecord(entry) && entry.id === id
+  );
+  if (!isRecord(row)) return null;
+  const status =
+    row.status === 'connected' || row.status === 'sign_in' || row.status === 'unknown'
+      ? row.status
+      : 'unknown';
+  return {
+    id,
+    label: typeof row.label === 'string' ? row.label : id,
+    version: safeVersion(row.version),
+    status,
+    quotaWindows: normalizeQuotaWindows(row.quotaWindows),
+    quotaObservedAt: safeIso(row.quotaObservedAt),
+  };
+}
+
+function previousUpdatedAt(lastData: unknown): string | null {
+  return isRecord(lastData) ? safeIso(lastData.updatedAt) : null;
 }
 
 function selectProviderState(
