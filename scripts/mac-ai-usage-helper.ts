@@ -71,7 +71,11 @@ const CODEX_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const CODEX_REFRESH_INTERVAL_MS = 5 * 60_000;
 const AGY_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
-const GROK_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
+// Grok quota is weekly and its CLI dashboard can occasionally fail to emit a
+// fresh billing log even while auth is healthy. Keep the last valid snapshot
+// for six hours while continuing 5-minute background refresh attempts, instead
+// of turning a transient log miss into a false "unavailable" state.
+const GROK_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
 const GROK_REFRESH_INTERVAL_MS = 5 * 60_000;
 const ZAI_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
 const ZAI_REFRESH_INTERVAL_MS = 5 * 60_000;
