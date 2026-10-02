@@ -1,5 +1,7 @@
 #include "scenes/core/scene.h"
 
+#include <cstdio>
+#include <ctime>
 #include <esp_log.h>
 #include <esp_timer.h>
 
@@ -43,6 +45,16 @@ bool Scene::RefreshStatusBarFromSensors(SceneContext& ctx, StatusBar& status_bar
         }
         changed |= status_bar.SetBattery(pct, snap.charging, snap.full);
     }
+    const time_t now = time(nullptr);
+    std::string time_str;
+    if (now >= 1577836800) {
+        struct tm tm;
+        localtime_r(&now, &tm);
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%02d:%02d", tm.tm_hour, tm.tm_min);
+        time_str = buf;
+    }
+    changed |= status_bar.SetTime(time_str);
     return changed;
 }
 

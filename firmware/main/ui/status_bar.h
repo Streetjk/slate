@@ -19,6 +19,7 @@ class StatusBar {
     //   charging=true → BOLT 图标 + "--"(ADC 端电压被充电 IC 拉高,pct 不可信)
     //   都 false      → 按 pct 显示真实电量
     bool SetBattery(int pct, bool charging, bool full);
+    bool SetTime(const std::string& text);
     bool SetCaption(const std::string& text);
     bool SetCaptionIcon(const char* icon);
 
@@ -32,6 +33,7 @@ class StatusBar {
     lv_obj_t* wifi_label_       = nullptr;
     lv_obj_t* battery_label_    = nullptr;
     lv_obj_t* battery_pct_lbl_  = nullptr;  // 电池图标左侧的百分比文字
+    lv_obj_t* time_label_       = nullptr;
     lv_obj_t* title_icon_label_ = nullptr;
     lv_obj_t* title_label_      = nullptr;
 
@@ -40,6 +42,7 @@ class StatusBar {
     // 直接缓存最终文本(可能为空,空 = 充电中只剩图标),避免再用 sentinel int 区分
     // "未知"/"隐藏"/"具体百分比"。
     std::string shown_pct_text_;
+    std::string shown_time_;
     std::string shown_title_icon_;
     std::string shown_title_;
 };

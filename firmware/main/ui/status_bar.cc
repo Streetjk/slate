@@ -10,6 +10,8 @@ constexpr int kBatteryIconXOffset = -8;
 constexpr int kBatteryIconYOffset = 0;
 constexpr int kBatteryPctXOffset  = -26;
 constexpr int kBatteryPctYOffset  = 1;
+constexpr int kTimeXOffset        = -60;
+constexpr int kTimeYOffset        = 1;
 
 const char* WifiIcon(bool connected, int rssi) {
     if (!connected)
@@ -80,6 +82,12 @@ StatusBar::StatusBar(lv_obj_t* parent) {
     lv_label_set_text(battery_pct_lbl_, "");
     lv_obj_align(battery_pct_lbl_, LV_ALIGN_RIGHT_MID, kBatteryPctXOffset, kBatteryPctYOffset);
 
+    time_label_ = lv_label_create(root_);
+    lv_obj_set_style_text_font(time_label_, &Zfull_12, 0);
+    lv_obj_set_style_text_color(time_label_, lv_color_black(), 0);
+    lv_label_set_text(time_label_, "");
+    lv_obj_align(time_label_, LV_ALIGN_RIGHT_MID, kTimeXOffset, kTimeYOffset);
+
     title_icon_label_ = lv_label_create(root_);
     ApplyIconStyle(title_icon_label_);
     lv_obj_align(title_icon_label_, LV_ALIGN_CENTER, 0, 0);
@@ -135,6 +143,17 @@ bool StatusBar::SetBattery(int pct, bool charging, bool full) {
         changed = true;
     }
     return changed;
+}
+
+bool StatusBar::SetTime(const std::string& text) {
+    if (shown_time_ == text) {
+        return false;
+    }
+    shown_time_ = text;
+    if (time_label_) {
+        lv_label_set_text(time_label_, text.c_str());
+    }
+    return true;
 }
 
 bool StatusBar::SetCaption(const std::string& text) {
