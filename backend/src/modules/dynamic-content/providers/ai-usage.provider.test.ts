@@ -35,8 +35,8 @@ describe('AiUsageProvider', () => {
           authMetadataDetected: true,
           checkedAt: '2026-09-20T22:04:44.815Z',
         },
-        zai: {
-          version: 'glm-5.3-flash (Z.ai)',
+        claude: {
+          version: '2.1.287 (Claude Code)',
           authMetadataDetected: true,
           checkedAt: '2026-09-20T22:04:44.815Z',
         },
@@ -60,7 +60,7 @@ describe('AiUsageProvider', () => {
       ['codex', 'connected'],
       ['grok', 'connected'],
       ['agy_gemini', 'connected'],
-      ['zai', 'connected'],
+      ['claude', 'connected'],
     ]);
     expect(data.providers[0]?.version).toBe('codex-cli 0.155.0');
     expect(data.providers[0]?.quotaWindows).toEqual([
@@ -77,8 +77,8 @@ describe('AiUsageProvider', () => {
       const url = String(input);
       if (url.includes('ai-usage-helper:19091')) {
         return Response.json({
-          zai: {
-            version: 'glm-5.3-flash (Z.ai)',
+          codex: {
+            version: 'local codex',
             authMetadataDetected: true,
             checkedAt: '2026-09-25T02:00:05.000Z',
             quota: {
@@ -97,7 +97,23 @@ describe('AiUsageProvider', () => {
       }
       return Response.json({
         codex: {
-          version: 'codex-cli 0.155.0',
+          version: 'mac codex',
+          authMetadataDetected: true,
+          checkedAt: '2026-09-25T02:00:01.000Z',
+          quota: {
+            observedAt: '2026-09-25T02:00:00.000Z',
+            windows: [
+              {
+                label: 'Weekly',
+                usedPercent: 88,
+                remainingPercent: 12,
+                resetLabel: 'Sep 30 at 4:07 PM',
+              },
+            ],
+          },
+        },
+        claude: {
+          version: '2.1.287 (Claude Code)',
           authMetadataDetected: true,
           checkedAt: '2026-09-25T02:00:03.000Z',
           quota: {
@@ -109,17 +125,6 @@ describe('AiUsageProvider', () => {
                 remainingPercent: 93,
                 resetLabel: 'Oct 1 at 3:52 PM',
               },
-            ],
-          },
-        },
-        zai: {
-          version: 'old mac zai',
-          authMetadataDetected: true,
-          checkedAt: '2026-09-25T01:50:00.000Z',
-          quota: {
-            observedAt: '2026-09-25T01:50:00.000Z',
-            windows: [
-              { label: 'Weekly', usedPercent: 99, remainingPercent: 1, resetLabel: null },
             ],
           },
         },
@@ -137,10 +142,11 @@ describe('AiUsageProvider', () => {
     );
 
     const codex = data.providers.find((entry) => entry.id === 'codex');
-    const zai = data.providers.find((entry) => entry.id === 'zai');
-    expect(codex?.quotaWindows[0]?.usedPercent).toBe(7);
-    expect(zai?.quotaWindows[0]?.usedPercent).toBe(31);
-    expect(zai?.version).toBe('glm-5.3-flash (Z.ai)');
+    const claude = data.providers.find((entry) => entry.id === 'claude');
+    expect(codex?.quotaWindows[0]?.usedPercent).toBe(31);
+    expect(codex?.version).toBe('local codex');
+    expect(claude?.quotaWindows[0]?.usedPercent).toBe(7);
+    expect(claude?.version).toBe('2.1.287 (Claude Code)');
     expect(data.updatedAt).toBe('2026-09-25T02:00:05.000Z');
   });
 

@@ -3,7 +3,7 @@ import {
   extractDeviceAuthFields,
   parseCodexAppServerRateLimits,
   parseCodexRateLimitEvent,
-  parseZaiQuotaPayload,
+  parseClaudeQuotaCache,
   readProviderQuota,
   stripAnsi,
 } from './mac-ai-usage-helper';
@@ -108,44 +108,69 @@ describe('Mac AI usage helper quota normalization', () => {
     expect(JSON.stringify(quota)).not.toContain('email');
   });
 
-  it('parses Z.ai credit windows without exposing credential data', () => {
-    const quota = parseZaiQuotaPayload(
+  it('parses sanitized Claude quota cache without exposing unrelated data', () => {
+    const fetchedAt = Date.parse('2026-10-02T04:00:00.000Z') / 1000;
+    const now = Date.parse('2026-10-02T04:00:10.000Z');
+    const result = parseClaudeQuotaCache(
       {
-        fetchedAt: '2026-09-21T11:37:26.048Z',
-        quota: {
-          level: 'lite',
-          limits: [
-            {
-              type: 'CREDIT_LIMIT',
-              unit: 3,
-              percentage: 0,
-              currentValue: 0,
-              usage: 2000,
-              remaining: 2000,
-            },
-            {
-              type: 'CREDIT_LIMIT',
-              unit: 6,
-              percentage: 13,
-              nextResetTime: 1790150863983,
-              currentValue: 1346,
-              usage: 10000,
-              remaining: 8653,
-            },
-          ],
+        fetched_at: fetchedAt,
+        five_hour: {
+          used_percentage: 12,
+          reset_at: 1790937600,
         },
-        apiKey: 'DO_NOT_COPY',
+        seven_day: {
+          used_percentage: 34,
+          reset_at: 1790978400,
+        },
       },
-      Date.parse('2026-09-21T11:37:30.000Z')
+      now,
     );
-    expect(
-      quota?.windows.map((window) => [window.label, window.usedPercent, window.remainingPercent])
-    ).toEqual([
-      ['5h', 0, 100],
-      ['Weekly', 13, 87],
+
+    expect(result?.windows.map((w) => [w.label, w.usedPercent, w.remainingPercent])).toEqual([
+      ['5h', 12, 88],
+      ['Weekly', 34, 66],
     ]);
-    expect(quota?.windows[1]?.resetLabel).toBeTruthy();
-    expect(JSON.stringify(quota)).not.toContain('DO_NOT_COPY');
+    expect(result?.windows[0]?.resetLabel).toBeTruthy();
+    expect(result?.windows[1]?.resetLabel).toBeTruthy();
+  });
+
+  it('parses fresh fetched_at expressed in milliseconds identically to seconds', () => {
+    const fetchedSec = Date.parse('2026-10-02T04:00:00.000Z') / 1000;
+    const fetchedMs = Date.parse('2026-10-02T04:00:00.000Z');
+    const now = Date.parse('2026-10-02T04:00:10.000Z');
+    const payload = {
+      five_hour: {
+        used_percentage: 12,
+        reset_at: 1790937600,
+      },
+      seven_day: {
+        used_percentage: 34,
+        reset_at: 1790978400,
+      },
+    };
+
+    const fromSec = parseClaudeQuotaCache({ ...payload, fetched_at: fetchedSec }, now);
+    const fromMs = parseClaudeQuotaCache({ ...payload, fetched_at: fetchedMs }, now);
+
+    expect(fromMs).toEqual(fromSec);
+    expect(fromMs?.observedAt).toBe('2026-10-02T04:00:00.000Z');
+    expect(fromMs?.ageSeconds).toBe(10);
+  });
+
+  it('rejects stale Claude quota cache', () => {
+    const now = Date.parse('2026-10-02T04:00:00.000Z');
+    const result = parseClaudeQuotaCache(
+      {
+        fetched_at: now / 1000 - 7 * 60 * 60,
+        five_hour: {
+          used_percentage: 12,
+          reset_at: 1790937600,
+        },
+      },
+      now,
+    );
+
+    expect(result).toBeNull();
   });
 
   it('uses a fresh local Grok billing percentage when available', () => {

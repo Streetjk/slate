@@ -3,7 +3,7 @@ import type { AiUsageCard, AiUsageProvider } from './query/ai-usage-queries';
 const PROVIDER_LABELS: Record<AiUsageProvider, string> = {
   codex: 'Codex',
   agy_gemini: 'AGY / Gemini',
-  zai: 'Z.ai',
+  claude: 'Claude',
   grok: 'Grok',
 };
 

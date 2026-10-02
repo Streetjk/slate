@@ -15,7 +15,7 @@ import {
 } from '../query/ai-usage-queries';
 import { presentAiUsageCard } from '../presentation';
 
-const WEB_PROVIDER_ORDER: AiUsageCard['provider'][] = ['codex', 'agy_gemini', 'grok', 'zai'];
+const WEB_PROVIDER_ORDER: AiUsageCard['provider'][] = ['codex', 'agy_gemini', 'grok', 'claude'];
 
 export function AiUsageSection() {
   const usage = useAiUsage();

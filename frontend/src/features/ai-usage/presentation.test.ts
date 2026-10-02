@@ -7,7 +7,7 @@ import { presentAiUsageCard } from './presentation';
 import type { AiUsageCard } from './query/ai-usage-queries';
 
 const baseCard: AiUsageCard = {
-  provider: 'zai',
+  provider: 'claude',
   usedPercent: null,
   remainingPercent: null,
   resetAt: null,
@@ -18,7 +18,7 @@ const baseCard: AiUsageCard = {
   sessionTotalTokens: null,
   lastUpdated: null,
   sourceStatus: 'UNAVAILABLE_NO_MACHINE_READABLE_USAGE',
-  capability: { binaryPresent: true, version: 'glm-5.3-flash (Z.ai)', probeCommand: 'glm53' },
+  capability: { binaryPresent: true, version: '2.1.287 (Claude Code)', probeCommand: 'claude --version' },
   source: 'version_probe',
   usageSupported: false,
   quotaSource: 'unsupported',
@@ -29,26 +29,26 @@ const baseCard: AiUsageCard = {
   error: null,
   unknownQuotaFields: {},
   auth: {
-    mode: 'api_key',
+    mode: 'oauth',
     status: 'LOCAL_AUTH_PRESENT',
     source: 'local_metadata',
-    loginCommand: 'glm53',
-    loginHint: 'Z.ai uses the configured local API key.',
+    loginCommand: 'claude auth login',
+    loginHint: 'Run Claude auth login locally.',
     checkedAt: '2026-09-14T00:00:00.000Z',
   },
 };
 
 describe('AI usage presentation', () => {
-  it('renders Z.ai and distinguishes capability probes from quota data', () => {
+  it('renders Claude and distinguishes capability probes from quota data', () => {
     const presented = presentAiUsageCard(baseCard);
-    expect(presented.providerLabel).toBe('Z.ai');
+    expect(presented.providerLabel).toBe('Claude');
     expect(presented.sourceLabel).toBe('CLI capability probe');
     expect(presented.availabilityLabel).toBe('Quota unavailable');
-    expect(presented.versionLabel).toBe('glm-5.3-flash (Z.ai)');
+    expect(presented.versionLabel).toBe('2.1.287 (Claude Code)');
     expect(presented.usedLabel).toBe('Unavailable');
-    expect(presented.authStatusLabel).toBe('API key detected');
-    expect(presented.authModeLabel).toBe('API key');
-    expect(presented.loginCommand).toBe('glm53');
+    expect(presented.authStatusLabel).toBe('Connected');
+    expect(presented.authModeLabel).toBe('OAuth');
+    expect(presented.loginCommand).toBe('claude auth login');
   });
 
   it('renders OAuth not-detected state without inventing account details', () => {
@@ -56,7 +56,7 @@ describe('AI usage presentation', () => {
       ...baseCard,
       auth: { ...baseCard.auth, status: 'NOT_DETECTED' },
     });
-    expect(presented.authStatusLabel).toBe('No API key detected');
+    expect(presented.authStatusLabel).toBe('No OAuth session detected');
     expect(JSON.stringify(presented)).not.toContain('@');
   });
 

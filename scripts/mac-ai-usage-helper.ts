@@ -7,7 +7,7 @@ export const DEFAULT_HELPER_PORT = 19091;
 export const FLOW_TTL_MS = 10 * 60_000;
 export const MAX_CAPTURE_BYTES = 32 * 1024;
 
-export type HelperProvider = 'codex' | 'agy_gemini' | 'zai' | 'grok';
+export type HelperProvider = 'codex' | 'agy_gemini' | 'claude' | 'grok';
 export type DeviceAuthProvider = 'codex' | 'grok';
 export type DeviceAuthStatus =
   | 'STARTING'
@@ -36,10 +36,9 @@ const PROVIDERS: Record<HelperProvider, ProviderSpec> = {
     command: process.env.SLATE_AGY_BIN ?? join(homedir(), '.local', 'bin', 'agy'),
     versionArgs: ['--version'],
   },
-  zai: {
-    command: process.env.SLATE_ZAI_BIN ?? join(homedir(), '.local', 'bin', 'glm53'),
-    versionArgs: [],
-    fixedVersion: process.env.SLATE_ZAI_MODEL ?? 'glm-5.3-flash (Z.ai)',
+  claude: {
+    command: process.env.SLATE_CLAUDE_BIN ?? '/opt/homebrew/bin/claude',
+    versionArgs: ['--version'],
   },
   grok: {
     command: process.env.SLATE_GROK_BIN ?? join(homedir(), '.local', 'bin', 'grok'),
@@ -63,9 +62,7 @@ export interface HelperQuotaSnapshot {
   ageSeconds: number;
 }
 
-// Most quota values older than 15 minutes are hidden. Z.ai gets a longer
-// stale-while-revalidate window because its quota API can legitimately return
-// "Request in progress" for an extended period even while authentication is valid.
+// Most quota values older than their provider-specific freshness window are hidden.
 const QUOTA_FALLBACK_MAX_AGE_SEC = 15 * 60;
 const CODEX_QUOTA_MAX_AGE_SEC = QUOTA_FALLBACK_MAX_AGE_SEC;
 const CODEX_REFRESH_INTERVAL_MS = 5 * 60_000;
@@ -77,10 +74,7 @@ const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
 // of turning a transient log miss into a false "unavailable" state.
 const GROK_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
 const GROK_REFRESH_INTERVAL_MS = 5 * 60_000;
-const ZAI_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
-const ZAI_REFRESH_INTERVAL_MS = 5 * 60_000;
-const ZAI_QUOTA_URL = 'https://api.z.ai/api/monitor/usage/quota/limit';
-const ZAI_RETRY_DELAYS_MS = [0, 1_500, 3_000, 5_000] as const;
+const CLAUDE_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
 const AGY_USAGE_BIN =
   process.env.SLATE_AGY_USAGE_BIN ?? join(homedir(), '.local', 'bin', 'agy-usage');
 
@@ -90,7 +84,7 @@ export function readProviderQuota(
 ): HelperQuotaSnapshot | null {
   if (provider === 'codex') return readCodexQuota(nowMs);
   if (provider === 'grok') return readGrokQuota(nowMs);
-  if (provider === 'zai') return zaiQuotaCache;
+  if (provider === 'claude') return readClaudeQuota(nowMs);
   if (provider === 'agy_gemini') {
     return agyQuotaCache?.[provider] ?? readAgyQuota(provider, nowMs);
   }
@@ -110,9 +104,7 @@ let agyQuotaRefreshPromise: Promise<
 let grokQuotaCache: HelperQuotaSnapshot | null = null;
 let grokQuotaRefreshedAtMs = 0;
 let grokQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
-let zaiQuotaCache: HelperQuotaSnapshot | null = null;
-let zaiQuotaRefreshedAtMs = 0;
-let zaiQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
+
 
 function quotaIfFresh(
   value: HelperQuotaSnapshot | null,
@@ -156,21 +148,7 @@ function scheduleAgyQuotaRefresh(nowMs = Date.now()): void {
     });
 }
 
-function scheduleZaiQuotaRefresh(nowMs = Date.now()): void {
-  if (zaiQuotaRefreshPromise) return;
-  zaiQuotaRefreshPromise = refreshZaiQuota(nowMs)
-    .then((refreshed) => {
-      if (refreshed) {
-        zaiQuotaCache = refreshed;
-        zaiQuotaRefreshedAtMs = Date.now();
-      }
-      return refreshed;
-    })
-    .catch(() => null)
-    .finally(() => {
-      zaiQuotaRefreshPromise = null;
-    });
-}
+
 
 function scheduleGrokQuotaRefresh(nowMs = Date.now()): void {
   if (grokQuotaRefreshPromise) return;
@@ -191,7 +169,7 @@ function scheduleGrokQuotaRefresh(nowMs = Date.now()): void {
 function scheduleAllQuotaRefreshes(nowMs = Date.now()): void {
   scheduleCodexQuotaRefresh(nowMs);
   scheduleAgyQuotaRefresh(nowMs);
-  scheduleZaiQuotaRefresh(nowMs);
+
   scheduleGrokQuotaRefresh(nowMs);
 }
 
@@ -221,12 +199,8 @@ async function getProviderQuota(
     }
     return current;
   }
-  if (provider === 'zai') {
-    const current = quotaIfFresh(zaiQuotaCache, ZAI_QUOTA_MAX_AGE_SEC, nowMs);
-    if (!current || nowMs - zaiQuotaRefreshedAtMs >= ZAI_REFRESH_INTERVAL_MS) {
-      scheduleZaiQuotaRefresh(nowMs);
-    }
-    return current;
+  if (provider === 'claude') {
+    return quotaIfFresh(readClaudeQuota(nowMs), CLAUDE_QUOTA_MAX_AGE_SEC, nowMs);
   }
   if (provider === 'grok') {
     const current = quotaIfFresh(
@@ -305,107 +279,75 @@ async function refreshAgyQuota(
   }
 }
 
-async function refreshZaiQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
-  const key = readZaiApiKey();
-  if (!key) return null;
+function readSafeClaudeQuotaCache(): Record<string, unknown> | null {
+  const path = join(homedir(), '.claude', 'claude-quota-cache.json');
+  const raw = readJsonRecord(path);
+  if (!isRecord(raw)) return null;
 
-  for (const delayMs of ZAI_RETRY_DELAYS_MS) {
-    if (delayMs > 0) await Bun.sleep(delayMs);
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
-    try {
-      const response = await fetch(ZAI_QUOTA_URL, {
-        headers: { Authorization: 'Bearer ' + key, accept: 'application/json' },
-        signal: controller.signal,
-      });
-      const raw = await response.json().catch(() => null);
-      if (!isRecord(raw)) {
-        if (response.status >= 500) continue;
-        return null;
-      }
-
-      if (raw.success === true) {
-        return parseZaiQuotaPayload(
-          {
-            fetchedAt: new Date().toISOString(),
-            quota: isRecord(raw.data) ? raw.data : {},
-          },
-          nowMs
-        );
-      }
-
-      const message = typeof raw.msg === 'string' ? raw.msg.toLowerCase() : '';
-      const retryable =
-        response.status >= 500 ||
-        message.includes('request in progress') ||
-        message.includes('please wait') ||
-        message.includes('processing') ||
-        message.includes('busy');
-      if (!retryable) return null;
-    } catch {
-      // Network/timeout failures are transient; try the next bounded retry.
-    } finally {
-      clearTimeout(timer);
-    }
+  const safe: Record<string, unknown> = {
+    fetched_at: raw.fetched_at,
+  };
+  if (isRecord(raw.five_hour)) {
+    safe.five_hour = {
+      used_percentage: raw.five_hour.used_percentage,
+      reset_at: raw.five_hour.reset_at,
+      window_seconds: raw.five_hour.window_seconds,
+    };
   }
-
-  return null;
+  if (isRecord(raw.seven_day)) {
+    safe.seven_day = {
+      used_percentage: raw.seven_day.used_percentage,
+      reset_at: raw.seven_day.reset_at,
+      window_seconds: raw.seven_day.window_seconds,
+    };
+  }
+  return safe;
 }
 
-export function parseZaiQuotaPayload(
+function readClaudeQuota(nowMs: number): HelperQuotaSnapshot | null {
+  const safe = readSafeClaudeQuotaCache();
+  return safe ? parseClaudeQuotaCache(safe, nowMs) : null;
+}
+
+function normalizeEpochMs(value: unknown): number | null {
+  const num = finiteNumber(value);
+  if (num === null || num <= 0) return null;
+  return num >= 1e12 ? num : num * 1000;
+}
+
+export function parseClaudeQuotaCache(
   value: unknown,
   nowMs = Date.now()
 ): HelperQuotaSnapshot | null {
   if (!isRecord(value)) return null;
-  const quota = isRecord(value.quota) ? value.quota : {};
-  const limits = Array.isArray(quota.limits) ? quota.limits : [];
+  const fetchedMs = normalizeEpochMs(value.fetched_at);
+  if (fetchedMs === null) return null;
+  const ageSeconds = Math.max(0, (nowMs - fetchedMs) / 1000);
+  if (ageSeconds > CLAUDE_QUOTA_MAX_AGE_SEC) return null;
+
   const windows: HelperQuotaWindow[] = [];
-  for (const item of limits) {
-    if (!isRecord(item)) continue;
-    const type = typeof item.type === 'string' ? item.type : '';
-    if (type !== 'CREDIT_LIMIT' && type !== 'TOKENS_LIMIT') continue;
-    const unit = finiteNumber(item.unit);
-    if (unit !== 3 && unit !== 6) continue;
-    const usedPercent = percentNumber(item.percentage);
+  for (const [key, label] of [
+    ['five_hour', '5h'],
+    ['seven_day', 'Weekly'],
+  ] as const) {
+    const row = isRecord(value[key]) ? value[key] : null;
+    if (!row) continue;
+    const usedPercent = percentNumber(row.used_percentage);
     if (usedPercent === null) continue;
-    const remainingPercent = Math.max(0, 100 - usedPercent);
     windows.push({
-      label: unit === 3 ? '5h' : 'Weekly',
+      label,
       usedPercent,
-      remainingPercent,
-      resetAt: safeResetIso(item.nextResetTime),
-      resetLabel: compactResetLabel(item.nextResetTime),
+      remainingPercent: 100 - usedPercent,
+      resetAt: safeResetIso(row.reset_at),
+      resetLabel: compactResetLabel(row.reset_at),
     });
   }
   if (windows.length === 0) return null;
-  windows.sort((a, b) => (a.label === '5h' ? -1 : b.label === '5h' ? 1 : 0));
-  const observedAt =
-    safeIsoText(value.fetchedAt) ?? safeIsoText(value.updatedAt) ?? new Date(nowMs).toISOString();
-  const observedMs = Date.parse(observedAt);
   return {
     windows,
-    observedAt,
-    ageSeconds: Number.isFinite(observedMs)
-      ? Math.max(0, Math.round((nowMs - observedMs) / 1000))
-      : 0,
+    observedAt: new Date(fetchedMs).toISOString(),
+    ageSeconds: Math.round(ageSeconds),
   };
-}
-
-function readZaiApiKey(): string | null {
-  const path = process.env.ZAI_KEYFILE ?? join(homedir(), 'Cre', 'Zai.txt');
-  try {
-    const text = readFileSync(path, 'utf8').replaceAll(String.fromCharCode(13), '');
-    for (const line of text.split(String.fromCharCode(10))) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('ZAI_API_KEY=')) continue;
-      const key = trimmed.slice('ZAI_API_KEY='.length).trim();
-      return key || null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
 }
 
 async function refreshGrokQuota(nowMs: number): Promise<HelperQuotaSnapshot | null> {
@@ -937,8 +879,8 @@ function authMetadataDetected(provider: HelperProvider): boolean {
   switch (provider) {
     case 'codex':
       return existsSync(join(home, '.codex', 'auth.json'));
-    case 'zai':
-      return readZaiApiKey() !== null;
+    case 'claude':
+      return existsSync(join(home, '.claude', '.credentials.json'));
     case 'agy_gemini':
       return (
         existsSync(join(home, '.gemini', 'google_accounts.json')) ||

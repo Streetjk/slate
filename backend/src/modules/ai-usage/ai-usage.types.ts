@@ -1,4 +1,4 @@
-export const AI_USAGE_PROVIDERS = ['codex', 'agy_gemini', 'zai', 'grok'] as const;
+export const AI_USAGE_PROVIDERS = ['codex', 'agy_gemini', 'claude', 'grok'] as const;
 export type AiUsageProvider = (typeof AI_USAGE_PROVIDERS)[number];
 
 export type AiUsageSource = 'version_probe' | 'sanitized_metrics' | 'none';
