@@ -1,0 +1,23 @@
+schema_version: 1
+controller:
+  mode: persistent_goal_loop
+  scheduled_development: false
+state:
+  machine_state:
+    - docs/campaign-reports/CAMPAIGN-STATE.md
+    - docs/campaign-reports/CAMPAIGN-INSTRUCTIONS.md
+    - AGENTS.md
+verification:
+  commands:
+    - bun run format:check && bun run lint && bun run typecheck && bun run --cwd backend test && bun run --cwd frontend build
+  evidence_required: true
+  exact_candidate_identity: true
+review:
+  independent: true
+  reviewer_can_write: false
+lifecycle:
+  terminal_states:
+    - DONE
+    - BLOCKED
+    - HUMAN_GATE
+  retry_policy: bounded

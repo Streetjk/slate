@@ -1,3 +1,16 @@
+# Controller lifecycle update — 2026-10-04
+
+Before starting or resuming substantive development, read
+`.runcairn/harness.yaml` and `docs/HARNESS_ENGINEERING.md` together with
+the applicable branch campaign instructions.
+
+No hourly/timer/cron/polling supervisor may drive development. Resume the
+persistent campaign directly until DONE, BLOCKED or HUMAN_GATE. Runtime service
+watchdogs may monitor/restart services only; they are not development
+controllers.
+
+---
+
 # Agent Guide
 
 ## Streetjk NOTE4 campaign override
