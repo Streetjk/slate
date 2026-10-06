@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -75,6 +75,9 @@ const AGY_REFRESH_INTERVAL_MS = 5 * 60_000;
 const GROK_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
 const GROK_REFRESH_INTERVAL_MS = 5 * 60_000;
 const CLAUDE_QUOTA_MAX_AGE_SEC = 6 * 60 * 60;
+const CLAUDE_REFRESH_INTERVAL_MS = 5 * 60_000;
+const CLAUDE_USAGE_PYTHON = process.env.SLATE_CLAUDE_USAGE_PYTHON ?? 'python3';
+const CLAUDE_USAGE_CWD = process.env.SLATE_CLAUDE_USAGE_CWD ?? homedir();
 const AGY_USAGE_BIN =
   process.env.SLATE_AGY_USAGE_BIN ?? join(homedir(), '.local', 'bin', 'agy-usage');
 
@@ -101,10 +104,11 @@ let agyQuotaRefreshedAtMs = 0;
 let agyQuotaRefreshPromise: Promise<
   Partial<Record<'agy_gemini', HelperQuotaSnapshot | null>>
 > | null = null;
+let claudeQuotaLastAttemptMs = 0;
+let claudeQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
 let grokQuotaCache: HelperQuotaSnapshot | null = null;
 let grokQuotaRefreshedAtMs = 0;
 let grokQuotaRefreshPromise: Promise<HelperQuotaSnapshot | null> | null = null;
-
 
 function quotaIfFresh(
   value: HelperQuotaSnapshot | null,
@@ -148,8 +152,6 @@ function scheduleAgyQuotaRefresh(nowMs = Date.now()): void {
     });
 }
 
-
-
 function scheduleGrokQuotaRefresh(nowMs = Date.now()): void {
   if (grokQuotaRefreshPromise) return;
   grokQuotaRefreshPromise = refreshGrokQuota(nowMs)
@@ -166,7 +168,23 @@ function scheduleGrokQuotaRefresh(nowMs = Date.now()): void {
     });
 }
 
+function scheduleClaudeQuotaRefresh(nowMs = Date.now()): void {
+  if (
+    claudeQuotaRefreshPromise ||
+    (claudeQuotaLastAttemptMs > 0 && nowMs - claudeQuotaLastAttemptMs < CLAUDE_REFRESH_INTERVAL_MS)
+  )
+    return;
+  // Throttle failed attempts too; a busy tile must never spawn a CLI storm.
+  claudeQuotaLastAttemptMs = nowMs;
+  claudeQuotaRefreshPromise = refreshClaudeQuota()
+    .catch(() => null)
+    .finally(() => {
+      claudeQuotaRefreshPromise = null;
+    });
+}
+
 function scheduleAllQuotaRefreshes(nowMs = Date.now()): void {
+  scheduleClaudeQuotaRefresh(nowMs);
   scheduleCodexQuotaRefresh(nowMs);
   scheduleAgyQuotaRefresh(nowMs);
 
@@ -200,6 +218,7 @@ async function getProviderQuota(
     return current;
   }
   if (provider === 'claude') {
+    scheduleClaudeQuotaRefresh(nowMs);
     return quotaIfFresh(readClaudeQuota(nowMs), CLAUDE_QUOTA_MAX_AGE_SEC, nowMs);
   }
   if (provider === 'grok') {
@@ -276,6 +295,62 @@ async function refreshAgyQuota(
     return {};
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function refreshClaudeQuota(): Promise<HelperQuotaSnapshot | null> {
+  const script = join(import.meta.dir, 'claude-usage-refresh.py');
+  if (!existsSync(script) || !existsSync(PROVIDERS.claude.command)) return null;
+  const proc = Bun.spawn(
+    [CLAUDE_USAGE_PYTHON, script, '--command', PROVIDERS.claude.command, '--cwd', CLAUDE_USAGE_CWD],
+    {
+      stdout: 'pipe',
+      stderr: 'ignore',
+      env: safeCliEnv(),
+      cwd: homedir(),
+    }
+  );
+  // Python owns bounded CLI-process cleanup; this is an outer emergency bound.
+  const timer = setTimeout(() => proc.kill(), 30_000);
+  const path = join(homedir(), '.claude', 'claude-quota-cache.json');
+  const temp = path + '.tmp.' + randomUUID();
+  try {
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+    if (proc.exitCode !== 0 || output.length > 8192) return null;
+    const parsed: unknown = JSON.parse(output);
+    const quota = parseClaudeQuotaCache(parsed);
+    if (!quota || !isRecord(parsed)) return null;
+    // Persist only our allowlisted schema, never raw terminal/account content.
+    const safeWindow = (label: string) => {
+      const window = quota.windows.find((row) => row.label === label);
+      return window
+        ? {
+            used_percentage: window.usedPercent,
+            reset_at: window.resetAt ? Date.parse(window.resetAt) / 1000 : null,
+          }
+        : null;
+    };
+    const safe = {
+      fetched_at: Date.parse(quota.observedAt) / 1000,
+      five_hour: safeWindow('5h'),
+      seven_day: safeWindow('Weekly'),
+    };
+    const existing = readClaudeQuota(Date.now());
+    if (existing && Date.parse(existing.observedAt) > Date.parse(quota.observedAt)) return existing;
+    writeFileSync(temp, JSON.stringify(safe), { mode: 0o600 });
+    renameSync(temp, path);
+    return quota;
+  } catch {
+    // A failure must not re-date, erase or replace the last successful observation.
+    return null;
+  } finally {
+    clearTimeout(timer);
+    try {
+      unlinkSync(temp);
+    } catch {
+      /* No partial cache remains. */
+    }
   }
 }
 
