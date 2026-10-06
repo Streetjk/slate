@@ -37,9 +37,13 @@ Copy claude-usage-refresh.py beside the deployed helper.ts, and configure:
 - SLATE_CLAUDE_USAGE_PYTHON: absolute venv Python path
 - SLATE_CLAUDE_USAGE_CWD: existing trusted workspace
 
-Retain the existing launchd KeepAlive service and existing host/IP restrictions.
-Rollback: restore the backed-up helper.ts and launchd plist, then reload only
-com.slate.ai-usage-helper. No firmware or Orange Pi deployment is required.
+The existing host/IP restrictions and KeepAlive plist are retained. Deployment
+found no usable GUI launchd domain (error 125), and user-domain bootstrap also
+failed (error 5). The helper is therefore running through the existing detached
+process route, with PID 55312 at verification. Automatic quota polling is live;
+automatic restart after a helper crash is not verified. Rollback restores the
+backed-up helper.ts/plist and restarts only that helper through the same route.
+No firmware or Orange Pi deployment is required.
 
 ## Verification and review
 
@@ -65,3 +69,20 @@ Claude UI format changes, login expiry, lost workspace trust or a hung CLI
 cause a failed refresh rather than invented percentages. Existing six-hour
 cache freshness policy remains. Reset times have the CLI display's minute
 precision. Physical-device hold is preserved.
+
+## Live deployment evidence
+
+Code commit: f1342fcded8c90f2a811f2ce79b175c9d82134dd.
+Deployed helper.ts and collector match the reviewed source files.
+Safe cache mode is 0600. Fresh cache observation: fetched_at 1791258281.709
+(6 October 2026, 11:44:41 AWST), five-hour 11% used, weekly 17% used.
+The background helper remained alive at follow-up verification.
+
+The Orange Pi backend /healthz returned HTTP 200. Direct authenticated
+/api/v1/ai-usage access returned 401 without a session. Direct SSH from the
+Mac was denied; i7 SSH failed host-key verification. No auth or host-key
+restrictions were weakened. Device tile rendering was therefore not directly
+verified; normal backend/device polling consumes the new helper cache.
+
+Existing unrelated watchdog work was preserved. No firmware flash, device
+reset, Orange Pi restart, final merge or release occurred.
