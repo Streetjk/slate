@@ -1,0 +1,2 @@
+# Install in pi's existing crontab; preserve unrelated entries.
+* * * * * STATE_DIR=/home/pi/.local/state/slate-service-watchdog LOG_DIR=/home/pi/.local/state/slate-service-watchdog/logs PATH=/usr/local/bin:/usr/bin:/bin /home/pi/.local/lib/slate-watchdog/slate-service-watchdog.sh >/dev/null 2>&1

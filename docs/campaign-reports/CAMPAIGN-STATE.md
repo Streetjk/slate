@@ -5149,3 +5149,11 @@ ORANGE_PI_DEPLOYED=NO
 DEPLOYMENT=NOT_DEPLOYED
 NEXT_ACTION=HUMAN_PR_REVIEW_THEN_SEPARATELY_AUTHORIZED_DEPLOYMENT_AND_PHYSICAL_VALIDATION
 ```
+
+## Service watchdog deployment — 6 October 2026
+
+User-authorized service recovery is installed in pi cron, every minute.
+Reviewed candidate: PASS; 10 mocked recovery scenarios and 12 policy cases passed.
+Controlled 3-failure recovery restarted only slate-note4; health recovered in ~12 s.
+MySQL start time unchanged. No host reboot or physical device action.
+Evidence: SERVICE-WATCHDOG-20261006.md.
