@@ -72,3 +72,7 @@ This watchdog recovers the backend and scheduler while the host/cron/Docker
 control path can execute. It cannot recover an OS-wide stall. It does not repair
 a device redraw problem or supervise the separate Mac helper.
 No firmware flash, device reset, serial, Wi-Fi/OAuth, merge or release occurred.
+
+First unattended cron execution verified at 12:45:02 AWST: AI_SCHEDULER_OK.
+All three Slate/backend-helper/MySQL containers remain healthy.
+Deployment source commit: 644d0bb.
