@@ -37,5 +37,6 @@ function invalidateContentDependencies(qc: QueryClient, gid: string, contentId?:
     void qc.invalidateQueries({ queryKey: contentKeys.detail(contentId) });
     qc.removeQueries({ queryKey: contentKeys.image(contentId) });
     qc.removeQueries({ queryKey: contentKeys.audio(contentId) });
+    void qc.invalidateQueries({ queryKey: ['content-image-source', contentId] });
   }
 }

@@ -1,9 +1,12 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, ImagePlus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { ContentDetailT } from 'shared';
+import type { ContentDetailT, ImageEditSourceT } from 'shared';
 import { useGenerateContentTts } from '@/features/contents/query/content-audio-queries';
-import { useContentImage } from '@/features/contents/query/content-image-queries';
+import {
+  useContentImage,
+  useContentImageSource,
+} from '@/features/contents/query/content-image-queries';
 import { useGroupContents } from '@/features/contents/query/content-read-queries';
 import {
   useCreateImageContent,
@@ -29,7 +32,19 @@ interface ImageContentEditorProps {
   onDone: () => void;
 }
 
-export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorProps) {
+export function ImageContentEditor(props: ImageContentEditorProps) {
+  const source = useContentImageSource(props.content.id);
+  if (source.isPending) return <p>Loading photo…</p>;
+  if (source.isError) return <p>Could not load the editable photo. Refresh and try again.</p>;
+  return <ImageContentEditorBody key={props.content.id} {...props} source={source.data} />;
+}
+
+function ImageContentEditorBody({
+  gid,
+  content,
+  onDone,
+  source,
+}: ImageContentEditorProps & { source?: ImageEditSourceT | null }) {
   const navigate = useNavigate();
   const updateImageContent = useUpdateImageContent(gid);
   const patchFrameName = usePatchContentFrameName(gid);
@@ -39,7 +54,7 @@ export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorP
   const reorderContents = useReorderContents(gid);
   const contents = useGroupContents(gid);
   const toast = useToast();
-  const form = useImageContentForm(content);
+  const form = useImageContentForm(content, source);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
 
@@ -105,7 +120,8 @@ export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorP
         const fd = new FormData();
         fd.append('image', file, file.name);
         fd.append('frame_name', file.name.replace(/\.[^.]+$/, '').slice(0, 64));
-        fd.append('mode', 'floyd');
+        fd.append('mode', form.dither.mode);
+        fd.append('threshold', String(form.dither.threshold));
         try {
           await createImage.mutateAsync(fd);
           created += 1;
@@ -248,7 +264,8 @@ export function ImageContentEditor({ gid, content, onDone }: ImageContentEditorP
               <div className="space-y-3">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone">
-                    Selected photo · {Math.max(1, photos.findIndex((p) => p.id === content.id) + 1)} / {Math.max(1, photos.length)}
+                    Selected photo · {Math.max(1, photos.findIndex((p) => p.id === content.id) + 1)}{' '}
+                    / {Math.max(1, photos.length)}
                   </p>
                   <p className="mt-1 font-sans text-[12px] text-stone leading-relaxed">
                     {TYPE_META.image.description}

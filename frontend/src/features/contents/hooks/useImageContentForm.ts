@@ -1,22 +1,34 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   BW_THRESHOLD_DEFAULT,
   DEFAULT_DITHER_MODE,
   type ContentDetailT,
   type DitherMode,
+  type ImageEditSourceT,
 } from 'shared';
 import { useAudioFormState } from './useAudioFormState';
 import { useCropState } from './useCropState';
 import { useImageFormSubmit } from './useImageFormSubmit';
 
-export function useImageContentForm(content?: ContentDetailT) {
+export function useImageContentForm(content?: ContentDetailT, source?: ImageEditSourceT | null) {
   const isEdit = !!content;
   const previewRef = useRef<HTMLCanvasElement>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const imageFile = imageFiles[0] ?? null;
+  const sourceFile = useMemo(
+    () =>
+      source
+        ? new File(
+            [Uint8Array.from(atob(source.image_base64), (c) => c.charCodeAt(0))],
+            'saved-source',
+            { type: source.mime }
+          )
+        : null,
+    [source]
+  );
+  const imageFile = imageFiles[0] ?? sourceFile;
   const audio = useAudioFormState(content);
-  const [threshold, setThreshold] = useState(BW_THRESHOLD_DEFAULT);
-  const [mode, setMode] = useState<DitherMode>(DEFAULT_DITHER_MODE);
+  const [threshold, setThreshold] = useState(source?.threshold ?? BW_THRESHOLD_DEFAULT);
+  const [mode, setMode] = useState<DitherMode>(source?.mode ?? DEFAULT_DITHER_MODE);
   const [frameName, setFrameName] = useState(content?.frame_name ?? '');
   const { scale, setScale, offset, setOffset, resetCrop } = useCropState();
   const frameNameChanged = isEdit && frameName !== (content.frame_name ?? '');
@@ -30,7 +42,11 @@ export function useImageContentForm(content?: ContentDetailT) {
       content?.audio_status === 'failed' ||
       trimmedTtsText !== existingTtsText ||
       audio.ttsVoice !== content?.audio_voice);
-  const hasFilePatch = !!imageFile || !!audio.audioFile;
+  const cropChanged = scale !== 1 || offset.x !== 0 || offset.y !== 0;
+  const ditherChanged = !!source && (mode !== source.mode || threshold !== source.threshold);
+  const hasImageUpload = imageFiles.length > 0 || (!!sourceFile && cropChanged);
+  const hasDitherPatch = !!sourceFile && ditherChanged && !hasImageUpload;
+  const hasFilePatch = hasImageUpload || hasDitherPatch || !!audio.audioFile;
   const hasContentPatch = hasFilePatch || frameNameChanged;
   const canCreate = !!imageFile && (audio.audioMode !== 'tts' || trimmedTtsText.length > 0);
   const canEdit =
@@ -62,7 +78,10 @@ export function useImageContentForm(content?: ContentDetailT) {
   }, [audio, resetCrop]);
 
   const buildFormData = useImageFormSubmit({
-    imageFile,
+    imageFile: hasImageUpload ? imageFile : null,
+    hasDitherPatch,
+    scale,
+    offset,
     audioFile: audio.audioFile,
     previewRef,
     frameName,

@@ -2,6 +2,18 @@ import { z } from 'zod';
 import { DITHER_MODES } from '../dither.js';
 import { DashboardDataPayload, DynamicConfig, DynamicType, TtsVoice } from './dynamic.js';
 
+// Editable image source, accessible only to the owning web user.
+export const ImageEditSource = z.object({
+  image_base64: z
+    .string()
+    .min(1)
+    .max(14 * 1024 * 1024),
+  mime: z.string().startsWith('image/'),
+  mode: z.enum(DITHER_MODES),
+  threshold: z.number().min(0).max(255),
+});
+export type ImageEditSourceT = z.infer<typeof ImageEditSource>;
+
 export const ContentKind = z.enum(['image', 'dynamic']);
 export type ContentKindT = z.infer<typeof ContentKind>;
 

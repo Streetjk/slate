@@ -517,3 +517,5 @@ SLATE_JOB_INTERVAL_SECONDS=600
 更多脚本结构见 [scripts/README.md](scripts/README.md)。
 
 更多部署步骤见根 [README.md](../README.md)。
+
+Image uploads retain a bounded .source.json sidecar with undithered image bytes and dithering settings. Algorithm-only multipart updates reuse the source and preserve audio. /contents/:id/image-source requires the owning web JWT; legacy images return null. Sidecars follow frame rollback and deletion. No database migration.

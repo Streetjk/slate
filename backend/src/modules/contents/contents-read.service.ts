@@ -3,6 +3,8 @@ import type { Prisma } from '@prisma/client';
 import type { ContentDetailT, ManifestResponseT } from 'shared';
 import { BlobService } from '../../infra/blob/blob.service';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { computeETag } from '../../common/utils/etag';
+import { decodeImageSource } from './image-edit-source';
 import { NotFoundError } from '../../common/errors';
 import { GroupsService } from '../groups/groups.service';
 import { DynamicNavigationBundleService } from '../dynamic-content/dynamic-navigation-bundle.service';
@@ -115,6 +117,17 @@ export class ContentsReadService {
       contentSelect({ dynamicLastError: true, audioText: true })
     );
     return contentToDetail(content);
+  }
+
+  async readImageSource(contentId: string, userId: string) {
+    const content = await this.requireReadableContent(
+      contentId,
+      { userId },
+      { id: true, groupId: true, kind: true }
+    );
+    if (content.kind !== 'image') throw new NotFoundError('Photo not found');
+    const bytes = await this.blob.read(content.groupId, content.id, 'image-source');
+    return bytes ? { source: decodeImageSource(bytes), etag: computeETag(bytes) } : null;
   }
 
   async readImage(

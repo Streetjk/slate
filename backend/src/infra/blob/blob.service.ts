@@ -9,12 +9,14 @@ import { ValidationError } from '../../common/errors';
 import { eachLimit } from '../../common/utils/each-limit';
 import { KeyedPromiseQueue } from '../../common/worker/keyed-promise-queue';
 
-export type BlobKind = 'image' | 'audio';
+export type BlobKind = 'image' | 'audio' | 'image-source';
 
-const ext = (kind: BlobKind) => (kind === 'image' ? 'img' : 'pcm');
+const ext = (kind: BlobKind) =>
+  kind === 'image' ? 'img' : kind === 'audio' ? 'pcm' : 'source.json';
 const TMP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_BLOB_BYTES: Record<BlobKind, number> = {
   image: 64 * 1024,
+  'image-source': 14 * 1024 * 1024,
   audio: 5 * 1024 * 1024,
 };
 

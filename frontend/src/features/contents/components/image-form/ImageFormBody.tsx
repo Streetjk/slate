@@ -82,7 +82,11 @@ export function ImageFormBody({
 
         <FormSection
           label="Type parameters"
-          hint={isEdit ? 'Leave the image empty to keep the current image.' : undefined}
+          hint={
+            isEdit && !form.image.file
+              ? 'Upload the original photo once to enable dithering changes. The saved black-and-white frame cannot restore the original detail.'
+              : undefined
+          }
         >
           <div className="space-y-4">
             <ImageDropzone
@@ -110,19 +114,19 @@ export function ImageFormBody({
         {!galleryMode && (
           <FormSection label="Audio">
             <ImageAudioBlock
-            gid={gid}
-            mode={form.audio.mode}
-            onModeChange={form.audio.setMode}
-            audioFile={form.audio.file}
-            onAudioFileChange={form.audio.setFile}
-            ttsText={form.audio.ttsText}
-            onTtsTextChange={form.audio.setTtsText}
-            ttsVoice={form.audio.ttsVoice}
-            onTtsVoiceChange={form.audio.setTtsVoice}
-            hasExistingAudio={hasExistingAudio}
-            editingContentId={editingContentId}
-            audioStatus={audioStatus}
-            audioError={audioError}
+              gid={gid}
+              mode={form.audio.mode}
+              onModeChange={form.audio.setMode}
+              audioFile={form.audio.file}
+              onAudioFileChange={form.audio.setFile}
+              ttsText={form.audio.ttsText}
+              onTtsTextChange={form.audio.setTtsText}
+              ttsVoice={form.audio.ttsVoice}
+              onTtsVoiceChange={form.audio.setTtsVoice}
+              hasExistingAudio={hasExistingAudio}
+              editingContentId={editingContentId}
+              audioStatus={audioStatus}
+              audioError={audioError}
             />
           </FormSection>
         )}

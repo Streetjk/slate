@@ -56,6 +56,13 @@ export class ContentsReadController {
     return this.reads.get(contentId, contentAuthScope(user, device));
   }
 
+  // Default global JWT guard: original sources are never exposed to devices.
+  @Get('contents/:contentId/image-source')
+  async imageSource(@Param('contentId') contentId: string, @CurrentUser() user: WebUserContext) {
+    const result = await this.reads.readImageSource(contentId, user.userId);
+    return result?.source ?? null;
+  }
+
   @Public()
   @UseGuards(JwtOrDeviceAuthGuard)
   @Get('contents/:contentId/image')

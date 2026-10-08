@@ -327,7 +327,7 @@ describe('ContentsService current content refresh', () => {
 
     expect(response.content_etag).toBe('updated-content-etag');
     expect(recomputeCalls).toBe(1);
-    expect(blobWrites).toEqual(['content-1']);
+    expect(blobWrites).toEqual(['content-1', 'content-1']);
   });
 
   it('does not delete the current audio blob when uploaded audio etag is unchanged', async () => {

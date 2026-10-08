@@ -94,7 +94,7 @@ frontend/src/
 - 调整阈值与 dither 模式。
 - 浏览器端使用 `shared` 的 `rgbaToGray -> autoInvert -> autoContrast -> ditherToBinary` 生成预览。
 - 可附加上传音频，或提交 TTS 文案由后端生成音频。
-- 保存时提交 `multipart/form-data`，图片字段来自预览 canvas 导出的 PNG。
+- 保存时提交 `multipart/form-data`，图片字段来自单独的未抖动裁剪 canvas 导出的 PNG。
 
 后端仍会重新用 sharp + shared 管线生成最终 1bpp `.img`，前端预览是为了让用户尽量所见即所得。
 
@@ -270,3 +270,5 @@ bun run lint
 bun run typecheck
 bun run format:check
 ```
+
+Photo editor retains undithered source and selected algorithm/threshold for later edits. Older photos require original reupload once. The image-source endpoint is restricted to the owning web user.

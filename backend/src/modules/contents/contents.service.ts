@@ -19,6 +19,7 @@ import { GroupsService } from '../groups/groups.service';
 import { ImageRendererService } from '../image-renderer/image-renderer.service';
 import { ContentAudioBlobService } from './content-audio-blob.service';
 import { BlobRollbackPlan } from './blob-rollback';
+import { encodeImageSource, decodeImageSource } from './image-edit-source';
 import {
   pendingTtsAudioFields,
   readyUploadedAudioFields,
@@ -28,6 +29,8 @@ import { toContentMutationResponse } from './content-mutation-response';
 import type { ParsedContentUpload } from './multipart-parser';
 
 interface RenderedImageUpload {
+  source: Buffer;
+  preserveAudio: boolean;
   bytes: Buffer;
   etag: string;
   size: number;
@@ -79,6 +82,23 @@ export class ContentsService {
     if (content.kind !== 'image') {
       throw new ValidationError('动态内容请使用 JSON 更新');
     }
+    if (!parsed.hasImage && (parsed.mode !== undefined || parsed.threshold !== undefined)) {
+      const bytes = await this.blob.read(content.groupId, contentId, 'image-source');
+      if (!bytes)
+        throw new ValidationError('Upload the original photo once to change dithering.', {
+          code: 'image_source_required',
+        });
+      const source = decodeImageSource(bytes);
+      parsed = {
+        ...parsed,
+        hasImage: true,
+        imageBuf: Buffer.from(source.image_base64, 'base64'),
+        imageMime: source.mime,
+        mode: parsed.mode ?? source.mode,
+        threshold: parsed.threshold ?? source.threshold,
+        preserveAudio: true,
+      };
+    }
     return this.updateImage(
       content.groupId,
       content.sortOrder,
@@ -128,6 +148,7 @@ export class ContentsService {
     });
     const deleted = await Promise.allSettled([
       this.blob.delete(content.groupId, contentId, 'image'),
+      this.blob.delete(content.groupId, contentId, 'image-source'),
       this.audioBlobs.delete(content.groupId, contentId, content.audioEtag),
     ]);
     const failed = deleted.filter((result) => result.status === 'rejected').length;
@@ -228,6 +249,8 @@ export class ContentsService {
     try {
       rollback.deleteCreated(gid, contentId, 'image');
       await this.blob.write(gid, contentId, 'image', image.bytes);
+      rollback.deleteCreated(gid, contentId, 'image-source');
+      await this.blob.write(gid, contentId, 'image-source', image.source);
       if (audio) {
         rollback.deleteCreated(gid, audioBlobContentId(contentId, audio.etag), 'audio');
         await this.blob.write(gid, audioBlobContentId(contentId, audio.etag), 'audio', audio.bytes);
@@ -343,9 +366,12 @@ export class ContentsService {
       const previousImageBytes = await this.blob.read(gid, contentId, 'image');
       rollback.restorePrevious(gid, contentId, 'image', previousImageBytes);
       await this.blob.write(gid, contentId, 'image', upload.image.bytes);
+      const previousSource = await this.blob.read(gid, contentId, 'image-source');
+      rollback.restorePrevious(gid, contentId, 'image-source', previousSource);
+      await this.blob.write(gid, contentId, 'image-source', upload.image.source);
       data.imageEtag = upload.image.etag;
       data.imageSize = upload.image.size;
-      if (!upload.audio && currentAudioEtag) {
+      if (!upload.audio && currentAudioEtag && !upload.image.preserveAudio) {
         Object.assign(data, resetAudioFields());
       }
     }
@@ -362,7 +388,8 @@ export class ContentsService {
       Object.assign(data, readyUploadedAudioFields(upload.audio.etag, upload.audio.size));
     }
     const nextAudioEtag =
-      upload.audio?.etag ?? (upload.image && currentAudioEtag ? null : currentAudioEtag);
+      upload.audio?.etag ??
+      (upload.image && !upload.image.preserveAudio && currentAudioEtag ? null : currentAudioEtag);
     return {
       data,
       previousAudioEtagForCleanup:
@@ -384,6 +411,8 @@ export class ContentsService {
       });
       this.imageRenderer.validateFrameSize(rendered.data);
       image = {
+        source: encodeImageSource(parsed),
+        preserveAudio: parsed.preserveAudio ?? false,
         bytes: rendered.data,
         etag: computeETag(rendered.data),
         size: rendered.data.byteLength,
