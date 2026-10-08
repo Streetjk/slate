@@ -55,13 +55,15 @@ class SleepManager {
     void Init(Policy p);
     void SetSleepBlocker(std::function<bool()> blocks_sleep);
     void Disable();  // captive portal 等场景禁用 deep sleep
+    // Arm only after boot networking has finished, avoiding shutdown during Init.
+    void EnableOfflineHibernate(int64_t network_started_ms);
 
     void OnEvent(const UiEvent& e);
     void Tick(int64_t now_ms);
 
     // 主动进 deep sleep。**正常情况不返回**；若被 paused_(充电中)/enabled_=false 短路，
     // 会立刻 return,调用方应转入正常 active 模式(例如把 cache 中的内容组 push 成 FrameScene)。
-    SleepDecision TryEnterDeepSleep();
+    SleepDecision TryEnterDeepSleep(bool manual_wake_only = false);
 
    private:
     // 当前是否处于 unbound 加速窗口(unbound + 未超 2h + 电量充足)。
@@ -71,6 +73,8 @@ class SleepManager {
     uint32_t ComputeConfiguredNextWakeSec() const;
     bool     BlocksSleep() const;
 
+    std::atomic<bool>    offline_hibernate_enabled_{false};
+    std::atomic<int64_t> disconnected_since_ms_{-1};
     std::atomic<bool>    enabled_{false};
     std::atomic<int64_t> last_active_ms_{0};
     // blocker(语音/同步)开始连续阻止深睡的时刻；0 表示当前未被阻止。看门狗据此计时。

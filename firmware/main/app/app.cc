@@ -224,7 +224,7 @@ bool App::HandleBackgroundRefreshDone(const UiEvent& e) {
     if (e.kind != UiEventKind::kBgRefreshDone)
         return false;
     ESP_LOGI(kTag, "background refresh done");
-    auto d = sleep_mgr_.TryEnterDeepSleep();
+    auto d = sleep_mgr_.TryEnterDeepSleep(!time_utils::QuietHoursActive() && !Wifi::Get().IsConnected());
     ESP_LOGI(kTag, "sleep decision outcome=%s next_sec=%u", SleepOutcomeName(d.outcome),
              static_cast<unsigned>(d.configured_next_wake_sec));
     switch (d.outcome) {
@@ -310,6 +310,8 @@ void App::UiLoopTask() {
     }
 
     while (ui_loop_running_.load(std::memory_order_acquire)) {
+        // Check deadlines even when events continuously fill the UI queue.
+        sleep_mgr_.Tick(time_utils::NowMs());
         UiEvent e;
         if (!evt::Wait(&e, pdMS_TO_TICKS(1000))) {
             // 1s 超时只是为了让 SleepManager 有机会做 Tick；不强制每秒做事。
@@ -675,6 +677,7 @@ void App::Init() {
     StartMinuteBoundaryTicker();
     StartSleep();
 
+    const int64_t network_started_ms = time_utils::NowMs();
     switch (decision_.mode) {
         case boot_mode::Mode::kPortal:
             ESP_LOGD(kTag, "mode portal");
@@ -713,16 +716,26 @@ void App::Init() {
                 }
             }
             if (!net_ok) {
-                ESP_LOGW(kTag, "fallback action=captive_portal_with_saved_wifi_recovery");
-                StartPortal();
-                StartSavedWifiRecovery(creds);
-                sleep_mgr_.Disable();
+                if (!creds.device_secret.empty() && creds.wifi_profile_count > 0) {
+                    ESP_LOGW(kTag, "fallback action=cached_frames_then_offline_hibernate");
+                    PostCachedGroupReadyIfAny();
+                } else {
+                    // Preserve onboarding: an unregistered unit still needs its portal.
+                    ESP_LOGW(kTag, "fallback action=captive_portal_with_saved_wifi_recovery");
+                    StartPortal();
+                    StartSavedWifiRecovery(creds);
+                    sleep_mgr_.Disable();
+                }
             }
             break;
         }
     }
 
     FinalizePm();
+    if (decision_.mode == boot_mode::Mode::kFullActive &&
+        !creds.device_secret.empty() && creds.wifi_profile_count > 0) {
+        sleep_mgr_.EnableOfflineHibernate(network_started_ms);
+    }
     ESP_LOGI(kTag, "init done");
 }
 

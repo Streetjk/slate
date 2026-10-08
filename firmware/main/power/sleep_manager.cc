@@ -15,6 +15,8 @@
 #include "drivers/display/epd_ssd1683.h"
 #include "drivers/display/framebuffer_ops.h"
 #include "events/event_bus.h"
+#include "network/wifi.h"
+#include "power/offline_sleep_policy.h"
 #include "power/power_state.h"
 #include "power/shutdown.h"
 #include "sync/sync_service.h"
@@ -98,6 +100,11 @@ void SleepManager::Init(Policy p) {
 
 void SleepManager::SetSleepBlocker(std::function<bool()> blocks_sleep) {
     blocks_sleep_ = std::move(blocks_sleep);
+}
+
+void SleepManager::EnableOfflineHibernate(int64_t network_started_ms) {
+    disconnected_since_ms_.store(network_started_ms);
+    offline_hibernate_enabled_.store(true, std::memory_order_release);
 }
 
 void SleepManager::Disable() {
@@ -195,6 +202,27 @@ void SleepManager::Tick(int64_t now_ms) {
         return;
     }
 
+    // Already-configured units may hibernate even in full-active mode.
+    // Do not turn a missing Wi-Fi network into a permanently running SoftAP.
+    if (offline_hibernate_enabled_.load(std::memory_order_acquire)) {
+        if (Wifi::Get().IsConnected()) {
+            disconnected_since_ms_.store(-1);
+        } else {
+            int64_t since = disconnected_since_ms_.load();
+            if (since < 0) {
+                since = now_ms;
+                disconnected_since_ms_.store(since);
+            }
+            if (offline_sleep_policy::Expired(since, now_ms)) {
+                ESP_LOGI(kTag, "offline timeout action=deep_sleep wake=button_only");
+                const auto offline = TryEnterDeepSleep(true);
+                if (offline.outcome != SleepOutcome::kSlept)
+                    disconnected_since_ms_.store(now_ms);  // bound refused attempts
+                return;
+            }
+        }
+    }
+
     const bool quiet_hours = time_utils::QuietHoursActive();
 
     bool forced = false;
@@ -248,9 +276,9 @@ void SleepManager::Tick(int64_t now_ms) {
     }
 }
 
-SleepManager::SleepDecision SleepManager::TryEnterDeepSleep() {
+SleepManager::SleepDecision SleepManager::TryEnterDeepSleep(bool manual_wake_only) {
     power_state::RestoreCurrentFrameScheduleFromCache();
-    const uint32_t next_sec = ComputeConfiguredNextWakeSec();
+    const uint32_t next_sec = manual_wake_only ? 0 : ComputeConfiguredNextWakeSec();
     if (!enabled_.load()) {
         return {SleepOutcome::kDisabled, next_sec};
     }

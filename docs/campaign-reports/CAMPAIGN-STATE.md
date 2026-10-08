@@ -5157,3 +5157,11 @@ Reviewed candidate: PASS; 10 mocked recovery scenarios and 12 policy cases passe
 Controlled 3-failure recovery restarted only slate-note4; health recovered in ~12 s.
 MySQL start time unchanged. No host reboot or physical device action.
 Evidence: SERVICE-WATCHDOG-20261006.md.
+
+## Offline hibernation — 8 October 2026
+
+Software ready: registered Slate enters guarded deep sleep after 60 s offline.
+Offline sleep has no RTC timer wake; ENTER/DOWN/USB wake remains.
+Host timeout tests, existing Wi-Fi regression, ESP-IDF 5.5.2 build and AGY review passed.
+Not flashed; physical-device hold preserved.
+Evidence: OFFLINE-HIBERNATE-20261008.md.
