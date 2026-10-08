@@ -61,3 +61,11 @@ No partition, NVS schema, credentials or synchronization protocol changes.
 No firmware flash, serial access, device reset, merge or release occurred.
 Actual sleep current, button wake latency and out-of-range physical behaviour
 remain to be measured after separately authorized flashing.
+
+## Authorized device flash
+
+User connected Slate and instructed retry after the flashing permission request.
+Flashed reviewed d89f046 application only at 0x10000 on /dev/cu.usbmodem31101.
+2561584 bytes; esptool reported Hash of data verified and exit 0.
+Device restarted normally through esptool RTS. NVS and cached storage were not erased.
+Battery-only out-of-range sleep and physical button latency are not yet measured.

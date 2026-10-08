@@ -5165,3 +5165,5 @@ Offline sleep has no RTC timer wake; ENTER/DOWN/USB wake remains.
 Host timeout tests, existing Wi-Fi regression, ESP-IDF 5.5.2 build and AGY review passed.
 Not flashed; physical-device hold preserved.
 Evidence: OFFLINE-HIBERNATE-20261008.md.
+
+Offline hibernation firmware d89f046 flashed to Slate on 8 October 2026 after user authorization. Application data hash verified; NVS/storage preserved. Unplugged current/wake timing remains unmeasured.
