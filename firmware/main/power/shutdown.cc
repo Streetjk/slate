@@ -26,6 +26,8 @@ bool WaitForEpdAndShutdown(int epd_timeout_ms) {
     if (s_pre_shutdown_hook)
         s_pre_shutdown_hook();
     SyncService::Get().Stop();
+    // Drain any idle codec shutdown before the caller cuts the shared I2C rail.
+    AudioPlayer::Get().SetIdleShutdownEnabled(false);
     AudioPlayer::Get().Stop();
     if (auto* charge = Board::Get().charge())
         charge->StopTick();

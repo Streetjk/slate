@@ -418,7 +418,7 @@ ES8311 使用 lazy open：
 
 `SleepManager` 策略：
 
-- 默认闲置 10 分钟 deep sleep，可由 `SLATE_IDLE_DEEP_SLEEP_MIN` 配置。
+- 电池供电时默认闲置 10 分钟 deep sleep，可由 `SLATE_IDLE_DEEP_SLEEP_MIN` 配置。
 - captive portal 模式禁用 deep sleep。
 - USB/充电存在时暂停 deep sleep。
 - 未绑定后 2 小时内阻止 deep sleep，方便用户在 Web claim 后设备快速响应；低电量会退出 grace。
@@ -429,7 +429,7 @@ ES8311 使用 lazy open：
 - ENTER / GPIO0
 - DOWN / GPIO18
 - CHARGE_DETECT / GPIO2
-- RTC timer（仅当前动态帧需要定时刷新时启用）
+- RTC timer（动态帧按原有计划刷新；静态帧每 10 分钟同步；离线休眠禁用）
 
 GPIO39 上键不是 RTC IO，不能作为 deep sleep ext1 唤醒源。
 
@@ -505,3 +505,7 @@ firmware/tools/gen_zfull_fonts.sh
 - EPD BUSY 是低忙高闲，调试新屏或新板时不要按 SSD1683 datasheet 默认极性判断。
 - AVDD_3V3 关闭后 I2C 上拉消失，任何 I2C 操作都会失败。
 - deep sleep 前 GPIO17 必须切 RTC GPIO hold 高，否则会整机断电，按键唤不醒。
+
+### Battery efficiency hardening — 8 October 2026
+
+Audio closes the codec/I2S and disables the amplifier after one idle second, then lazily reopens for playback. The shared audio/I2C rail stays powered during active operation. Registered devices hibernate after 60 seconds without Wi-Fi. Connected battery operation deep-sleeps after ten idle minutes; ENTER/DOWN/USB wake remains, with reboot latency. Charging and onboarding guards remain. Unchanged framebuffer pixels already skip refresh; changed manifest resources already sync in one session.

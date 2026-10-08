@@ -244,8 +244,7 @@ void AudioPlayer::CleanupInitResources() {
 }
 
 bool AudioPlayer::EnsureCodecOpen() {
-    if (codec_opened_.load(std::memory_order_acquire))
-        return true;
+    // Always take codec_mutex_: an idle close may be in progress.
     esp_codec_dev_sample_info_t fs = {};
     fs.bits_per_sample             = 16;
     fs.channel                     = 1;
@@ -344,8 +343,12 @@ void AudioPlayer::SetVolume(int v) {
         v = 100;
     volume_.store(v, std::memory_order_relaxed);
     // Codec 还没 lazy open 就只更新缓存,首次 open 时一并 set。
-    if (dev_ && codec_opened_.load(std::memory_order_acquire)) {
+    if (dev_) {
         xSemaphoreTake(codec_mutex_, portMAX_DELAY);
+        if (!codec_opened_.load(std::memory_order_acquire)) {
+            xSemaphoreGive(codec_mutex_);
+            return;
+        }
         ScopedI2cBusLock lock("AudioPlayer::SetVolume");
         if (lock.status() == ESP_OK) {
             esp_codec_dev_set_out_vol(dev_, volume_.load(std::memory_order_relaxed));
@@ -376,6 +379,8 @@ void AudioPlayer::EndXiaozhi() {
     const bool was_active = xiaozhi_active_.exchange(false, std::memory_order_relaxed);
     if (was_active)
         ReleaseAudioPmLock();
+    if (notify_)
+        xSemaphoreGive(notify_);  // begin the idle-close window
 }
 
 bool AudioPlayer::ReadXiaozhiPcm(int16_t* dest, size_t samples) {
@@ -427,6 +432,43 @@ bool AudioPlayer::WriteXiaozhiPcm(const int16_t* data, size_t samples) {
     return ok;
 }
 
+void AudioPlayer::SetIdleShutdownEnabled(bool enabled) {
+    if (!initialized_)
+        return;
+    xSemaphoreTake(codec_mutex_, portMAX_DELAY);
+    idle_shutdown_enabled_ = enabled;
+    xSemaphoreGive(codec_mutex_);
+}
+
+void AudioPlayer::CloseIdleCodec() {
+    // Only the playback task calls this, outside its PCM write loop.
+    // Pending content and voice ownership prevent a close; BeginXiaozhi sets
+    // ownership before opening and uses the same codec mutex.
+    xSemaphoreTake(shared_mutex_, portMAX_DELAY);
+    xSemaphoreTake(codec_mutex_, portMAX_DELAY);
+    if (idle_shutdown_enabled_ && !pending_pcm_ &&
+        !xiaozhi_active_.load(std::memory_order_acquire) &&
+        codec_opened_.load(std::memory_order_acquire)) {
+        ScopedI2cBusLock lock("AudioPlayer::idle_close");
+        if (lock.status() == ESP_OK) {
+            // Disable the amplifier before changing codec bias/clocks.
+            // Keep GPIO42 powered: RTC/NFC use the same I2C pull-up rail.
+            GpioWriteHold(AUDIO_CODEC_PA_PIN, 0);
+            const int ret = esp_codec_dev_close(dev_);
+            if (ret == ESP_CODEC_DEV_OK) {
+                codec_opened_.store(false, std::memory_order_release);
+                codec_in_progress_.store(false, std::memory_order_release);
+                ESP_LOGD(kTag, "idle codec closed");
+            } else {
+                GpioWriteHold(AUDIO_CODEC_PA_PIN, 1);
+                ESP_LOGW(kTag, "idle codec close failed ret=%d", ret);
+            }
+        }
+    }
+    xSemaphoreGive(codec_mutex_);
+    xSemaphoreGive(shared_mutex_);
+}
+
 void AudioPlayer::TaskEntry(void* arg) {
     static_cast<AudioPlayer*>(arg)->TaskLoop();
     vTaskDelete(nullptr);
@@ -438,7 +480,14 @@ void AudioPlayer::TaskLoop() {
     constexpr size_t kChunk = 256;
     while (true) {
         // 等通知
-        xSemaphoreTake(notify_, portMAX_DELAY);
+        // Keep the codec warm briefly between sounds; once closed, block
+        // indefinitely rather than waking the CPU once a second.
+        const TickType_t wait = codec_opened_.load(std::memory_order_acquire)
+                                    ? pdMS_TO_TICKS(1000) : portMAX_DELAY;
+        if (xSemaphoreTake(notify_, wait) != pdTRUE) {
+            CloseIdleCodec();
+            continue;
+        }
         if (xiaozhi_active_.load(std::memory_order_relaxed))
             continue;
 

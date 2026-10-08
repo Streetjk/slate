@@ -5167,3 +5167,7 @@ Not flashed; physical-device hold preserved.
 Evidence: OFFLINE-HIBERNATE-20261008.md.
 
 Offline hibernation firmware d89f046 flashed to Slate on 8 October 2026 after user authorization. Application data hash verified; NVS/storage preserved. Unplugged current/wake timing remains unmeasured.
+
+## Battery efficiency — 8 October 2026
+
+Connected battery idle deep sleep enabled at ten minutes; static timer polling600s and dynamic schedule/backoff retained. Audio idle codec/I2S/PA shutdown implemented with shared I2C rail protection. Four focused host suites and ESP-IDF5.5.2 build PASS; independent AGY PASS/no findings. User authorized flash. Evidence BATTERY-EFFICIENCY-20261008.md; physical current/audio/wake timing unmeasured.

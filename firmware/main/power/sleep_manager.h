@@ -1,13 +1,9 @@
 #pragma once
 
-// 电源管理中的 deep sleep 协调器。正常交互模式可以关闭「闲置自动深睡」,
-// 交给 ESP-IDF 自动 light sleep 保持按键/网络任务可唤醒；后台 timer refresh
-// 仍可显式调用 TryEnterDeepSleep() 省电。Quiet hours (23:00-05:30) are a
-// deliberate exception: after the normal idle grace, battery-powered full-active
-// mode enters true deep sleep and arms a one-shot RTC wake for the quiet end.
-//
-// 硬件限制:ESP32-S3 RTC GPIO 范围 0-21,GPIO 39(UP 键)不是 RTC IO,不能从
-// deep sleep 直接唤醒。因此正常交互模式不再因短时闲置进入 deep sleep。
+// Battery operation deep-sleeps after the configured idle grace. Dynamic pages
+// retain their scheduled timer refresh; static pages poll every ten minutes.
+// Quiet hours defer timer updates until 05:30. Missing Wi-Fi for sixty seconds
+// disables timer wake. ENTER/DOWN/USB wake remains; GPIO39 UP cannot deep-wake.
 //
 // Unbound grace 窗口:设备未绑定时禁 deep sleep,让 SyncService 快轮询,
 // 用户在 Web 端输码后屏切「等待内容组」。轮询间隔阶梯退避(10s→30s→60s),

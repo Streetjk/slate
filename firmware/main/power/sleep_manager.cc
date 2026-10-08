@@ -12,10 +12,12 @@
 #include "bsp/board.h"
 #include "bsp/charge_status.h"
 #include "bsp/config.h"
+#include "drivers/audio/audio_player.h"
 #include "drivers/display/epd_ssd1683.h"
 #include "drivers/display/framebuffer_ops.h"
 #include "events/event_bus.h"
 #include "network/wifi.h"
+#include "power/connected_sleep_policy.h"
 #include "power/offline_sleep_policy.h"
 #include "power/power_state.h"
 #include "power/shutdown.h"
@@ -181,7 +183,10 @@ uint32_t SleepManager::ComputeConfiguredNextWakeSec() const {
             return until_end;
     }
 
-    const uint32_t requested = power_state::ComputeNextWakeSec();
+    // Static pages still poll for remote changes every ten minutes while asleep.
+    // Dynamic pages retain their server schedule and failure backoff.
+    const uint32_t frame_wake = power_state::ComputeNextWakeSec();
+    const uint32_t requested = connected_sleep_policy::NextWakeSec(frame_wake);
     return time_utils::AdjustWakeForQuietHours(requested);
 }
 
@@ -245,10 +250,9 @@ void SleepManager::Tick(int64_t now_ms) {
         const int64_t idle_ms      = now_ms - last_active_ms_.load();
         const int64_t threshold_ms = static_cast<int64_t>(idle_timeout_min_) * 60 * 1000;
 
-        // Full-active mode normally stays in light sleep so every button remains
-        // responsive. Quiet hours are the deliberate exception: once the user
-        // has been inactive for the normal idle grace, enter true deep sleep
-        // until 05:30. ENTER/DOWN/USB can still wake it early.
+        // Idle battery operation enters deep sleep. Quiet hours override the
+        // normal refresh schedule with a wake at 05:30. ENTER/DOWN/USB
+        // can wake it early; UP is not an RTC-capable pin.
         if (quiet_hours) {
             if (idle_ms < threshold_ms)
                 return;
@@ -303,6 +307,7 @@ SleepManager::SleepDecision SleepManager::TryEnterDeepSleep(bool manual_wake_onl
         // WaitForEpdAndShutdown() stopped sync/charge polling before attempting
         // the drain. Restore those services here so every caller of
         // TryEnterDeepSleep() returns to a healthy active runtime.
+        AudioPlayer::Get().SetIdleShutdownEnabled(true);
         if (auto* charge = Board::Get().charge())
             charge->StartTick();
         SyncService::Get().Start("other", SyncService::InitialSync::kUserActive);

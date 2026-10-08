@@ -36,8 +36,11 @@ class AudioPlayer {
     // pcm = 16 kHz mono 16-bit signed，len_bytes 必须是偶数。
     void Play(const uint8_t* pcm_bytes, size_t len_bytes);
 
-    // 停止当前播放(若有);保持 codec 通电,下次 Play 立即可用。
+    // 停止当前播放(若有);闲置 1 秒后关闭 codec，下次 Play 自动打开。
     void Stop();
+
+    // Serialize idle I2C shutdown with system rail shutdown; re-enable on abort.
+    void SetIdleShutdownEnabled(bool enabled);
 
     // 0..100,默认 90。改 codec output volume 寄存器。
     void SetVolume(int v);
@@ -59,6 +62,8 @@ class AudioPlayer {
     // 的 enable→DAC start→PA on 时序在喇叭上的"啵"声。
     bool EnsureCodecOpen();
     void CleanupInitResources();
+    void CloseIdleCodec();
+    bool idle_shutdown_enabled_ = true;  // guarded by codec_mutex_
     // 音频活跃期持有 NO_LIGHT_SLEEP 锁，防止自动 light sleep 停时钟导致 I2S 欠载卡顿。
     // acquire/release 必须配对；内部判空，PM 锁创建失败时为 no-op。
     void AcquireAudioPmLock();
