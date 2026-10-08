@@ -509,3 +509,7 @@ firmware/tools/gen_zfull_fonts.sh
 ### Battery efficiency hardening — 8 October 2026
 
 Audio closes the codec/I2S and disables the amplifier after one idle second, then lazily reopens for playback. The shared audio/I2C rail stays powered during active operation. Registered devices hibernate after 60 seconds without Wi-Fi. Connected battery operation deep-sleeps after ten idle minutes; ENTER/DOWN/USB wake remains, with reboot latency. Charging and onboarding guards remain. Unchanged framebuffer pixels already skip refresh; changed manifest resources already sync in one session.
+
+### Connected idle sleep cancellation — 8 October 2026
+
+At user request, connected full-active battery operation again stays in automatic light sleep and retains regular synchronization. Offline sixty-second hibernation, audio idle shutdown and overnight quiet-hours deep sleep remain. Static-frame timer fallback introduced with daytime idle sleep is removed.

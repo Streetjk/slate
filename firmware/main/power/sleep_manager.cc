@@ -17,7 +17,6 @@
 #include "drivers/display/framebuffer_ops.h"
 #include "events/event_bus.h"
 #include "network/wifi.h"
-#include "power/connected_sleep_policy.h"
 #include "power/offline_sleep_policy.h"
 #include "power/power_state.h"
 #include "power/shutdown.h"
@@ -183,10 +182,7 @@ uint32_t SleepManager::ComputeConfiguredNextWakeSec() const {
             return until_end;
     }
 
-    // Static pages still poll for remote changes every ten minutes while asleep.
-    // Dynamic pages retain their server schedule and failure backoff.
-    const uint32_t frame_wake = power_state::ComputeNextWakeSec();
-    const uint32_t requested = connected_sleep_policy::NextWakeSec(frame_wake);
+    const uint32_t requested = power_state::ComputeNextWakeSec();
     return time_utils::AdjustWakeForQuietHours(requested);
 }
 
@@ -250,9 +246,9 @@ void SleepManager::Tick(int64_t now_ms) {
         const int64_t idle_ms      = now_ms - last_active_ms_.load();
         const int64_t threshold_ms = static_cast<int64_t>(idle_timeout_min_) * 60 * 1000;
 
-        // Idle battery operation enters deep sleep. Quiet hours override the
-        // normal refresh schedule with a wake at 05:30. ENTER/DOWN/USB
-        // can wake it early; UP is not an RTC-capable pin.
+        // Connected full-active mode stays in automatic light sleep for
+        // scheduled sync. Quiet hours retain deliberate overnight deep sleep.
+        // Offline hibernation is handled independently above.
         if (quiet_hours) {
             if (idle_ms < threshold_ms)
                 return;

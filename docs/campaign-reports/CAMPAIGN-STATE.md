@@ -5177,3 +5177,9 @@ Battery efficiency firmware9c980c0 flashed application-only after explicit autho
 ## Photo dithering repair — 8 October 2026
 
 Saved editable source/settings added for future image edits; undithered export and gallery settings fixed; legacy original reupload required once.458backendPASS5SKIP, typecheck/lint/frontendbuildPASS; independentAGYPASS. ReportPHOTO-DITHERING-20261008.md. User subsequently requested connected idle deep sleep cancellation; firmware adjustment to follow separately, deviceUSB currently absent.
+
+Photo dithering fix803dc6b deployed to slate:photo-dither-803dc6b; health200, owner source unauthorized401, production/source/frontend hashesPASS. Legacy original reupload required once.
+
+## Connected idle sleep cancellation — 8 October 2026
+
+Full-active connected idle deep sleep cancelled in source; offline60s, audio idle savings and overnight quiet hours retained. Three host suites, IDF5.5.2 build and AGY reviewPASS. NOT flashed: Slate USB absent. ReportCONNECTED-SLEEP-CANCEL-20261008.md; reconnect dataUSB and flash application-only without further authorization.
