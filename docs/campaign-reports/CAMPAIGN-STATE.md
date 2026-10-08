@@ -5171,3 +5171,5 @@ Offline hibernation firmware d89f046 flashed to Slate on 8 October 2026 after us
 ## Battery efficiency — 8 October 2026
 
 Connected battery idle deep sleep enabled at ten minutes; static timer polling600s and dynamic schedule/backoff retained. Audio idle codec/I2S/PA shutdown implemented with shared I2C rail protection. Four focused host suites and ESP-IDF5.5.2 build PASS; independent AGY PASS/no findings. User authorized flash. Evidence BATTERY-EFFICIENCY-20261008.md; physical current/audio/wake timing unmeasured.
+
+Battery efficiency firmware9c980c0 flashed application-only after explicit authorization. Data hash verified; authenticated backend poll PASS16:15:14AWST. Saved data preserved. Physical unplugged current, idle wake timing and audio reopen remain unmeasured.

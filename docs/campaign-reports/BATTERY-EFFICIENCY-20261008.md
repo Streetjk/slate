@@ -35,3 +35,13 @@ Flash evidence to append after exact-commit rebuild and application-only write.
 
 USB-connected checks cannot quantify battery savings. Unplugged current, speaker pop/reopen, voice behavior and front-button wake latency require physical measurement.
 Deep wake boots firmware; rendering is not instantaneous. UP cannot wake from deep sleep.
+
+## Authorized flash and reconnection
+
+Exact firmware source: 9c980c0b0429e59716c83543d1366545ac880b95.
+Exact-commit ESP-IDF5.5.2 rebuild PASS; sdkconfig idle interval10 verified in generated header.
+slate.bin size2561952 bytes, SHA256 35b8dbb5d25b3790a543076dc268b57659491794a872e6be94b001f20ffc192f.
+Application-only esptool ESP32-S3 write at0x10000 via /dev/cu.usbmodem31101, baud460800, exit0, data hash verified; hard reset completed. Bootloader/partition table/NVS/LittleFS untouched.
+Post-flash backend DEVICE_AUTHENTICATED_POLL_RESULT=PASS at2026-10-08T08:15:14.499Z (16:15:14 AWST), requestreq-85v.
+Firmware and evidence pushed to origin/feature/context-navigation.
+USB remains connected; unplugged current, actual idle deep sleep/button wake and audio reopen acoustics not measured.
