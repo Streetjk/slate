@@ -5183,3 +5183,5 @@ Photo dithering fix803dc6b deployed to slate:photo-dither-803dc6b; health200, ow
 ## Connected idle sleep cancellation — 8 October 2026
 
 Full-active connected idle deep sleep cancelled in source; offline60s, audio idle savings and overnight quiet hours retained. Three host suites, IDF5.5.2 build and AGY reviewPASS. NOT flashed: Slate USB absent. ReportCONNECTED-SLEEP-CANCEL-20261008.md; reconnect dataUSB and flash application-only without further authorization.
+
+Connected daytime idle sleep cancellation firmware56d0e09 flashed after user reconnectedSlate at19:41AWST. Application data hash verified, saved data preserved; authenticated backend pollPASS19:42:19AWST. Offline60s hibernation/audio idle savings/quiet hours retained.
