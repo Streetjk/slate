@@ -10,3 +10,5 @@ Independent AGY OAuth model-only gemini-3.7-flash-medium PASS/no findings. Conve
 
 No partition/NVS/protocol/OTA changes; no merge/tag/release.
 Flash authorized from prior task, but /dev/cu.usbmodem31101 absent. Cancellation is source/build ready, NOT applied to device. Next action: reconnect Slate data USB, verify exact reviewed build, application-only flash, verify data and backend reconnect.
+
+Exact-commit rebuild PASS: source 56d0e09752e184d3f042c8305916d18095e6a901, slate.bin size 2561968 bytes, SHA256 1563380fcec2b9b33bc7e66a6d6a0add7008088dbce55938b60dba8a5fcc4bd8. USB port still absent after rebuild; no flash attempted.
