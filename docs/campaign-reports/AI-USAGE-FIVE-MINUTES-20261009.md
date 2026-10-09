@@ -29,3 +29,16 @@ USB ports['/dev/cu.usbmodem31101']; NOT flashed. Device remains10minute polling
 until reconnect and previously authorized application-only flash0x10000. Backend
 5minute cadence is active. Next: reconnect Slate dataUSB, verify reviewed binary,
 flash preserving NVS/LittleFS, verify backend reconnect and cadence.
+
+
+## Authorized flash — 20:37 AWST, 9 October 2026
+
+User reconnectedSlate. Verified source equality to1c1f6c7 and applicationSHA256
+a9d987c66cbdadd583cfa50b697dc6e0082c8fca4d01d20d3e70a394c5463117 beforeflash.
+Slate/dev/cu.usbmodem31101 unoccupied. ESP32-S3 application-only flash0x10000,
+2562160bytes,460800baud,exit0; data hashverified/hard resetcompleted.
+NVS/LittleFS/bootloader/partitiontable preserved. Backend authenticatedpoll201
+req-1c0 at2026-10-09T12:37:08.854018033Z confirms reconnect.
+Livebackend config300seconds, last12:31:54.040Z/next12:36:54.040Z/noerror.
+Five-minute devicepoll firmware nowinstalled; sustained physicalcadence/current
+not independentlymeasured. No outstandingflashblocker.

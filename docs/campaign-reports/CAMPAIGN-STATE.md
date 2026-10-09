@@ -5219,3 +5219,9 @@ User requested5minutes. Production AIusage config300s active; live scheduler
 20:16:52->20:21:52AWST exactly300s/no error. Firmware boundpoll300s build and AGY
 reviewPASS, binarySHA256a9d987c66cbdadd583cfa50b697dc6e0082c8fca4d01d20d3e70a394c5463117. NOT flashed because USB absent; device stillpolls600s.
 EvidenceAI-USAGE-FIVE-MINUTES-20261009.md. Next: reconnect and authorizedapp-onlyflash.
+
+
+Five-minute polling firmware1c1f6c7 flashed toSlate at20:37AWST,9October2026.
+Applicationonly/hashverified/hardreset; settings/photos preserved. Backendpoll201
+req-1c0 at20:37:08AWST confirmsreconnect. BackendAIusage300s remainsactive.
+Five-minute cadencechange deliverycomplete; physicalcadence/currentunmeasured.
