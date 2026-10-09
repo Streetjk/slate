@@ -2,11 +2,32 @@
 
 #include <button_gpio.h>
 #include <esp_log.h>
+#include <esp_sleep.h>
+#include <sdkconfig.h>
+#include "drivers/input/wake_button_filter.h"
 
 #include <utility>
 
 namespace {
 constexpr char kTag[] = "button_input";
+
+struct WakeGpioDriver : button_driver_t {
+    gpio_num_t gpio;
+    bool active_high;
+    WakeButtonFilter filter{true, CONFIG_BUTTON_DEBOUNCE_TICKS};
+    WakeGpioDriver(gpio_num_t pin, bool high) : button_driver_t{}, gpio(pin), active_high(high) {
+        get_key_level = [](button_driver_t* base) -> uint8_t {
+            auto* self = static_cast<WakeGpioDriver*>(base);
+            return self->filter.Read(gpio_get_level(self->gpio) == (self->active_high ? 1 : 0));
+        };
+        del = [](button_driver_t* base) -> esp_err_t {
+            auto* self = static_cast<WakeGpioDriver*>(base);
+            const auto result = gpio_reset_pin(self->gpio);
+            delete self;
+            return result;
+        };
+    }
+};
 }
 
 Button::Button(button_handle_t button_handle) : button_handle_(button_handle) {
@@ -28,7 +49,20 @@ Button::Button(gpio_num_t gpio_num, bool active_high, uint16_t long_press_time, 
                                           .active_level      = static_cast<uint8_t>(active_high ? 1 : 0),
                                           .enable_power_save = enable_power_save,
                                           .disable_pull      = false};
-    ESP_ERROR_CHECK(iot_button_new_gpio_device(&button_config, &gpio_config, &button_handle_));
+    const bool wake_key = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 &&
+                          (esp_sleep_get_ext1_wakeup_status() & (1ULL << gpio_num));
+    if (wake_key && !enable_power_save) {
+        gpio_config_t config = {};
+        config.pin_bit_mask = 1ULL << gpio_num;
+        config.mode = GPIO_MODE_INPUT;
+        config.pull_up_en = active_high ? GPIO_PULLUP_DISABLE : GPIO_PULLUP_ENABLE;
+        config.pull_down_en = active_high ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE;
+        ESP_ERROR_CHECK(::gpio_config(&config));
+        auto* driver = new WakeGpioDriver(gpio_num, active_high);
+        ESP_ERROR_CHECK(iot_button_create(&button_config, driver, &button_handle_));
+    } else {
+        ESP_ERROR_CHECK(iot_button_new_gpio_device(&button_config, &gpio_config, &button_handle_));
+    }
     ESP_LOGD(kTag, "created gpio=%d handle=%p", static_cast<int>(gpio_num_), button_handle_);
 }
 

@@ -14,12 +14,18 @@ import { FrameBitmapPreview } from '@/components/eink/FrameBitmapPreview';
 import { useSortableStyle } from '@/components/dnd/useSortableStyle';
 
 interface ContentCardProps {
+  photoCount?: number;
   gid: string;
   content: ContentDetailT;
   onEdit: (content: ContentDetailT) => void;
 }
 
-export const ContentCard = memo(function ContentCard({ gid, content, onEdit }: ContentCardProps) {
+export const ContentCard = memo(function ContentCard({
+  gid,
+  content,
+  photoCount = 1,
+  onEdit,
+}: ContentCardProps) {
   const isDynamic = content.kind === 'dynamic';
   const refresh = useRefreshDynamicContent(gid);
   const { deleteWithConfirm, isPending: deletePending } = useDeleteContentWithConfirm({
@@ -42,7 +48,7 @@ export const ContentCard = memo(function ContentCard({ gid, content, onEdit }: C
       isDragging={isDragging}
       loading={img.isPending}
       error={!!img.error}
-      frameName={content.frame_name}
+      frameName={isDynamic ? content.frame_name : `Photo gallery · ${photoCount}`}
       seq={content.seq}
       preview={
         <FrameBitmapPreview
@@ -67,6 +73,8 @@ export const ContentCard = memo(function ContentCard({ gid, content, onEdit }: C
             <AlertCircle size={11} className="shrink-0" />
             <span className="truncate">{content.dynamic_render_error}</span>
           </p>
+        ) : !isDynamic ? (
+          <p className="mt-0.5 font-sans text-[11px] text-stone">Volume Up/Down to switch photos</p>
         ) : undefined
       }
       actions={

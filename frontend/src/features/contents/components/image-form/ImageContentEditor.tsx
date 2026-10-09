@@ -192,7 +192,7 @@ function ImageContentEditorBody({
         onBack={onDone}
         icon={<ImageIcon size={24} />}
         title="Photo gallery"
-        subtitle={`${photos.length} photo${photos.length === 1 ? '' : 's'} · Volume Up/Down and auto-rotate use this gallery`}
+        subtitle={`${photos.length} photo${photos.length === 1 ? '' : 's'} · Volume Up/Down switches within this gallery`}
         action={
           <Button
             size="sm"

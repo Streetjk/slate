@@ -513,3 +513,17 @@ Audio closes the codec/I2S and disables the amplifier after one idle second, the
 ### Connected idle sleep cancellation — 8 October 2026
 
 At user request, connected full-active battery operation again stays in automatic light sleep and retains regular synchronization. Offline sixty-second hibernation, audio idle shutdown and overnight quiet-hours deep sleep remain. Static-frame timer fallback introduced with daytime idle sleep is removed.
+
+
+### Photo gallery and wake navigation — 9 October 2026
+
+All static photos in a content group form one gallery tile. The group grid shows
+one gallery entry; its editor retains every photo, and dragging the gallery
+preserves the full photo order. Slate ENTER cycles gallery and dynamic tiles,
+skipping extra photos even when leaving a selected gallery photo. Volume Up/Down
+selects pictures within the gallery. Automatic photo rotation is disabled.
+
+Deep-sleep button wake no longer replays a navigation event. A held wake press
+is hidden from the button recognizer until a debounced release, so it cannot
+trigger click, long-press or double-click actions. Later presses work normally.
+Existing photo assets, manifest sequences, NVS and partitions are unchanged.

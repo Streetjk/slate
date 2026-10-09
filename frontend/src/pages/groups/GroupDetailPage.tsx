@@ -2,7 +2,7 @@
 //
 // dnd-kit reorder 通过 useDndOrder 复用；本地顺序会在保存失败时回滚。
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useMemo, useRef, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Layers } from 'lucide-react';
 import { useGroup, useUpdateGroup } from '@/features/groups/query/group-queries';
@@ -20,13 +20,13 @@ import { ContentCard } from '@/features/contents/components/cards/ContentCard';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { RequireRouteParams } from '@/components/layout/RequireRouteParams';
 import { InlineRename } from '@/components/ui/InlineRename';
-import { Input } from '@/components/ui/Input';
 import { useInlineRename } from '@/hooks/useInlineRename';
 import { useToast } from '@/components/feedback/toast-context';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { formatBytes } from '@/lib/format';
 import { useDndOrder } from '@/components/dnd/useDndOrder';
 import { appRoutes } from '@/app/routes';
+import { galleryTiles, expandGalleryOrder } from '@/features/contents/model/photo-gallery';
 
 export function GroupDetailPage() {
   const navigate = useNavigate();
@@ -55,12 +55,17 @@ function GroupDetailContent({
   const toast = useToast();
 
   const group = groupQuery.data;
+  const tiles = useMemo(
+    () => (contents.data ? galleryTiles(contents.data) : undefined),
+    [contents.data]
+  );
+  const photoCount = (contents.data ?? []).filter((item) => item.kind === 'image').length;
   const { sensors, currentOrder, orderedItems, onDragEnd } = useDndOrder(
-    contents.data,
+    tiles,
     getContentId,
     (newOrder, { commit, rollback }) =>
       reorder.mutate(
-        { order: newOrder },
+        { order: expandGalleryOrder(contents.data ?? [], newOrder) },
         {
           onSuccess: commit,
           onError: (err) => {
@@ -122,7 +127,9 @@ function GroupDetailContent({
             onDragEnd={onDragEnd}
             getKey={(content) => content.id}
             className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-            renderItem={(content) => <ContentCard gid={gid} content={content} onEdit={openEdit} />}
+            renderItem={(content) => (
+              <ContentCard gid={gid} content={content} photoCount={photoCount} onEdit={openEdit} />
+            )}
           />
         ) : (
           <EmptyState
@@ -169,14 +176,6 @@ function GroupHeader({
   const createImage = useCreateImageContent(group.id);
   const toast = useToast();
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [rotationMinutes, setRotationMinutes] = useState(
-    Math.round(group.picture_rotation_sec / 60)
-  );
-
-  useEffect(() => {
-    setRotationMinutes(Math.round(group.picture_rotation_sec / 60));
-  }, [group.picture_rotation_sec]);
-
   const { editing, draft, setDraft, startEditing, commit, handleKeyDown } = useInlineRename(
     group.name,
     async (name) => {
@@ -189,20 +188,6 @@ function GroupHeader({
       }
     }
   );
-
-  async function saveRotationInterval() {
-    const minutes = Math.max(0, Math.min(1440, Math.round(rotationMinutes || 0)));
-    setRotationMinutes(minutes);
-    const seconds = minutes * 60;
-    if (seconds === group.picture_rotation_sec) return;
-    try {
-      await update.mutateAsync({ picture_rotation_sec: seconds });
-      toast.success(minutes === 0 ? 'Photo auto-rotate disabled' : `Photo auto-rotate: ${minutes} min`);
-    } catch (err) {
-      setRotationMinutes(Math.round(group.picture_rotation_sec / 60));
-      toast.error('Failed to save photo interval', getApiErrorMessage(err));
-    }
-  }
 
   async function onPhotosSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -272,23 +257,9 @@ function GroupHeader({
           </div>
         }
       />
-      <div className="mt-3 flex items-center gap-2 text-[12px] text-stone">
-        <span>Photo auto-rotate</span>
-        <Input
-          type="number"
-          min={0}
-          max={1440}
-          step={1}
-          value={rotationMinutes}
-          onChange={(event) => setRotationMinutes(Number(event.target.value))}
-          onBlur={() => void saveRotationInterval()}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur();
-          }}
-          className="!h-8 !w-20"
-        />
-        <span>min · 0 = off</span>
-      </div>
+      <p className="mt-3 text-[12px] text-stone">
+        Photos stay in one gallery tile. Use Volume Up/Down on Slate to switch pictures.
+      </p>
     </>
   );
 }

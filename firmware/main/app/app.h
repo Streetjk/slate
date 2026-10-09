@@ -49,7 +49,6 @@ class App {
     void StartSavedWifiRecovery(const cred::Credentials& creds);
     static void SavedWifiRecoveryEntry(void* arg);
     void SavedWifiRecoveryTask();
-    void PostWakeupKeyEvent(uint64_t ext1_mask);
     void PromoteToFrameSceneFromCache();
     bool HandleSecretInvalid(const UiEvent& e);
     bool HandleBackgroundRefreshDone(const UiEvent& e);

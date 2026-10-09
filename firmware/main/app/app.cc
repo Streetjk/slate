@@ -188,21 +188,6 @@ void App::UiLoopEntry(void* arg) {
     static_cast<App*>(arg)->UiLoopTask();
 }
 
-void App::PostWakeupKeyEvent(uint64_t ext1_mask) {
-    ESP_LOGD(kTag, "wake key check ext1_mask=0x%llx", static_cast<unsigned long long>(ext1_mask));
-    if (ext1_mask == 0)
-        return;
-    ButtonId btn;
-    if (ext1_mask & (1ULL << DOWN_BUTTON_GPIO))
-        btn = ButtonId::kDown;
-    else if (ext1_mask & (1ULL << BOOT_BUTTON_GPIO))
-        btn = ButtonId::kEnter;
-    else
-        return;
-    ESP_LOGI(kTag, "wake key btn=%s", evt::log::ButtonName(btn));
-    evt::PostButton(UiEventKind::kButtonShort, btn);
-}
-
 void App::PromoteToFrameSceneFromCache() {
     ESP_LOGD(kTag, "promote from cache");
     if (!PostCachedGroupReadyIfAny()) {
@@ -711,9 +696,6 @@ void App::Init() {
             const bool net_ok = InitWifiAndSync(creds, false);
             if (net_ok && !decision_.first_register) {
                 PostCachedGroupReadyIfAny();
-                if (decision_.wake_cause == boot_mode::WakeCause::kButton) {
-                    PostWakeupKeyEvent(decision_.ext1_mask);
-                }
             }
             if (!net_ok) {
                 if (!creds.device_secret.empty() && creds.wifi_profile_count > 0) {

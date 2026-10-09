@@ -5185,3 +5185,14 @@ Photo dithering fix803dc6b deployed to slate:photo-dither-803dc6b; health200, ow
 Full-active connected idle deep sleep cancelled in source; offline60s, audio idle savings and overnight quiet hours retained. Three host suites, IDF5.5.2 build and AGY reviewPASS. NOT flashed: Slate USB absent. ReportCONNECTED-SLEEP-CANCEL-20261008.md; reconnect dataUSB and flash application-only without further authorization.
 
 Connected daytime idle sleep cancellation firmware56d0e09 flashed after user reconnectedSlate at19:41AWST. Application data hash verified, saved data preserved; authenticated backend pollPASS19:42:19AWST. Offline60s hibernation/audio idle savings/quiet hours retained.
+
+## Photo gallery and wake navigation — 9 October 2026
+
+One photo gallery tile per content group; ENTER skips extra pictures and anchors
+navigation to the gallery, Volume Up/Down selects photos, auto-rotation removed.
+Deep-sleep wake no longer replays a key; held wake input consumed until debounced
+release. Four gallery tests, C++ navigation/wake suite, lint/typecheck/web build,
+ESP-IDF5.5.2 build and independent AGY review PASS. Web deployment pending;
+NOT flashed because Slate USB absent. Existing photo/cache/NVS/protocol preserved.
+Evidence PHOTO-GALLERY-WAKE-20261009.md. Next: frontend-only deploy, exact-source
+build, reconnect and authorized application-only flash.
