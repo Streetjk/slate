@@ -74,3 +74,26 @@ External review XR-001 through XR-005 were outside this narrow navigation stage;
 prior hardened campaign evidence remains authoritative and unchanged.
 Next action: deploy web, record exact committed firmware build; reconnect Slate
 data USB, application-only flash at0x10000, verify hash and backend reconnect.
+
+
+## Delivery evidence
+
+Implementation SHA: 6d1a995fef5d5e146c3480e52a8f5fa2c8a4849d.
+Exact committed-source ESP-IDF5.5.2 rebuild PASS. slate.bin 2562160
+bytes, SHA256 04f7c3aabcd74b382eaab5eb55f82caa2d0d9ebdf1c3409e07e32a089a7b728a.
+Source clean after rebuild; no firmware modifications after AGY review.
+
+Web deployed frontend-only to slate:gallery-navigation-6d1a995, image ID
+sha256:53795fb706f62e67f2a319d5b0e29ebc342a9992c55f73b17127d92173dddea2.
+Base image ID verified before build/deploy. Same four-compose-file chain and
+service-only recreation; existing backend/image-source fix, runtime config and
+data retained. Health HTTP200, running, restart count0. Every deployed frontend
+file hash and served index hash matched the local reviewed build. Initial
+startup connection resets cleared before success; rollback not required.
+Rollback image remains slate:photo-dither-803dc6b; previous override retained at
+/mnt/ssd-tmp/slate-tools/gallery-navigation-6d1a995/image.override.before.yml.
+
+Final USB check: []. NOT flashed. Device still runs
+previous connected-sleep-cancellation firmware; photo navigation and wake input
+changes become active only after application-only flash. Reconnect Slate data
+USB, verify exact reviewed binary/port, write0x10000 and verify data/reconnect.

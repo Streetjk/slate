@@ -5196,3 +5196,10 @@ ESP-IDF5.5.2 build and independent AGY review PASS. Web deployment pending;
 NOT flashed because Slate USB absent. Existing photo/cache/NVS/protocol preserved.
 Evidence PHOTO-GALLERY-WAKE-20261009.md. Next: frontend-only deploy, exact-source
 build, reconnect and authorized application-only flash.
+
+
+Photo gallery web deployed: slate:gallery-navigation-6d1a995, health200 and all
+frontend/served-index hashesPASS. Exact source6d1a995 firmware rebuildPASS, app
+SHA25604f7c3aabcd74b382eaab5eb55f82caa2d0d9ebdf1c3409e07e32a089a7b728a.
+NOT flashed: no Slate USB ports. Next action: reconnect dataUSB, use prior flash
+authorization, verify and application-only flash0x10000; preserve NVS/LittleFS.
