@@ -5211,3 +5211,11 @@ verified; esptool data hashPASS/hard reset. Saved settings/photos preserved.
 Authenticated pollHTTP201 req-rv at18:04:45AWST confirms backend reconnect.
 Photo gallery/consume-wake fixes are now installed; physical unplugged button
 and screen behavior not independently observed. Stage delivery complete.
+
+
+## AI Usage five-minute cadence — 9 October 2026
+
+User requested5minutes. Production AIusage config300s active; live scheduler
+20:16:52->20:21:52AWST exactly300s/no error. Firmware boundpoll300s build and AGY
+reviewPASS, binarySHA256a9d987c66cbdadd583cfa50b697dc6e0082c8fca4d01d20d3e70a394c5463117. NOT flashed because USB absent; device stillpolls600s.
+EvidenceAI-USAGE-FIVE-MINUTES-20261009.md. Next: reconnect and authorizedapp-onlyflash.

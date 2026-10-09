@@ -9,9 +9,9 @@ namespace sync_internal {
 
 inline constexpr char    kTag[]                = "sync";
 // Bound devices only need periodic server reconciliation; local buttons/navigation
-// wake the sync task immediately. Ten-minute polling aligns with the normal dynamic
-// content cadence and halves routine Wi-Fi/TLS bursts again versus the 5-minute profile.
-inline constexpr int     kBoundPollSec         = 10 * 60;
+// wake the sync task immediately. Five-minute polling balances quota freshness
+// with routine Wi-Fi/TLS energy use, as requested by the user.
+inline constexpr int     kBoundPollSec         = 5 * 60;
 inline constexpr int     kStopWaitMs           = 30000;
 inline constexpr int     kUnboundFastPollSec   = 10;
 inline constexpr int     kUnboundMediumPollSec = 30;

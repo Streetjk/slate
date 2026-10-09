@@ -527,3 +527,10 @@ Deep-sleep button wake no longer replays a navigation event. A held wake press
 is hidden from the button recognizer until a debounced release, so it cannot
 trigger click, long-press or double-click actions. Later presses work normally.
 Existing photo assets, manifest sequences, NVS and partitions are unchanged.
+
+
+### Quota freshness — 9 October 2026
+
+Bound device polling is five minutes at user request. AI Usage backend refresh
+is also configured to five minutes. Independent schedules may add up to nearly
+ten minutes plus sync/download time. Other battery and quiet-hours policies remain.
