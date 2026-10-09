@@ -5203,3 +5203,11 @@ frontend/served-index hashesPASS. Exact source6d1a995 firmware rebuildPASS, app
 SHA25604f7c3aabcd74b382eaab5eb55f82caa2d0d9ebdf1c3409e07e32a089a7b728a.
 NOT flashed: no Slate USB ports. Next action: reconnect dataUSB, use prior flash
 authorization, verify and application-only flash0x10000; preserve NVS/LittleFS.
+
+
+Photo gallery/wake firmware6d1a995 flashed application-only to Slate on9October
+at18:04AWST after reconnect/retry. SHA25604f7c3aabcd74b382eaab5eb55f82caa2d0d9ebdf1c3409e07e32a089a7b728a
+verified; esptool data hashPASS/hard reset. Saved settings/photos preserved.
+Authenticated pollHTTP201 req-rv at18:04:45AWST confirms backend reconnect.
+Photo gallery/consume-wake fixes are now installed; physical unplugged button
+and screen behavior not independently observed. Stage delivery complete.

@@ -97,3 +97,19 @@ Final USB check: []. NOT flashed. Device still runs
 previous connected-sleep-cancellation firmware; photo navigation and wake input
 changes become active only after application-only flash. Reconnect Slate data
 USB, verify exact reviewed binary/port, write0x10000 and verify data/reconnect.
+
+
+## Authorized flash — 9 October 2026, 18:04 AWST
+
+User reconnected Slate and requested a second USB check. Detected only Slate
+/dev/cu.usbmodem31101; no process held the port. Reviewed application SHA256
+04f7c3aabcd74b382eaab5eb55f82caa2d0d9ebdf1c3409e07e32a089a7b728a and
+firmware source equality to6d1a995 verified immediately before flashing.
+ESP-IDF5.5.2 esptool4.12 application-only ESP32-S3 write at0x10000, baud460800,
+2562160bytes, exit0. Data hash verified; hard reset completed. No erase-all,
+NVS, storage, bootloader or partition writes. Saved settings/photos preserved.
+Authenticated POST /api/v1/devices/current/poll completed HTTP201 at
+2026-10-09T10:04:45.695745177Z (18:04:45AWST), req-rv, confirming reconnect.
+HTTP201 is the successful POST status for this endpoint. Device photo/wake
+navigation firmware is now installed. Physical screen/button behavior after
+unplugged deep sleep remains unobserved; software tests/review passed.
