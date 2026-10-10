@@ -5234,3 +5234,14 @@ Backend bounded6h observation fallback and reset expiration deployed; health/has
 Focused21PASS/fullbackend462PASS5SKIP, lint/typecheck/AGYPASS.
 Stored backend09:12:08AWST render verified freshGrok; device300s polling unchanged.
 No firmwareflash. Physicalscreen not observed. EvidenceGROK-QUOTA-20261010.md.
+
+
+## AI quota freshness watchdog — 10 October 2026
+
+Mac15mincron installed; >30min stale observations retry existingcollection;
+two localHTTPfailures allowhelper-only recovery,1hcooldown/exactprocess/lock.
+Stalledbackendrender queuesleaseguardedrefresh; devicepresence loggedonly.
+Initiallocalhostprobe causedone unnecessaryrestart; configuredbindfix/regression
+andsecondAGYreviewPASS. EighttestsPASS; corrected10:50:43AWSTlivecheck actionnone,
+allfourquotasfresh, rendercurrent, devicerecent. No firmwareflash.
+EvidenceQUOTA-WATCHDOG-20261010.md. Futurecronrunsnotyetobserved.

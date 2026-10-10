@@ -1,0 +1,15 @@
+# AI quota freshness watchdog — 10 October 2026
+
+User authorized implementation/deployment. Base566ea1d3cc21b0d62f9e589d72206d261891200b, branchfix/wifi-auto-recovery trackingorigin/feature/context-navigation. Governing instructions08501bb3ca75739e43fbf4f54811e0243ca5d193.
+
+Mac cron */15 * * * * invokes /usr/bin/python3 /Users/ollama/.local/lib/slate-watchdog/slate-quota-watchdog.py. Original crontab preserved in ~/Library/Application Support/Slate/quota-watchdog/crontab.before.txt; unrelated cron entries retained. Installed script hash equals repository source. Rollback: remove only the watchdog cron entry; helper/backend do not need rollback.
+
+Policy: provider observation age>30min, missing/expired quota triggers GET-driven existing collector refresh, second snapshot after20s. No percentage-change requirement. Auth false is sign_in. Only two local HTTP failures2s apart permit helper-only restart, exact configuredargv/UID/PID checks, graceful termination, no duplicate spawn, persisted1h cooldown and flock. Network/SSH errors cannot trigger localrestart. Stalled ai_usage rendering>30min queues refresh with expired/null lease guard. Device lastSeen logged, quiet23:00-05:30AWST accounted for; offline device neverrestarted. No host/MySQL reboot, login consent, token extraction, static keys or firmware changes. Existing sixhour fallback/expiredquota hiding remains.
+
+Tests: python3 scripts/slate-quota-watchdog.test.py 8PASS; py_compilePASS; gitdiffcheckPASS. Tests cover freshness/future/expired/auth, healthy/staleretry/networkfail/transient/localfailure/cooldown/configuredTailscale/wildcardbinding. Only Python tooling changed; no frontend/firmware build necessary.
+
+Initial live run02:49:07Z exposed incorrect localhost health check because helper binds100.73.201.113. One unnecessary helper restart occurred; allprovider observations remainedfresh. Disabledcron, fixed probe to read configured bindaddress/port from plist, added regression. Re-reviewPASS. Corrected live run02:50:43Z actionnone, allfour providersfresh, renderStalefalse/queued0, device recent. Cronenabled onlyaftercorrectedlivePASS. Sustained future cron executions not yet observed.
+
+AGY review1PASS conversationa04984af-e717-43be-930a-815ebe47957b packet894ce3a50ecc866ae29cd742acad3e1347c45374de6c7d1acc4193c6369f473d. Live bindaddress finding superseded its initial conclusion. AGY review2PASS conversationbbfd5a0e-90d3-4f3e-a31c-f3d32f556c08 packet3a362de901ea3acb917a5b680e5c3619e80912531d1a891f486608c128cde8dc. Requestedgemini-3.7-flash-medium; actualmodelID absent. PinnedCLIef3728208834483754b06fd99963b4b6320740bf237212768dfed5256ae24ddb verified pre/post. Noactionable findingsafterfix.
+
+Logs ~/Library/Logs/Slate/quota-watchdog.log; latest safe receipt ~/Library/Application Support/Slate/quota-watchdog/latest.json. Logs contain statuses only, no provider credentials or account IDs. Cannot repair login consent/provideroutage or force sleeping/offline physicalSlate to connect. No merge/tag/release.
