@@ -246,3 +246,51 @@ describe('AiUsageProvider', () => {
     ).rejects.toThrow('not configured');
   });
 });
+
+describe('AI quota expiration', () => {
+  for (const source of ['current', 'fallback']) {
+    for (const reason of ['old', 'expired']) {
+      it(`rejects ${reason} ${source} Grok quota`, async () => {
+        const now = new Date('2026-10-10T01:00:00Z');
+        const observedAt = reason === 'old' ? '2026-10-09T01:00:00Z' : '2026-10-10T00:59:00Z';
+        const windows = [
+          {
+            label: 'Weekly',
+            usedPercent: 56,
+            remainingPercent: 44,
+            resetLabel: 'Oct 8',
+            resetAt: reason === 'expired' ? '2026-10-08T10:56:00Z' : '2026-10-15T10:56:00Z',
+          },
+        ];
+        globalThis.fetch = (async () =>
+          Response.json({
+            grok: {
+              authMetadataDetected: true,
+              checkedAt: now.toISOString(),
+              quota: source === 'current' ? { observedAt, windows } : null,
+            },
+          })) as typeof fetch;
+        const provider = new AiUsageProvider({
+          aiUsageMacHelperUrl: 'http://100.73.201.113:19091',
+        } as AppConfig);
+        const data = await provider.fetchData(
+          { type: 'ai_usage', refresh_interval_sec: 300 },
+          {
+            now,
+            lastData: {
+              providers: [
+                {
+                  id: 'grok',
+                  status: 'connected',
+                  quotaObservedAt: observedAt,
+                  quotaWindows: windows,
+                },
+              ],
+            },
+          }
+        );
+        expect(data.providers.find((p) => p.id === 'grok')?.quotaWindows).toEqual([]);
+      });
+    }
+  }
+});

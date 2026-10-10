@@ -5225,3 +5225,12 @@ Five-minute polling firmware1c1f6c7 flashed toSlate at20:37AWST,9October2026.
 Applicationonly/hashverified/hardreset; settings/photos preserved. Backendpoll201
 req-1c0 at20:37:08AWST confirmsreconnect. BackendAIusage300s remainsactive.
 Five-minute cadencechange deliverycomplete; physicalcadence/currentunmeasured.
+
+
+## Grok quota repair — 10 October 2026
+
+PTY-based collector deployed; live3%used, Oct15at6:56PMAWST reset.
+Backend bounded6h observation fallback and reset expiration deployed; health/hashPASS.
+Focused21PASS/fullbackend462PASS5SKIP, lint/typecheck/AGYPASS.
+Stored backend09:12:08AWST render verified freshGrok; device300s polling unchanged.
+No firmwareflash. Physicalscreen not observed. EvidenceGROK-QUOTA-20261010.md.

@@ -8,6 +8,7 @@ export interface AiUsagePanelQuotaWindow {
   usedPercent: number;
   remainingPercent: number;
   resetLabel: string | null;
+  resetAt?: string | null;
 }
 
 export interface AiUsagePanelProvider {
@@ -59,7 +60,18 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
       const localState = providerState(localRecord, id);
       const macState = providerState(macRecord, id);
       const selected = selectProviderState(localState, macState);
+      selected.windows = freshQuotaWindows(
+        selected.windows,
+        safeIso(selected.quota.observedAt),
+        ctx.now
+      );
       const previous = previousProviderState(ctx.lastData, id);
+      if (previous)
+        previous.quotaWindows = freshQuotaWindows(
+          previous.quotaWindows,
+          previous.quotaObservedAt,
+          ctx.now
+        );
       const currentStatus =
         selected.state.authMetadataDetected === true
           ? ('connected' as const)
@@ -79,15 +91,13 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
         id,
         label,
         version:
-          currentVersion !== 'Unavailable'
-            ? currentVersion
-            : previous?.version ?? 'Unavailable',
+          currentVersion !== 'Unavailable' ? currentVersion : (previous?.version ?? 'Unavailable'),
         status:
           currentStatus !== 'unknown'
             ? macUnavailable && previous?.status === 'connected'
               ? ('connected' as const)
               : currentStatus
-            : previous?.status ?? ('unknown' as const),
+            : (previous?.status ?? ('unknown' as const)),
         quotaWindows: retainPreviousQuota ? previous.quotaWindows : selected.windows,
         quotaObservedAt: retainPreviousQuota
           ? previous.quotaObservedAt
@@ -98,9 +108,7 @@ export class AiUsageProvider implements DataProvider<AiUsageConfigT, AiUsagePane
     return {
       providers,
       updatedAt:
-        newestIso(selectedCheckedAt) ??
-        previousUpdatedAt(ctx.lastData) ??
-        ctx.now.toISOString(),
+        newestIso(selectedCheckedAt) ?? previousUpdatedAt(ctx.lastData) ?? ctx.now.toISOString(),
     };
   }
 }
@@ -145,9 +153,7 @@ function previousProviderState(
   id: AiUsagePanelProvider['id']
 ): AiUsagePanelProvider | null {
   if (!isRecord(lastData) || !Array.isArray(lastData.providers)) return null;
-  const row = lastData.providers.find(
-    (entry) => isRecord(entry) && entry.id === id
-  );
+  const row = lastData.providers.find((entry) => isRecord(entry) && entry.id === id);
   if (!isRecord(row)) return null;
   const status =
     row.status === 'connected' || row.status === 'sign_in' || row.status === 'unknown'
@@ -196,14 +202,13 @@ function selectProviderState(
   const localAuthenticated = localState.authMetadataDetected === true;
   const fallbackAuthenticated = fallbackState.authMetadataDetected === true;
   const localHasCapability =
-    localState.cliPresent === true ||
-    localAuthenticated ||
-    typeof localState.version === 'string';
-  const state = fallbackAuthenticated && !localAuthenticated
-    ? fallbackState
-    : localHasCapability
-      ? localState
-      : fallbackState;
+    localState.cliPresent === true || localAuthenticated || typeof localState.version === 'string';
+  const state =
+    fallbackAuthenticated && !localAuthenticated
+      ? fallbackState
+      : localHasCapability
+        ? localState
+        : fallbackState;
   const quota = state === localState ? localQuota : fallbackQuota;
   return {
     state,
@@ -262,6 +267,7 @@ function normalizeQuotaWindows(value: unknown): AiUsagePanelQuotaWindow[] {
           label,
           usedPercent,
           remainingPercent,
+          ...(safeIso(item.resetAt) ? { resetAt: safeIso(item.resetAt) } : {}),
           resetLabel:
             typeof item.resetLabel === 'string' && item.resetLabel.trim()
               ? item.resetLabel.trim().slice(0, 40)
@@ -284,4 +290,15 @@ function safePercent(value: unknown): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function freshQuotaWindows(
+  windows: AiUsagePanelQuotaWindow[],
+  observedAt: string | null,
+  now: Date
+): AiUsagePanelQuotaWindow[] {
+  if (!observedAt) return [];
+  const age = now.getTime() - Date.parse(observedAt);
+  if (age < 0 || age > 6 * 60 * 60_000) return [];
+  return windows.filter((window) => !window.resetAt || Date.parse(window.resetAt) > now.getTime());
 }

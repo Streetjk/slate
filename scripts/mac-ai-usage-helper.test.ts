@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
   extractDeviceAuthFields,
+  parseGrokQuotaLog,
   parseCodexAppServerRateLimits,
   parseCodexRateLimitEvent,
   parseClaudeQuotaCache,
@@ -123,7 +124,7 @@ describe('Mac AI usage helper quota normalization', () => {
           reset_at: 1790978400,
         },
       },
-      now,
+      now
     );
 
     expect(result?.windows.map((w) => [w.label, w.usedPercent, w.remainingPercent])).toEqual([
@@ -167,7 +168,7 @@ describe('Mac AI usage helper quota normalization', () => {
           reset_at: 1790937600,
         },
       },
-      now,
+      now
     );
 
     expect(result).toBeNull();
@@ -180,5 +181,34 @@ describe('Mac AI usage helper quota normalization', () => {
     expect(quota.windows[0]?.usedPercent).toBeGreaterThanOrEqual(0);
     expect(quota.windows[0]?.usedPercent).toBeLessThanOrEqual(100);
     expect(quota.windows[0]?.remainingPercent).toBe(100 - quota.windows[0]!.usedPercent);
+  });
+});
+
+describe('Grok billing log freshness', () => {
+  const log = JSON.stringify({
+    ts: '2026-10-10T01:09:24Z',
+    msg: 'billing: fetched credits config',
+    ctx: {
+      config: {
+        creditUsagePercent: 3,
+        currentPeriod: { end: '2026-10-15T10:56:15Z' },
+        secret: 'DO_NOT_COPY',
+      },
+    },
+  });
+  it('reads current billing and excludes unrelated fields', () => {
+    const quota = parseGrokQuotaLog(log, Date.parse('2026-10-10T01:10:00Z'));
+    expect(quota?.windows[0]?.usedPercent).toBe(3);
+    expect(quota?.windows[0]?.resetAt).toBe('2026-10-15T10:56:15.000Z');
+    expect(JSON.stringify(quota)).not.toContain('DO_NOT_COPY');
+  });
+  it('rejects aged observations and expired weekly periods', () => {
+    expect(parseGrokQuotaLog(log, Date.parse('2026-10-10T08:10:00Z'))).toBeNull();
+    expect(
+      parseGrokQuotaLog(
+        log.replace('2026-10-15T10:56:15Z', '2026-10-08T10:56:15Z'),
+        Date.parse('2026-10-10T01:10:00Z')
+      )
+    ).toBeNull();
   });
 });

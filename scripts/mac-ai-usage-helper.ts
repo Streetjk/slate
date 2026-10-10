@@ -429,16 +429,34 @@ async function refreshGrokQuota(nowMs: number): Promise<HelperQuotaSnapshot | nu
   const grok = PROVIDERS.grok.command;
   if (!existsSync(grok)) return null;
   try {
-    const proc = Bun.spawn([grok, 'dashboard'], {
+    // Grok billing initialization requires a terminal, even for dashboard mode.
+    // Drain and discard terminal output; never expose CLI credential diagnostics.
+    const terminalRunner = `import os,pty,select,subprocess,sys,time
+m,s=pty.openpty()
+p=subprocess.Popen([sys.argv[1],"dashboard"],stdin=s,stdout=s,stderr=s)
+os.close(s)
+try:
+ end=time.monotonic()+10
+ while p.poll() is None and time.monotonic()<end:
+  if select.select([m],[],[],0.2)[0]:
+   try: os.read(m,65536)
+   except OSError: break
+finally:
+ if p.poll() is None: p.terminate()
+ try: p.wait(timeout=1)
+ except subprocess.TimeoutExpired: p.kill();p.wait()
+ os.close(m)
+`;
+    const proc = Bun.spawn(['python3', '-c', terminalRunner, grok], {
       stdout: 'ignore',
       stderr: 'ignore',
-      stdin: 'pipe',
+      stdin: 'ignore',
       env: { ...safeCliEnv(), TERM: 'xterm-256color' },
       cwd: homedir(),
     });
-    const timer = setTimeout(() => proc.kill(), 4_000);
+    const timer = setTimeout(() => proc.kill(), 13_000);
     try {
-      await Promise.race([proc.exited, new Promise((resolve) => setTimeout(resolve, 4_500))]);
+      await Promise.race([proc.exited, new Promise((resolve) => setTimeout(resolve, 13_500))]);
     } finally {
       clearTimeout(timer);
       if (proc.exitCode === null) proc.kill();
@@ -700,6 +718,10 @@ function readGrokQuota(nowMs: number): HelperQuotaSnapshot | null {
   } catch {
     return null;
   }
+  return parseGrokQuotaLog(text, nowMs);
+}
+
+export function parseGrokQuotaLog(text: string, nowMs = Date.now()): HelperQuotaSnapshot | null {
   const lines = text.split(String.fromCharCode(10));
   for (let index = lines.length - 1; index >= 0; index--) {
     const line = lines[index] ?? '';
@@ -716,6 +738,8 @@ function readGrokQuota(nowMs: number): HelperQuotaSnapshot | null {
       const ageSeconds = Math.max(0, Math.round((nowMs - observedMs) / 1000));
       if (ageSeconds > GROK_QUOTA_MAX_AGE_SEC) return null;
       const period = isRecord(config.currentPeriod) ? config.currentPeriod : {};
+      const resetAt = safeResetIso(period.end);
+      if (!resetAt || Date.parse(resetAt) <= nowMs) return null;
       const resetLabel = compactResetLabel(period.end);
       return {
         windows: [
