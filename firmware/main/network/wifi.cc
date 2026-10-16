@@ -364,6 +364,20 @@ void Wifi::Disconnect() {
     state_.store(State::Disconnected);
 }
 
+bool Wifi::RetrySavedNetworks() {
+    if (IsConnected() || !StationModeActive() ||
+        want_reconnect_.load(std::memory_order_acquire))
+        return false;
+    reconnect_.Stop();
+    reconnect_.ResetBackoff();
+    reconnect_.BeginRetryWindowIfNeeded();
+    fail_count_.store(0, std::memory_order_release);
+    want_reconnect_.store(true, std::memory_order_release);
+    ESP_LOGI(kTag, "powered offline action=retry_saved_networks");
+    reconnect_.DoSlowScanReconnect();
+    return true;
+}
+
 bool Wifi::IsConnected() const {
     return state_.load() == State::Connected;
 }

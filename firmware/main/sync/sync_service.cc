@@ -1,6 +1,7 @@
 #include "sync/sync_service.h"
 
 #include <esp_log.h>
+#include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
@@ -9,6 +10,7 @@
 #include <utility>
 
 #include "events/event_bus.h"
+#include "network/wifi.h"
 #include "sync/sync_internal.h"
 #include "utils/time_utils.h"
 
@@ -20,6 +22,13 @@ constexpr int BIT_CYCLE_PREV    = BIT3;
 constexpr int BIT_WAKE_REFRESH  = BIT4;
 constexpr int BIT_NAV_NEXT      = BIT5;
 constexpr int BIT_NAV_PREV      = BIT6;
+
+// An online, bound Slate should finish a sync burst every five minutes.
+// Avoid restarts on ordinary HTTP/provider failures: those still finish a
+// burst, whereas an absent completion means the local worker has stalled.
+constexpr int64_t kStallKickMs    = 12LL * 60 * 1000;
+constexpr int64_t kStallRestartMs = 20LL * 60 * 1000;
+constexpr int64_t kKickCooldownMs = 2LL * 60 * 1000;
 }  // namespace
 
 SyncService& SyncService::Get() {
@@ -71,6 +80,8 @@ void SyncService::Start(std::string wake_reason, InitialSync initial_sync) {
     // worker inherit that stale shutdown request.
     xEventGroupClearBits(event_group_, BIT_STOP);
     xSemaphoreTake(exit_sem_, 0);
+    last_burst_finished_ms_.store(time_utils::NowMs(), std::memory_order_release);
+    last_health_kick_ms_.store(0, std::memory_order_release);
     running_.store(true, std::memory_order_release);
     {
         std::lock_guard<std::mutex> lock(task_mutex_);
@@ -197,6 +208,36 @@ bool SyncService::ShouldStop() const {
     return !running_.load(std::memory_order_acquire);
 }
 
+// Unlike quota/server failure, a missing *completed* local poll is a dead
+// worker or stuck network call. Supervise it from the UI loop, which still
+// runs when the e-ink clock is advancing. Quiet hours and lost Wi-Fi are
+// intentionally handled by their own low-power reconnect policy.
+void SyncService::TickHealth() {
+    if (!running_.load(std::memory_order_acquire) || time_utils::QuietHoursActive() ||
+        !Wifi::Get().IsConnected()) {
+        return;
+    }
+    const int64_t now = time_utils::NowMs();
+    const int64_t last = last_burst_finished_ms_.load(std::memory_order_acquire);
+    if (last <= 0 || now < last || now - last < kStallKickMs)
+        return;
+    if (now - last >= kStallRestartMs) {
+        ESP_LOGE(sync_internal::kTag, "sync worker stalled elapsed_ms=%lld busy=%d action=restart",
+                 (long long)(now - last), in_flight_.load() ? 1 : 0);
+        esp_restart();
+        return;
+    }
+    const int64_t last_kick = last_health_kick_ms_.load(std::memory_order_acquire);
+    if (in_flight_.load(std::memory_order_acquire) ||
+        (last_kick > 0 && now >= last_kick && now - last_kick < kKickCooldownMs)) {
+        return;
+    }
+    last_health_kick_ms_.store(now, std::memory_order_release);
+    ESP_LOGW(sync_internal::kTag, "sync worker heartbeat missing elapsed_ms=%lld action=trigger",
+             (long long)(now - last));
+    RequestUserActiveSync();
+}
+
 void SyncService::PostSyncedGroupReady(const std::string& gid, const std::string& name, int content_count,
                                        bool content_changed) {
     evt::PostGroupReady(UiEventKind::kSyncedGroupReady, gid, name, content_count, content_changed);
@@ -247,6 +288,7 @@ void SyncService::Loop() {
             SyncOnce(SyncMode::kUserActive);
         }
         in_flight_.store(false, std::memory_order_release);
+        last_burst_finished_ms_.store(time_utils::NowMs(), std::memory_order_release);
 
         // 一次 sync 突发(poll/cycle → manifest → 各帧)结束,释放持久连接回收 mbedTLS 内存。
         // 连接只在单次突发内复用,突发之间(轮询间隔以分钟计)不保活,避免常驻占内存。

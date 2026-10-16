@@ -52,6 +52,10 @@ class SyncService {
         return in_flight_.load(std::memory_order_acquire);
     }
 
+    // Called by the live UI loop: recover a missing sync worker heartbeat
+    // without rebooting for ordinary server errors or deliberate offline sleep.
+    void TickHealth();
+
    private:
     SyncService() = default;
     static void TaskEntry(void* arg);
@@ -92,6 +96,8 @@ class SyncService {
 
     std::atomic<bool>    running_{false};
     std::atomic<bool>    in_flight_{false};
+    std::atomic<int64_t> last_burst_finished_ms_{0};
+    std::atomic<int64_t> last_health_kick_ms_{0};
     mutable std::mutex   task_mutex_;
     mutable std::mutex   current_group_mutex_;
     EventGroupHandle_t   event_group_ = nullptr;

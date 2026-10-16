@@ -182,6 +182,13 @@ uint32_t SleepManager::ComputeConfiguredNextWakeSec() const {
             return until_end;
     }
 
+    // Preserve the one-minute offline hibernation policy, but make recovery
+    // autonomous: an RTC timer retries saved Wi-Fi every 15 minutes, even when
+    // the currently displayed frame is static. Quiet hours still take priority.
+    if (!Wifi::Get().IsConnected()) {
+        return time_utils::AdjustWakeForQuietHours(offline_sleep_policy::kRetryWakeSec);
+    }
+
     const uint32_t requested = power_state::ComputeNextWakeSec();
     return time_utils::AdjustWakeForQuietHours(requested);
 }
@@ -193,7 +200,35 @@ bool SleepManager::BlocksSleep() const {
 void SleepManager::Tick(int64_t now_ms) {
     if (!enabled_.load())
         return;
-    // 充电 / unbound 宽限是合法的「先别睡」，不计入看门狗（它们不是卡死），重置计时。
+
+    // Powered units cannot hibernate. Re-arm the existing nonblocking
+    // saved-network scan periodically after its 30-second retry budget expires.
+    // When Wi-Fi recovers, immediately reconcile the manifest rather than
+    // waiting for the next scheduled five-minute poll.
+    if (offline_hibernate_enabled_.load(std::memory_order_acquire)) {
+        if (Wifi::Get().IsConnected()) {
+            const int64_t offline_since = disconnected_since_ms_.exchange(-1);
+            if (offline_since >= 0 && now_ms - offline_since >= offline_sleep_policy::kTimeoutMs) {
+                ESP_LOGI(kTag, "offline recovery action=sync");
+                SyncService::Get().Start("wifi_recovered", SyncService::InitialSync::kUserActive);
+                SyncService::Get().RequestUserActiveSync();
+            }
+        } else {
+            const auto* charge = Board::Get().charge();
+            const bool powered = paused_.load() || (charge && charge->Get().power_present);
+            if (powered && !time_utils::QuietHoursActive()) {
+                int64_t since = disconnected_since_ms_.load();
+                if (since < 0) {
+                    disconnected_since_ms_.store(now_ms);
+                } else if (now_ms - since >= static_cast<int64_t>(offline_sleep_policy::kRetryWakeSec) * 1000) {
+                    Wifi::Get().RetrySavedNetworks();
+                    disconnected_since_ms_.store(now_ms);
+                }
+            }
+        }
+    }
+
+    // Charging and unbound grace legally suspend deep sleep.
     if (paused_.load()) {
         blocked_since_ms_.store(0);
         return;
@@ -215,8 +250,9 @@ void SleepManager::Tick(int64_t now_ms) {
                 disconnected_since_ms_.store(since);
             }
             if (offline_sleep_policy::Expired(since, now_ms)) {
-                ESP_LOGI(kTag, "offline timeout action=deep_sleep wake=button_only");
-                const auto offline = TryEnterDeepSleep(true);
+                ESP_LOGI(kTag, "offline timeout action=deep_sleep wake=button_or_rtc_retry timer_sec=%u",
+                         static_cast<unsigned>(offline_sleep_policy::kRetryWakeSec));
+                const auto offline = TryEnterDeepSleep(false);
                 if (offline.outcome != SleepOutcome::kSlept)
                     disconnected_since_ms_.store(now_ms);  // bound refused attempts
                 return;

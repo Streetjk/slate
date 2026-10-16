@@ -1,8 +1,9 @@
 #pragma once
 
 // Connected full-active operation stays in automatic light sleep. Quiet hours
-// retain deep sleep until 05:30. Missing Wi-Fi for sixty seconds disables timer
-// wake and hibernates; ENTER/DOWN/USB wake remains, GPIO39 UP cannot deep-wake.
+// retain deep sleep until 05:30. Missing Wi-Fi for sixty seconds hibernates
+// with a low-power 15-minute RTC reconnection retry, plus ENTER/DOWN/USB wake.
+// GPIO39 UP cannot deep-wake.
 //
 // Unbound grace 窗口:设备未绑定时禁 deep sleep,让 SyncService 快轮询,
 // 用户在 Web 端输码后屏切「等待内容组」。轮询间隔阶梯退避(10s→30s→60s),

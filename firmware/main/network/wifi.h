@@ -70,6 +70,10 @@ class Wifi {
     // 主动断开 STA(不下 wifi),后续不重连
     void Disconnect();
 
+    // Re-arm saved-network scanning after the 30-second retry budget expires.
+    // Nonblocking; for powered units that cannot enter timed deep sleep.
+    bool RetrySavedNetworks();
+
     bool  IsConnected() const;
     State state() const {
         return state_.load();

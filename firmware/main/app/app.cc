@@ -295,6 +295,9 @@ void App::UiLoopTask() {
     }
 
     while (ui_loop_running_.load(std::memory_order_acquire)) {
+        // A healthy local clock must not hide a stopped sync task. Check even
+        // if the UI event queue is busy; the watchdog performs no network I/O.
+        SyncService::Get().TickHealth();
         // Check deadlines even when events continuously fill the UI queue.
         sleep_mgr_.Tick(time_utils::NowMs());
         UiEvent e;
