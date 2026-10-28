@@ -15,6 +15,7 @@ import { DynamicAudioService } from './audio/dynamic-audio.service';
 import { canReuseDynamicData } from './dynamic-data-reuse-policy';
 import { computeDynamicRefreshSchedule, computeErrorBackoffAt } from './dynamic-refresh-policy';
 import { dynamicViewDate } from './timezone';
+import { parseOutlookCalendarData } from './providers/outlook-calendar.provider';
 
 const DYNAMIC_RENDER_CONTENT_SELECT = {
   id: true,
@@ -105,12 +106,13 @@ export class DynamicContentRendererService {
     dynamicType: string,
     configOverride: unknown,
     frameName?: string | null,
-    dataOverride?: unknown
+    dataOverride?: unknown,
+    nowOverride?: Date
   ): Promise<Buffer> {
     const entry = this.registry.get(dynamicType);
     if (!entry) throw new ValidationError(`Unknown dynamic type: ${dynamicType}`);
     const config = entry.provider.validateConfig(configOverride);
-    const now = new Date();
+    const now = nowOverride ?? new Date();
     const data =
       dataOverride === undefined
         ? await entry.provider.fetchData(config, { now, lastData: undefined })
@@ -121,6 +123,7 @@ export class DynamicContentRendererService {
       config: (config ?? {}) as Record<string, unknown>,
       data: normalizeRenderData(data),
       renderedAt: dynamicViewDate(config, now),
+      now,
     });
   }
 
@@ -184,6 +187,7 @@ export class DynamicContentRendererService {
       config: (config ?? {}) as Record<string, unknown>,
       data: normalizeRenderData(data),
       renderedAt: dynamicViewDate(config, now),
+      now,
     });
   }
 
@@ -252,6 +256,7 @@ export class DynamicContentRendererService {
       config: (config ?? {}) as Record<string, unknown>,
       data: normalizeRenderData(data),
       renderedAt: dynamicViewDate(config, now),
+      now,
     });
     const imageEtag = computeETag(rendered);
     const schedule = computeDynamicRefreshSchedule({
@@ -259,6 +264,10 @@ export class DynamicContentRendererService {
       config,
       now,
       defaultTtlSec: this.registry.defaultTtlSec(content.dynamicType),
+      calendarEvents:
+        content.dynamicType === 'outlook_calendar'
+          ? (parseOutlookCalendarData(data)?.events ?? [])
+          : undefined,
     });
 
     if (!opts.force && imageEtag === content.imageEtag) {

@@ -488,6 +488,34 @@ describe('DynamicFrameRendererService', () => {
 
     expect(hasTextPixels(frame, font, '黔西南', 114, 33, 130, 22)).toBe(true);
   });
+  it('redraws the Outlook daily frame with the next event at its two-hour boundary', async () => {
+    const events = Array.from({ length: 7 }, (_, index) => {
+      const hour = index + 7;
+      const start = `2026-10-27T${String(hour).padStart(2, '0')}:00:00+08:00`;
+      return {
+        id: String(index),
+        title: `Appointment ${hour}`,
+        start,
+        end: new Date(Date.parse(start) + 60 * 60_000).toISOString(),
+        allDay: false,
+      };
+    });
+    const context: DynamicRenderContext = {
+      type: 'outlook_calendar',
+      config: { type: 'outlook_calendar', day_offset: 0, tz: 'Australia/Perth' },
+      data: { connected: true, fetchedAt: '2026-10-27T00:00:00.000Z', events },
+      renderedAt: new Date('2026-10-27T04:00:00.000Z'),
+      now: new Date('2026-10-27T00:59:00.000Z'),
+    };
+    const initial = await renderer.render(context);
+    const after = await renderer.render({ ...context, now: new Date('2026-10-27T01:00:00Z') });
+    const unchanged = await renderer.render({ ...context, now: new Date('2026-10-27T01:01:00Z') });
+
+    expect(initial.byteLength).toBe(FRAME_BYTES);
+    expect(after.byteLength).toBe(FRAME_BYTES);
+    expect(initial.equals(after)).toBe(false);
+    expect(after.equals(unchanged)).toBe(true);
+  });
 });
 
 function countPixels(frame: Buffer): { black: number; white: number } {

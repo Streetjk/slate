@@ -4,4 +4,6 @@ export interface DynamicRenderContext {
   config: Record<string, unknown>;
   data: Record<string, unknown> | null;
   renderedAt: Date;
+  /** Actual render clock, distinct from the noon date used for calendar navigation. */
+  now?: Date;
 }
