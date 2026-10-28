@@ -9,7 +9,7 @@ import {
   formatOutlookTime,
   parseOutlookCalendarData,
 } from '../providers/outlook-calendar.provider';
-import { datePartsInTz, utcFromWallTimeInTz } from '../timezone';
+import { outlookAgendaPage } from './outlook-calendar-auto-page';
 
 export function renderOutlookCalendarFrame(
   c: BitmapCanvas,
@@ -38,11 +38,14 @@ export function renderOutlookCalendarFrame(
   });
   draw.drawRule(c, CONTENT_LEFT, STATUS_BAR_H + 42, FRAME_WIDTH - 2 * CONTENT_LEFT, 'solid');
 
-  const events =
-    data?.events
-      .filter((event) => overlapsRenderedDay(event.start, event.end, event.allDay, ctx.renderedAt, timezone))
-      .sort((a, b) => a.start.localeCompare(b.start)) ?? [];
-  if (events.length === 0) {
+  const page = outlookAgendaPage(
+    data?.events ?? [],
+    ctx.renderedAt,
+    ctx.now ?? ctx.renderedAt,
+    timezone,
+    typeof ctx.config.day_offset === 'number' ? ctx.config.day_offset : 0
+  );
+  if (page.totalEvents === 0) {
     draw.drawText(
       c,
       fonts.sans16,
@@ -58,7 +61,7 @@ export function renderOutlookCalendarFrame(
     return;
   }
 
-  const rows = events.slice(0, 6);
+  const rows = page.rows;
   const rowY = STATUS_BAR_H + 54;
   for (const [index, event] of rows.entries()) {
     const y = rowY + index * 35;
@@ -83,32 +86,4 @@ export function renderOutlookCalendarFrame(
     if (index < rows.length - 1)
       draw.drawRule(c, CONTENT_LEFT + 70, y + 31, CONTENT_RIGHT - CONTENT_LEFT - 70, 'dashed');
   }
-}
-
-function overlapsRenderedDay(
-  start: string,
-  end: string,
-  allDay: boolean,
-  renderedAt: Date,
-  timezone: string
-): boolean {
-  const parts = datePartsInTz(renderedAt, timezone);
-  const targetKey =
-    `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
-
-  if (allDay) return start <= targetKey && targetKey < end;
-
-  const dayStart = utcFromWallTimeInTz(
-    { year: parts.year, month: parts.month, day: parts.day },
-    timezone
-  );
-  const nextDay = utcFromWallTimeInTz(
-    { year: parts.year, month: parts.month, day: parts.day + 1 },
-    timezone
-  );
-  if (!dayStart || !nextDay) return false;
-
-  const startMs = Date.parse(start);
-  const endMs = Date.parse(end);
-  return Number.isFinite(startMs) && Number.isFinite(endMs) && startMs < nextDay.getTime() && endMs > dayStart.getTime();
 }

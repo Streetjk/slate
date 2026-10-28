@@ -118,7 +118,8 @@ export class DynamicNavigationBundleService {
         base.type,
         spec.config,
         content.frameName,
-        data
+        data,
+        now
       );
       const imageEtag = computeETag(image);
       await this.blob.write(content.groupId, navAssetId(content.id, spec.key), 'image', image);

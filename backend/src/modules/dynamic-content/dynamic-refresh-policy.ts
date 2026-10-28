@@ -1,4 +1,6 @@
-import { nextLocalMidnight, timezoneFromConfig } from './timezone';
+import type { CalendarEventT } from 'shared';
+import { outlookAgendaPage } from './outlook/outlook-calendar-auto-page';
+import { dynamicViewDate, nextLocalMidnight, timezoneFromConfig } from './timezone';
 
 const REFRESH_LEAD_MS = 90_000;
 const MIN_REFRESH_DUE_DELAY_MS = 10_000;
@@ -42,11 +44,26 @@ export function computeDynamicRefreshSchedule(input: {
   config: unknown;
   now: Date;
   defaultTtlSec: number | null;
+  calendarEvents?: readonly CalendarEventT[];
 }): DynamicRefreshSchedule {
-  const nextRunAt = computeNextRunAt(input);
+  const regularNextRunAt = computeNextRunAt(input);
+  if (input.dynamicType === 'outlook_calendar' && input.calendarEvents) {
+    const config = input.config as { tz?: string; day_offset?: number } | null;
+    const page = outlookAgendaPage(
+      input.calendarEvents,
+      dynamicViewDate(input.config, input.now),
+      input.now,
+      config?.tz ?? 'Australia/Perth',
+      config?.day_offset ?? 0
+    );
+    if (page.nextPageAt && (!regularNextRunAt || page.nextPageAt < regularNextRunAt)) {
+      // Rendering before the page boundary would redraw the same six rows.
+      return { nextRunAt: page.nextPageAt, refreshDueAt: page.nextPageAt };
+    }
+  }
   return {
-    nextRunAt,
-    refreshDueAt: computeRefreshDueAt(input.dynamicType, nextRunAt, input.now),
+    nextRunAt: regularNextRunAt,
+    refreshDueAt: computeRefreshDueAt(input.dynamicType, regularNextRunAt, input.now),
   };
 }
 
