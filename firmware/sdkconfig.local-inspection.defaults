@@ -1,0 +1,7 @@
+# Optional ESP-IDF build overlay for networks using HTTPS inspection.
+# Keep public roots enabled and add the locally supplied inspection root CA.
+# Build with SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.local-inspection.defaults".
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+CONFIG_MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE_PATH="certs/local-inspection-ca.pem"

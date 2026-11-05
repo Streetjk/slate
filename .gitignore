@@ -32,9 +32,12 @@ coverage/
 
 # === ESP-IDF (firmware/) ===
 firmware/build/
+firmware/build-hcmo/
 firmware/managed_components/
 firmware/sdkconfig
 firmware/sdkconfig.old
+# Local inspection CA is device-specific; never publish trust anchors.
+firmware/certs/*.pem
 .cache/
 
 # === Prisma ===
