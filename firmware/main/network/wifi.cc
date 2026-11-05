@@ -17,12 +17,12 @@ namespace {
 constexpr char     kTag[]                 = "wifi";
 constexpr int      kWifiBitConnected      = BIT0;
 constexpr int      kWifiBitConnectionFail = BIT1;
-constexpr uint16_t kWifiListenInterval    = 10;
-
+// Keep the radio awake during active sync. Even minimum modem sleep produced
+// repeated beacon timeouts on the test AP despite strong signal (-44 dBm).
 void ApplyStationPowerSave() {
-    const esp_err_t err = esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    const esp_err_t err = esp_wifi_set_ps(WIFI_PS_NONE);
     if (err != ESP_OK)
-        ESP_LOGW(kTag, "wifi max-modem power save failed err=%s", esp_err_to_name(err));
+        ESP_LOGW(kTag, "wifi power save disable failed err=%s", esp_err_to_name(err));
 }
 
 EventGroupHandle_t& WifiEventGroup() {
@@ -64,7 +64,6 @@ bool FillStaConfig(wifi_config_t& wc, const std::string& ssid, const std::string
     wc.sta.threshold.authmode = WIFI_AUTH_OPEN;
     wc.sta.pmf_cfg.capable    = true;
     wc.sta.pmf_cfg.required   = false;
-    wc.sta.listen_interval    = kWifiListenInterval;
     return true;
 }
 
@@ -197,6 +196,11 @@ void Wifi::EventHandler(void* arg, esp_event_base_t base, int32_t id, void* data
         self->reconnect_.Stop();
         self->state_.store(State::Connected);
         ApplyStationPowerSave();
+        wifi_ap_record_t ap = {};
+        if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+            ESP_LOGI(kTag, "sta connected rssi_dbm=%d primary_channel=%u power_save=disabled", ap.rssi,
+                     static_cast<unsigned>(ap.primary));
+        }
 
         xEventGroupSetBits(WifiEventGroup(), kWifiBitConnected);
         return;
