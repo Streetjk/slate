@@ -64,3 +64,13 @@ Preserved pre-repair build: firmware/build-hcmo/slate-before-idle-fix-b3b5fff.bi
 - 27d69ea's offline RTC retry is bypassed by App::HandleBackgroundRefreshDone passing manual_wake_only=true after an offline background wake; failed recovery can sleep indefinitely. This explains stale/offline behavior, not higher idle power.
 - Sync health watchdog retains pre-quiet-hours/offline completion time; when its gates reopen, elapsed suppressed time can produce an immediate restart. No evidence of repeated resets was captured here.
 - Minute-by-minute e-paper clock redraw and five-minute polling carry intentional power costs. They were not rolled back or changed.
+
+## Physical deployment — 8 November 2026 (supersedes deployment hold above)
+
+- Connected NOTE4 on Mac mini port `/dev/cu.usbmodem101`; Espressif USB serial and esptool both confirmed MAC `44:1B:F6:C4:E5:74`, ESP32-S3 rev v0.2, 16 MB flash.
+- Read back partition table: NVS 0x9000 (24K), factory app 0x10000 (4M), storage 0x410000. Backed up the entire existing factory application (0x10000, 0x400000 bytes) to `/Users/ollama/slate-device-backups/2026-11-08-note4-wifi-power/factory-app-before.bin`, SHA256 `06e497db8274ce9021617a2a87d4b6f4f4c0b635418604fb4633eda47954e51c`.
+- First 2,564,272 bytes of actual device readback hash to `140bfb773ebaba979e7faa086c11e92a5e9fbd3ce370103a2aff5dbd22400e12`, exactly matching the Nov 5 b3b5fff affected binary. The source-to-physical regression attribution is therefore confirmed.
+- Flashed only application image `/Users/ollama/slate-hcmo-ca-oct16/build-hcmo/slate.bin` at offset 0x10000, SHA256 `fda24a8fcc08630ba72f9e538d91a8224aff2f1f03209ad929e9e8a24e996e05`. esptool wrote 2,564,880 bytes, verified written data hash and hard-reset successfully; no other partition was erased or written.
+- On-device serial startup: `station power save mode=active_none` at 1.65s, `sta connected` at 4.003s, `idle_min_modem` at 26.39s. Subsequent automatic sync: `active_none` at 326.393s and `idle_min_modem` at 336.734s. Backend authenticated poll passed at 2026-11-08 07:26:32 AWST.
+- Credentials and cached content remained intact; backend reported battery 57% and RSSI -41 dBm after update. These values are snapshots, not a discharge-rate result.
+- Pending physical acceptance: unplug from USB and compare a controlled 24h battery discharge period; observe additional polls and any AP-specific beacon timeout/reconnect issue. USB-powered testing cannot prove battery-runtime improvement.
