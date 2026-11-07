@@ -34,9 +34,11 @@
 
 #include "network/wifi_reconnect_manager.h"
 #include "network/wifi_retry_policy.h"
+#include "network/wifi_power_policy.h"
 
 class Wifi {
     friend class WifiReconnectManager;
+    friend class ScopedWifiNetworkActivity<Wifi>;
 
    public:
     // Bound automatic reconnect attempts. After 30 continuous seconds without
@@ -52,6 +54,10 @@ class Wifi {
     };
 
     static Wifi& Get();
+
+    // Hold only across network work, never across the idle polling wait.
+    // Nested setup/sync/voice owners cannot prematurely restore modem sleep.
+    using ScopedNetworkActivity = ScopedWifiNetworkActivity<Wifi>;
 
     // 一次性的最小底座:esp_netif_init + 默认 event loop + esp_wifi_init(nvs_enable=false)。
     // 不创建任何 netif,不调 wifi_start。NVS 由 App::InitStorage 统一初始化。
@@ -102,6 +108,12 @@ class Wifi {
     };
 
     Wifi() = default;
+    void AcquireNetworkActivity();
+    void ReleaseNetworkActivity();
+    void ApplyStationPowerSave();
+    void ApplyStationPowerSaveLocked();
+    std::mutex power_mutex_;
+    WifiPowerPolicy power_policy_;
 
     // 内部:进/出某个 mode。互斥状态机的核心。
     void StartStationInternal();

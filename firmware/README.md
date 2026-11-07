@@ -534,3 +534,13 @@ Existing photo assets, manifest sequences, NVS and partitions are unchanged.
 Bound device polling is five minutes at user request. AI Usage backend refresh
 is also configured to five minutes. Independent schedules may add up to nearly
 ten minutes plus sync/download time. Other battery and quiet-hours policies remain.
+
+
+### Wi-Fi idle power repair — 7 November 2026
+
+Station radio power save now uses MIN_MODEM between network operations. A scoped,
+reference-counted activity lease retains NONE for setup, sync/download and voice,
+then restores idle modem sleep after the final owner exits. The aggressive old
+MAX_MODEM/listen interval is not reinstated. Five-minute polls and quiet hours are
+unchanged. Build/host tests passed; AP stability and unplugged current still need
+physical validation. See WIFI-IDLE-POWER-20261107.md in campaign reports.

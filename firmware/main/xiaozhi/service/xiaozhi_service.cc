@@ -8,6 +8,7 @@
 
 #include "drivers/audio/audio_player.h"
 #include "events/event_bus.h"
+#include "network/wifi.h"
 #include "storage/nvs/volume_store.h"
 #include "xiaozhi/config/slate_voice_config_client.h"
 #include "xiaozhi/config/settings.h"
@@ -444,7 +445,11 @@ void XiaozhiService::ConfigTask() {
            !settings::HasProtocolConfig()) {
         SetState(XiaozhiState::kCheckingConfig, "Loading voice configuration...");
         SlateVoiceConfigClient client;
-        SlateVoiceConfigResult result = client.Fetch();
+        SlateVoiceConfigResult result;
+        {
+            const Wifi::ScopedNetworkActivity network_activity;
+            result = client.Fetch();
+        }
         if (config_stop_requested_.load(std::memory_order_relaxed) || !in_mode_.load(std::memory_order_relaxed))
             return;
         {
@@ -584,6 +589,8 @@ void XiaozhiService::ConversationTaskEntry(void* arg) {
 }
 
 void XiaozhiService::ConversationTask() {
+    // Covers connect, streaming and teardown, including every early return.
+    const Wifi::ScopedNetworkActivity network_activity;
     const uint32_t token = conversation_token_.load(std::memory_order_acquire);
     ESP_LOGD(kTag, "conversation begin token=%lu", static_cast<unsigned long>(token));
     if (!ConversationMayRun(xiaozhi_phase_.load(std::memory_order_relaxed)))

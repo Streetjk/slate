@@ -272,6 +272,9 @@ void SyncService::Loop() {
             continue;
         }
 
+        // Preserve the beacon-timeout workaround only during network work.
+        // Scope ends after connection teardown, before the next 5-minute wait.
+        const Wifi::ScopedNetworkActivity network_activity;
         // 标记突发进行中：SleepManager 据此阻止 idle 睡眠打断正在进行的下载。
         in_flight_.store(true, std::memory_order_release);
         if (bits & BIT_CYCLE_NEXT) {

@@ -5245,3 +5245,15 @@ Initiallocalhostprobe causedone unnecessaryrestart; configuredbindfix/regression
 andsecondAGYreviewPASS. EighttestsPASS; corrected10:50:43AWSTlivecheck actionnone,
 allfourquotasfresh, rendercurrent, devicerecent. No firmwareflash.
 EvidenceQUOTA-WATCHDOG-20261010.md. Futurecronrunsnotyetobserved.
+
+
+## Wi-Fi idle power regression — 7 November 2026
+
+Base b3b5fff in slate-hcmo-ca-oct16 left WIFI_PS_NONE active between all polls.
+Repair branch fix/wifi-idle-power-20261107 restores MIN_MODEM at idle while scoped
+reference-counted network activity retains NONE for setup/sync/voice. Five focused
+host suites and ESP-IDF5.5.2 build PASS. Candidate app SHA256
+fda24a8fcc08630ba72f9e538d91a8224aff2f1f03209ad929e9e8a24e996e05.
+NOT FLASHED: USB device absent. Exact installed image and unplugged power savings
+not measured. No NVS/partition/CA/backend policy changes. Evidence and safe
+application-only deployment/rollback hold: WIFI-IDLE-POWER-20261107.md.

@@ -17,13 +17,6 @@ namespace {
 constexpr char     kTag[]                 = "wifi";
 constexpr int      kWifiBitConnected      = BIT0;
 constexpr int      kWifiBitConnectionFail = BIT1;
-// Keep the radio awake during active sync. Even minimum modem sleep produced
-// repeated beacon timeouts on the test AP despite strong signal (-44 dBm).
-void ApplyStationPowerSave() {
-    const esp_err_t err = esp_wifi_set_ps(WIFI_PS_NONE);
-    if (err != ESP_OK)
-        ESP_LOGW(kTag, "wifi power save disable failed err=%s", esp_err_to_name(err));
-}
 
 EventGroupHandle_t& WifiEventGroup() {
     static EventGroupHandle_t s_event_group = nullptr;
@@ -115,6 +108,41 @@ Wifi& Wifi::Get() {
     return w;
 }
 
+void Wifi::ApplyStationPowerSaveLocked() {
+    if (!StationModeActive())
+        return;
+    const wifi_ps_type_t desired = power_policy_.KeepAwake() ? WIFI_PS_NONE : WIFI_PS_MIN_MODEM;
+    wifi_ps_type_t current = WIFI_PS_NONE;
+    if (esp_wifi_get_ps(&current) == ESP_OK && current == desired)
+        return;
+    const esp_err_t err = esp_wifi_set_ps(desired);
+    if (err != ESP_OK) {
+        ESP_LOGW(kTag, "station power save change failed mode=%d err=%s",
+                 static_cast<int>(desired), esp_err_to_name(err));
+    } else {
+        ESP_LOGI(kTag, "station power save mode=%s",
+                 desired == WIFI_PS_NONE ? "active_none" : "idle_min_modem");
+    }
+}
+
+void Wifi::ApplyStationPowerSave() {
+    std::lock_guard<std::mutex> lock(power_mutex_);
+    ApplyStationPowerSaveLocked();
+}
+
+void Wifi::AcquireNetworkActivity() {
+    std::lock_guard<std::mutex> lock(power_mutex_);
+    power_policy_.Acquire();
+    ApplyStationPowerSaveLocked();
+}
+
+void Wifi::ReleaseNetworkActivity() {
+    std::lock_guard<std::mutex> lock(power_mutex_);
+    if (!power_policy_.Release())
+        ESP_LOGE(kTag, "unbalanced network activity release");
+    ApplyStationPowerSaveLocked();
+}
+
 void Wifi::EventHandler(void* arg, esp_event_base_t base, int32_t id, void* data) {
     Wifi* self = static_cast<Wifi*>(arg);
 
@@ -195,10 +223,10 @@ void Wifi::EventHandler(void* arg, esp_event_base_t base, int32_t id, void* data
         self->reconnect_.ResetBackoff();
         self->reconnect_.Stop();
         self->state_.store(State::Connected);
-        ApplyStationPowerSave();
+        self->ApplyStationPowerSave();
         wifi_ap_record_t ap = {};
         if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
-            ESP_LOGI(kTag, "sta connected rssi_dbm=%d primary_channel=%u power_save=disabled", ap.rssi,
+            ESP_LOGI(kTag, "sta connected rssi_dbm=%d primary_channel=%u", ap.rssi,
                      static_cast<unsigned>(ap.primary));
         }
 
@@ -255,6 +283,7 @@ bool Wifi::Connect(const std::string& ssid, const std::string& password, int tim
         StopApInternal();
     if (mode_.load(std::memory_order_acquire) != Mode::Station)
         StartStationInternal();
+    ApplyStationPowerSave();
 
     wifi_config_t wc = {};
     if (!FillStaConfig(wc, ssid, password, nullptr)) {

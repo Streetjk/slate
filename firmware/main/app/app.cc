@@ -393,6 +393,7 @@ bool App::InitWifiAndSync(cred::Credentials& creds, bool background_refresh) {
     ESP_LOGI(kTag, "network setup start background=%d ssid=%s has_secret=%d", background_refresh ? 1 : 0,
              creds.wifi_ssid.c_str(), creds.device_secret.empty() ? 0 : 1);
     Wifi::Get().Init();
+    const Wifi::ScopedNetworkActivity network_activity;
 
     // poll 收 401 → emit kSecretInvalid;UiLoop 拦下来在主线程清 NVS + esp_restart。
     api::SetUnauthorizedHandler([]() { evt::PostSimple(UiEventKind::kSecretInvalid); });
