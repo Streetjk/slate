@@ -2,8 +2,8 @@
 
 #include <cstdint>
 
-// Serialized by Wifi's power mutex. MIN_MODEM at idle follows the AP DTIM;
-// it does not reinstate the aggressive MAX_MODEM/listen_interval=10 profile.
+// Serialized by Wifi's power mutex. The radio uses MAX_MODEM with listen
+// interval 10 at idle and NONE only while a network activity lease is held.
 class WifiPowerPolicy {
    public:
     void Acquire() { ++active_users_; }

@@ -17,6 +17,9 @@ namespace {
 constexpr char     kTag[]                 = "wifi";
 constexpr int      kWifiBitConnected      = BIT0;
 constexpr int      kWifiBitConnectionFail = BIT1;
+// Restore the low-drain idle profile from 27d69ea. Active network work
+// temporarily disables modem sleep through ScopedNetworkActivity.
+constexpr uint16_t kWifiListenInterval    = 10;
 
 EventGroupHandle_t& WifiEventGroup() {
     static EventGroupHandle_t s_event_group = nullptr;
@@ -57,6 +60,7 @@ bool FillStaConfig(wifi_config_t& wc, const std::string& ssid, const std::string
     wc.sta.threshold.authmode = WIFI_AUTH_OPEN;
     wc.sta.pmf_cfg.capable    = true;
     wc.sta.pmf_cfg.required   = false;
+    wc.sta.listen_interval    = kWifiListenInterval;
     return true;
 }
 
@@ -111,7 +115,9 @@ Wifi& Wifi::Get() {
 void Wifi::ApplyStationPowerSaveLocked() {
     if (!StationModeActive())
         return;
-    const wifi_ps_type_t desired = power_policy_.KeepAwake() ? WIFI_PS_NONE : WIFI_PS_MIN_MODEM;
+    // Idle: receive beacons every 10 intervals, as on the lower-drain build.
+    // Transfer scopes still select WIFI_PS_NONE before opening network sockets.
+    const wifi_ps_type_t desired = power_policy_.KeepAwake() ? WIFI_PS_NONE : WIFI_PS_MAX_MODEM;
     wifi_ps_type_t current = WIFI_PS_NONE;
     if (esp_wifi_get_ps(&current) == ESP_OK && current == desired)
         return;
@@ -121,7 +127,7 @@ void Wifi::ApplyStationPowerSaveLocked() {
                  static_cast<int>(desired), esp_err_to_name(err));
     } else {
         ESP_LOGI(kTag, "station power save mode=%s",
-                 desired == WIFI_PS_NONE ? "active_none" : "idle_min_modem");
+                 desired == WIFI_PS_NONE ? "active_none" : "idle_max_modem");
     }
 }
 
